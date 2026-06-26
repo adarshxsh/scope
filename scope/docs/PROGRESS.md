@@ -21,18 +21,23 @@
 
 ---
 
-## Phase 2: Ghost AI (Analysis Engine) ⏳
-**Status**: Not started
+## Phase 2: Ghost AI (Analysis Engine) & Diagnostics ✅
+**Status**: Complete  
+**Date**: 2026-06-26
 
 | Sub-step | Description | Status |
 |---|---|---|
-| LiteRT Integration | On-device model inference | ⏳ |
-| Rule Engine | Keyword-based high-priority detection | ⏳ |
-| Model Optimization | Quantized BERT-tiny under 300MB RAM | ⏳ |
+| Feature Extraction | Regex parser for OTPs, amounts, deadlines | ✅ |
+| Rules Compiler | In-memory JSON compiled matching engine | ✅ |
+| LiteRT Scaffold | Category-oriented TFLite classifier with WordPiece | ✅ |
+| Score Fusion | Combined logic, overrides, security bypasses | ✅ |
+| Policy Engine | Explanations, latency, priority resolver | ✅ |
+| Diagnostics UI | Interactive dashboard panel & templates | ✅ |
+| Pipeline Tests | Model, extraction, rules, tokens, widgets | ✅ |
 
 ---
 
-## Phase 3: Diagnostic & Testing Module ⏳
+## Phase 3: Persistent Database (SQLite/Drift) ⏳
 **Status**: Not started
 
 ---
