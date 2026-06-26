@@ -4,6 +4,25 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
 import 'package:scope/core/storage/notification_storage.dart';
 import 'package:scope/screens/notification_feed_screen.dart';
+import 'package:scope/core/analysis/ghost_analysis_engine.dart';
+import 'package:scope/core/models/notification_model.dart';
+
+class FakeGhostAnalysisEngine extends GhostAnalysisEngine {
+  @override
+  Future<void> initialize() async {} // No-op, do not load assets in test
+
+  @override
+  Future<AppNotification> analyze(AppNotification notification) async {
+    // Return mock prioritized notification immediately
+    return notification.copyWith(
+      priority: 'medium',
+      priorityScore: 0.50,
+      classifiedCategory: 'msg',
+      explanation: 'Heuristic fallback in test',
+      latencyMs: 1,
+    );
+  }
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -11,11 +30,13 @@ void main() {
   late MethodChannel channel;
   late NotificationBridge bridge;
   late InMemoryNotificationStorage storage;
+  late GhostAnalysisEngine mockEngine;
 
   setUp(() {
     channel = const MethodChannel('com.scope.notifications.screentest');
     bridge = NotificationBridge(channel: channel);
     storage = InMemoryNotificationStorage();
+    mockEngine = FakeGhostAnalysisEngine();
   });
 
   tearDown(() {
@@ -46,11 +67,13 @@ void main() {
   Widget buildApp({
     NotificationBridge? overrideBridge,
     InMemoryNotificationStorage? overrideStorage,
+    GhostAnalysisEngine? overrideEngine,
   }) {
     return MaterialApp(
       home: NotificationFeedScreen(
         bridge: overrideBridge ?? bridge,
         storage: overrideStorage ?? storage,
+        engine: overrideEngine ?? mockEngine,
       ),
     );
   }
