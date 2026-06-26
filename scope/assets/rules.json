@@ -1,0 +1,75 @@
+{
+  "version": "1.0.0",
+  "rules": [
+    {
+      "id": "otp_security",
+      "category": "sys",
+      "priority": "critical",
+      "conditions": {
+        "keywords": ["otp", "verification code", "one-time password", "security code"]
+      }
+    },
+    {
+      "id": "finance_debit",
+      "category": "finance",
+      "priority": "critical",
+      "conditions": {
+        "keywords": ["debited", "withdrawn", "spent", "deducted", "sent rs", "sent inr", "charge"],
+        "title_keywords": ["alert", "bank", "charge", "card"]
+      }
+    },
+    {
+      "id": "scholarship_portal",
+      "category": "scholarship",
+      "priority": "critical",
+      "conditions": {
+        "packages": ["in.gov.scholarships"],
+        "keywords": ["deadline alert", "apply before", "closes in"]
+      }
+    },
+    {
+      "id": "family_urgent",
+      "category": "msg",
+      "priority": "high",
+      "conditions": {
+        "title_keywords": ["mom", "dad", "wife", "hubby", "boss", "manager", "lead"],
+        "keywords": ["urgent", "where are you", "call me", "emergency"]
+      }
+    },
+    {
+      "id": "work_collaboration",
+      "category": "msg",
+      "priority": "high",
+      "conditions": {
+        "packages": ["com.slack", "com.microsoft.teams"],
+        "keywords": ["pr", "pull request", "review", "merge", "standup", "@adarsh"]
+      }
+    },
+    {
+      "id": "medical_reminder",
+      "category": "health",
+      "priority": "high",
+      "conditions": {
+        "packages": ["com.apollo.patientapp"],
+        "keywords": ["appointment", "doctor", "report", "prescription", "medicine"]
+      }
+    },
+    {
+      "id": "promo_deals",
+      "category": "promo",
+      "priority": "low",
+      "conditions": {
+        "keywords": ["sale", "50% off", "discount", "deal", "coupon", "promo", "free delivery", "shop now", "cashback", "limited time"]
+      }
+    },
+    {
+      "id": "social_engagement",
+      "category": "social",
+      "priority": "low",
+      "conditions": {
+        "packages": ["com.instagram.android", "com.facebook.katana", "com.twitter.android"],
+        "keywords": ["liked", "followed", "commented", "tagged", "story", "react"]
+      }
+    }
+  ]
+}
