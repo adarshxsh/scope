@@ -29,7 +29,15 @@ class NotificationFeedScreen extends StatefulWidget {
 class _NotificationFeedScreenState extends State<NotificationFeedScreen> {
   late final NotificationBridge _bridge;
   late final NotificationStorage _storage;
-  late final GhostAnalysisEngine _analysisEngine;
+
+  GhostAnalysisEngine? _analysisEngineBacking;
+  GhostAnalysisEngine get _analysisEngine {
+    if (_analysisEngineBacking == null) {
+      _analysisEngineBacking = widget.engine ?? GhostAnalysisEngine();
+      _analysisEngineBacking!.initialize();
+    }
+    return _analysisEngineBacking!;
+  }
 
   List<AppNotification> _notifications = [];
   bool _isListenerEnabled = false;
@@ -41,7 +49,7 @@ class _NotificationFeedScreenState extends State<NotificationFeedScreen> {
     super.initState();
     _bridge = widget.bridge ?? NotificationBridge();
     _storage = widget.storage ?? InMemoryNotificationStorage();
-    _analysisEngine = widget.engine ?? GhostAnalysisEngine();
+    // Pre-initialize rules asset loading
     _analysisEngine.initialize();
 
     // Initial check + start polling

@@ -1,0 +1,7 @@
+{
+  "default_count": 100000,
+  "default_seed": 42,
+  "standard_sizes": [10000, 50000, 100000, 250000, 500000, 1000000],
+  "default_format": "jsonl",
+  "ollama_model": "gemma3:9b"
+}
