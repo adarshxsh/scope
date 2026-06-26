@@ -12,6 +12,15 @@ void main() {
       int timestamp = 1700000000000,
       String? category = 'msg',
       bool isOngoing = false,
+      String? priority = 'high',
+      double? priorityScore = 0.85,
+      String? classifiedCategory = 'personal_msg',
+      String? explanation = 'Matches Mom in title',
+      int? latencyMs = 12,
+      String? ruleVersion = '1.0',
+      String? modelVersion = '2.1',
+      String? engineVersion = '1.0.0',
+      Map<String, dynamic>? extractedFeatures = const {'isFamily': true},
     }) {
       return AppNotification(
         id: id,
@@ -21,6 +30,15 @@ void main() {
         timestamp: timestamp,
         category: category,
         isOngoing: isOngoing,
+        priority: priority,
+        priorityScore: priorityScore,
+        classifiedCategory: classifiedCategory,
+        explanation: explanation,
+        latencyMs: latencyMs,
+        ruleVersion: ruleVersion,
+        modelVersion: modelVersion,
+        engineVersion: engineVersion,
+        extractedFeatures: extractedFeatures,
       );
     }
 
@@ -34,6 +52,15 @@ void main() {
         expect(notification.timestamp, 1700000000000);
         expect(notification.category, 'msg');
         expect(notification.isOngoing, false);
+        expect(notification.priority, 'high');
+        expect(notification.priorityScore, 0.85);
+        expect(notification.classifiedCategory, 'personal_msg');
+        expect(notification.explanation, 'Matches Mom in title');
+        expect(notification.latencyMs, 12);
+        expect(notification.ruleVersion, '1.0');
+        expect(notification.modelVersion, '2.1');
+        expect(notification.engineVersion, '1.0.0');
+        expect(notification.extractedFeatures, const {'isFamily': true});
       });
 
       test('defaults isOngoing to false', () {
@@ -86,6 +113,15 @@ void main() {
         expect(notification.timestamp, 0);
         expect(notification.category, isNull);
         expect(notification.isOngoing, false);
+        expect(notification.priority, isNull);
+        expect(notification.priorityScore, isNull);
+        expect(notification.classifiedCategory, isNull);
+        expect(notification.explanation, isNull);
+        expect(notification.latencyMs, isNull);
+        expect(notification.ruleVersion, isNull);
+        expect(notification.modelVersion, isNull);
+        expect(notification.engineVersion, isNull);
+        expect(notification.extractedFeatures, isNull);
       });
 
       test('fromMap handles partial data', () {
@@ -102,7 +138,10 @@ void main() {
         final map = createSample().toMap();
         expect(map.keys, containsAll([
           'id', 'packageName', 'title', 'content',
-          'timestamp', 'category', 'isOngoing',
+          'timestamp', 'category', 'isOngoing', 'priority',
+          'priorityScore', 'classifiedCategory', 'explanation',
+          'latencyMs', 'ruleVersion', 'modelVersion', 'engineVersion',
+          'extractedFeatures',
         ]));
       });
     });
@@ -126,6 +165,12 @@ void main() {
         final b = createSample(content: 'world');
         expect(a, isNot(equals(b)));
       });
+
+      test('different features make notifications unequal', () {
+        final a = createSample(extractedFeatures: const {'val': 1});
+        final b = createSample(extractedFeatures: const {'val': 2});
+        expect(a, isNot(equals(b)));
+      });
     });
 
     group('copyWith', () {
@@ -140,12 +185,15 @@ void main() {
         final copy = original.copyWith(
           title: 'New Title',
           isOngoing: true,
+          priority: 'critical',
         );
         expect(copy.title, 'New Title');
         expect(copy.isOngoing, true);
+        expect(copy.priority, 'critical');
         // Other fields unchanged
         expect(copy.id, original.id);
         expect(copy.packageName, original.packageName);
+        expect(copy.priorityScore, original.priorityScore);
       });
     });
 
@@ -156,6 +204,7 @@ void main() {
         expect(str, contains('test-id-1'));
         expect(str, contains('com.example.app'));
         expect(str, contains('Test Title'));
+        expect(str, contains('priority:'));
       });
     });
   });
