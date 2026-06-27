@@ -5,6 +5,15 @@
 /// used in tests without any Android dependency.
 library;
 
+/// The review state of a notification in the Review Queue.
+enum ReviewState {
+  ACTIVE,
+  SNOOZED,
+  REVIEWED,
+  EXPIRED,
+  ARCHIVED,
+}
+
 class AppNotification {
   /// Unique identifier for this notification instance.
   final String id;
@@ -56,6 +65,15 @@ class AppNotification {
   /// Structured features extracted from the text elements.
   final Map<String, dynamic>? extractedFeatures;
 
+  /// Review state in the Review Queue.
+  final ReviewState state;
+
+  /// Time until which the notification is snoozed.
+  final DateTime? snoozedUntil;
+
+  /// Time when the notification was last updated in the queue.
+  final DateTime? lastUpdated;
+
   const AppNotification({
     required this.id,
     required this.packageName,
@@ -73,6 +91,9 @@ class AppNotification {
     this.modelVersion,
     this.engineVersion,
     this.extractedFeatures,
+    this.state = ReviewState.ACTIVE,
+    this.snoozedUntil,
+    this.lastUpdated,
   });
 
   /// Creates an [AppNotification] from a Map (used by MethodChannel bridge).
@@ -96,6 +117,13 @@ class AppNotification {
       extractedFeatures: map['extractedFeatures'] != null
           ? Map<String, dynamic>.from(map['extractedFeatures'] as Map)
           : null,
+      state: _parseReviewState(map['state']),
+      snoozedUntil: map['snoozedUntil'] != null
+          ? DateTime.fromMillisecondsSinceEpoch(map['snoozedUntil'] as int)
+          : null,
+      lastUpdated: map['lastUpdated'] != null
+          ? DateTime.fromMillisecondsSinceEpoch(map['lastUpdated'] as int)
+          : null,
     );
   }
 
@@ -118,6 +146,9 @@ class AppNotification {
       'modelVersion': modelVersion,
       'engineVersion': engineVersion,
       'extractedFeatures': extractedFeatures,
+      'state': state.name,
+      'snoozedUntil': snoozedUntil?.millisecondsSinceEpoch,
+      'lastUpdated': lastUpdated?.millisecondsSinceEpoch,
     };
   }
 
@@ -140,6 +171,9 @@ class AppNotification {
         other.ruleVersion == ruleVersion &&
         other.modelVersion == modelVersion &&
         other.engineVersion == engineVersion &&
+        other.state == state &&
+        other.snoozedUntil == snoozedUntil &&
+        other.lastUpdated == lastUpdated &&
         _mapsEqual(other.extractedFeatures, extractedFeatures);
   }
 
@@ -171,6 +205,9 @@ class AppNotification {
         ruleVersion,
         modelVersion,
         engineVersion,
+        state,
+        snoozedUntil,
+        lastUpdated,
         extractedFeatures?.length,
       );
 
@@ -183,7 +220,9 @@ class AppNotification {
         'priorityScore: $priorityScore, classifiedCategory: $classifiedCategory, '
         'explanation: $explanation, latencyMs: $latencyMs, '
         'ruleVersion: $ruleVersion, modelVersion: $modelVersion, '
-        'engineVersion: $engineVersion, extractedFeatures: $extractedFeatures)';
+        'engineVersion: $engineVersion, state: $state, '
+        'snoozedUntil: $snoozedUntil, lastUpdated: $lastUpdated, '
+        'extractedFeatures: $extractedFeatures)';
   }
 
   /// Creates a copy with optional field overrides.
@@ -204,6 +243,9 @@ class AppNotification {
     String? modelVersion,
     String? engineVersion,
     Map<String, dynamic>? extractedFeatures,
+    ReviewState? state,
+    DateTime? snoozedUntil,
+    DateTime? lastUpdated,
   }) {
     return AppNotification(
       id: id ?? this.id,
@@ -222,6 +264,23 @@ class AppNotification {
       modelVersion: modelVersion ?? this.modelVersion,
       engineVersion: engineVersion ?? this.engineVersion,
       extractedFeatures: extractedFeatures ?? this.extractedFeatures,
+      state: state ?? this.state,
+      snoozedUntil: snoozedUntil ?? this.snoozedUntil,
+      lastUpdated: lastUpdated ?? this.lastUpdated,
     );
   }
+}
+
+/// Helper function to safely parse ReviewState from a serialized value.
+ReviewState _parseReviewState(dynamic stateVal) {
+  if (stateVal == null) return ReviewState.ACTIVE;
+  final name = stateVal.toString();
+  for (final value in ReviewState.values) {
+    if (value.name == name ||
+        value.toString() == name ||
+        value.toString().split('.').last == name) {
+      return value;
+    }
+  }
+  return ReviewState.ACTIVE;
 }

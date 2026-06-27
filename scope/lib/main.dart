@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scope/core/state/notification_controller.dart';
 import 'package:scope/screens/main_shell.dart';
 import 'package:scope/theme/app_theme.dart';
 
 void main() {
-  runApp(const AttentionOSApp());
+  runApp(
+    const ProviderScope(
+      child: AttentionOSApp(),
+    ),
+  );
 }
 
 /// Root widget for Scope (AttentionOS).

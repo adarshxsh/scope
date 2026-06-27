@@ -51,18 +51,25 @@ class NotificationCollectorService : NotificationListenerService() {
         fun queueSize(): Int = queue.size
     }
 
-    override fun onNotificationPosted(sbn: StatusBarNotification?) {
-        if (sbn == null) return
-
+    private fun addSbnToQueue(sbn: StatusBarNotification) {
         try {
             val extras = sbn.notification.extras
             val title = extras?.getCharSequence("android.title")?.toString() ?: ""
             val text = extras?.getCharSequence("android.text")?.toString() ?: ""
             val isOngoing = sbn.isOngoing
+            val packageName = sbn.packageName ?: "unknown"
+
+            // Ignore if same package, title, and content already exist in queue
+            val isDuplicate = queue.any {
+                it.packageName == packageName && it.title == title && it.content == text
+            }
+            if (isDuplicate) {
+                return
+            }
 
             val data = NotificationData(
                 id = "notif_${++idCounter}",
-                packageName = sbn.packageName ?: "unknown",
+                packageName = packageName,
                 title = title,
                 content = text,
                 timestamp = sbn.postTime,
@@ -73,8 +80,13 @@ class NotificationCollectorService : NotificationListenerService() {
             queue.add(data)
             Log.d(TAG, "Captured: ${data.packageName} - ${data.title}")
         } catch (e: Exception) {
-            Log.e(TAG, "Error capturing notification", e)
+            Log.e(TAG, "Error capturing/adding notification", e)
         }
+    }
+
+    override fun onNotificationPosted(sbn: StatusBarNotification?) {
+        if (sbn == null) return
+        addSbnToQueue(sbn)
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
@@ -86,6 +98,17 @@ class NotificationCollectorService : NotificationListenerService() {
     override fun onListenerConnected() {
         super.onListenerConnected()
         Log.i(TAG, "NotificationCollectorService connected")
+        try {
+            val activeNotifs = activeNotifications
+            if (activeNotifs != null) {
+                Log.d(TAG, "Syncing ${activeNotifs.size} existing notifications from panel")
+                for (sbn in activeNotifs) {
+                    addSbnToQueue(sbn)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching active notifications on connect", e)
+        }
     }
 
     override fun onListenerDisconnected() {
