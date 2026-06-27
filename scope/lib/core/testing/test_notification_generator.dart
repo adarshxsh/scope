@@ -1,53 +1,33 @@
-/// Test data generator for simulating different notification types.
-///
-/// Generates realistic [AppNotification] objects directly in Dart,
-/// bypassing the Android notification system entirely.
-/// This avoids the Android limitation where NotificationListenerService
-/// cannot capture notifications from its own app.
-library;
-
+import 'dart:convert';
 import 'package:scope/core/models/notification_model.dart';
 
-/// Generates a batch of realistic test notifications covering all
-/// major categories: message, email, chat, social, promo, finance,
-/// health, news, system, and scholarship/deadline alerts.
+/// Test data generator for simulating different notification types.
 class TestNotificationGenerator {
-  int _idCounter = 0;
-
-  String _nextId() => 'test_${++_idCounter}_${DateTime.now().millisecondsSinceEpoch}';
-
   /// Generate all test notification types at once.
   List<AppNotification> generateAll() {
-    return [
-      _message(),
-      _email(),
-      _chat(),
-      _social(),
-      _promo(),
-      _finance(),
-      _health(),
-      _news(),
-      _system(),
-      _scholarship(),
-    ];
+    return _parsedNotifications;
   }
 
   /// Generate a specific type by name.
   /// Returns null if type is not recognized.
   AppNotification? generateByType(String type) {
-    return switch (type) {
-      'message' => _message(),
-      'email' => _email(),
-      'chat' => _chat(),
-      'social' => _social(),
-      'promo' => _promo(),
-      'finance' => _finance(),
-      'health' => _health(),
-      'news' => _news(),
-      'system' => _system(),
-      'scholarship' => _scholarship(),
-      _ => null,
-    };
+    try {
+      return switch (type) {
+        'message' => _parsedNotifications.firstWhere((n) => n.packageName == 'org.telegram.messenger'),
+        'email' => _parsedNotifications.firstWhere((n) => n.packageName == 'com.google.android.gm'),
+        'chat' => _parsedNotifications.firstWhere((n) => n.packageName == 'com.atlassian.android.jira.core'),
+        'social' => _parsedNotifications.firstWhere((n) => n.packageName == 'com.spotify.music'),
+        'promo' => _parsedNotifications.firstWhere((n) => n.packageName == 'com.myntra.android'),
+        'finance' => _parsedNotifications.firstWhere((n) => n.packageName == 'com.nextbillion.groww'),
+        'health' => _parsedNotifications.firstWhere((n) => n.packageName == 'com.passportindia'),
+        'news' => _parsedNotifications.firstWhere((n) => n.packageName == 'com.zerodha.kite3'),
+        'system' => _parsedNotifications.firstWhere((n) => n.packageName == 'com.digilocker.android'),
+        'scholarship' => _parsedNotifications.firstWhere((n) => n.packageName == 'com.myairtelapp'),
+        _ => null,
+      };
+    } catch (_) {
+      return null;
+    }
   }
 
   /// All available test notification types.
@@ -64,129 +44,69 @@ class TestNotificationGenerator {
     'scholarship',
   ];
 
-  // --- Individual notification types ---
+  static final List<AppNotification> _parsedNotifications = _rawJsonData.map((jsonStr) {
+    final map = json.decode(jsonStr) as Map<String, dynamic>;
+    final android = map['android'] as Map<String, dynamic>? ?? {};
+    final entities = map['entities'] as Map<String, dynamic>? ?? {};
 
-  AppNotification _message() => AppNotification(
-        id: _nextId(),
-        packageName: 'com.whatsapp',
-        title: 'Mom',
-        content:
-            "Don't forget to take your medicine at 9 PM tonight. "
-            "Also, grandma called and asked about you. She wants to know "
-            "if you're coming for dinner this Sunday.",
-        timestamp: DateTime.now().millisecondsSinceEpoch,
-        category: 'msg',
-        isOngoing: false,
-      );
+    // Determine extracted features matching ExtractedFeatures class keys
+    final otpStr = entities['otp_length'] != null 
+        ? (map['body'] as String).replaceAll(RegExp(r'\D'), '') 
+        : null;
 
-  AppNotification _email() => AppNotification(
-        id: _nextId(),
-        packageName: 'com.google.android.gm',
-        title: 'Google Summer of Code - Application Update',
-        content:
-            "Congratulations! Your proposal for GSoC 2026 has been accepted. "
-            "Please review the next steps and mentor assignment details. "
-            "You have 48 hours to confirm your participation.",
-        timestamp: DateTime.now().millisecondsSinceEpoch - 60000,
-        category: 'email',
-        isOngoing: false,
-      );
+    final extracted = <String, dynamic>{
+      'otp': otpStr != null && otpStr.length >= 4 ? otpStr : null,
+      'amount': (entities['amount'] as num?)?.toDouble(),
+      'hasDeadline': map['contains_date'] == true || map['deadline'] != null,
+      'urls': map['contains_link'] == true ? ['https://example.com'] : <String>[],
+      'emails': map['contains_email'] == true ? ['user@example.com'] : <String>[],
+      'phoneNumbers': map['contains_phone'] == true ? ['9876543210'] : <String>[],
+    };
 
-  AppNotification _chat() => AppNotification(
-        id: _nextId(),
-        packageName: 'com.slack',
-        title: 'Dev Team - Slack',
-        content:
-            "@adarsh the PR is ready for review. Can you check the notification "
-            "listener changes before EOD? Also, standup moved to 3 PM today.",
-        timestamp: DateTime.now().millisecondsSinceEpoch - 120000,
-        category: 'msg',
-        isOngoing: false,
-      );
+    return AppNotification(
+      id: map['id'] as String,
+      packageName: map['package_name'] as String? ?? android['package_name'] as String? ?? 'unknown',
+      title: map['title'] as String? ?? '',
+      content: map['body'] as String? ?? '',
+      timestamp: android['timestamp'] != null
+          ? DateTime.tryParse(android['timestamp'] as String)?.millisecondsSinceEpoch ?? DateTime.now().millisecondsSinceEpoch
+          : DateTime.now().millisecondsSinceEpoch,
+      category: android['category'] as String?,
+      isOngoing: android['ongoing'] as bool? ?? false,
+      priority: map['priority'] as String?,
+      priorityScore: (map['priority_score'] as num?)?.toDouble() != null
+          ? (map['priority_score'] as num).toDouble() / 100.0
+          : null,
+      classifiedCategory: map['category'] as String?,
+      explanation: map['priority_reason'] as String?,
+      latencyMs: 45,
+      ruleVersion: '1.0.0',
+      modelVersion: '1.0.0',
+      engineVersion: '1.0.0',
+      extractedFeatures: extracted,
+    );
+  }).toList();
 
-  AppNotification _social() => AppNotification(
-        id: _nextId(),
-        packageName: 'com.instagram.android',
-        title: 'Instagram',
-        content: 'coding_wizard and 42 others liked your photo.',
-        timestamp: DateTime.now().millisecondsSinceEpoch - 300000,
-        category: 'social',
-        isOngoing: false,
-      );
-
-  AppNotification _promo() => AppNotification(
-        id: _nextId(),
-        packageName: 'com.amazon.mShop.android.shopping',
-        title: 'Amazon - Flash Sale!',
-        content:
-            '🔥 50% off on electronics! Limited time offer ends in 2 hours. Shop now!',
-        timestamp: DateTime.now().millisecondsSinceEpoch - 600000,
-        category: 'promo',
-        isOngoing: false,
-      );
-
-  AppNotification _finance() => AppNotification(
-        id: _nextId(),
-        packageName: 'com.hdfc.mobilebanking',
-        title: 'HDFC Bank Alert',
-        content:
-            "Rs. 15,000 debited from A/c XX4523 on 26-Jun-2026. "
-            "UPI Ref: 428715693254. Available balance: Rs. 23,450. "
-            "If not done by you, call 1800-XXX-XXXX immediately to block your account.",
-        timestamp: DateTime.now().millisecondsSinceEpoch - 30000,
-        category: 'alarm',
-        isOngoing: false,
-      );
-
-  AppNotification _health() => AppNotification(
-        id: _nextId(),
-        packageName: 'com.apollo.patientapp',
-        title: 'Apollo Hospital - Appointment Reminder',
-        content:
-            "Your appointment with Dr. Sharma (Cardiology) is tomorrow at 10:30 AM. "
-            "Location: Apollo Hospital, Jubilee Hills. Please carry your previous "
-            "reports and insurance card. Fasting required for blood test.",
-        timestamp: DateTime.now().millisecondsSinceEpoch - 180000,
-        category: 'reminder',
-        isOngoing: false,
-      );
-
-  AppNotification _news() => AppNotification(
-        id: _nextId(),
-        packageName: 'com.google.android.apps.magazines',
-        title: 'Google News - Breaking',
-        content:
-            "India launches new AI-powered satellite for weather prediction. "
-            "The satellite, named 'Meghdoot-2', will improve monsoon forecasting "
-            "accuracy by 40% and help farmers with crop planning.",
-        timestamp: DateTime.now().millisecondsSinceEpoch - 900000,
-        category: 'recommendation',
-        isOngoing: false,
-      );
-
-  AppNotification _system() => AppNotification(
-        id: _nextId(),
-        packageName: 'android',
-        title: 'System Update Available',
-        content:
-            "Android 16 security patch is available. Tap to download (125 MB). "
-            "Your device will restart during installation.",
-        timestamp: DateTime.now().millisecondsSinceEpoch - 1800000,
-        category: 'sys',
-        isOngoing: true,
-      );
-
-  AppNotification _scholarship() => AppNotification(
-        id: _nextId(),
-        packageName: 'in.gov.scholarships',
-        title: 'National Scholarship Portal',
-        content:
-            "⚠️ DEADLINE ALERT: Post-Matric Scholarship application closes in 3 days! "
-            "Apply before June 30th to receive Rs. 50,000/year. "
-            "Required docs: Aadhaar, income certificate, mark sheets. "
-            "Visit scholarships.gov.in to apply now.",
-        timestamp: DateTime.now().millisecondsSinceEpoch - 15000,
-        category: 'reminder',
-        isOngoing: false,
-      );
+  static const List<String> _rawJsonData = [
+    r'''{"id":"6ac26b78-cc6a-5d0b-83db-ccaf74f7b08a","app_name":"Airtel Thanks","package_name":"com.myairtelapp","category":"Utilities","subcategory":"Electricity","notification_type":"bill_due","title":"Payment reminder","body":"₹249 electricity bill is due on 01 Jul.","language":"en","contains_money":true,"contains_otp":false,"contains_link":false,"contains_email":false,"contains_phone":false,"contains_attachment":false,"contains_location":false,"contains_date":true,"contains_time":false,"deadline":"2026-06-25T13:22:00+00:00","requires_action":true,"action_type":"pay_bill","intent":"pay","is_recurring":false,"urgency":"critical","entities":{"app":"Airtel Thanks","reference_id":"39587039","amount":249,"currency":"INR","merchant":"BlueKart","date_text":"01 Jul"},"android":{"package_name":"com.myairtelapp","channel_id":"bills","channel_name":"Bills","category":"status","importance":3,"group":"com.myairtelapp.electricity","conversation":false,"timestamp":"2026-06-24T02:22:00+00:00","visibility":"private","ongoing":false,"foreground_service":false,"priority":0,"notification_id":889662,"tag":"airtel_thanks-6"},"priority_score":83,"priority":"critical","priority_reason":"android_importance=3; requires_action; intent=pay; contains_money; time_sensitive; deadline_boost=16","look_again_score":100,"look_again":true,"labels":{"category_class":"Utilities","intent":"pay","urgency":"critical","requires_action":true,"is_promotion":false,"is_duplicate_candidate":false,"is_recurring":false,"look_again":true}}''',
+    r'''{"id":"f28339d7-20c4-59f6-aa64-44b10ef394f5","app_name":"Amazon","package_name":"in.amazon.mShop.android.shopping","category":"Delivery","subcategory":"Delivery","notification_type":"out_for_delivery","title":"Arriving today","body":"Your package #OD766563 is out for delivery with Harsh.","language":"en","contains_money":false,"contains_otp":false,"contains_link":false,"contains_email":false,"contains_phone":true,"contains_attachment":false,"contains_location":false,"contains_date":false,"contains_time":false,"deadline":"2026-04-21T04:53:00+00:00","requires_action":false,"action_type":null,"intent":"track","is_recurring":false,"urgency":"medium","entities":{"app":"Amazon","reference_id":"57683626"},"android":{"package_name":"in.amazon.mShop.android.shopping","channel_id":"orders","channel_name":"Orders","category":"status","importance":3,"group":"in.amazon.mShop.android.shopping.delivery","conversation":false,"timestamp":"2026-04-20T22:53:00+00:00","visibility":"public","ongoing":false,"foreground_service":false,"priority":0,"notification_id":421651,"tag":null},"priority_score":51,"priority":"medium","priority_reason":"android_importance=3; intent=track; deadline_boost=16","look_again_score":59,"look_again":true,"labels":{"category_class":"Delivery","intent":"track","urgency":"medium","requires_action":false,"is_promotion":false,"is_duplicate_candidate":false,"is_recurring":false,"look_again":true}}''',
+    r'''{"id":"c095ff14-bb99-591b-9f50-fb376e0bc266","app_name":"DigiLocker","package_name":"com.digilocker.android","category":"Security","subcategory":"Authentication","notification_type":"login_detected","title":"New login detected","body":"New sign-in from Galaxy M34 near Chennai at 6:37 PM.","language":"en","contains_money":false,"contains_otp":false,"contains_link":false,"contains_email":false,"contains_phone":false,"contains_attachment":false,"contains_location":true,"contains_date":false,"contains_time":true,"deadline":null,"requires_action":true,"action_type":"review_login","intent":"review","is_recurring":false,"urgency":"critical","entities":{"app":"DigiLocker","reference_id":"94214382","city":"Chennai","place":"Chennai Central","time_text":"6:37 PM"},"android":{"package_name":"com.digilocker.android","channel_id":"verification","channel_name":"Verification","category":"status","importance":5,"group":"com.digilocker.android.authentication","conversation":false,"timestamp":"2026-04-07T14:33:00+00:00","visibility":"private","ongoing":false,"foreground_service":false,"priority":2,"notification_id":117970,"tag":"login_detected"},"priority_score":86,"priority":"critical","priority_reason":"android_importance=5; category=Security; requires_action; intent=review; time_sensitive","look_again_score":96,"look_again":true,"labels":{"category_class":"Security","intent":"review","urgency":"critical","requires_action":true,"is_promotion":false,"is_duplicate_candidate":false,"is_recurring":false,"look_again":true}}''',
+    r'''{"id":"a3417a30-561e-5935-b19a-467b0fc48fc9","app_name":"Google Calendar","package_name":"com.google.android.calendar","category":"OTP","subcategory":"Authentication","notification_type":"otp","title":"Verification code","body":"Use 352572 to verify your sign-in. Valid for 15 minutes.","language":"en","contains_money":false,"contains_otp":true,"contains_link":false,"contains_email":false,"contains_phone":false,"contains_attachment":false,"contains_location":false,"contains_date":false,"contains_time":true,"deadline":"2026-06-26T02:55:00+00:00","requires_action":true,"action_type":"enter_otp","intent":"verify","is_recurring":false,"urgency":"critical","entities":{"app":"Google Calendar","reference_id":"75228535","otp_length":6,"time_text":"4:15 AM"},"android":{"package_name":"com.google.android.calendar","channel_id":"reminders","channel_name":"Reminders","category":"msg","importance":5,"group":"com.google.android.calendar.authentication","conversation":true,"timestamp":"2026-06-26T01:55:00+00:00","visibility":"private","ongoing":false,"foreground_service":false,"priority":2,"notification_id":460381,"tag":"otp"},"priority_score":100,"priority":"critical","priority_reason":"android_importance=5; type=otp; category=OTP; requires_action; intent=verify; contains_otp; time_sensitive; deadline_boost=16","look_again_score":100,"look_again":true,"labels":{"category_class":"OTP","intent":"verify","urgency":"critical","requires_action":true,"is_promotion":false,"is_duplicate_candidate":false,"is_recurring":false,"look_again":true}}''',
+    r'''{"id":"2b52761a-2779-51c4-95ed-d36464008855","app_name":"Groww","package_name":"com.nextbillion.groww","category":"Finance","subcategory":"Mutual Funds","notification_type":"sip_reminder","title":"SIP due tomorrow","body":"SIP of ₹99 for NovaPay is scheduled on 09 Jun.","language":"en","contains_money":true,"contains_otp":false,"contains_link":false,"contains_email":false,"contains_phone":false,"contains_attachment":false,"contains_location":false,"contains_date":true,"contains_time":false,"deadline":"2026-06-06T13:09:00+00:00","requires_action":true,"action_type":"maintain_balance","intent":"pay","is_recurring":false,"urgency":"critical","entities":{"app":"Groww","reference_id":"42614537","amount":99,"currency":"INR","merchant":"NovaPay","date_text":"09 Jun"},"android":{"package_name":"com.nextbillion.groww","channel_id":"alerts","channel_name":"Alerts","category":"status","importance":3,"group":"com.nextbillion.groww.mutual_funds","conversation":false,"timestamp":"2026-06-05T22:09:00+00:00","visibility":"private","ongoing":false,"foreground_service":false,"priority":0,"notification_id":840482,"tag":null},"priority_score":83,"priority":"critical","priority_reason":"android_importance=3; requires_action; intent=pay; contains_money; time_sensitive; deadline_boost=16","look_again_score":100,"look_again":true,"labels":{"category_class":"Finance","intent":"pay","urgency":"critical","requires_action":true,"is_promotion":false,"is_duplicate_candidate":false,"is_recurring":false,"look_again":true}}''',
+    r'''{"id":"aedd4926-36bf-5416-b4e3-f86b5b6afbfd","app_name":"Zomato","package_name":"com.application.zomato","category":"Security","subcategory":"Password Reset","notification_type":"password_reset","title":"Reset code sent","body":"A reset was requested for harsh16@example.com. Use code 604740 if this was you.","language":"en","contains_money":false,"contains_otp":true,"contains_link":false,"contains_email":true,"contains_phone":false,"contains_attachment":false,"contains_location":true,"contains_date":false,"contains_time":false,"deadline":null,"requires_action":true,"action_type":"secure_account","intent":"reset","is_recurring":false,"urgency":"critical","entities":{"app":"Zomato","reference_id":"32097220","otp_length":6,"city":"Ahmedabad","place":"Online","email_domain":"example.com"},"android":{"package_name":"com.application.zomato","channel_id":"dining","channel_name":"Dining","category":"status","importance":4,"group":"com.application.zomato.password_reset","conversation":false,"timestamp":"2026-05-08T13:28:00+00:00","visibility":"private","ongoing":false,"foreground_service":false,"priority":1,"notification_id":62324,"tag":null},"priority_score":100,"priority":"critical","priority_reason":"android_importance=4; type=password_reset; category=Security; requires_action; intent=reset; contains_otp","look_again_score":100,"look_again":true,"labels":{"category_class":"Security","intent":"reset","urgency":"critical","requires_action":true,"is_promotion":false,"is_duplicate_candidate":false,"is_recurring":false,"look_again":true}}''',
+    r'''{"id":"fc9747c6-7753-58ab-a42b-2b01ea62ecd3","app_name":"Google Drive","package_name":"com.google.android.apps.docs","category":"Cloud Storage","subcategory":"Cloud Storage","notification_type":"shared_file","title":"New shared document","body":"Gunbir shared report-summary.docx with you.","language":"en","contains_money":false,"contains_otp":false,"contains_link":false,"contains_email":false,"contains_phone":false,"contains_attachment":true,"contains_location":false,"contains_date":false,"contains_time":false,"deadline":null,"requires_action":false,"action_type":null,"intent":"review","is_recurring":false,"urgency":"low","entities":{"app":"Google Drive","reference_id":"52462441"},"android":{"package_name":"com.google.android.apps.docs","channel_id":"uploads","channel_name":"Uploads","category":"status","importance":2,"group":"com.google.android.apps.docs.cloud_storage","conversation":false,"timestamp":"2026-06-21T04:08:00+00:00","visibility":"public","ongoing":false,"foreground_service":false,"priority":-1,"notification_id":77819,"tag":null},"priority_score":30,"priority":"low","priority_reason":"android_importance=2; intent=review","look_again_score":30,"look_again":false,"labels":{"category_class":"Cloud Storage","intent":"review","urgency":"low","requires_action":false,"is_promotion":false,"is_duplicate_candidate":false,"is_recurring":false,"look_again":false}}''',
+    r'''{"id":"be7cd535-72b5-5b4f-8307-07fe5790ac75","app_name":"Telegram","package_name":"org.telegram.messenger","category":"Messaging","subcategory":"Messaging","notification_type":"new_message","title":"New message","body":"Can you check this?","language":"en","contains_money":false,"contains_otp":false,"contains_link":false,"contains_email":false,"contains_phone":false,"contains_attachment":false,"contains_location":false,"contains_date":false,"contains_time":false,"deadline":null,"requires_action":false,"action_type":null,"intent":"respond","is_recurring":false,"urgency":"medium","entities":{"app":"Telegram","reference_id":"38270233"},"android":{"package_name":"org.telegram.messenger","channel_id":"channels","channel_name":"Channels","category":"msg","importance":3,"group":"org.telegram.messenger.messaging","conversation":true,"timestamp":"2026-06-14T07:39:00+00:00","visibility":"private","ongoing":false,"foreground_service":false,"priority":0,"notification_id":669061,"tag":null},"priority_score":35,"priority":"medium","priority_reason":"android_importance=3; intent=respond","look_again_score":35,"look_again":false,"labels":{"category_class":"Messaging","intent":"respond","urgency":"medium","requires_action":false,"is_promotion":false,"is_duplicate_candidate":false,"is_recurring":false,"look_again":false}}''',
+    r'''{"id":"c7956b52-a038-5c09-9e0b-5eac29606859","app_name":"Spotify","package_name":"com.spotify.music","category":"Entertainment","subcategory":"Streaming","notification_type":"recommendation","title":"Continue watching","body":"New episode of City Lights is available to watch.","language":"en","contains_money":false,"contains_otp":false,"contains_link":false,"contains_email":false,"contains_phone":false,"contains_attachment":false,"contains_location":false,"contains_date":false,"contains_time":false,"deadline":null,"requires_action":false,"action_type":null,"intent":"browse","is_recurring":false,"urgency":"low","entities":{"app":"Spotify","reference_id":"85146293"},"android":{"package_name":"com.spotify.music","channel_id":"recommendations","channel_name":"Recommendations","category":"status","importance":2,"group":"com.spotify.music.streaming","conversation":false,"timestamp":"2026-05-07T03:51:00+00:00","visibility":"private","ongoing":false,"foreground_service":false,"priority":-1,"notification_id":826622,"tag":"recommendation"},"priority_score":0,"priority":"low","priority_reason":"android_importance=2; promotional","look_again_score":0,"look_again":false,"labels":{"category_class":"Entertainment","intent":"browse","urgency":"low","requires_action":false,"is_promotion":true,"is_duplicate_candidate":false,"is_recurring":false,"look_again":false}}''',
+    r'''{"id":"76eca538-6105-59b2-9943-0737dde52887","app_name":"PhonePe","package_name":"com.phonepe.app","category":"UPI","subcategory":"UPI","notification_type":"upi_request","title":"UPI collect request","body":"Review ₹799 request from Fariq in your UPI app.","language":"en","contains_money":true,"contains_otp":false,"contains_link":false,"contains_email":false,"contains_phone":false,"contains_attachment":false,"contains_location":false,"contains_date":false,"contains_time":true,"deadline":"2026-06-06T04:06:00+00:00","requires_action":true,"action_type":"approve_payment","intent":"approve","is_recurring":false,"urgency":"critical","entities":{"app":"PhonePe","reference_id":"24549543","amount":799,"currency":"INR","merchant":"City Pharmacy","time_text":"4:10 AM"},"android":{"package_name":"com.phonepe.app","channel_id":"rewards","channel_name":"Rewards","category":"status","importance":5,"group":"com.phonepe.app.upi","conversation":false,"timestamp":"2026-06-06T03:06:00+00:00","visibility":"private","ongoing":false,"foreground_service":false,"priority":2,"notification_id":382913,"tag":null},"priority_score":93,"priority":"critical","priority_reason":"android_importance=5; requires_action; intent=approve; contains_money; time_sensitive; deadline_boost=16","look_again_score":100,"look_again":true,"labels":{"category_class":"UPI","intent":"approve","urgency":"critical","requires_action":true,"is_promotion":false,"is_duplicate_candidate":false,"is_recurring":false,"look_again":true}}''',
+    r'''{"id":"f95e7657-8053-5c96-9fff-cc63a0c2ea33","app_name":"MyJio","package_name":"com.jio.myjio","category":"Utilities","subcategory":"Recharge","notification_type":"recharge_success","title":"Recharge successful","body":"₹15499 recharge is active. Valid until 12 May.","language":"en","contains_money":true,"contains_otp":false,"contains_link":false,"contains_email":false,"contains_phone":false,"contains_attachment":false,"contains_location":false,"contains_date":true,"contains_time":false,"deadline":null,"requires_action":false,"action_type":null,"intent":"browse","is_recurring":false,"urgency":"medium","entities":{"app":"MyJio","reference_id":"38210242","amount":15499,"currency":"INR","merchant":"UrbanCart","date_text":"12 May"},"android":{"package_name":"com.jio.myjio","channel_id":"service","channel_name":"Service","category":"status","importance":3,"group":"com.jio.myjio.recharge","conversation":false,"timestamp":"2026-04-30T15:42:00+00:00","visibility":"private","ongoing":false,"foreground_service":false,"priority":0,"notification_id":98923,"tag":"myjio-4"},"priority_score":45,"priority":"medium","priority_reason":"android_importance=3; contains_money; time_sensitive","look_again_score":45,"look_again":false,"labels":{"category_class":"Utilities","intent":"browse","urgency":"medium","requires_action":false,"is_promotion":false,"is_duplicate_candidate":false,"is_recurring":false,"look_again":false}}''',
+    r'''{"id":"b64ca1a6-c41e-5758-9796-81d529cb2c5d","app_name":"Myntra","package_name":"com.myntra.android","category":"Promotions","subcategory":"Coupons","notification_type":"coupon","title":"Offer for you","body":"SAVE88 gives extra 15% off until 4:12 AM tonight.","language":"en","contains_money":true,"contains_otp":false,"contains_link":false,"contains_email":false,"contains_phone":false,"contains_attachment":false,"contains_location":false,"contains_date":false,"contains_time":true,"deadline":null,"requires_action":false,"action_type":null,"intent":"browse","is_recurring":false,"urgency":"low","entities":{"app":"Myntra","reference_id":"16740197","amount":99,"currency":"INR","merchant":"Metro Cafe","time_text":"4:12 AM"},"android":{"package_name":"com.myntra.android","channel_id":"delivery","channel_name":"Delivery","category":"status","importance":3,"group":"com.myntra.android.coupons","conversation":false,"timestamp":"2026-04-13T23:03:00+00:00","visibility":"secret","ongoing":false,"foreground_service":false,"priority":0,"notification_id":472932,"tag":null},"priority_score":13,"priority":"low","priority_reason":"android_importance=3; contains_money; time_sensitive; promotional","look_again_score":0,"look_again":false,"labels":{"category_class":"Promotions","intent":"browse","urgency":"low","requires_action":false,"is_promotion":true,"is_duplicate_candidate":false,"is_recurring":false,"look_again":false}}''',
+    r'''{"id":"2ba2a000-8f54-536f-8edb-2a0d5ed961ca","app_name":"MyJio","package_name":"com.jio.myjio","category":"Utilities","subcategory":"Electricity","notification_type":"bill_due","title":"Bill due soon","body":"Pay broadband bill of ₹7999 before 22 Apr to avoid late fee.","language":"en","contains_money":true,"contains_otp":false,"contains_link":false,"contains_email":false,"contains_phone":false,"contains_attachment":false,"contains_location":false,"contains_date":true,"contains_time":false,"deadline":"2026-04-20T06:04:00+00:00","requires_action":true,"action_type":"pay_bill","intent":"pay","is_recurring":false,"urgency":"critical","entities":{"app":"MyJio","reference_id":"54410148","amount":7999,"currency":"INR","merchant":"City Pharmacy","date_text":"22 Apr"},"android":{"package_name":"com.jio.myjio","channel_id":"recharge","channel_name":"Recharge","category":"status","importance":3,"group":"com.jio.myjio.electricity","conversation":false,"timestamp":"2026-04-17T16:04:00+00:00","visibility":"private","ongoing":false,"foreground_service":false,"priority":0,"notification_id":512945,"tag":"bill_due"},"priority_score":91,"priority":"critical","priority_reason":"android_importance=3; requires_action; intent=pay; contains_money; time_sensitive; deadline_boost=16","look_again_score":100,"look_again":true,"labels":{"category_class":"Utilities","intent":"pay","urgency":"critical","requires_action":true,"is_promotion":false,"is_duplicate_candidate":false,"is_recurring":false,"look_again":true}}''',
+    r'''{"id":"538feec4-5f89-59c6-b3fc-d8fe2c35885d","app_name":"Passport Seva","package_name":"com.passportindia","category":"Government","subcategory":"DigiLocker","notification_type":"document_issued","title":"DigiLocker update","body":"photo-backup.zip is now available in your DigiLocker account.","language":"en","contains_money":false,"contains_otp":false,"contains_link":false,"contains_email":false,"contains_phone":false,"contains_attachment":true,"contains_location":false,"contains_date":false,"contains_time":false,"deadline":null,"requires_action":false,"action_type":null,"intent":"review","is_recurring":false,"urgency":"medium","entities":{"app":"Passport Seva","reference_id":"71028710"},"android":{"package_name":"com.passportindia","channel_id":"alerts","channel_name":"Alerts","category":"status","importance":3,"group":"com.passportindia.digilocker","conversation":false,"timestamp":"2026-06-23T17:36:00+00:00","visibility":"public","ongoing":false,"foreground_service":false,"priority":0,"notification_id":791870,"tag":null},"priority_score":35,"priority":"medium","priority_reason":"android_importance=3; intent=review","look_again_score":35,"look_again":false,"labels":{"category_class":"Government","intent":"review","urgency":"medium","requires_action":false,"is_promotion":false,"is_duplicate_candidate":false,"is_recurring":false,"look_again":false}}''',
+    r'''{"id":"d522579c-eec2-5df2-aef4-1ed8483964f3","app_name":"PhonePe","package_name":"com.phonepe.app","category":"Security","subcategory":"Authentication","notification_type":"login_detected","title":"Account sign-in","body":"PhonePe was accessed on Chrome on Windows. Review if this wasn't you.","language":"en","contains_money":false,"contains_otp":false,"contains_link":false,"contains_email":false,"contains_phone":false,"contains_attachment":false,"contains_location":true,"contains_date":false,"contains_time":true,"deadline":null,"requires_action":true,"action_type":"review_login","intent":"review","is_recurring":false,"urgency":"critical","entities":{"app":"PhonePe","reference_id":"36619372","city":"Delhi","place":"Online","time_text":"2:38 AM"},"android":{"package_name":"com.phonepe.app","channel_id":"transactions","channel_name":"Transactions","category":"status","importance":5,"group":"com.phonepe.app.authentication","conversation":false,"timestamp":"2026-04-30T19:41:00+00:00","visibility":"private","ongoing":false,"foreground_service":false,"priority":2,"notification_id":14266,"tag":"login_detected"},"priority_score":86,"priority":"critical","priority_reason":"android_importance=5; category=Security; requires_action; intent=review; time_sensitive","look_again_score":96,"look_again":true,"labels":{"category_class":"Security","intent":"review","urgency":"critical","requires_action":true,"is_promotion":false,"is_duplicate_candidate":false,"is_recurring":false,"look_again":true}}''',
+    r'''{"id":"7839d762-b69c-5bc9-9c21-3f7a78096ffc","app_name":"Zerodha Kite","package_name":"com.zerodha.kite3","category":"Finance","subcategory":"Investing","notification_type":"market_alert","title":"Investment update","body":"City Pharmacy crossed your alert price. Review your watchlist.","language":"en","contains_money":false,"contains_otp":false,"contains_link":false,"contains_email":false,"contains_phone":false,"contains_attachment":false,"contains_location":false,"contains_date":false,"contains_time":false,"deadline":null,"requires_action":false,"action_type":null,"intent":"review","is_recurring":false,"urgency":"medium","entities":{"app":"Zerodha Kite","reference_id":"99682738"},"android":{"package_name":"com.zerodha.kite3","channel_id":"orders","channel_name":"Orders","category":"status","importance":5,"group":"com.zerodha.kite3.investing","conversation":false,"timestamp":"2026-03-30T22:08:00+00:00","visibility":"public","ongoing":false,"foreground_service":false,"priority":2,"notification_id":254080,"tag":"market_alert"},"priority_score":45,"priority":"medium","priority_reason":"android_importance=5; intent=review","look_again_score":45,"look_again":false,"labels":{"category_class":"Finance","intent":"review","urgency":"medium","requires_action":false,"is_promotion":false,"is_duplicate_candidate":false,"is_recurring":false,"look_again":false}}''',
+    r'''{"id":"2e4d62e5-5d25-5e1b-a163-027d2887c8a9","app_name":"Gmail","package_name":"com.google.android.gm","category":"Email","subcategory":"Email","notification_type":"email","title":"Schedule update","body":"Schedule update — can you confirm this today","language":"en","contains_money":false,"contains_otp":false,"contains_link":false,"contains_email":true,"contains_phone":false,"contains_attachment":true,"contains_location":false,"contains_date":false,"contains_time":false,"deadline":null,"requires_action":false,"action_type":null,"intent":"review","is_recurring":false,"urgency":"medium","entities":{"app":"Gmail","reference_id":"40942292","email_domain":"example.com"},"android":{"package_name":"com.google.android.gm","channel_id":"updates","channel_name":"Updates","category":"status","importance":3,"group":"com.google.android.gm.email","conversation":false,"timestamp":"2026-04-24T12:21:00+00:00","visibility":"private","ongoing":false,"foreground_service":false,"priority":0,"notification_id":379411,"tag":"email"},"priority_score":35,"priority":"medium","priority_reason":"android_importance=3; intent=review","look_again_score":35,"look_again":false,"labels":{"category_class":"Email","intent":"review","urgency":"medium","requires_action":false,"is_promotion":false,"is_duplicate_candidate":false,"is_recurring":false,"look_again":false}}''',
+    r'''{"id":"43bdfc44-49f3-5583-86c9-6cd6ef4acfac","app_name":"Paytm","package_name":"net.one97.paytm","category":"UPI","subcategory":"UPI","notification_type":"payment_received","title":"Payment received","body":"Adya paid you ₹99 via UPI. Balance updated.","language":"en","contains_money":true,"contains_otp":false,"contains_link":false,"contains_email":false,"contains_phone":false,"contains_attachment":false,"contains_location":false,"contains_date":false,"contains_time":false,"deadline":null,"requires_action":false,"action_type":null,"intent":"inform","is_recurring":false,"urgency":"medium","entities":{"app":"Paytm","reference_id":"19943140","amount":99,"currency":"INR","merchant":"QuickStore"},"android":{"package_name":"net.one97.paytm","channel_id":"bills","channel_name":"Bills","category":"status","importance":4,"group":"net.one97.paytm.upi","conversation":false,"timestamp":"2026-05-08T18:10:00+00:00","visibility":"private","ongoing":false,"foreground_service":false,"priority":1,"notification_id":902950,"tag":"payment_received"},"priority_score":37,"priority":"medium","priority_reason":"android_importance=4; contains_money","look_again_score":37,"look_again":false,"labels":{"category_class":"UPI","intent":"inform","urgency":"medium","requires_action":false,"is_promotion":false,"is_duplicate_candidate":false,"is_recurring":false,"look_again":false}}''',
+    r'''{"id":"6a111ab8-84d8-5e68-bdf1-f5c32674ac09","app_name":"Jira","package_name":"com.atlassian.android.jira.core","category":"Developer Tools","subcategory":"GitHub","notification_type":"pull_request","title":"Pull request update","body":"Lakshit requested your review on scope/mobile#45.","language":"en","contains_money":false,"contains_otp":false,"contains_link":true,"contains_email":false,"contains_phone":false,"contains_attachment":false,"contains_location":false,"contains_date":false,"contains_time":false,"deadline":null,"requires_action":true,"action_type":"review_code","intent":"review","is_recurring":false,"urgency":"medium","entities":{"app":"Jira","reference_id":"19553585"},"android":{"package_name":"com.atlassian.android.jira.core","channel_id":"assigned","channel_name":"Assigned","category":"status","importance":3,"group":"com.atlassian.android.jira.core.github","conversation":false,"timestamp":"2026-06-20T21:26:00+00:00","visibility":"private","ongoing":false,"foreground_service":false,"priority":0,"notification_id":832131,"tag":"jira-5"},"priority_score":53,"priority":"medium","priority_reason":"android_importance=3; requires_action; intent=review","look_again_score":63,"look_again":true,"labels":{"category_class":"Developer Tools","intent":"review","urgency":"medium","requires_action":true,"is_promotion":false,"is_duplicate_candidate":false,"is_recurring":false,"look_again":true}}''',
+    r'''{"id":"dd084de6-173a-5149-9ea8-6c8f5648ded5","app_name":"Google Drive","package_name":"com.google.android.apps.docs","category":"Cloud Storage","subcategory":"Cloud Storage","notification_type":"shared_file","title":"File shared","body":"photo-backup.zip finished uploading to your drive.","language":"en","contains_money":false,"contains_otp":false,"contains_link":false,"contains_email":false,"contains_phone":false,"contains_attachment":true,"contains_location":false,"contains_date":false,"contains_time":false,"deadline":null,"requires_action":false,"action_type":null,"intent":"review","is_recurring":false,"urgency":"medium","entities":{"app":"Google Drive","reference_id":"46173157"},"android":{"package_name":"com.google.android.apps.docs","channel_id":"uploads","channel_name":"Uploads","category":"status","importance":3,"group":"com.google.android.apps.docs.cloud_storage","conversation":false,"timestamp":"2026-05-17T09:40:00+00:00","visibility":"private","ongoing":false,"foreground_service":false,"priority":0,"notification_id":337653,"tag":null},"priority_score":35,"priority":"medium","priority_reason":"android_importance=3; intent=review","look_again_score":35,"look_again":false,"labels":{"category_class":"Cloud Storage","intent":"review","urgency":"medium","requires_action":false,"is_promotion":false,"is_duplicate_candidate":false,"is_recurring":false,"look_again":false}}'''
+  ];
 }
