@@ -8,6 +8,7 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/storage/notification_storage.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/core/utils/focus_area_mapper.dart';
+import 'package:scope/core/utils/smart_actions.dart';
 import 'package:scope/core/state/providers.dart';
 import 'package:drift/drift.dart';
 import 'package:scope/database/attention_database.dart';
@@ -81,6 +82,10 @@ class NotificationController extends ChangeNotifier {
   int _focusSessionInterruptions = 0;
 
   List<AppNotification> get notifications => List.unmodifiable(_notifications);
+
+  /// Notifications excluding app promotional cards (used for stats/counts only).
+  List<AppNotification> _countable(List<AppNotification> list) =>
+      list.where((n) => !TestNotificationGenerator.isAppPromo(n)).toList();
   FocusFilterType get filterType => _filterType;
   FocusArea? get focusAreaFilter => _focusAreaFilter;
   bool get isListenerEnabled => _isListenerEnabled;
@@ -95,19 +100,25 @@ class NotificationController extends ChangeNotifier {
   List<AppNotification> get activeNotifications =>
       _notifications.where((n) => n.state == ReviewState.ACTIVE).toList();
 
-  List<AppNotification> get needsAction => activeNotifications
+  /// Active notifications excluding app promotional cards (for stat counting).
+  List<AppNotification> get _countableActive => _countable(activeNotifications);
+
+  List<AppNotification> get needsAction => _countableActive
       .where((n) => n.priority == 'critical' || n.priority == 'high')
       .toList();
 
-  List<AppNotification> get important => activeNotifications
+  List<AppNotification> get important => _countableActive
       .where((n) => n.priority == 'medium' || n.priority == null)
       .toList();
 
   List<AppNotification> get archivedNotifications =>
-      _notifications.where((n) => n.state == ReviewState.ARCHIVED).toList();
+      _countable(_notifications.where((n) => n.state == ReviewState.ARCHIVED).toList());
 
   List<AppNotification> get completedToday =>
-      _notifications.where((n) => n.state == ReviewState.REVIEWED).toList();
+      _countable(_notifications.where((n) => n.state == ReviewState.REVIEWED).toList());
+
+  /// Total notifications excluding app promotional cards (for display counts).
+  int get countableTotal => _countable(_notifications).length;
 
   List<AppNotification> get reviewQueue {
     final queue = _container.read(sortedReviewQueueProvider);
@@ -133,15 +144,15 @@ class NotificationController extends ChangeNotifier {
     }
   }
 
-  Map<FocusArea, int> get focusAreaCounts => FocusAreaMapper.countsFor(activeNotifications);
+  Map<FocusArea, int> get focusAreaCounts => FocusAreaMapper.countsFor(_countableActive);
 
   int get actionCountToday => needsAction.length;
 
-  int get deadlineCount => activeNotifications
+  int get deadlineCount => _countableActive
       .where((n) => n.extractedFeatures?['hasDeadline'] == true)
       .length;
 
-  int get financialUpdateCount => activeNotifications.where((n) {
+  int get financialUpdateCount => _countableActive.where((n) {
         final features = n.extractedFeatures;
         return features?['amount'] != null ||
             (n.classifiedCategory ?? n.category ?? '').toLowerCase() == 'finance';
@@ -235,6 +246,23 @@ class NotificationController extends ChangeNotifier {
       _focusSessionInterruptions++;
       notifyListeners();
     }
+  }
+
+  // Action Items State
+  final List<SavedActionItem> _savedActionItems = [];
+  List<SavedActionItem> get savedActionItems => List.unmodifiable(_savedActionItems);
+
+  void saveActionItem(AppNotification notification, SmartAction action) {
+    // Add to saved items
+    _savedActionItems.add(SavedActionItem(notification: notification, action: action));
+    
+    // Archive it so it leaves the review queue
+    archive(notification.id);
+  }
+
+  void removeSavedActionItem(SavedActionItem item) {
+    _savedActionItems.remove(item);
+    notifyListeners();
   }
 
   int get focusSessionProgressCount {
@@ -344,6 +372,9 @@ class NotificationController extends ChangeNotifier {
       }
 
       for (final raw in newNotifications) {
+        // Ignore ongoing background/system notifications (e.g. charging, media playback)
+        if (raw.isOngoing) continue;
+
         final isDuplicate = _notifications.any((n) =>
             n.packageName == raw.packageName &&
             n.timestamp == raw.timestamp &&
@@ -429,12 +460,14 @@ class NotificationController extends ChangeNotifier {
 
   void archive(String id) {
     _container.read(reviewQueueProvider.notifier).archive(id);
+    _savedActionItems.removeWhere((item) => item.notification.id == id);
     sessionStats.archived++;
     notifyListeners();
   }
 
   void complete(String id) {
     _container.read(reviewQueueProvider.notifier).reviewed(id);
+    _savedActionItems.removeWhere((item) => item.notification.id == id);
     sessionStats.actionsCompleted++;
     notifyListeners();
   }
@@ -484,9 +517,6 @@ class NotificationController extends ChangeNotifier {
   }
 
   List<AppNotification> search(String query) {
-    if (query.trim().isEmpty) return [];
-    final q = query.toLowerCase();
-
     List<AppNotification> targetList;
     switch (_filterType) {
       case FocusFilterType.needsAction:
@@ -509,10 +539,16 @@ class NotificationController extends ChangeNotifier {
         targetList = _notifications;
     }
 
+    if (query.trim().isEmpty) {
+      return targetList.take(50).toList();
+    }
+    
+    final q = query.toLowerCase();
     return targetList.where((n) {
       return n.title.toLowerCase().contains(q) ||
           n.content.toLowerCase().contains(q) ||
-          n.packageName.toLowerCase().contains(q);
+          n.packageName.toLowerCase().contains(q) ||
+          (n.classifiedCategory?.toLowerCase().contains(q) ?? false);
     }).toList();
   }
 }

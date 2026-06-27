@@ -27,6 +27,7 @@ class GhostAnalysisEngine {
     try {
       final jsonStr = await rootBundle.loadString('assets/rules.json');
       ruleEngine.compile(jsonStr);
+      await ruleEngine.loadCustomRules();
     } catch (e) {
       // ignore: avoid_print
       print('GhostAnalysisEngine failed to load rules asset: $e');

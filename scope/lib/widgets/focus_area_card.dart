@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:scope/core/utils/focus_area_mapper.dart';
-import 'package:scope/theme/motion.dart';
-import 'package:scope/widgets/scope_card.dart';
+import 'package:scope/theme/app_spacing.dart';
+import 'package:scope/widgets/primitives/scope_icon_box.dart';
+import 'package:scope/widgets/primitives/scope_surface.dart';
 
-/// Focus area tile with icon, count, and contextual description.
+/// Focus area tile — icon, title, count, description.
 class FocusAreaCard extends StatelessWidget {
   final FocusArea area;
   final int count;
@@ -26,62 +27,43 @@ class FocusAreaCard extends StatelessWidget {
 
     return Semantics(
       button: true,
+      selected: selected,
       label: '${area.label}, $description',
-      child: AnimatedContainer(
-        duration: AppMotion.standard,
-        curve: AppMotion.enter,
-        decoration: selected
-            ? BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: theme.colorScheme.primary, width: 1.5),
-              )
+      child: ScopeSurface(
+        onTap: onTap,
+        elevated: !selected,
+        borderColor: selected
+            ? theme.colorScheme.onSurface.withValues(alpha: 0.25)
             : null,
-        child: ScopeCard(
-          onTap: onTap,
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(area.icon, size: 18, color: theme.colorScheme.primary),
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                ScopeIconBox(icon: area.icon, size: ScopeIconBoxSize.sm),
+                const Spacer(),
+                Text(
+                  '$count',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: count > 0
+                        ? theme.colorScheme.onSurface
+                        : theme.colorScheme.onSurface.withValues(alpha: 0.35),
                   ),
-                  const Spacer(),
-                  if (count > 0)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '$count',
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Text(area.label, style: theme.textTheme.titleSmall),
-              const SizedBox(height: 4),
-              Text(
-                description,
-                style: theme.textTheme.bodySmall,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            const Spacer(),
+            Text(area.label, style: theme.textTheme.titleSmall),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              description,
+              style: theme.textTheme.bodySmall,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ),
       ),
     );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/extracted_features.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/utils/focus_area_mapper.dart';
+import 'package:scope/theme/app_colors.dart';
 
 /// A contextual action suggested for a notification.
 class SmartAction {
@@ -18,6 +19,19 @@ class SmartAction {
     this.color,
     this.isPrimary = false,
   });
+}
+
+/// Represents an item saved by the user from the focus screen.
+class SavedActionItem {
+  final AppNotification notification;
+  final SmartAction action;
+  final DateTime savedAt;
+
+  SavedActionItem({
+    required this.notification,
+    required this.action,
+    DateTime? savedAt,
+  }) : savedAt = savedAt ?? DateTime.now();
 }
 
 enum SmartActionType {
@@ -37,12 +51,6 @@ enum SmartActionType {
 
 /// Generates contextual smart actions from notification content and analysis.
 abstract final class SmartActions {
-  static const _calendarBlue = Color(0xFF1565C0);
-  static const _remindOrange = Color(0xFFE65100);
-  static const _completeGreen = Color(0xFF2E7D32);
-  static const _financePurple = Color(0xFF6A1B9A);
-  static const _portalTeal = Color(0xFF00695C);
-
   static List<SmartAction> forNotification(AppNotification notification) {
     final features = notification.extractedFeatures != null
         ? ExtractedFeatures.fromMap(notification.extractedFeatures!)
@@ -58,7 +66,7 @@ abstract final class SmartActions {
         label: 'Add Calendar',
         icon: Icons.calendar_today_outlined,
         type: SmartActionType.addCalendar,
-        color: _calendarBlue,
+        color: AppColors.calendar,
         isPrimary: true,
       ));
     }
@@ -69,7 +77,7 @@ abstract final class SmartActions {
         label: _containsAny(text, ['portal', 'scholarship', 'apply']) ? 'Open Portal' : 'Open Website',
         icon: Icons.language_outlined,
         type: SmartActionType.openUrl,
-        color: _portalTeal,
+        color: AppColors.portal,
         isPrimary: actions.isEmpty,
       ));
     }
@@ -79,7 +87,7 @@ abstract final class SmartActions {
         label: 'Join',
         icon: Icons.videocam_outlined,
         type: SmartActionType.join,
-        color: _calendarBlue,
+        color: AppColors.calendar,
         isPrimary: actions.isEmpty,
       ));
     }
@@ -89,7 +97,7 @@ abstract final class SmartActions {
         label: 'Download PDF',
         icon: Icons.download_outlined,
         type: SmartActionType.download,
-        color: _portalTeal,
+        color: AppColors.portal,
       ));
     }
 
@@ -99,14 +107,14 @@ abstract final class SmartActions {
         label: 'Pay',
         icon: Icons.payment,
         type: SmartActionType.pay,
-        color: _financePurple,
+        color: AppColors.finance,
         isPrimary: actions.isEmpty,
       ));
       actions.add(const SmartAction(
         label: 'View Statement',
         icon: Icons.receipt_long_outlined,
         type: SmartActionType.viewStatement,
-        color: _financePurple,
+        color: AppColors.finance,
       ));
     }
 
@@ -115,7 +123,7 @@ abstract final class SmartActions {
         label: 'Track Package',
         icon: Icons.local_shipping_outlined,
         type: SmartActionType.track,
-        color: _portalTeal,
+        color: AppColors.portal,
         isPrimary: actions.isEmpty,
       ));
     }
@@ -125,11 +133,18 @@ abstract final class SmartActions {
         label: 'Reply',
         icon: Icons.reply_outlined,
         type: SmartActionType.reply,
-        color: _calendarBlue,
+        color: AppColors.calendar,
       ));
     }
 
 
+
+    actions.add(const SmartAction(
+      label: 'Remind Tonight',
+      icon: Icons.schedule_outlined,
+      type: SmartActionType.remind,
+      color: AppColors.remind,
+    ));
 
     actions.add(const SmartAction(
       label: 'Archive',
@@ -138,10 +153,10 @@ abstract final class SmartActions {
     ));
 
     actions.add(const SmartAction(
-      label: 'Mark Complete',
+      label: 'Clear',
       icon: Icons.check_circle_outline,
       type: SmartActionType.complete,
-      color: _completeGreen,
+      color: AppColors.complete,
     ));
 
     return _dedupe(actions);

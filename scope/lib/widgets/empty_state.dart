@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:scope/theme/app_colors.dart';
+import 'package:scope/theme/app_spacing.dart';
+import 'package:scope/widgets/primitives/scope_surface.dart';
 
-/// Positive, calm empty state used across screens.
+/// Positive empty state used across screens.
 class EmptyState extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -26,37 +29,47 @@ class EmptyState extends StatelessWidget {
 
     return Semantics(
       label: '$title $message',
-      child: Center(
+      child: SingleChildScrollView(
+        child: Center(
         child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.08),
-                  shape: BoxShape.circle,
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          child: ScopeSurface(
+            variant: ScopeSurfaceVariant.glass,
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.xl,
+              vertical: AppSpacing.lg,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.medium.withValues(alpha: 0.1),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.medium.withValues(alpha: 0.15),
+                        blurRadius: 32,
+                        spreadRadius: 8,
+                      ),
+                    ],
+                  ),
+                  child: Icon(icon, size: 48, color: AppColors.medium),
                 ),
-                child: Icon(icon, size: 32, color: theme.colorScheme.primary),
-              ),
-              const SizedBox(height: 20),
-              Text(title, style: theme.textTheme.titleMedium, textAlign: TextAlign.center),
-              const SizedBox(height: 8),
-              Text(
-                message,
-                style: theme.textTheme.bodyMedium,
-                textAlign: TextAlign.center,
-              ),
-              if (action != null) ...[
-                const SizedBox(height: 24),
-                action!,
+                const SizedBox(height: AppSpacing.xl),
+                Text(title, style: theme.textTheme.headlineSmall?.copyWith(fontSize: 20), textAlign: TextAlign.center),
+                const SizedBox(height: AppSpacing.sm),
+                Text(message, style: theme.textTheme.bodyMedium?.copyWith(height: 1.5), textAlign: TextAlign.center),
+                if (action != null) ...[
+                  const SizedBox(height: AppSpacing.lg),
+                  action!,
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
-    );
+    ));
   }
 }

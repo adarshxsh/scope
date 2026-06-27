@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:scope/core/state/notification_controller.dart';
+import 'package:scope/theme/app_spacing.dart';
 import 'package:scope/theme/motion.dart';
-import 'package:scope/widgets/motion/animated_count_text.dart';
-import 'package:scope/widgets/scope_card.dart';
+import 'package:scope/widgets/primitives/scope_icon_box.dart';
+import 'package:scope/widgets/primitives/scope_row.dart';
+import 'package:scope/widgets/primitives/scope_surface.dart';
+import 'package:scope/widgets/scope_screen_body.dart';
 
 /// Completion screen after a Focus review session.
 class FocusCompleteScreen extends StatefulWidget {
@@ -39,108 +42,82 @@ class _FocusCompleteScreenState extends State<FocusCompleteScreen> {
 
     return Scaffold(
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(32),
-            child: AnimatedOpacity(
-              opacity: _visible ? 1 : 0,
-              duration: AppMotion.slow,
-              curve: AppMotion.enter,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0.85, end: 1),
-                  duration: AppMotion.slow,
-                  curve: AppMotion.emphasis,
-                  builder: (context, scale, child) => Transform.scale(scale: scale, child: child),
-                  child: Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
+        child: ScopeScreenBody(
+          child: Center(
+            child: SingleChildScrollView(
+              child: AnimatedOpacity(
+                opacity: _visible ? 1 : 0,
+                duration: AppMotion.slow,
+                curve: AppMotion.enter,
+                child: Column(
+                  children: [
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0.9, end: 1),
+                      duration: AppMotion.slow,
+                      curve: AppMotion.emphasis,
+                      builder: (context, scale, child) =>
+                          Transform.scale(scale: scale, child: child),
+                      child: ScopeIconBox(
+                        icon: Icons.check_rounded,
+                        size: ScopeIconBoxSize.lg,
+                      ),
                     ),
-                    child: Icon(Icons.check_rounded, size: 40, color: theme.colorScheme.primary),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Text('Review Complete', style: theme.textTheme.headlineLarge),
-                const SizedBox(height: 8),
-                Text('Great work!', style: theme.textTheme.bodyLarge),
-                const SizedBox(height: 32),
-                ScopeCard(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-                  child: Column(
-                    children: [
-                      _StatRow(
-                        label: 'Notifications Reviewed',
-                        value: stats.notificationsReviewed,
+                    const SizedBox(height: AppSpacing.lg),
+                    Text('Review Complete', style: theme.textTheme.headlineLarge),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text('Great work!', style: theme.textTheme.bodyMedium),
+                    const SizedBox(height: AppSpacing.lg),
+                    Text(
+                      '${stats.notificationsReviewed}',
+                      style: theme.textTheme.displaySmall,
+                      textAlign: TextAlign.center,
+                    ),
+                    Text(
+                      'notifications reviewed',
+                      style: theme.textTheme.bodyMedium,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                    ScopeSurface(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.lg,
+                        vertical: AppSpacing.md,
                       ),
-                      _StatRow(label: 'Completed', value: stats.actionsCompleted),
-                      _StatRow(label: 'Reminders Created', value: stats.remindersCreated),
-                      _StatRow(label: 'Archived', value: stats.archived),
-                      _StatRow(
-                        label: 'Estimated Time Saved',
-                        value: stats.estimatedMinutesSaved,
-                        suffix: ' min',
+                      child: Column(
+                        children: [
+                          ScopeRow.metric(label: 'Completed', count: stats.actionsCompleted),
+                          ScopeRow.metric(label: 'Reminders Created', count: stats.remindersCreated),
+                          ScopeRow.metric(label: 'Archived', count: stats.archived),
+                          ScopeRow.metric(
+                            label: 'Estimated Time Saved',
+                            count: stats.estimatedMinutesSaved,
+                            valueSuffix: ' min',
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: widget.onBackHome,
+                        child: const Text('Back Home'),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: widget.onReviewAgain,
+                        child: const Text('Review Again'),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 32),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: FilledButton(
-                    onPressed: widget.onBackHome,
-                    child: const Text('Back Home'),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: OutlinedButton(
-                    onPressed: widget.onReviewAgain,
-                    child: const Text('Review Again'),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),
-      ),
-    ),
-  );
-}
-}
-
-class _StatRow extends StatelessWidget {
-  final String label;
-  final int value;
-  final String suffix;
-
-  const _StatRow({
-    required this.label,
-    required this.value,
-    this.suffix = '',
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: Theme.of(context).textTheme.bodyMedium),
-          AnimatedCountText(
-            value: value,
-            suffix: suffix,
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
-        ],
       ),
     );
   }

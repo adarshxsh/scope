@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:scope/widgets/scope_card.dart';
+import 'package:scope/theme/app_colors.dart';
+import 'package:scope/theme/app_spacing.dart';
+import 'package:scope/widgets/primitives/scope_surface.dart';
 
-/// Today's brief — action counts, deadlines, and estimated review time.
+/// Today's brief — premium home hero with dominant CTA.
 class DailyBriefCard extends StatelessWidget {
   final int reviewedCount;
   final int actionCount;
@@ -9,6 +11,7 @@ class DailyBriefCard extends StatelessWidget {
   final int financialUpdateCount;
   final int estimatedMinutes;
   final VoidCallback? onStartFocus;
+  final VoidCallback? onTapCard;
   final bool canStartFocus;
 
   const DailyBriefCard({
@@ -19,81 +22,129 @@ class DailyBriefCard extends StatelessWidget {
     required this.financialUpdateCount,
     required this.estimatedMinutes,
     this.onStartFocus,
+    this.onTapCard,
     this.canStartFocus = true,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final timeSaved = reviewedCount * 2; // Roughly 2 mins saved per blocked distraction
 
-    return ScopeCard(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text("Today's Brief", style: theme.textTheme.titleMedium),
-          const SizedBox(height: 8),
+    return Hero(
+      tag: 'daily_brief_hero',
+      child: ScopeSurface(
+        variant: ScopeSurfaceVariant.glass,
+        onTap: onTapCard,
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Time Saved',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: AppColors.medium,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Text(
+                        '$timeSaved',
+                        style: theme.textTheme.displaySmall?.copyWith(
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'min',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: Colors.white54,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.critical.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.critical.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.priority_high, size: 14, color: AppColors.critical),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$actionCount actions',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: AppColors.critical,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
           Text(
             reviewedCount == 0
-                ? 'Waiting for notifications to review.'
-                : 'AI reviewed today\'s notifications.',
-            style: theme.textTheme.bodyLarge,
-          ),
-          if (reviewedCount > 0) ...[
-            const SizedBox(height: 20),
-            Text('You have', style: theme.textTheme.bodyMedium),
-            const SizedBox(height: 12),
-            if (actionCount > 0) _BriefLine(icon: Icons.bolt_outlined, text: '$actionCount action${actionCount == 1 ? '' : 's'} today'),
-            if (deadlineCount > 0) _BriefLine(icon: Icons.event_outlined, text: '$deadlineCount deadline${deadlineCount == 1 ? '' : 's'}'),
-            if (financialUpdateCount > 0) _BriefLine(icon: Icons.payments_outlined, text: '$financialUpdateCount financial update${financialUpdateCount == 1 ? '' : 's'}'),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Icon(Icons.timer_outlined, size: 16, color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
-                const SizedBox(width: 8),
-                Text(
-                  'Estimated review time · $estimatedMinutes minute${estimatedMinutes == 1 ? '' : 's'}',
-                  style: theme.textTheme.bodySmall,
-                ),
-              ],
+                ? 'Ghost AI is monitoring your notifications. Relax, you are all caught up.'
+                : 'Ghost AI safely intercepted $reviewedCount notifications today. You have $actionCount important items requiring your attention.',
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: Colors.white70,
+              height: 1.4,
             ),
-          ],
-          const SizedBox(height: 24),
+          ),
+          const SizedBox(height: AppSpacing.xl),
           SizedBox(
             width: double.infinity,
-            height: 52,
-            child: FilledButton.icon(
+            height: 54, // Taller button for premium feel
+            child: FilledButton(
               onPressed: canStartFocus ? onStartFocus : null,
-              icon: const Icon(Icons.play_arrow_rounded, size: 22),
-              label: Text(
-                canStartFocus ? 'Start Focus Session' : 'Nothing to review',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              style: FilledButton.styleFrom(
+                backgroundColor: canStartFocus ? AppColors.medium : AppColors.surfaceHigh,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: canStartFocus ? 8 : 0,
+                shadowColor: AppColors.medium.withValues(alpha: 0.4),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (canStartFocus)
+                    const Icon(Icons.play_arrow_rounded, size: 24),
+                  if (canStartFocus)
+                    const SizedBox(width: 8),
+                  Text(
+                    canStartFocus ? 'Start Focus Session' : 'Nothing to review',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
         ],
       ),
-    );
-  }
-}
-
-class _BriefLine extends StatelessWidget {
-  final IconData icon;
-  final String text;
-
-  const _BriefLine({required this.icon, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: Theme.of(context).colorScheme.primary),
-          const SizedBox(width: 10),
-          Text(text, style: Theme.of(context).textTheme.bodyLarge),
-        ],
-      ),
-    );
+    ));
   }
 }
