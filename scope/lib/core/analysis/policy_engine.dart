@@ -10,7 +10,20 @@ class PolicyEngine {
     required AnalysisResult fusedResult,
     required ExtractedFeatures features,
     required AppNotification notification,
+    double? lookAgainScore,
   }) {
+    if (lookAgainScore != null) {
+      if (lookAgainScore >= 0.80) {
+        return 'critical';
+      } else if (lookAgainScore >= 0.50) {
+        return 'high';
+      } else if (lookAgainScore >= 0.20) {
+        return 'medium';
+      } else {
+        return 'low';
+      }
+    }
+
     final category = fusedResult.category;
 
     // 1. Critical Priority Tier
