@@ -41,17 +41,17 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    final pages = [
-      HomeScreen(controller: widget.controller, onStartFocus: _goToFocus),
-      FocusScreen(controller: widget.controller, onBackHome: _goToHome),
-      SearchScreen(controller: widget.controller),
-      InsightsScreen(controller: widget.controller),
-      SettingsScreen(controller: widget.controller),
-    ];
-
     return ListenableBuilder(
       listenable: widget.controller,
       builder: (context, _) {
+        final pages = [
+          HomeScreen(controller: widget.controller, onStartFocus: _goToFocus),
+          FocusScreen(controller: widget.controller, onBackHome: _goToHome),
+          SearchScreen(controller: widget.controller),
+          InsightsScreen(controller: widget.controller),
+          SettingsScreen(controller: widget.controller),
+        ];
+
         return Scaffold(
           body: IndexedStack(
             index: _currentIndex,
