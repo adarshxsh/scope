@@ -45,6 +45,19 @@ class GhostAnalysisEngine {
   Future<AppNotification> analyze(AppNotification notification) async {
     final stopwatch = Stopwatch()..start();
 
+    // 0. Filter out progress/download/sync status notifications to prevent unnecessary analysis
+    if (_isStatusOrProgressNotification(notification)) {
+      stopwatch.stop();
+      return notification.copyWith(
+        priority: 'low',
+        priorityScore: 0.0,
+        classifiedCategory: 'system_status',
+        explanation: 'Status or progress notification ignored by AI.',
+        latencyMs: stopwatch.elapsedMilliseconds,
+        engineVersion: '2.0.0-hybrid',
+      );
+    }
+
     // 1. Structured Feature Extraction
     final features = FeatureExtractor.extract(
       title: notification.title,
@@ -94,5 +107,33 @@ class GhostAnalysisEngine {
       engineVersion: '2.0.0-hybrid',
       extractedFeatures: features.toMap(),
     );
+  }
+
+  bool _isStatusOrProgressNotification(AppNotification notification) {
+    if (notification.category == 'progress' || notification.category == 'status') {
+      return true;
+    }
+
+    final lowerTitle = notification.title.toLowerCase();
+    final lowerContent = notification.content.toLowerCase();
+    final combined = '$lowerTitle $lowerContent';
+
+    final progressKeywords = [
+      'downloading',
+      'uploading',
+      'sending file',
+      'receiving file',
+      'syncing',
+      'backing up',
+      'file transfer',
+    ];
+
+    for (final keyword in progressKeywords) {
+      if (combined.contains(keyword)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 }
