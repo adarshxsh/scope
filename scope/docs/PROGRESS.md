@@ -85,6 +85,23 @@
 
 ---
 
+## Phase 7: Review Queue Engine & Syncing ✅
+**Status**: Complete  
+**Date**: 2026-06-27
+
+| Sub-step | Description | Status |
+|---|---|---|
+| Models | ReviewState field + deserialization safety in AppNotification | ✅ |
+| State Notifier | ReviewQueueNotifier for active list, snooze, archive, and expire | ✅ |
+| Expiries | rescore() auto-expiry for OTPs, deadlines, and completed reminders | ✅ |
+| Deduplication | Android-level active panel sync & Flutter-level ingestion deduplication | ✅ |
+| Sorting | Derived sorted active queue (score, deadline, lastUpdated) | ✅ |
+| Controller Sync | Unified ChangeNotifier sync with Riverpod using ProviderContainer | ✅ |
+| Docs | `docs/phase7_review_queue.md` | ✅ |
+| Verification | 16 comprehensive unit tests passing successfully | ✅ |
+
+---
+
 ## Documentation Index
 
 | Doc | Phase |
@@ -93,3 +110,4 @@
 | `docs/phase2_ghost_ai.md` | Analysis engine |
 | `docs/phase5_presentation.md` | UI architecture |
 | `docs/phase6_premium_ux.md` | UX polish |
+| `docs/phase7_review_queue.md` | Review queue & sync |
