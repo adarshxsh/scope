@@ -129,12 +129,7 @@ abstract final class SmartActions {
       ));
     }
 
-    actions.add(const SmartAction(
-      label: 'Remind Tonight',
-      icon: Icons.schedule_outlined,
-      type: SmartActionType.remind,
-      color: _remindOrange,
-    ));
+
 
     actions.add(const SmartAction(
       label: 'Archive',
