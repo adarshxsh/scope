@@ -227,23 +227,31 @@ class _FocusScreenState extends State<FocusScreen> {
     return Column(
       children: [
         Expanded(
-          child: AnimatedOpacity(
-            opacity: _isTransitioning ? 0.0 : 1.0,
-            duration: AppMotion.standard,
-            curve: AppMotion.exit,
-            child: AnimatedScale(
-              scale: _isTransitioning ? 0.96 : 1.0,
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onVerticalDragEnd: (details) {
+              if (details.primaryVelocity != null && details.primaryVelocity!.abs() > 200) {
+                _handleSkip();
+              }
+            },
+            child: AnimatedOpacity(
+              opacity: _isTransitioning ? 0.0 : 1.0,
               duration: AppMotion.standard,
               curve: AppMotion.exit,
-              child: SlideFadeSwitcher(
-                transitionKey: notification.id,
-                child: ReviewCard(
-                  notification: notification,
-                  actions: actions,
-                  selectedAction: _selectedAction,
-                  currentIndex: progress,
-                  totalCount: total,
-                  onAction: _handleAction,
+              child: AnimatedScale(
+                scale: _isTransitioning ? 0.96 : 1.0,
+                duration: AppMotion.standard,
+                curve: AppMotion.exit,
+                child: SlideFadeSwitcher(
+                  transitionKey: notification.id,
+                  child: ReviewCard(
+                    notification: notification,
+                    actions: actions,
+                    selectedAction: _selectedAction,
+                    currentIndex: progress,
+                    totalCount: total,
+                    onAction: _handleAction,
+                  ),
                 ),
               ),
             ),
@@ -260,22 +268,6 @@ class _FocusScreenState extends State<FocusScreen> {
               label: Text(primary.label),
             ),
           ),
-        const SizedBox(height: 8),
-        SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: OutlinedButton(
-            onPressed: _isTransitioning ? null : _handleSkip,
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text('Next'),
-                SizedBox(width: 4),
-                Icon(Icons.arrow_forward_rounded, size: 18),
-              ],
-            ),
-          ),
-        ),
       ],
     );
   }
