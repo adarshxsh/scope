@@ -65,6 +65,23 @@ class ReviewCard extends StatelessWidget {
         children: [
           Row(
             children: [
+              IconButton(
+                icon: const Icon(Icons.close_rounded, size: 18),
+                onPressed: () {
+                  if (onAction != null) {
+                    onAction!(const SmartAction(
+                      label: 'Archive',
+                      icon: Icons.archive,
+                      type: SmartActionType.archive,
+                    ));
+                  }
+                },
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                visualDensity: VisualDensity.compact,
+                tooltip: 'Archive notification',
+              ),
+              const SizedBox(width: 8),
               Text(_application, style: theme.textTheme.bodySmall?.copyWith(letterSpacing: 0.8)),
               const Spacer(),
               Text('${currentIndex + 1} / $totalCount', style: theme.textTheme.bodySmall),
