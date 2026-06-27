@@ -121,5 +121,13 @@ app.*.symbols
 # Dataset output files
 attentionos-dataset/output/
 
+# Training
+training/.venv/
+training/runs/
+training/models/
+*.pt
+*.pth
+*.onnx
+
 # Other ignore files
-.DS_Storetraining/.venv/
+**/.DS_Store

@@ -3,7 +3,6 @@ import 'package:drift/native.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/database/attention_database.dart';
-import 'package:scope/database/daos.dart';
 
 void main() {
   late AttentionDatabase db;

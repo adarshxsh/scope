@@ -38,6 +38,13 @@ Android OS → NotificationCollectorService → MethodChannel → Flutter
 - [Phase 2: Ghost AI](docs/phase2_ghost_ai.md)
 - [Phase 5: Presentation](docs/phase5_presentation.md)
 - [Phase 6: Premium UX](docs/phase6_premium_ux.md)
+- [Phase 7: Review Queue](docs/phase7_review_queue.md)
+
+## Latest Updates (v1.0 Release)
+- **Review Queue**: Batch notifications and review them efficiently instead of swiping individually.
+- **Smart Actions**: AI-generated smart replies and actions mapped dynamically for apps.
+- **Daily Brief**: Get a curated overview of what matters at the start of your day.
+- **Zero-Lint Codebase**: Performance optimized and warnings resolved for smooth production.
 
 ## Tests
 

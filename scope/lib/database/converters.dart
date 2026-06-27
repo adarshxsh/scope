@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:drift/drift.dart';
 
-/// Drift converter to serialize/deserialize Map<String, dynamic> to/from text fields.
+/// Drift converter to serialize/deserialize `Map<String, dynamic>` to/from text fields.
 class JsonConverter extends TypeConverter<Map<String, dynamic>, String> {
   const JsonConverter();
 

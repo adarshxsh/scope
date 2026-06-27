@@ -5,7 +5,6 @@ import 'package:scope/theme/app_colors.dart';
 import 'package:scope/theme/app_elevation.dart';
 import 'package:scope/theme/app_spacing.dart';
 import 'package:scope/theme/app_theme.dart';
-import 'package:scope/theme/motion.dart';
 
 import 'package:scope/widgets/motion/motion_surface.dart';
 

@@ -7,10 +7,15 @@ library;
 
 /// The review state of a notification in the Review Queue.
 enum ReviewState {
+  // ignore: constant_identifier_names
   ACTIVE,
+  // ignore: constant_identifier_names
   SNOOZED,
+  // ignore: constant_identifier_names
   REVIEWED,
+  // ignore: constant_identifier_names
   EXPIRED,
+  // ignore: constant_identifier_names
   ARCHIVED,
 }
 
@@ -106,7 +111,7 @@ class AppNotification {
     final pkgHash = _stableHash(packageName);
     final titleHash = _stableHash(title);
     final contentHash = _stableHash(content);
-    return '${pkgHash}_${timestamp}_${titleHash}_${contentHash}';
+    return '${pkgHash}_${timestamp}_${titleHash}_$contentHash';
   }
 
   static int _stableHash(String val) {

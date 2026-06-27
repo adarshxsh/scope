@@ -342,16 +342,6 @@ class PolicyEngine {
   // Step 3: Conservative merge
   // ---------------------------------------------------------------------------
 
-  /// Returns the lower of two priorities (more conservative).
-  static String _lowerOf(String a, String b) {
-    final indexA = _priorityOrder.indexOf(a);
-    final indexB = _priorityOrder.indexOf(b);
-    // If either is unknown, treat as medium
-    final safeA = indexA >= 0 ? indexA : 1;
-    final safeB = indexB >= 0 ? indexB : 1;
-    return _priorityOrder[safeA < safeB ? safeA : safeB];
-  }
-
   // ---------------------------------------------------------------------------
   // Step 4: Package and content ceiling overrides
   // ---------------------------------------------------------------------------

@@ -8,8 +8,6 @@ import 'package:scope/theme/scope_navigator.dart';
 import 'package:scope/widgets/motion/motion_surface.dart';
 import 'package:scope/widgets/primitives/scope_surface.dart';
 import 'package:scope/widgets/scope_screen_body.dart';
-import 'package:scope/widgets/section_header.dart';
-import 'dart:math' as math;
 
 /// New Daily Timeline showing an interactive timeline of notifications
 class DailyTimelineScreen extends StatefulWidget {

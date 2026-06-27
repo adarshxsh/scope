@@ -69,6 +69,7 @@ class NotificationBridge {
     try {
       await _channel.invokeMethod<void>('openNotificationSettings');
     } on PlatformException catch (e) {
+      // ignore: avoid_print
       print('NotificationBridge.openNotificationSettings failed: ${e.message}');
     } on MissingPluginException {
       // Not on Android — nothing to do

@@ -7,7 +7,7 @@ part 'daos.g.dart';
 
 @DriftAccessor(tables: [NotificationsTable])
 class NotificationDao extends DatabaseAccessor<AttentionDatabase> with _$NotificationDaoMixin {
-  NotificationDao(AttentionDatabase db) : super(db);
+  NotificationDao(super.db);
 
   Future<void> insertNotification(NotificationEntry entry) async {
     await into(notificationsTable).insert(entry, mode: InsertMode.insertOrReplace);
@@ -55,7 +55,7 @@ class NotificationDao extends DatabaseAccessor<AttentionDatabase> with _$Notific
 
 @DriftAccessor(tables: [ReviewQueueTable])
 class ReviewQueueDao extends DatabaseAccessor<AttentionDatabase> with _$ReviewQueueDaoMixin {
-  ReviewQueueDao(AttentionDatabase db) : super(db);
+  ReviewQueueDao(super.db);
 
   Future<void> insertItem(ReviewQueueEntry entry) async {
     await into(reviewQueueTable).insert(entry, mode: InsertMode.insertOrReplace);
@@ -81,7 +81,7 @@ class ReviewQueueDao extends DatabaseAccessor<AttentionDatabase> with _$ReviewQu
 
 @DriftAccessor(tables: [FocusSessionsTable])
 class FocusSessionDao extends DatabaseAccessor<AttentionDatabase> with _$FocusSessionDaoMixin {
-  FocusSessionDao(AttentionDatabase db) : super(db);
+  FocusSessionDao(super.db);
 
   Future<void> insertSession(FocusSessionEntry entry) async {
     await into(focusSessionsTable).insert(entry);
@@ -106,7 +106,7 @@ class FocusSessionDao extends DatabaseAccessor<AttentionDatabase> with _$FocusSe
 
 @DriftAccessor(tables: [DailyBriefTable])
 class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBriefDaoMixin {
-  DailyBriefDao(AttentionDatabase db) : super(db);
+  DailyBriefDao(super.db);
 
   Future<void> insertOrUpdate(DailyBriefEntry entry) async {
     await into(dailyBriefTable).insert(entry, mode: InsertMode.insertOrReplace);

@@ -238,7 +238,7 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: notifications.length,
-        separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
+        separatorBuilder: (context, index) => const SizedBox(width: AppSpacing.sm),
         itemBuilder: (context, index) {
           final n = notifications[index];
           final isSelected = _selectedNotification?.id == n.id;

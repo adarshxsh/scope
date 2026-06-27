@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:scope/theme/motion.dart';
 
 /// Material 3 motion language — single source for all Scope animations.
 abstract final class AppMotion {

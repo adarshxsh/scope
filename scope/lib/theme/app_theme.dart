@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:scope/theme/app_colors.dart';
-import 'package:scope/theme/app_elevation.dart';
 import 'package:scope/theme/app_spacing.dart';
 
 /// Scope design tokens — Material 3 dark theme.

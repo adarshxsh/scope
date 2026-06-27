@@ -171,7 +171,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
           const Divider(height: 24),
           // Template Selector
           DropdownButtonFormField<String>(
-            value: _selectedTemplate,
+            initialValue: _selectedTemplate,
             decoration: const InputDecoration(
               labelText: 'Quick Test Templates',
               border: OutlineInputBorder(),
