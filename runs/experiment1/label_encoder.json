@@ -1,0 +1,166 @@
+{
+  "category": {
+    "class_to_id": {
+      "Android System": 0,
+      "Banking": 1,
+      "Calendar": 2,
+      "Cloud Storage": 3,
+      "Delivery": 4,
+      "Developer Tools": 5,
+      "Education": 6,
+      "Email": 7,
+      "Emergency Alerts": 8,
+      "Entertainment": 9,
+      "Finance": 10,
+      "Flights": 11,
+      "Food Delivery": 12,
+      "Government": 13,
+      "Healthcare": 14,
+      "Hotels": 15,
+      "Insurance": 16,
+      "Messaging": 17,
+      "OTP": 18,
+      "Promotions": 19,
+      "Railways": 20,
+      "Ride Booking": 21,
+      "Security": 22,
+      "Shopping": 23,
+      "Social Media": 24,
+      "Tasks": 25,
+      "Tax": 26,
+      "UPI": 27,
+      "Utilities": 28,
+      "Weather": 29
+    },
+    "classes": [
+      "Android System",
+      "Banking",
+      "Calendar",
+      "Cloud Storage",
+      "Delivery",
+      "Developer Tools",
+      "Education",
+      "Email",
+      "Emergency Alerts",
+      "Entertainment",
+      "Finance",
+      "Flights",
+      "Food Delivery",
+      "Government",
+      "Healthcare",
+      "Hotels",
+      "Insurance",
+      "Messaging",
+      "OTP",
+      "Promotions",
+      "Railways",
+      "Ride Booking",
+      "Security",
+      "Shopping",
+      "Social Media",
+      "Tasks",
+      "Tax",
+      "UPI",
+      "Utilities",
+      "Weather"
+    ],
+    "type": "categorical"
+  },
+  "intent": {
+    "class_to_id": {
+      "act": 0,
+      "approve": 1,
+      "attend": 2,
+      "browse": 3,
+      "charge": 4,
+      "clean": 5,
+      "complete": 6,
+      "inform": 7,
+      "install": 8,
+      "join": 9,
+      "open": 10,
+      "pay": 11,
+      "prepare": 12,
+      "reset": 13,
+      "respond": 14,
+      "review": 15,
+      "submit": 16,
+      "take": 17,
+      "track": 18,
+      "verify": 19
+    },
+    "classes": [
+      "act",
+      "approve",
+      "attend",
+      "browse",
+      "charge",
+      "clean",
+      "complete",
+      "inform",
+      "install",
+      "join",
+      "open",
+      "pay",
+      "prepare",
+      "reset",
+      "respond",
+      "review",
+      "submit",
+      "take",
+      "track",
+      "verify"
+    ],
+    "type": "categorical"
+  },
+  "is_duplicate_candidate": {
+    "class_to_id": {
+      "false": 0,
+      "true": 1
+    },
+    "type": "binary"
+  },
+  "is_promotion": {
+    "class_to_id": {
+      "false": 0,
+      "true": 1
+    },
+    "type": "binary"
+  },
+  "is_recurring": {
+    "class_to_id": {
+      "false": 0,
+      "true": 1
+    },
+    "type": "binary"
+  },
+  "look_again": {
+    "class_to_id": {
+      "false": 0,
+      "true": 1
+    },
+    "type": "binary"
+  },
+  "requires_action": {
+    "class_to_id": {
+      "false": 0,
+      "true": 1
+    },
+    "type": "binary"
+  },
+  "urgency": {
+    "class_to_id": {
+      "critical": 0,
+      "high": 1,
+      "low": 2,
+      "medium": 3
+    },
+    "classes": [
+      "critical",
+      "high",
+      "low",
+      "medium"
+    ],
+    "type": "categorical"
+  }
+}

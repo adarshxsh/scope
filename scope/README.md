@@ -1,16 +1,46 @@
-# scope
+# Scope (AttentionOS)
 
-A new Flutter project.
+An AI-powered Attention Operating System for Android. Scope analyzes notifications on-device and helps you review, prioritize, and act on what matters — without endless scrolling.
 
-## Getting Started
+## What it does
 
-This project is a starting point for a Flutter application.
+- Captures Android notifications via `NotificationListenerService`
+- Analyzes them on-device with **Ghost AI** (rules + LiteRT classifier)
+- Presents a **productivity workspace** — not a notification inbox
 
-A few resources to get you started if this is your first Flutter project:
+## Quick start
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+```bash
+flutter pub get
+flutter run
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+1. Grant notification access in **Settings → Notification access → AttentionOS**
+2. Or use **Settings → Load Test Data** in the app to demo with sample notifications
+3. Start a **Focus Session** from the home dashboard
+
+## Architecture
+
+```
+Android OS → NotificationCollectorService → MethodChannel → Flutter
+                                                              ↓
+                                                    GhostAnalysisEngine
+                                                              ↓
+                                                   NotificationController
+                                                              ↓
+                                                        MainShell UI
+```
+
+## Docs
+
+- [Progress tracker](docs/PROGRESS.md)
+- [Phase 1: Foundation](docs/phase1_foundation.md)
+- [Phase 2: Ghost AI](docs/phase2_ghost_ai.md)
+- [Phase 5: Presentation](docs/phase5_presentation.md)
+- [Phase 6: Premium UX](docs/phase6_premium_ux.md)
+
+## Tests
+
+```bash
+flutter test
+```

@@ -120,3 +120,4 @@ app.*.symbols
 
 # Dataset output files
 attentionos-dataset/output/
+training/.venv/
