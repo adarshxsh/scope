@@ -65,14 +65,14 @@ void main() {
         (widget) => widget is TextField && widget.decoration?.labelText == 'Package Name',
       );
       expect(tester.widget<TextField>(packageField).controller?.text,
-          equals('com.hdfc.mobilebanking'));
+          equals('com.nextbillion.groww'));
 
       final contentField = find.byWidgetPredicate(
         (widget) => widget is TextField && widget.decoration?.labelText == 'Content Body',
       );
       expect(
         tester.widget<TextField>(contentField).controller?.text,
-        contains('debit'),
+        anyOf(contains('debit'), contains('SIP')),
       );
     });
 

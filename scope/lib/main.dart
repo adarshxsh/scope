@@ -1,27 +1,42 @@
 import 'package:flutter/material.dart';
-import 'package:scope/screens/notification_feed_screen.dart';
+import 'package:scope/core/state/notification_controller.dart';
+import 'package:scope/screens/main_shell.dart';
+import 'package:scope/theme/app_theme.dart';
 
 void main() {
   runApp(const AttentionOSApp());
 }
 
-/// Root widget for the AttentionOS application.
-///
-/// Phase 1: Simple MaterialApp with a single route (notification feed).
-/// Future phases will add routing, theming, and additional screens.
-class AttentionOSApp extends StatelessWidget {
+/// Root widget for Scope (AttentionOS).
+class AttentionOSApp extends StatefulWidget {
   const AttentionOSApp({super.key});
+
+  @override
+  State<AttentionOSApp> createState() => _AttentionOSAppState();
+}
+
+class _AttentionOSAppState extends State<AttentionOSApp> {
+  late final NotificationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = NotificationController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'AttentionOS',
+      title: 'Scope',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: const NotificationFeedScreen(),
+      theme: AppTheme.light(),
+      home: MainShell(controller: _controller),
     );
   }
 }

@@ -8,7 +8,7 @@ void main() {
     await tester.pumpWidget(const AttentionOSApp());
     await tester.pump();
 
-    // Verify the app title is displayed
-    expect(find.text('AttentionOS'), findsOneWidget);
+    // Verify home dashboard renders
+    expect(find.text('Home'), findsOneWidget);
   });
 }
