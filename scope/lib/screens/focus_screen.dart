@@ -30,7 +30,14 @@ class _FocusScreenState extends State<FocusScreen> {
   bool _isTransitioning = false;
   SmartActionType? _selectedAction;
 
-  AppNotification? get _current => widget.controller.currentFocusNotification;
+  AppNotification? get _current {
+    if (widget.controller.inFocusSession) {
+      return widget.controller.currentFocusNotification;
+    }
+    return widget.controller.reviewQueue.isEmpty
+        ? null
+        : widget.controller.reviewQueue.first;
+  }
 
   void _startSession() {
     widget.controller.startFocusSession();
@@ -194,43 +201,14 @@ class _FocusScreenState extends State<FocusScreen> {
     final inSession = widget.controller.inFocusSession;
     final queue = widget.controller.reviewQueue;
 
-    if (queue.isEmpty && !inSession) {
+    if (queue.isEmpty) {
       return const EmptyState.caughtUp();
     }
 
     if (!inSession) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              '${queue.length} notification${queue.length == 1 ? '' : 's'} ready',
-              style: theme.textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Begin a guided review session.\nOne item at a time, no scrolling.',
-              style: theme.textTheme.bodyMedium,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '~${widget.controller.estimatedReviewMinutes} min estimated',
-              style: theme.textTheme.bodySmall,
-            ),
-            const SizedBox(height: 28),
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: FilledButton.icon(
-                onPressed: _startSession,
-                icon: const Icon(Icons.play_arrow_rounded),
-                label: const Text('Begin Review Session'),
-              ),
-            ),
-          ],
-        ),
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) widget.controller.startFocusSession();
+      });
     }
 
     final notification = _current;
@@ -242,7 +220,9 @@ class _FocusScreenState extends State<FocusScreen> {
     final actions = SmartActions.forNotification(notification);
     final primary = SmartActions.primaryFor(actions);
     final progress = widget.controller.focusSessionProgressCount;
-    final total = widget.controller.focusSessionQueueIds.length;
+    final total = widget.controller.focusSessionQueueIds.isEmpty
+        ? queue.length
+        : widget.controller.focusSessionQueueIds.length;
 
     return Column(
       children: [
