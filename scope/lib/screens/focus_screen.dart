@@ -27,22 +27,14 @@ class FocusScreen extends StatefulWidget {
 }
 
 class _FocusScreenState extends State<FocusScreen> {
-  bool _inSession = false;
-  int _sessionTotal = 0;
-  int _reviewedCount = 0;
   bool _isTransitioning = false;
   SmartActionType? _selectedAction;
 
-  List<AppNotification> get _queue => widget.controller.reviewQueue;
-
-  AppNotification? get _current => _queue.isEmpty ? null : _queue.first;
+  AppNotification? get _current => widget.controller.currentFocusNotification;
 
   void _startSession() {
-    widget.controller.resetSessionStats();
+    widget.controller.startFocusSession();
     setState(() {
-      _inSession = true;
-      _sessionTotal = _queue.length;
-      _reviewedCount = 0;
       _selectedAction = null;
     });
   }
@@ -98,12 +90,14 @@ class _FocusScreenState extends State<FocusScreen> {
 
     setState(() => _isTransitioning = true);
     widget.controller.recordReviewed();
-    _reviewedCount++;
 
     await Future<void>.delayed(AppMotion.standard);
     if (!mounted) return;
 
-    if (_queue.isEmpty || _reviewedCount >= _sessionTotal) {
+    final progress = widget.controller.focusSessionProgressCount;
+    final total = widget.controller.focusSessionQueueIds.length;
+
+    if (_current == null || progress >= total) {
       _finishSession();
       return;
     }
@@ -114,14 +108,24 @@ class _FocusScreenState extends State<FocusScreen> {
     });
   }
 
+  void _handleSkip() {
+    final notification = _current;
+    if (notification == null || _isTransitioning) return;
+
+    setState(() => _isTransitioning = true);
+    Future<void>.delayed(AppMotion.standard, () {
+      if (!mounted) return;
+      widget.controller.skipFocusSessionItem(notification.id);
+      setState(() {
+        _isTransitioning = false;
+        _selectedAction = null;
+      });
+    });
+  }
+
   void _finishSession() {
     final stats = widget.controller.sessionStats;
-    setState(() {
-      _inSession = false;
-      _isTransitioning = false;
-      _selectedAction = null;
-    });
-    widget.controller.clearFocusAreaFilter();
+    widget.controller.finishFocusSession();
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -144,6 +148,19 @@ class _FocusScreenState extends State<FocusScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final filter = widget.controller.focusAreaFilter;
+    final filterType = widget.controller.filterType;
+    final inSession = widget.controller.inFocusSession;
+
+    String filterLabel = 'Filtering';
+    if (filter != null) {
+      filterLabel = 'Filtering · ${filter.label}';
+    } else if (filterType == FocusFilterType.needsAction) {
+      filterLabel = 'Filtering · Needs Action';
+    } else if (filterType == FocusFilterType.important) {
+      filterLabel = 'Filtering · Important';
+    } else if (filterType == FocusFilterType.archived) {
+      filterLabel = 'Filtering · Archived';
+    }
 
     return SafeArea(
       child: Padding(
@@ -152,17 +169,17 @@ class _FocusScreenState extends State<FocusScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Focus', style: theme.textTheme.headlineLarge),
-            if (filter != null) ...[
+            if (filter != null || filterType != FocusFilterType.none) ...[
               const SizedBox(height: 4),
-              Text('Filtering · ${filter.label}', style: theme.textTheme.bodySmall),
+              Text(filterLabel, style: theme.textTheme.bodySmall),
             ],
             const SizedBox(height: 8),
-            if (_inSession && _sessionTotal > 0)
+            if (inSession && widget.controller.focusSessionQueueIds.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(bottom: 16),
                 child: ProgressWidget(
-                  completed: _reviewedCount,
-                  total: _sessionTotal,
+                  completed: widget.controller.focusSessionProgressCount,
+                  total: widget.controller.focusSessionQueueIds.length,
                   label: 'Session progress',
                 ),
               ),
@@ -174,17 +191,20 @@ class _FocusScreenState extends State<FocusScreen> {
   }
 
   Widget _buildBody(ThemeData theme) {
-    if (_queue.isEmpty && !_inSession) {
+    final inSession = widget.controller.inFocusSession;
+    final queue = widget.controller.reviewQueue;
+
+    if (queue.isEmpty && !inSession) {
       return const EmptyState.caughtUp();
     }
 
-    if (!_inSession) {
+    if (!inSession) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              '${_queue.length} notification${_queue.length == 1 ? '' : 's'} ready',
+              '${queue.length} notification${queue.length == 1 ? '' : 's'} ready',
               style: theme.textTheme.headlineSmall,
             ),
             const SizedBox(height: 8),
@@ -215,11 +235,14 @@ class _FocusScreenState extends State<FocusScreen> {
 
     final notification = _current;
     if (notification == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _finishSession());
       return const EmptyState.caughtUp();
     }
 
     final actions = SmartActions.forNotification(notification);
     final primary = SmartActions.primaryFor(actions);
+    final progress = widget.controller.focusSessionProgressCount;
+    final total = widget.controller.focusSessionQueueIds.length;
 
     return Column(
       children: [
@@ -238,8 +261,8 @@ class _FocusScreenState extends State<FocusScreen> {
                   notification: notification,
                   actions: actions,
                   selectedAction: _selectedAction,
-                  currentIndex: _reviewedCount,
-                  totalCount: _sessionTotal,
+                  currentIndex: progress,
+                  totalCount: total,
                   onAction: _handleAction,
                 ),
               ),
@@ -262,7 +285,7 @@ class _FocusScreenState extends State<FocusScreen> {
           width: double.infinity,
           height: 48,
           child: OutlinedButton(
-            onPressed: _isTransitioning ? null : _advance,
+            onPressed: _isTransitioning ? null : _handleSkip,
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [

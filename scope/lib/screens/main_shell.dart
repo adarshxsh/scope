@@ -32,10 +32,8 @@ class _MainShellState extends State<MainShell> {
     super.dispose();
   }
 
-  void _goToFocus([FocusArea? area]) {
-    if (area != null) {
-      widget.controller.setFocusAreaFilter(area);
-    }
+  void _goToFocus(FocusFilterType type, [FocusArea? area]) {
+    widget.controller.setFilter(type, area);
     setState(() => _currentIndex = 1);
   }
 
@@ -61,7 +59,12 @@ class _MainShellState extends State<MainShell> {
           ),
           bottomNavigationBar: NavigationBar(
             selectedIndex: _currentIndex,
-            onDestinationSelected: (index) => setState(() => _currentIndex = index),
+            onDestinationSelected: (index) {
+              if (widget.controller.inFocusSession && index != 1) {
+                widget.controller.recordFocusInterruption();
+              }
+              setState(() => _currentIndex = index);
+            },
             destinations: const [
               NavigationDestination(
                 icon: Icon(Icons.home_outlined),
