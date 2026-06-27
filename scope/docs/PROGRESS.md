@@ -131,6 +131,25 @@
 
 ---
 
+## Phase 9: AttentionOS UI/UX Overhaul ⏳
+**Status**: Partially Complete (Phases 1-6 done)
+**Date**: 2026-06-27
+
+| Sub-step | Description | Status |
+|---|---|---|
+| Motion | `AppMotion`, `ScopeSurface`, `PhysicsCard` spring animations | ✅ |
+| Touch | Press scale down & haptic feedback | ✅ |
+| Navigation | Glassmorphic floating pill navigation bar | ✅ |
+| Adaptive Cards | Visual weight by priority (Critical glow, Low muted) | ✅ |
+| AI Personality | Natural language copy in AI Reason widgets | ✅ |
+| Daily Timeline | Chronological feed + Ghost AI dynamic insights | ✅ |
+| Focus Mode | Hero transition, blur/fade backgrounds | ⏳ |
+| Detail Polish | AI assistant view with sender icons | ⏳ |
+| Empty States | Minimal illustrations & feedback | ⏳ |
+| Docs | `docs/phase9_ui_ux_overhaul.md` | ✅ |
+
+---
+
 ## Documentation Index
 
 | Doc | Phase |
@@ -142,3 +161,4 @@
 | `docs/phase6_premium_ux.md` | UX polish |
 | `docs/phase7_review_queue.md` | Review queue & sync |
 | `docs/phase7_stabilization.md` | State & UX stabilization |
+| `docs/phase9_ui_ux_overhaul.md` | Premium UI/UX overhaul |
