@@ -122,4 +122,4 @@ app.*.symbols
 attentionos-dataset/output/
 
 # Other ignore files
-.DS_Store
+.DS_Storetraining/.venv/
