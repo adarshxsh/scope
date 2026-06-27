@@ -1,0 +1,6 @@
+tensorflow-macos>=2.15,<3
+tensorflow-metal>=2.15,<3
+numpy>=1.26
+pandas>=2.2
+scikit-learn>=1.4
+matplotlib>=3.8
