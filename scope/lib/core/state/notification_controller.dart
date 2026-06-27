@@ -272,20 +272,38 @@ class NotificationController extends ChangeNotifier {
     _pollTimer = null;
   }
 
+  bool _isDisposed = false;
+
   @override
   void dispose() {
+    _isDisposed = true;
     stopPolling();
     super.dispose();
   }
 
+  @override
+  void notifyListeners() {
+    if (!_isDisposed) {
+      super.notifyListeners();
+    }
+  }
+
   Future<void> _loadInitialNotifications() async {
-    _notifications = await _storage.getAll();
+    if (_initialLoadCompleted) return;
+    final loaded = await _storage.getAll();
+    if (_initialLoadCompleted) return;
+
+    if (_notifications.isEmpty) {
+      _notifications = loaded;
+    }
     if (_notifications.isNotEmpty) {
       final notifier = _container.read(reviewQueueProvider.notifier);
       notifier.load(_notifications);
       await notifier.rescore();
     }
     _initialLoadCompleted = true;
+    _isLoading = false;
+    notifyListeners();
   }
 
   /// Cleans up old notifications (older than 7 days) and orphaned review queue items.
@@ -361,6 +379,8 @@ class NotificationController extends ChangeNotifier {
   }
 
   Future<void> generateTestData() async {
+    _initialLoadCompleted = true;
+    _isLoading = false;
     final generator = TestNotificationGenerator();
     final testNotifs = generator.generateAll();
     final analyzed = <AppNotification>[];
