@@ -32,8 +32,20 @@
 
 ---
 
-## Phase 3: Persistent Database (SQLite/Drift) ⏳
-**Status**: Not started
+## Phase 3: Persistent Database (SQLite/Drift) ✅
+**Status**: Complete  
+**Date**: 2026-06-27
+
+| Sub-step | Description | Status |
+|---|---|---|
+| Dependency | Drift, sqlite3_flutter_libs, path_provider | ✅ |
+| Tables | Notifications, ReviewQueue, FocusSessions, DailyBrief tables | ✅ |
+| DAOs | NotificationDao, ReviewQueueDao, FocusSessionDao, DailyBriefDao | ✅ |
+| Storage | DriftNotificationStorage mapping AppNotification | ✅ |
+| Integration | Unified Riverpod providers & startup recovery loader | ✅ |
+| Expiry | Background auto-cleanup loop (7 days threshold) | ✅ |
+| Verification | 6/6 database unit tests passing successfully | ✅ |
+| Docs | `docs/phase3_database.md` | ✅ |
 
 ---
 
@@ -108,6 +120,7 @@
 |---|---|
 | `docs/phase1_foundation.md` | Capture pipeline |
 | `docs/phase2_ghost_ai.md` | Analysis engine |
+| `docs/phase3_database.md` | Persistent database |
 | `docs/phase5_presentation.md` | UI architecture |
 | `docs/phase6_premium_ux.md` | UX polish |
 | `docs/phase7_review_queue.md` | Review queue & sync |

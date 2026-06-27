@@ -9,6 +9,8 @@ import 'package:scope/core/storage/notification_storage.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/core/utils/focus_area_mapper.dart';
 import 'package:scope/core/state/providers.dart';
+import 'package:scope/database/database_provider.dart';
+import 'package:scope/database/drift_notification_storage.dart';
 
 /// Session stats collected during a Focus review.
 class ReviewSessionStats {
@@ -30,9 +32,9 @@ class NotificationController extends ChangeNotifier {
     GhostAnalysisEngine? engine,
     ProviderContainer? container,
   })  : _bridge = bridge ?? NotificationBridge(),
-        _storage = storage ?? InMemoryNotificationStorage(),
-        _engine = engine ?? GhostAnalysisEngine(),
-        _container = container ?? providerContainer {
+        _container = container ?? providerContainer,
+        _storage = storage ?? DriftNotificationStorage(container?.read(databaseProvider) ?? providerContainer.read(databaseProvider)),
+        _engine = engine ?? GhostAnalysisEngine() {
     _engine.initialize();
 
     // Listen to changes in Riverpod's reviewQueueProvider to keep legacy notifier list in sync
@@ -121,7 +123,10 @@ class NotificationController extends ChangeNotifier {
   void startPolling() {
     _pollTimer?.cancel();
     _checkPermissionAndFetch();
-    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) => fetchNotifications());
+    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      fetchNotifications();
+      runBackgroundCleanup();
+    });
   }
 
   void stopPolling() {
@@ -139,10 +144,29 @@ class NotificationController extends ChangeNotifier {
     _notifications = await _storage.getAll();
     if (_notifications.isNotEmpty) {
       final notifier = _container.read(reviewQueueProvider.notifier);
-      for (final n in _notifications) {
-        notifier.add(n);
-      }
+      notifier.load(_notifications);
       await notifier.rescore();
+    }
+  }
+
+  /// Cleans up old notifications (older than 7 days) and orphaned review queue items.
+  Future<void> runBackgroundCleanup() async {
+    try {
+      final cutoff = DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch;
+      await _storage.deleteOlderThan(cutoff);
+
+      final db = _container.read(databaseProvider);
+      final activeNotifications = await _storage.getAll();
+      final activeIds = activeNotifications.map((n) => n.id).toSet();
+
+      final queueEntries = await db.reviewQueueDao.getAll();
+      for (final entry in queueEntries) {
+        if (!activeIds.contains(entry.notificationId)) {
+          await db.reviewQueueDao.deleteItem(entry.notificationId);
+        }
+      }
+    } catch (_) {
+      // Silently handle errors to not interrupt UI
     }
   }
 

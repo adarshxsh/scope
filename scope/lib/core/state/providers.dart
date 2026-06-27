@@ -1,6 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
+import 'package:scope/database/attention_database.dart';
+import 'package:scope/database/database_provider.dart';
+import 'package:scope/database/drift_notification_storage.dart';
 
 enum QueueSortOrder {
   reviewScore,
@@ -9,7 +12,13 @@ enum QueueSortOrder {
 }
 
 class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
-  ReviewQueueNotifier() : super([]);
+  final AttentionDatabase? _db;
+  ReviewQueueNotifier([this._db]) : super([]);
+
+  /// Load a list of notifications directly (used on startup recovery).
+  void load(List<AppNotification> list) {
+    state = list;
+  }
 
   /// Add a notification to the review queue.
   /// Merges duplicate notifications (same packageName, title, content).
@@ -20,10 +29,11 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
         n.title == notification.title &&
         n.content == notification.content);
 
+    AppNotification newItem;
     if (index >= 0) {
       // Merge duplicate notification
       final existing = state[index];
-      final merged = notification.copyWith(
+      newItem = notification.copyWith(
         id: existing.id, // Preserve original ID
         state: ReviewState.ACTIVE, // Reset to ACTIVE
         snoozedUntil: null, // Clear snooze
@@ -31,21 +41,30 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
       );
       state = [
         for (int i = 0; i < state.length; i++)
-          if (i == index) merged else state[i]
+          if (i == index) newItem else state[i]
       ];
     } else {
       // Add new notification
-      final newItem = notification.copyWith(
+      newItem = notification.copyWith(
         state: ReviewState.ACTIVE,
         lastUpdated: now,
       );
       state = [...state, newItem];
+    }
+
+    // Persist to DB
+    if (_db != null) {
+      DriftNotificationStorage(_db!).save(newItem);
+      _saveQueueEntry(newItem);
     }
   }
 
   /// Remove a notification from the review queue entirely.
   void remove(String id) {
     state = state.where((n) => n.id != id).toList();
+    if (_db != null) {
+      _db!.reviewQueueDao.deleteItem(id);
+    }
   }
 
   /// Update a notification's fields in the queue.
@@ -54,6 +73,10 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
       for (final n in state)
         if (n.id == notification.id) notification else n
     ];
+    if (_db != null) {
+      DriftNotificationStorage(_db!).save(notification);
+      _saveQueueEntry(notification);
+    }
   }
 
   /// Mark a notification as reviewed (transition to REVIEWED state).
@@ -66,6 +89,11 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
         else
           n
     ];
+    if (_db != null) {
+      final item = state.firstWhere((n) => n.id == id);
+      DriftNotificationStorage(_db!).save(item);
+      _db!.reviewQueueDao.updateStatus(id, ReviewState.REVIEWED);
+    }
   }
 
   /// Manually update a notification's review state.
@@ -78,6 +106,11 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
         else
           n
     ];
+    if (_db != null) {
+      final item = state.firstWhere((n) => n.id == id);
+      DriftNotificationStorage(_db!).save(item);
+      _db!.reviewQueueDao.updateStatus(id, newState);
+    }
   }
 
   /// Archive a notification (transition to ARCHIVED state).
@@ -90,6 +123,11 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
         else
           n
     ];
+    if (_db != null) {
+      final item = state.firstWhere((n) => n.id == id);
+      DriftNotificationStorage(_db!).save(item);
+      _db!.reviewQueueDao.updateStatus(id, ReviewState.ARCHIVED);
+    }
   }
 
   /// Expire a notification (transition to EXPIRED state).
@@ -102,22 +140,33 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
         else
           n
     ];
+    if (_db != null) {
+      final item = state.firstWhere((n) => n.id == id);
+      DriftNotificationStorage(_db!).save(item);
+      _db!.reviewQueueDao.updateStatus(id, ReviewState.EXPIRED);
+    }
   }
 
   /// Snooze a notification for a specific duration.
   void snooze(String id, Duration duration) {
     final now = DateTime.now();
+    final snoozedUntil = now.add(duration);
     state = [
       for (final n in state)
         if (n.id == id)
           n.copyWith(
             state: ReviewState.SNOOZED,
-            snoozedUntil: now.add(duration),
+            snoozedUntil: snoozedUntil,
             lastUpdated: now,
           )
         else
           n
     ];
+    if (_db != null) {
+      final item = state.firstWhere((n) => n.id == id);
+      DriftNotificationStorage(_db!).save(item);
+      _saveQueueEntry(item, expiry: snoozedUntil);
+    }
   }
 
   /// Re-scores notifications and applies auto-expiry/cleanup rules.
@@ -186,6 +235,12 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
       }
 
       updated.add(updatedItem);
+
+      // Save updated items to DB
+      if (_db != null) {
+        await DriftNotificationStorage(_db!).save(updatedItem);
+        await _saveQueueEntry(updatedItem, expiry: updatedItem.snoozedUntil);
+      }
     }
 
     state = updated;
@@ -194,6 +249,21 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
   /// Clears all items in the queue (used for testing).
   void clear() {
     state = [];
+    if (_db != null) {
+      _db!.reviewQueueDao.clearAll();
+    }
+  }
+
+  Future<void> _saveQueueEntry(AppNotification n, {DateTime? expiry}) async {
+    if (_db == null) return;
+    await _db!.reviewQueueDao.insertItem(ReviewQueueEntry(
+      id: 0,
+      notificationId: n.id,
+      priority: n.priority ?? 'medium',
+      enqueueTime: DateTime.now(),
+      expiryTime: expiry,
+      status: n.state,
+    ));
   }
 
   bool _checkCompletedKeywords(String title, String content) {
@@ -213,7 +283,8 @@ ProviderContainer get providerContainer => _globalProviderContainerInstance ??= 
 
 // Providers
 final reviewQueueProvider = StateNotifierProvider<ReviewQueueNotifier, List<AppNotification>>((ref) {
-  return ReviewQueueNotifier();
+  final db = ref.watch(databaseProvider);
+  return ReviewQueueNotifier(db);
 });
 
 final reviewQueueSortOrderProvider = StateProvider<QueueSortOrder>((ref) {
