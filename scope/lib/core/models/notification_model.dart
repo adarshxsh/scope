@@ -96,14 +96,53 @@ class AppNotification {
     this.lastUpdated,
   });
 
+  /// Generates a stable unique ID based on notification properties.
+  static String generateStableId({
+    required String packageName,
+    required int timestamp,
+    required String title,
+    required String content,
+  }) {
+    final pkgHash = _stableHash(packageName);
+    final titleHash = _stableHash(title);
+    final contentHash = _stableHash(content);
+    return '${pkgHash}_${timestamp}_${titleHash}_${contentHash}';
+  }
+
+  static int _stableHash(String val) {
+    int hash = 5381;
+    for (int i = 0; i < val.length; i++) {
+      hash = ((hash << 5) + hash) + val.codeUnitAt(i);
+      hash = hash & 0xFFFFFFFF;
+    }
+    return hash;
+  }
+
   /// Creates an [AppNotification] from a Map (used by MethodChannel bridge).
   factory AppNotification.fromMap(Map<String, dynamic> map) {
+    final rawId = map['id'] as String? ?? '';
+    final packageName = map['packageName'] as String? ?? '';
+    final title = map['title'] as String? ?? '';
+    final content = map['content'] as String? ?? '';
+    final timestamp = map['timestamp'] as int? ?? 0;
+
+    final id = (rawId.isEmpty || rawId.startsWith('notif_'))
+        ? (packageName.isEmpty && title.isEmpty && content.isEmpty && timestamp == 0)
+            ? ''
+            : AppNotification.generateStableId(
+                packageName: packageName,
+                timestamp: timestamp,
+                title: title,
+                content: content,
+              )
+        : rawId;
+
     return AppNotification(
-      id: map['id'] as String? ?? '',
-      packageName: map['packageName'] as String? ?? '',
-      title: map['title'] as String? ?? '',
-      content: map['content'] as String? ?? '',
-      timestamp: map['timestamp'] as int? ?? 0,
+      id: id,
+      packageName: packageName,
+      title: title,
+      content: content,
+      timestamp: timestamp,
       category: map['category'] as String?,
       isOngoing: map['isOngoing'] as bool? ?? false,
       priority: map['priority'] as String?,

@@ -12,7 +12,7 @@ import 'package:scope/widgets/scope_card.dart';
 /// Dashboard home — answers "What should I do next?" not "What arrived?"
 class HomeScreen extends StatelessWidget {
   final NotificationController controller;
-  final void Function([FocusArea? area]) onStartFocus;
+  final void Function(FocusFilterType type, [FocusArea? area]) onStartFocus;
 
   const HomeScreen({
     super.key,
@@ -25,6 +25,14 @@ class HomeScreen extends StatelessWidget {
     if (width >= 900) return 4;
     if (width >= 600) return 3;
     return 2;
+  }
+
+  double _childAspectRatio(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    if (width < 360) return 0.95;
+    if (width < 420) return 1.05;
+    if (width < 600) return 1.15;
+    return 1.25;
   }
 
   @override
@@ -59,7 +67,7 @@ class HomeScreen extends StatelessWidget {
                           financialUpdateCount: controller.financialUpdateCount,
                           estimatedMinutes: controller.estimatedReviewMinutes,
                           canStartFocus: controller.reviewQueue.isNotEmpty,
-                          onStartFocus: () => onStartFocus(selectedFilter),
+                          onStartFocus: () => onStartFocus(controller.filterType, selectedFilter),
                         ),
                         if (hasData) ...[
                           const SizedBox(height: 24),
@@ -67,7 +75,15 @@ class HomeScreen extends StatelessWidget {
                             needsAction: controller.needsAction.length,
                             important: controller.important.length,
                             archived: controller.archivedNotifications.length,
-                            onQueueTap: (_) => onStartFocus(selectedFilter),
+                            onQueueTap: (queue) {
+                              if (queue == 'needs') {
+                                onStartFocus(FocusFilterType.needsAction);
+                              } else if (queue == 'important') {
+                                onStartFocus(FocusFilterType.important);
+                              } else if (queue == 'archived') {
+                                onStartFocus(FocusFilterType.archived);
+                              }
+                            },
                           ),
                           const SizedBox(height: 24),
                           ScopeCard(
@@ -113,7 +129,7 @@ class HomeScreen extends StatelessWidget {
                         crossAxisCount: _crossAxisCount(context),
                         mainAxisSpacing: 12,
                         crossAxisSpacing: 12,
-                        childAspectRatio: 1.25,
+                        childAspectRatio: _childAspectRatio(context),
                       ),
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {

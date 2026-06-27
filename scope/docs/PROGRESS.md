@@ -114,6 +114,23 @@
 
 ---
 
+## Phase 8: State Consistency, Notification Flow & UX Stabilization ✅
+**Status**: Complete  
+**Date**: 2026-06-27
+
+| Sub-step | Description | Status |
+|---|---|---|
+| ID Hashing | Process-stable DJB2 unique ID generator | ✅ |
+| Controller | Audit, single source of truth, filter methods | ✅ |
+| Ingestion | Incremental ingestion & duplicate prevention | ✅ |
+| Focus Cards | Home stats navigation sync & clickable filter areas | ✅ |
+| Layout | Responsive aspect ratio to fix bottom overflows | ✅ |
+| Focus Queue | State-controller managed queue & reordering skips | ✅ |
+| Docs | `docs/phase7_stabilization.md` | ✅ |
+| Verification | 3 new unit tests, 114/114 total tests passing | ✅ |
+
+---
+
 ## Documentation Index
 
 | Doc | Phase |
@@ -124,3 +141,4 @@
 | `docs/phase5_presentation.md` | UI architecture |
 | `docs/phase6_premium_ux.md` | UX polish |
 | `docs/phase7_review_queue.md` | Review queue & sync |
+| `docs/phase7_stabilization.md` | State & UX stabilization |

@@ -9,6 +9,8 @@ import 'package:scope/core/storage/notification_storage.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/core/utils/focus_area_mapper.dart';
 import 'package:scope/core/state/providers.dart';
+import 'package:drift/drift.dart';
+import 'package:scope/database/attention_database.dart';
 import 'package:scope/database/database_provider.dart';
 import 'package:scope/database/drift_notification_storage.dart';
 
@@ -22,6 +24,15 @@ class ReviewSessionStats {
 
   /// Rough estimate: ~45 seconds saved per reviewed notification.
   int get estimatedMinutesSaved => ((notificationsReviewed * 45) / 60).ceil();
+}
+
+/// Central state for notifications, user actions, and review sessions.
+enum FocusFilterType {
+  none,
+  needsAction,
+  important,
+  archived,
+  focusArea,
 }
 
 /// Central state for notifications, user actions, and review sessions.
@@ -58,13 +69,28 @@ class NotificationController extends ChangeNotifier {
   Timer? _pollTimer;
 
   ReviewSessionStats sessionStats = ReviewSessionStats();
+
+  FocusFilterType _filterType = FocusFilterType.none;
   FocusArea? _focusAreaFilter;
+  bool _initialLoadCompleted = false;
+
+  // Focus Session state
+  bool _inFocusSession = false;
+  List<String> _focusSessionQueueIds = [];
+  DateTime? _focusSessionStart;
+  int _focusSessionInterruptions = 0;
 
   List<AppNotification> get notifications => List.unmodifiable(_notifications);
+  FocusFilterType get filterType => _filterType;
   FocusArea? get focusAreaFilter => _focusAreaFilter;
   bool get isListenerEnabled => _isListenerEnabled;
   bool get isLoading => _isLoading;
   GhostAnalysisEngine get engine => _engine;
+
+  bool get inFocusSession => _inFocusSession;
+  List<String> get focusSessionQueueIds => List.unmodifiable(_focusSessionQueueIds);
+  DateTime? get focusSessionStart => _focusSessionStart;
+  int get focusSessionInterruptions => _focusSessionInterruptions;
 
   List<AppNotification> get activeNotifications =>
       _notifications.where((n) => n.state == ReviewState.ACTIVE).toList();
@@ -85,8 +111,26 @@ class NotificationController extends ChangeNotifier {
 
   List<AppNotification> get reviewQueue {
     final queue = _container.read(sortedReviewQueueProvider);
-    if (_focusAreaFilter == null) return queue;
-    return queue.where((n) => FocusAreaMapper.areaFor(n) == _focusAreaFilter).toList();
+    
+    switch (_filterType) {
+      case FocusFilterType.none:
+        return queue;
+      case FocusFilterType.needsAction:
+        return queue
+            .where((n) => n.priority == 'critical' || n.priority == 'high')
+            .toList();
+      case FocusFilterType.important:
+        return queue
+            .where((n) => n.priority == 'medium' || n.priority == null)
+            .toList();
+      case FocusFilterType.archived:
+        return archivedNotifications;
+      case FocusFilterType.focusArea:
+        if (_focusAreaFilter == null) return queue;
+        return queue
+            .where((n) => FocusAreaMapper.areaFor(n) == _focusAreaFilter)
+            .toList();
+    }
   }
 
   Map<FocusArea, int> get focusAreaCounts => FocusAreaMapper.countsFor(activeNotifications);
@@ -113,12 +157,106 @@ class NotificationController extends ChangeNotifier {
   List<AppNotification> notificationsForArea(FocusArea area) =>
       activeNotifications.where((n) => FocusAreaMapper.areaFor(n) == area).toList();
 
-  void setFocusAreaFilter(FocusArea? area) {
+  void setFilter(FocusFilterType type, [FocusArea? area]) {
+    _filterType = type;
     _focusAreaFilter = area;
     notifyListeners();
   }
 
-  void clearFocusAreaFilter() => setFocusAreaFilter(null);
+  void clearFilter() {
+    _filterType = FocusFilterType.none;
+    _focusAreaFilter = null;
+    notifyListeners();
+  }
+
+  void setFocusAreaFilter(FocusArea? area) {
+    if (area == null) {
+      clearFilter();
+    } else {
+      setFilter(FocusFilterType.focusArea, area);
+    }
+  }
+
+  void clearFocusAreaFilter() => clearFilter();
+
+  void startFocusSession() {
+    _inFocusSession = true;
+    _focusSessionQueueIds = reviewQueue.map((n) => n.id).toList();
+    _focusSessionStart = DateTime.now();
+    _focusSessionInterruptions = 0;
+    resetSessionStats();
+
+    final db = _container.read(databaseProvider);
+    db.focusSessionDao.insertSession(FocusSessionEntry(
+      id: 0,
+      sessionStart: _focusSessionStart!,
+      interruptions: 0,
+      completion: false,
+      duration: 0,
+    ));
+
+    notifyListeners();
+  }
+
+  void skipFocusSessionItem(String id) {
+    if (_focusSessionQueueIds.contains(id)) {
+      _focusSessionQueueIds.remove(id);
+      _focusSessionQueueIds.add(id);
+      notifyListeners();
+    }
+  }
+
+  void finishFocusSession() {
+    _inFocusSession = false;
+    final now = DateTime.now();
+    final durationSeconds = _focusSessionStart != null
+        ? now.difference(_focusSessionStart!).inSeconds
+        : 0;
+
+    final db = _container.read(databaseProvider);
+    db.focusSessionDao.getActiveSession().then((active) {
+      if (active != null) {
+        db.focusSessionDao.updateSession(active.copyWith(
+          sessionEnd: Value(now),
+          completion: true,
+          duration: durationSeconds,
+          interruptions: _focusSessionInterruptions,
+        ));
+      }
+    });
+
+    _focusSessionQueueIds.clear();
+    clearFilter();
+    notifyListeners();
+  }
+
+  void recordFocusInterruption() {
+    if (_inFocusSession) {
+      _focusSessionInterruptions++;
+      notifyListeners();
+    }
+  }
+
+  int get focusSessionProgressCount {
+    int count = 0;
+    for (final id in _focusSessionQueueIds) {
+      final isStillActive = reviewQueue.any((n) => n.id == id);
+      if (!isStillActive) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  AppNotification? get currentFocusNotification {
+    for (final id in _focusSessionQueueIds) {
+      final index = reviewQueue.indexWhere((n) => n.id == id);
+      if (index >= 0) {
+        return reviewQueue[index];
+      }
+    }
+    return null;
+  }
 
   void startPolling() {
     _pollTimer?.cancel();
@@ -147,6 +285,7 @@ class NotificationController extends ChangeNotifier {
       notifier.load(_notifications);
       await notifier.rescore();
     }
+    _initialLoadCompleted = true;
   }
 
   /// Cleans up old notifications (older than 7 days) and orphaned review queue items.
@@ -181,28 +320,22 @@ class NotificationController extends ChangeNotifier {
     try {
       final newNotifications = await _bridge.getNotifications();
       final analyzed = <AppNotification>[];
-      final existing = await _storage.getAll();
+
+      if (!_initialLoadCompleted) {
+        await _loadInitialNotifications();
+      }
 
       for (final raw in newNotifications) {
-        // Find if there is an existing notification with the same package, title, and content
-        AppNotification? duplicate;
-        for (final n in existing) {
-          if (n.packageName == raw.packageName &&
-              n.title == raw.title &&
-              n.content == raw.content) {
-            duplicate = n;
-            break;
-          }
-        }
+        final isDuplicate = _notifications.any((n) =>
+            n.packageName == raw.packageName &&
+            n.timestamp == raw.timestamp &&
+            n.title == raw.title &&
+            n.content == raw.content);
 
-        if (duplicate != null) {
-          // If duplicate exists, preserve its ID to overwrite/upsert it instead of making a redundant row
-          final updated = raw.copyWith(id: duplicate.id);
-          analyzed.add(await _engine.analyze(updated));
-        } else {
-          // Ensure we don't insert duplicates within the current incoming batch
+        if (!isDuplicate) {
           final inBatch = analyzed.any((n) =>
               n.packageName == raw.packageName &&
+              n.timestamp == raw.timestamp &&
               n.title == raw.title &&
               n.content == raw.content);
           if (!inBatch) {
@@ -213,14 +346,11 @@ class NotificationController extends ChangeNotifier {
 
       if (analyzed.isNotEmpty) {
         await _storage.saveAll(analyzed);
+        final loaded = await _storage.getAll();
+        final notifier = _container.read(reviewQueueProvider.notifier);
+        notifier.load(loaded);
+        await notifier.rescore();
       }
-      final loaded = await _storage.getAll();
-      
-      final notifier = _container.read(reviewQueueProvider.notifier);
-      for (final item in loaded) {
-        notifier.add(item);
-      }
-      await notifier.rescore();
 
       _isLoading = false;
       notifyListeners();
@@ -234,25 +364,18 @@ class NotificationController extends ChangeNotifier {
     final generator = TestNotificationGenerator();
     final testNotifs = generator.generateAll();
     final analyzed = <AppNotification>[];
-    final existing = await _storage.getAll();
 
     for (final raw in testNotifs) {
-      AppNotification? duplicate;
-      for (final n in existing) {
-        if (n.packageName == raw.packageName &&
-            n.title == raw.title &&
-            n.content == raw.content) {
-          duplicate = n;
-          break;
-        }
-      }
+      final isDuplicate = _notifications.any((n) =>
+          n.packageName == raw.packageName &&
+          n.timestamp == raw.timestamp &&
+          n.title == raw.title &&
+          n.content == raw.content);
 
-      if (duplicate != null) {
-        final updated = raw.copyWith(id: duplicate.id);
-        analyzed.add(await _engine.analyze(updated));
-      } else {
+      if (!isDuplicate) {
         final inBatch = analyzed.any((n) =>
             n.packageName == raw.packageName &&
+            n.timestamp == raw.timestamp &&
             n.title == raw.title &&
             n.content == raw.content);
         if (!inBatch) {
@@ -261,14 +384,13 @@ class NotificationController extends ChangeNotifier {
       }
     }
 
-    await _storage.saveAll(analyzed);
-    final loaded = await _storage.getAll();
-    
-    final notifier = _container.read(reviewQueueProvider.notifier);
-    for (final item in loaded) {
-      notifier.add(item);
+    if (analyzed.isNotEmpty) {
+      await _storage.saveAll(analyzed);
+      final loaded = await _storage.getAll();
+      final notifier = _container.read(reviewQueueProvider.notifier);
+      notifier.load(loaded);
+      await notifier.rescore();
     }
-    await notifier.rescore();
 
     notifyListeners();
   }
@@ -278,6 +400,8 @@ class NotificationController extends ChangeNotifier {
     _container.read(reviewQueueProvider.notifier).clear();
     _notifications = [];
     sessionStats = ReviewSessionStats();
+    _focusSessionQueueIds.clear();
+    clearFilter();
     notifyListeners();
   }
 
@@ -342,7 +466,30 @@ class NotificationController extends ChangeNotifier {
   List<AppNotification> search(String query) {
     if (query.trim().isEmpty) return [];
     final q = query.toLowerCase();
-    return _notifications.where((n) {
+
+    List<AppNotification> targetList;
+    switch (_filterType) {
+      case FocusFilterType.needsAction:
+        targetList = needsAction;
+        break;
+      case FocusFilterType.important:
+        targetList = important;
+        break;
+      case FocusFilterType.archived:
+        targetList = archivedNotifications;
+        break;
+      case FocusFilterType.focusArea:
+        if (_focusAreaFilter != null) {
+          targetList = notificationsForArea(_focusAreaFilter!);
+        } else {
+          targetList = _notifications;
+        }
+        break;
+      default:
+        targetList = _notifications;
+    }
+
+    return targetList.where((n) {
       return n.title.toLowerCase().contains(q) ||
           n.content.toLowerCase().contains(q) ||
           n.packageName.toLowerCase().contains(q);
