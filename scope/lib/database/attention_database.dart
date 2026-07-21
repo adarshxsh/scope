@@ -33,6 +33,23 @@ class AttentionDatabase extends _$AttentionDatabase {
 
   @override
   int get schemaVersion => 1;
+
+  /// Runs a single-step atomic transaction to clean up expired notifications
+  /// and any orphaned review queue entries, avoiding main-thread loops.
+  Future<void> runSetBasedCleanup(int cutoffTimestamp) async {
+    await transaction(() async {
+      // 1. Delete expired notifications based on cutoff timestamp
+      await (delete(notificationsTable)..where((t) => t.timestamp.isSmallerThanValue(cutoffTimestamp))).go();
+
+      // 2. Delete orphaned review queue entries in a set-based query
+      final orphanedQuery = delete(reviewQueueTable)..where((t) {
+        final hasNotification = selectOnly(notificationsTable)
+          ..addColumns([notificationsTable.id]);
+        return t.notificationId.isNotInQuery(hasNotification);
+      });
+      await orphanedQuery.go();
+    });
+  }
 }
 
 QueryExecutor _openConnection() {

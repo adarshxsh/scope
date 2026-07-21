@@ -68,6 +68,8 @@ class NotificationController extends ChangeNotifier {
   bool _isListenerEnabled = false;
   bool _isLoading = true;
   Timer? _pollTimer;
+  Timer? _cleanupTimer;
+  bool _isCleaningUp = false;
 
   ReviewSessionStats sessionStats = ReviewSessionStats();
 
@@ -291,7 +293,6 @@ class NotificationController extends ChangeNotifier {
     _checkPermissionAndFetch();
     _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       fetchNotifications();
-      runBackgroundCleanup();
     });
   }
 
@@ -306,6 +307,7 @@ class NotificationController extends ChangeNotifier {
   void dispose() {
     _isDisposed = true;
     stopPolling();
+    _cleanupTimer?.cancel();
     super.dispose();
   }
 
@@ -332,26 +334,40 @@ class NotificationController extends ChangeNotifier {
     _initialLoadCompleted = true;
     _isLoading = false;
     notifyListeners();
+
+    // Trigger initial cleanup once on startup
+    runBackgroundCleanup();
+    
+    // Set up daily cleanup timer
+    _cleanupTimer?.cancel();
+    _cleanupTimer = Timer.periodic(const Duration(hours: 24), (_) {
+      runBackgroundCleanup();
+    });
   }
 
   /// Cleans up old notifications (older than 7 days) and orphaned review queue items.
   Future<void> runBackgroundCleanup() async {
+    if (_isCleaningUp) return;
+
     try {
-      final cutoff = DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch;
-      await _storage.deleteOlderThan(cutoff);
-
-      final db = _container.read(databaseProvider);
-      final activeNotifications = await _storage.getAll();
-      final activeIds = activeNotifications.map((n) => n.id).toSet();
-
-      final queueEntries = await db.reviewQueueDao.getAll();
-      for (final entry in queueEntries) {
-        if (!activeIds.contains(entry.notificationId)) {
-          await db.reviewQueueDao.deleteItem(entry.notificationId);
-        }
+      _isCleaningUp = true;
+      
+      // Defer execution if user is engaged in active focus session interactions
+      while (_inFocusSession) {
+        await Future.delayed(const Duration(minutes: 5));
+        if (_isDisposed) return;
       }
+
+      final cutoff = DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch;
+      final db = _container.read(databaseProvider);
+      
+      // Execute the single-step atomic transaction
+      await db.runSetBasedCleanup(cutoff);
+
     } catch (_) {
       // Silently handle errors to not interrupt UI
+    } finally {
+      _isCleaningUp = false;
     }
   }
 

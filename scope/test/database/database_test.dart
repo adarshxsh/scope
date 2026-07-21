@@ -201,5 +201,77 @@ void main() {
       expect(all.length, equals(1));
       expect(all.first.id, equals('n-new'));
     });
+
+    test('runSetBasedCleanup removes expired notifications and orphaned review queue items', () async {
+      final oldTime = DateTime.now().subtract(const Duration(days: 10)).millisecondsSinceEpoch;
+      final newTime = DateTime.now().millisecondsSinceEpoch;
+
+      final nOld = NotificationEntry(
+        id: 'n-old',
+        packageName: 'whatsapp',
+        title: 'Old',
+        content: 'Body',
+        timestamp: oldTime,
+        state: ReviewState.ACTIVE,
+        reviewed: false,
+        dismissed: false,
+        isOngoing: false,
+        createdAt: DateTime.now(),
+      );
+
+      final nNew = NotificationEntry(
+        id: 'n-new',
+        packageName: 'whatsapp',
+        title: 'New',
+        content: 'Body',
+        timestamp: newTime,
+        state: ReviewState.ACTIVE,
+        reviewed: false,
+        dismissed: false,
+        isOngoing: false,
+        createdAt: DateTime.now(),
+      );
+
+      await db.notificationDao.insertNotification(nOld);
+      await db.notificationDao.insertNotification(nNew);
+
+      await db.reviewQueueDao.insertItem(ReviewQueueEntry(
+        id: 1,
+        notificationId: 'n-old',
+        priority: 'high',
+        enqueueTime: DateTime.now(),
+        status: ReviewState.ACTIVE,
+      ));
+      
+      await db.reviewQueueDao.insertItem(ReviewQueueEntry(
+        id: 2,
+        notificationId: 'n-new',
+        priority: 'high',
+        enqueueTime: DateTime.now(),
+        status: ReviewState.ACTIVE,
+      ));
+
+      // This one is already orphaned before cleanup
+      await db.reviewQueueDao.insertItem(ReviewQueueEntry(
+        id: 3,
+        notificationId: 'n-missing',
+        priority: 'low',
+        enqueueTime: DateTime.now(),
+        status: ReviewState.ACTIVE,
+      ));
+
+      final cutoff = DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch;
+      await db.runSetBasedCleanup(cutoff);
+
+      final notifications = await db.notificationDao.getAll();
+      expect(notifications.length, equals(1));
+      expect(notifications.first.id, equals('n-new'));
+
+      final queueItems = await db.reviewQueueDao.getAll();
+      expect(queueItems.length, equals(1));
+      // Only the new one should remain, old one deleted due to notification expiry
+      // Missing one deleted due to being orphaned
+      expect(queueItems.first.notificationId, equals('n-new'));
+    });
   });
 }
