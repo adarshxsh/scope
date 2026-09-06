@@ -273,5 +273,50 @@ void main() {
       // Missing one deleted due to being orphaned
       expect(queueItems.first.notificationId, equals('n-new'));
     });
+
+    test('NotificationDao enforceMaxRows caps entries and cleans up review queue orphans', () async {
+      final now = DateTime.now();
+      for (int i = 1; i <= 5; i++) {
+        await db.notificationDao.insertNotification(NotificationEntry(
+          id: 'n$i',
+          packageName: 'whatsapp',
+          title: 'Title $i',
+          content: 'Content $i',
+          timestamp: 1000 * i,
+          state: ReviewState.ACTIVE,
+          reviewed: false,
+          dismissed: false,
+          isOngoing: false,
+          createdAt: now.add(Duration(seconds: i)),
+        ));
+
+        await db.reviewQueueDao.insertItem(ReviewQueueEntry(
+          id: i,
+          notificationId: 'n$i',
+          priority: 'high',
+          enqueueTime: now,
+          status: ReviewState.ACTIVE,
+        ));
+      }
+
+      expect((await db.notificationDao.getAll()).length, equals(5));
+      expect((await db.reviewQueueDao.getAll()).length, equals(5));
+
+      // Enforce cap of 3
+      final evicted = await db.notificationDao.enforceMaxRows(3);
+      expect(evicted, equals(2));
+
+      final remaining = await db.notificationDao.getAll();
+      expect(remaining.length, equals(3));
+      final remainingIds = remaining.map((e) => e.id).toList();
+      expect(remainingIds, containsAll(['n3', 'n4', 'n5']));
+      expect(remainingIds, isNot(contains('n1')));
+      expect(remainingIds, isNot(contains('n2')));
+
+      final remainingQueue = await db.reviewQueueDao.getAll();
+      expect(remainingQueue.length, equals(3));
+      final remainingQueueNotificationIds = remainingQueue.map((e) => e.notificationId).toList();
+      expect(remainingQueueNotificationIds, containsAll(['n3', 'n4', 'n5']));
+    });
   });
 }
