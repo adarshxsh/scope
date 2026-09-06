@@ -273,5 +273,49 @@ void main() {
       // Missing one deleted due to being orphaned
       expect(queueItems.first.notificationId, equals('n-new'));
     });
+
+    test('runSetBasedCleanup leaves notifications containing user feedback intact', () async {
+      final oldTime = DateTime.now().subtract(const Duration(days: 10)).millisecondsSinceEpoch;
+
+      final nOldNormal = NotificationEntry(
+        id: 'n-old-normal',
+        packageName: 'whatsapp',
+        title: 'Old Normal',
+        content: 'Body',
+        timestamp: oldTime,
+        state: ReviewState.ACTIVE,
+        reviewed: false,
+        dismissed: false,
+        isOngoing: false,
+        createdAt: DateTime.now(),
+      );
+
+      final nOldWithFeedback = NotificationEntry(
+        id: 'n-old-feedback',
+        packageName: 'whatsapp',
+        title: 'Old Feedback',
+        content: 'Body',
+        timestamp: oldTime,
+        state: ReviewState.ACTIVE,
+        reviewed: true,
+        dismissed: false,
+        isOngoing: false,
+        createdAt: DateTime.now(),
+        userRating: 1,
+        targetLabel: 'critical',
+      );
+
+      await db.notificationDao.insertNotification(nOldNormal);
+      await db.notificationDao.insertNotification(nOldWithFeedback);
+
+      final cutoff = DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch;
+      await db.runSetBasedCleanup(cutoff);
+
+      final remaining = await db.notificationDao.getAll();
+      expect(remaining.length, equals(1));
+      expect(remaining.first.id, equals('n-old-feedback'));
+      expect(remaining.first.userRating, equals(1));
+      expect(remaining.first.targetLabel, equals('critical'));
+    });
   });
 }
