@@ -320,20 +320,16 @@ class NotificationController extends ChangeNotifier {
 
   Future<void> _loadInitialNotifications() async {
     if (_initialLoadCompleted) return;
-    final loaded = await _storage.getAll();
-    if (_initialLoadCompleted) return;
 
-    if (_notifications.isEmpty) {
-      _notifications = loaded;
+    try {
+      await _loadInitialNotificationsInternal().timeout(const Duration(seconds: 5));
+    } catch (e, st) {
+      debugPrint('NotificationController: Cold-start notification load error or timeout: $e\n$st');
+    } finally {
+      _initialLoadCompleted = true;
+      _isLoading = false;
+      notifyListeners();
     }
-    if (_notifications.isNotEmpty) {
-      final notifier = _container.read(reviewQueueProvider.notifier);
-      notifier.load(_notifications);
-      await notifier.rescore();
-    }
-    _initialLoadCompleted = true;
-    _isLoading = false;
-    notifyListeners();
 
     // Trigger initial cleanup once on startup
     runBackgroundCleanup();
@@ -343,6 +339,20 @@ class NotificationController extends ChangeNotifier {
     _cleanupTimer = Timer.periodic(const Duration(hours: 24), (_) {
       runBackgroundCleanup();
     });
+  }
+
+  Future<void> _loadInitialNotificationsInternal() async {
+    final loaded = await _storage.getAll();
+    if (_initialLoadCompleted) return;
+
+    if (_notifications.isEmpty) {
+      _notifications = loaded;
+    }
+    if (_notifications.isNotEmpty) {
+      final notifier = _container.read(reviewQueueProvider.notifier);
+      notifier.load(_notifications);
+      await notifier.rescore(isStartup: true);
+    }
   }
 
   /// Cleans up old notifications (older than 7 days) and orphaned review queue items.
