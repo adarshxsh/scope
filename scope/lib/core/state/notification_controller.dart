@@ -6,6 +6,7 @@ import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/storage/notification_storage.dart';
+import 'package:scope/core/telemetry/telemetry_sanitizer.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/core/utils/focus_area_mapper.dart';
 import 'package:scope/core/utils/smart_actions.dart';
@@ -43,10 +44,12 @@ class NotificationController extends ChangeNotifier {
     NotificationStorage? storage,
     GhostAnalysisEngine? engine,
     ProviderContainer? container,
+    TelemetrySanitizationMiddleware? middleware,
   })  : _bridge = bridge ?? NotificationBridge(),
         _container = container ?? providerContainer,
         _storage = storage ?? DriftNotificationStorage(container?.read(databaseProvider) ?? providerContainer.read(databaseProvider)),
-        _engine = engine ?? GhostAnalysisEngine() {
+        _engine = engine ?? GhostAnalysisEngine(),
+        _middleware = middleware ?? TelemetrySanitizationMiddleware() {
     _engine.initialize();
 
     // Listen to changes in Riverpod's reviewQueueProvider to keep legacy notifier list in sync
@@ -63,6 +66,9 @@ class NotificationController extends ChangeNotifier {
   final NotificationStorage _storage;
   final GhostAnalysisEngine _engine;
   final ProviderContainer _container;
+  final TelemetrySanitizationMiddleware _middleware;
+
+  TelemetrySanitizationMiddleware get middleware => _middleware;
 
   List<AppNotification> _notifications = [];
   bool _isListenerEnabled = false;
@@ -200,13 +206,16 @@ class NotificationController extends ChangeNotifier {
     resetSessionStats();
 
     final db = _container.read(databaseProvider);
-    db.focusSessionDao.insertSession(FocusSessionEntry(
-      id: 0,
-      sessionStart: _focusSessionStart!,
-      interruptions: 0,
-      completion: false,
-      duration: 0,
-    ));
+    db.focusSessionDao.insertSanitizedSession(
+      FocusSessionEntry(
+        id: 0,
+        sessionStart: _focusSessionStart!,
+        interruptions: 0,
+        completion: false,
+        duration: 0,
+      ),
+      middleware: _middleware,
+    );
 
     notifyListeners();
   }
@@ -229,17 +238,21 @@ class NotificationController extends ChangeNotifier {
     final db = _container.read(databaseProvider);
     db.focusSessionDao.getActiveSession().then((active) {
       if (active != null) {
-        db.focusSessionDao.updateSession(active.copyWith(
-          sessionEnd: Value(now),
-          completion: true,
-          duration: durationSeconds,
-          interruptions: _focusSessionInterruptions,
-        ));
+        db.focusSessionDao.updateSanitizedSession(
+          active.copyWith(
+            sessionEnd: Value(now),
+            completion: true,
+            interruptions: _focusSessionInterruptions,
+          ),
+          rawDurationSeconds: durationSeconds,
+          middleware: _middleware,
+        );
       }
     });
 
     _focusSessionQueueIds.clear();
     clearFilter();
+    _persistDailyEngagementMetrics();
     notifyListeners();
   }
 
@@ -474,10 +487,39 @@ class NotificationController extends ChangeNotifier {
 
   void openNotificationSettings() => _bridge.openNotificationSettings();
 
+  DailyEngagementMetrics get currentDailyMetrics => DailyEngagementMetrics(
+        notificationsReviewed: sessionStats.notificationsReviewed,
+        actionsCompleted: sessionStats.actionsCompleted,
+        calendarEventsCreated: sessionStats.calendarEventsCreated,
+        remindersCreated: sessionStats.remindersCreated,
+        archivedCount: sessionStats.archived,
+      );
+
+  DailyEngagementMetrics get sanitizedDailySummary => _middleware.sanitizeMetrics(currentDailyMetrics);
+
+  Future<void> _persistDailyEngagementMetrics() async {
+    final db = _container.read(databaseProvider);
+    final today = _formatTodayDate();
+    await db.dailyBriefDao.saveSanitizedBrief(
+      today,
+      currentDailyMetrics,
+      middleware: _middleware,
+    );
+  }
+
+  String _formatTodayDate() {
+    final now = DateTime.now();
+    final year = now.year.toString().padLeft(4, '0');
+    final month = now.month.toString().padLeft(2, '0');
+    final day = now.day.toString().padLeft(2, '0');
+    return '$year-$month-$day';
+  }
+
   void archive(String id) {
     _container.read(reviewQueueProvider.notifier).archive(id);
     _savedActionItems.removeWhere((item) => item.notification.id == id);
     sessionStats.archived++;
+    _persistDailyEngagementMetrics();
     notifyListeners();
   }
 
@@ -485,6 +527,7 @@ class NotificationController extends ChangeNotifier {
     _container.read(reviewQueueProvider.notifier).reviewed(id);
     _savedActionItems.removeWhere((item) => item.notification.id == id);
     sessionStats.actionsCompleted++;
+    _persistDailyEngagementMetrics();
     notifyListeners();
   }
 
@@ -495,21 +538,25 @@ class NotificationController extends ChangeNotifier {
 
   void recordCalendarEvent() {
     sessionStats.calendarEventsCreated++;
+    _persistDailyEngagementMetrics();
     notifyListeners();
   }
 
   void recordReminder() {
     sessionStats.remindersCreated++;
+    _persistDailyEngagementMetrics();
     notifyListeners();
   }
 
   void recordReviewed() {
     sessionStats.notificationsReviewed++;
+    _persistDailyEngagementMetrics();
     notifyListeners();
   }
 
   void recordAction() {
     sessionStats.actionsCompleted++;
+    _persistDailyEngagementMetrics();
     notifyListeners();
   }
 
