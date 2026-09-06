@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:scope/core/analysis/ghost_ai.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
 import 'package:scope/core/models/notification_model.dart';
@@ -73,6 +74,11 @@ class NotificationController extends ChangeNotifier {
 
   ReviewSessionStats sessionStats = ReviewSessionStats();
 
+  // Governance & Preferences state
+  int _retentionDays = 7;
+  bool _telemetryLoggingEnabled = true;
+  int _storageQuotaCap = 1000;
+
   FocusFilterType _filterType = FocusFilterType.none;
   FocusArea? _focusAreaFilter;
   bool _initialLoadCompleted = false;
@@ -93,6 +99,31 @@ class NotificationController extends ChangeNotifier {
   bool get isListenerEnabled => _isListenerEnabled;
   bool get isLoading => _isLoading;
   GhostAnalysisEngine get engine => _engine;
+
+  int get retentionDays => _retentionDays;
+  bool get telemetryLoggingEnabled => _telemetryLoggingEnabled;
+  int get storageQuotaCap => _storageQuotaCap;
+
+  Future<void> setRetentionDays(int days) async {
+    if (_retentionDays == days) return;
+    _retentionDays = days;
+    notifyListeners();
+    await runBackgroundCleanup();
+  }
+
+  Future<void> setTelemetryLoggingEnabled(bool enabled) async {
+    if (_telemetryLoggingEnabled == enabled) return;
+    _telemetryLoggingEnabled = enabled;
+    GhostAI.instance.isTelemetryLoggingEnabled = enabled;
+    notifyListeners();
+  }
+
+  Future<void> setStorageQuotaCap(int quotaCap) async {
+    if (_storageQuotaCap == quotaCap) return;
+    _storageQuotaCap = quotaCap;
+    notifyListeners();
+    await runBackgroundCleanup();
+  }
 
   bool get inFocusSession => _inFocusSession;
   List<String> get focusSessionQueueIds => List.unmodifiable(_focusSessionQueueIds);
@@ -345,7 +376,7 @@ class NotificationController extends ChangeNotifier {
     });
   }
 
-  /// Cleans up old notifications (older than 7 days) and orphaned review queue items.
+  /// Cleans up old notifications (based on retention window) and enforces storage quota caps atomically.
   Future<void> runBackgroundCleanup() async {
     if (_isCleaningUp) return;
 
@@ -358,11 +389,30 @@ class NotificationController extends ChangeNotifier {
         if (_isDisposed) return;
       }
 
-      final cutoff = DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch;
+      final cutoff = DateTime.now().subtract(Duration(days: _retentionDays)).millisecondsSinceEpoch;
       final db = _container.read(databaseProvider);
       
       // Execute the single-step atomic transaction
-      await db.runSetBasedCleanup(cutoff);
+      await db.runSetBasedCleanup(cutoff, maxQuota: _storageQuotaCap);
+
+      // Re-sync in-memory storage if in-memory backend is used directly
+      await _storage.deleteOlderThan(cutoff);
+      if (_storageQuotaCap > 0) {
+        final allInMem = await _storage.getAll();
+        if (allInMem.length > _storageQuotaCap) {
+          final itemsToKeep = allInMem.take(_storageQuotaCap).toList();
+          await _storage.clear();
+          await _storage.saveAll(itemsToKeep);
+        }
+      }
+
+      // Reload notifications from storage to sync in-memory state with DB cleanup
+      final loaded = await _storage.getAll();
+      _notifications = loaded;
+      final notifier = _container.read(reviewQueueProvider.notifier);
+      notifier.load(_notifications);
+      await notifier.rescore();
+      notifyListeners();
 
     } catch (_) {
       // Silently handle errors to not interrupt UI

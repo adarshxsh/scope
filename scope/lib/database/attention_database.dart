@@ -34,14 +34,35 @@ class AttentionDatabase extends _$AttentionDatabase {
   @override
   int get schemaVersion => 1;
 
-  /// Runs a single-step atomic transaction to clean up expired notifications
-  /// and any orphaned review queue entries, avoiding main-thread loops.
-  Future<void> runSetBasedCleanup(int cutoffTimestamp) async {
+  /// Runs a single-step atomic transaction to clean up expired notifications,
+  /// enforce storage quota caps, and purge any orphaned review queue entries.
+  Future<void> runSetBasedCleanup(int cutoffTimestamp, {int? maxQuota}) async {
     await transaction(() async {
       // 1. Delete expired notifications based on cutoff timestamp
       await (delete(notificationsTable)..where((t) => t.timestamp.isSmallerThanValue(cutoffTimestamp))).go();
 
-      // 2. Delete orphaned review queue entries in a set-based query
+      // 2. Enforce max row-count storage quota cap if specified
+      if (maxQuota != null && maxQuota > 0) {
+        final countExpr = notificationsTable.id.count();
+        final countQuery = selectOnly(notificationsTable)..addColumns([countExpr]);
+        final row = await countQuery.getSingle();
+        final totalCount = row.read(countExpr) ?? 0;
+
+        if (totalCount > maxQuota) {
+          final excess = totalCount - maxQuota;
+          final oldestQuery = select(notificationsTable)
+            ..orderBy([(t) => OrderingTerm(expression: t.timestamp, mode: OrderingMode.asc)])
+            ..limit(excess);
+          final oldestEntries = await oldestQuery.get();
+          final oldestIds = oldestEntries.map((e) => e.id).toList();
+
+          if (oldestIds.isNotEmpty) {
+            await (delete(notificationsTable)..where((t) => t.id.isIn(oldestIds))).go();
+          }
+        }
+      }
+
+      // 3. Delete orphaned review queue entries in a set-based query
       final orphanedQuery = delete(reviewQueueTable)..where((t) {
         final hasNotification = selectOnly(notificationsTable)
           ..addColumns([notificationsTable.id]);
