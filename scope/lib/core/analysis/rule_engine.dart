@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/utils/privacy_logger.dart';
 
 /// Condition definition for a notification classification rule.
 class RuleCondition {
@@ -121,8 +122,7 @@ class RuleEngine {
         _rules.insertAll(0, customRules);
       }
     } catch (e) {
-      // ignore: avoid_print
-      print('Failed to load custom RLHF rules: $e');
+      PrivacyLogger.log('Failed to load custom RLHF rules: $e');
     }
   }
 
@@ -137,8 +137,7 @@ class RuleEngine {
       final file = File('${dir.path}/rlhf_rules.json');
       await file.writeAsString(json.encode(list));
     } catch (e) {
-      // ignore: avoid_print
-      print('Failed to save custom RLHF rules: $e');
+      PrivacyLogger.log('Failed to save custom RLHF rules: $e');
     }
   }
 
