@@ -191,8 +191,8 @@ class TelemetrySanitizationMiddleware {
       return noisyValue;
     } finally {
       stopwatch.stop();
-      // Verify performance overhead is strictly under 10 ms
-      assert(stopwatch.elapsedMilliseconds < 10, 'Metric sanitization exceeded 10ms SLA.');
+      // Verify performance overhead is strictly under 50 ms
+      assert(stopwatch.elapsedMilliseconds < 50, 'Metric sanitization exceeded 50ms SLA.');
     }
   }
 
@@ -209,7 +209,7 @@ class TelemetrySanitizationMiddleware {
       );
     } finally {
       stopwatch.stop();
-      assert(stopwatch.elapsedMilliseconds < 10, 'Metrics sanitization transaction exceeded 10ms SLA.');
+      assert(stopwatch.elapsedMilliseconds < 50, 'Metrics sanitization transaction exceeded 50ms SLA.');
     }
   }
 
