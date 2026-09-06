@@ -101,7 +101,7 @@ class NotificationFeatureInput {
 
 /// Fixed-width numerical feature vector ready for TensorFlow Lite inference.
 class FeatureVector {
-  static const List<String> featureNames = [
+  static List<String> featureNames = [
     'title_length',
     'body_length',
     'word_count',
@@ -167,16 +167,19 @@ class FeatureVector {
     'category_id',
   ];
 
-  static const int size = 63;
+  static int get size => featureNames.length;
 
   final List<double> values;
+  final List<String> _names;
 
-  FeatureVector(Iterable<double> values) : values = List.unmodifiable(values) {
-    if (this.values.length != size) {
+  FeatureVector(Iterable<double> values, {List<String>? names})
+      : values = List.unmodifiable(values),
+        _names = List.unmodifiable(names ?? featureNames) {
+    if (this.values.length != _names.length) {
       throw ArgumentError.value(
         this.values.length,
         'values.length',
-        'FeatureVector must contain exactly $size values.',
+        'FeatureVector must contain exactly ${_names.length} values.',
       );
     }
     if (this.values.any((value) => value.isNaN || value.isInfinite)) {
@@ -187,8 +190,22 @@ class FeatureVector {
   List<double> toList() => List<double>.from(values, growable: false);
 
   Map<String, double> toNamedMap() => {
-    for (var i = 0; i < featureNames.length; i++) featureNames[i]: values[i],
-  };
+        for (var i = 0; i < _names.length; i++) _names[i]: values[i],
+      };
+
+  double? getValue(String name) {
+    final index = _names.indexOf(name);
+    if (index == -1) return null;
+    return values[index];
+  }
+
+  double operator [](String name) {
+    final val = getValue(name);
+    if (val == null) {
+      throw ArgumentError('Feature "$name" not found in FeatureVector.');
+    }
+    return val;
+  }
 }
 
 /// Deterministic notification feature extraction for TFLite inference.
@@ -538,6 +555,7 @@ class FeatureExtractor {
     AppNotification notification, {
     String appName = '',
     AndroidNotificationMetadata? android,
+    List<String>? targetFeatureNames,
   }) {
     return extractVector(
       NotificationFeatureInput.fromAppNotification(
@@ -545,11 +563,15 @@ class FeatureExtractor {
         appName: appName,
         android: android,
       ),
+      targetFeatureNames: targetFeatureNames,
     ).toList();
   }
 
   /// Extracts a fixed-width numerical feature vector from normalized input.
-  static FeatureVector extractVector(NotificationFeatureInput notification) {
+  static FeatureVector extractVector(
+    NotificationFeatureInput notification, {
+    List<String>? targetFeatureNames,
+  }) {
     final title = normalize(notification.title);
     final body = normalize(notification.body);
     final combined = normalize('$title $body');
@@ -593,82 +615,85 @@ class FeatureExtractor {
       intentId,
     );
 
-    final values = [
-      title.runes.length.toDouble(),
-      body.runes.length.toDouble(),
-      _wordRegex.allMatches(combined).length.toDouble(),
-      letters == 0 ? 0.0 : uppercase / letters,
-      digits / textUnitCount,
-      _emojiRegex.allMatches(combined).length.toDouble(),
-      _punctuationRegex.allMatches(combined).length.toDouble(),
-      _bool(combined.contains('?')),
-      _bool(combined.contains('!')),
-      _bool(_currencySymbolRegex.hasMatch(combined)),
-      _bool(
+    final featureMap = <String, double>{
+      'title_length': title.runes.length.toDouble(),
+      'body_length': body.runes.length.toDouble(),
+      'word_count': _wordRegex.allMatches(combined).length.toDouble(),
+      'uppercase_ratio': letters == 0 ? 0.0 : uppercase / letters,
+      'digit_ratio': digits / textUnitCount,
+      'emoji_count': _emojiRegex.allMatches(combined).length.toDouble(),
+      'punctuation_count': _punctuationRegex.allMatches(combined).length.toDouble(),
+      'contains_question': _bool(combined.contains('?')),
+      'contains_exclamation': _bool(combined.contains('!')),
+      'contains_currency_symbol': _bool(_currencySymbolRegex.hasMatch(combined)),
+      'contains_money': _bool(
         _amountRegex.hasMatch(combined) || _containsKeyword(lower, _moneyWords),
       ),
-      _bool(otp != null),
-      _bool(_dateRegex.hasMatch(combined)),
-      _bool(_timeRegex.hasMatch(combined)),
-      _bool(_containsKeyword(lower, _locationWords)),
-      _bool(_emailRegex.hasMatch(combined)),
-      _bool(_phoneRegex.hasMatch(combined)),
-      _bool(_urlRegex.hasMatch(combined)),
-      _bool(
+      'contains_otp': _bool(otp != null),
+      'contains_date': _bool(_dateRegex.hasMatch(combined)),
+      'contains_time': _bool(_timeRegex.hasMatch(combined)),
+      'contains_location': _bool(_containsKeyword(lower, _locationWords)),
+      'contains_email': _bool(_emailRegex.hasMatch(combined)),
+      'contains_phone': _bool(_phoneRegex.hasMatch(combined)),
+      'contains_link': _bool(_urlRegex.hasMatch(combined)),
+      'contains_attachment': _bool(
         notification.android.containsAttachment || _containsAttachment(lower),
       ),
-      _bool(_percentageRegex.hasMatch(combined)),
-      _bool(isPromotion),
-      _bool(containsOrder),
-      _bool(containsTransaction),
-      _bool(_referenceNumberRegex.hasMatch(combined)),
-      _bool(_trackingNumberRegex.hasMatch(combined)),
-      _bool(_couponRegex.hasMatch(combined)),
-      _bool(_meetingLinkRegex.hasMatch(combined)),
-      _bool(containsDeadline),
-      _bool(_containsKeyword(lower, _securityWords)),
-      _bool(_containsKeyword(lower, _paymentWords)),
-      _bool(_containsKeyword(lower, _deliveryWords)),
-      _bool(_containsKeyword(lower, _workWords)),
-      _bool(_containsKeyword(lower, _socialWords)),
-      _bool(_containsKeyword(lower, _systemWords)),
-      notification.android.importance.toDouble(),
-      _bool(notification.android.conversation),
-      notification.android.visibility.toDouble(),
-      _bool(notification.android.ongoing),
-      _bool(notification.android.foregroundService),
-      notificationCategoryId.toDouble(),
-      _stableBucket(notification.android.channelId).toDouble(),
-      _stableBucket(notification.android.channelName).toDouble(),
-      timestamp.hour.toDouble(),
-      timestamp.weekday.toDouble(),
-      _bool(_containsKeyword(lower, _actionWords)),
-      _bool(_containsKeyword(lower, _recurringWords)),
-      _bool(isPromotion),
-      _bool(_isDuplicateCandidate(lower)),
-      _bool(containsDeadline),
-      _deadlineMinutesRemaining(lower).toDouble(),
-      amount,
-      (_currencyIds[currency] ?? 0).toDouble(),
-      (otp?.length ?? 0).toDouble(),
-      _bool(
+      'contains_percentage': _bool(_percentageRegex.hasMatch(combined)),
+      'contains_discount': _bool(isPromotion),
+      'is_promotion': _bool(isPromotion),
+      'contains_order_id': _bool(containsOrder),
+      'contains_transaction_id': _bool(containsTransaction),
+      'contains_reference_number': _bool(_referenceNumberRegex.hasMatch(combined)),
+      'contains_tracking_number': _bool(_trackingNumberRegex.hasMatch(combined)),
+      'contains_coupon': _bool(_couponRegex.hasMatch(combined)),
+      'contains_meeting_link': _bool(_meetingLinkRegex.hasMatch(combined)),
+      'contains_deadline': _bool(containsDeadline),
+      'contains_security_keywords': _bool(_containsKeyword(lower, _securityWords)),
+      'contains_payment_keywords': _bool(_containsKeyword(lower, _paymentWords)),
+      'contains_delivery_keywords': _bool(_containsKeyword(lower, _deliveryWords)),
+      'contains_work_keywords': _bool(_containsKeyword(lower, _workWords)),
+      'contains_social_keywords': _bool(_containsKeyword(lower, _socialWords)),
+      'contains_system_keywords': _bool(_containsKeyword(lower, _systemWords)),
+      'importance': notification.android.importance.toDouble(),
+      'conversation': _bool(notification.android.conversation),
+      'visibility': notification.android.visibility.toDouble(),
+      'ongoing': _bool(notification.android.ongoing),
+      'foreground_service': _bool(notification.android.foregroundService),
+      'notification_category': notificationCategoryId.toDouble(),
+      'channel_id': _stableBucket(notification.android.channelId).toDouble(),
+      'channel_name': _stableBucket(notification.android.channelName).toDouble(),
+      'timestamp_hour': timestamp.hour.toDouble(),
+      'day_of_week': timestamp.weekday.toDouble(),
+      'requires_action': _bool(_containsKeyword(lower, _actionWords)),
+      'is_recurring': _bool(_containsKeyword(lower, _recurringWords)),
+      'is_duplicate_candidate': _bool(_isDuplicateCandidate(lower)),
+      'deadline_exists': _bool(containsDeadline),
+      'deadline_minutes_remaining': _deadlineMinutesRemaining(lower).toDouble(),
+      'amount': amount,
+      'currency': (_currencyIds[currency] ?? 0).toDouble(),
+      'otp_length': (otp?.length ?? 0).toDouble(),
+      'merchant_present': _bool(
         _containsKeyword(lower, _merchantWords) ||
             _merchantAfterAmount(combined),
       ),
-      _bool(
+      'person_present': _bool(
         _containsKeyword(lower, _personWords) || _looksLikePersonTitle(title),
       ),
-      _bool(_containsKeyword(lower, _cityWords)),
-      _bool(_containsKeyword(lower, _trainWords)),
-      _bool(_containsKeyword(lower, _flightWords)),
-      _bool(containsOrder),
-      _bool(containsTransaction),
-      intentId.toDouble(),
-      notificationTypeId.toDouble(),
-      categoryId.toDouble(),
-    ];
+      'city_present': _bool(_containsKeyword(lower, _cityWords)),
+      'train_present': _bool(_containsKeyword(lower, _trainWords)),
+      'flight_present': _bool(_containsKeyword(lower, _flightWords)),
+      'order_present': _bool(containsOrder),
+      'transaction_present': _bool(containsTransaction),
+      'intent_id': intentId.toDouble(),
+      'notification_type_id': notificationTypeId.toDouble(),
+      'category_id': categoryId.toDouble(),
+    };
 
-    return FeatureVector(values);
+    final namesToUse = targetFeatureNames ?? FeatureVector.featureNames;
+    final values = namesToUse.map((name) => featureMap[name] ?? 0.0).toList();
+
+    return FeatureVector(values, names: namesToUse);
   }
 
   static String? _extractOtp(String text) {
