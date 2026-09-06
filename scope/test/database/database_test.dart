@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/native.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/telemetry/telemetry_sanitizer.dart';
 import 'package:scope/database/attention_database.dart';
 
 void main() {
@@ -134,6 +135,59 @@ void main() {
       expect(all.length, equals(1));
       expect(all.first.completion, isTrue);
       expect(all.first.duration, equals(300));
+    });
+
+    test('FocusSessionDao sanitized session persistence and bucketing', () async {
+      final now = DateTime(2026, 9, 6, 12, 15, 30, 450);
+      final session = FocusSessionEntry(
+        id: 1,
+        sessionStart: now,
+        interruptions: 0,
+        completion: false,
+        duration: 0,
+      );
+
+      await db.focusSessionDao.insertSanitizedSession(session);
+
+      var active = await db.focusSessionDao.getActiveSession();
+      expect(active, isNotNull);
+      // Milliseconds/seconds should be stripped from timestamp
+      expect(active!.sessionStart.millisecond, equals(0));
+      expect(active.sessionStart.second, equals(0));
+
+      final end = DateTime(2026, 9, 6, 12, 32, 15, 920); // raw duration = 16m 45s = 1005s
+      await db.focusSessionDao.updateSanitizedSession(
+        active.copyWith(
+          sessionEnd: Value(end),
+          completion: true,
+        ),
+        rawDurationSeconds: 1005,
+      );
+
+      final all = await db.focusSessionDao.getAll();
+      expect(all.length, equals(1));
+      expect(all.first.durationCategory, equals('15-30 mins'));
+      expect(all.first.duration, equals(1200)); // Discretized bucket seconds
+    });
+
+    test('DailyBriefDao saveSanitizedBrief injects DP noise and enforces lower bounds', () async {
+      const rawMetrics = DailyEngagementMetrics(
+        notificationsReviewed: 10,
+        actionsCompleted: 4,
+        calendarEventsCreated: 1,
+        remindersCreated: 2,
+        archivedCount: 5,
+      );
+
+      await db.dailyBriefDao.saveSanitizedBrief('2026-09-06', rawMetrics);
+      final brief = await db.dailyBriefDao.getBriefForDate('2026-09-06');
+
+      expect(brief, isNotNull);
+      expect(brief!.notificationsReviewed, greaterThanOrEqualTo(0));
+      expect(brief.actionsCompleted, greaterThanOrEqualTo(0));
+      expect(brief.calendarEventsCreated, greaterThanOrEqualTo(0));
+      expect(brief.remindersCreated, greaterThanOrEqualTo(0));
+      expect(brief.archivedCount, greaterThanOrEqualTo(0));
     });
 
     test('DailyBriefDao stats increment and lookup', () async {
