@@ -52,7 +52,8 @@ class FocusSessionsTable extends Table {
   DateTimeColumn get sessionEnd => dateTime().nullable()();
   IntColumn get interruptions => integer().withDefault(const Constant(0))();
   BoolColumn get completion => boolean().withDefault(const Constant(false))();
-  IntColumn get duration => integer()(); // session duration in seconds
+  IntColumn get duration => integer()(); // session duration in seconds (discretized bucket duration)
+  TextColumn get durationCategory => text().nullable()(); // standardized duration category label
 }
 
 @DataClassName('DailyBriefEntry')

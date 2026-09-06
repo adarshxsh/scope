@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/telemetry/telemetry_sanitizer.dart';
 import 'package:scope/database/attention_database.dart';
 import 'package:scope/database/tables.dart';
 
@@ -87,12 +88,31 @@ class FocusSessionDao extends DatabaseAccessor<AttentionDatabase> with _$FocusSe
     await into(focusSessionsTable).insert(entry);
   }
 
+  Future<void> insertSanitizedSession(
+    FocusSessionEntry entry, {
+    TelemetrySanitizationMiddleware? middleware,
+  }) async {
+    final sanitizer = middleware ?? TelemetrySanitizationMiddleware();
+    final sanitized = sanitizer.sanitizeFocusSession(entry);
+    await into(focusSessionsTable).insert(sanitized);
+  }
+
   Future<FocusSessionEntry?> getActiveSession() {
     return (select(focusSessionsTable)..where((t) => t.sessionEnd.isNull())).getSingleOrNull();
   }
 
   Future<void> updateSession(FocusSessionEntry entry) async {
     await update(focusSessionsTable).replace(entry);
+  }
+
+  Future<void> updateSanitizedSession(
+    FocusSessionEntry entry, {
+    int? rawDurationSeconds,
+    TelemetrySanitizationMiddleware? middleware,
+  }) async {
+    final sanitizer = middleware ?? TelemetrySanitizationMiddleware();
+    final sanitized = sanitizer.sanitizeFocusSession(entry, rawDurationSeconds: rawDurationSeconds);
+    await update(focusSessionsTable).replace(sanitized);
   }
 
   Future<List<FocusSessionEntry>> getAll() {
@@ -110,6 +130,35 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
 
   Future<void> insertOrUpdate(DailyBriefEntry entry) async {
     await into(dailyBriefTable).insert(entry, mode: InsertMode.insertOrReplace);
+  }
+
+  Future<void> saveSanitizedBrief(
+    String date,
+    DailyEngagementMetrics rawMetrics, {
+    TelemetrySanitizationMiddleware? middleware,
+  }) async {
+    final sanitizer = middleware ?? TelemetrySanitizationMiddleware();
+    final sanitized = sanitizer.sanitizeMetrics(rawMetrics);
+    final existing = await getBriefForDate(date);
+    if (existing != null) {
+      await update(dailyBriefTable).replace(existing.copyWith(
+        notificationsReviewed: sanitized.notificationsReviewed,
+        actionsCompleted: sanitized.actionsCompleted,
+        calendarEventsCreated: sanitized.calendarEventsCreated,
+        remindersCreated: sanitized.remindersCreated,
+        archivedCount: sanitized.archivedCount,
+      ));
+    } else {
+      await into(dailyBriefTable).insert(DailyBriefEntry(
+        id: 0,
+        date: date,
+        notificationsReviewed: sanitized.notificationsReviewed,
+        actionsCompleted: sanitized.actionsCompleted,
+        calendarEventsCreated: sanitized.calendarEventsCreated,
+        remindersCreated: sanitized.remindersCreated,
+        archivedCount: sanitized.archivedCount,
+      ));
+    }
   }
 
   Future<DailyBriefEntry?> getBriefForDate(String date) {
