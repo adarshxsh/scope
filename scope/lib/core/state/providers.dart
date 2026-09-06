@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
@@ -12,12 +13,16 @@ enum QueueSortOrder {
 }
 
 class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
+  static const int maxActiveQueueSize = 100;
+  static const int defaultMaxStartupRescoreItems = 50;
+
   final AttentionDatabase? _db;
   ReviewQueueNotifier([this._db]) : super([]);
 
   /// Load a list of notifications directly (used on startup recovery).
   void load(List<AppNotification> list) {
     state = list;
+    _enforceQueueBounds();
   }
 
   /// Add a notification to the review queue.
@@ -52,10 +57,38 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
       state = [...state, newItem];
     }
 
+    _enforceQueueBounds();
+
     // Persist to DB
     if (_db != null) {
       DriftNotificationStorage(_db).save(newItem);
       _saveQueueEntry(newItem);
+    }
+  }
+
+  /// Enforces maximum active review queue capacity by expiring oldest/lowest priority active items.
+  void _enforceQueueBounds() {
+    final activeItems = state.where((n) => n.state == ReviewState.ACTIVE).toList();
+    if (activeItems.length > maxActiveQueueSize) {
+      // Sort active items: lowest priority score first, then oldest timestamp
+      activeItems.sort((a, b) {
+        final scoreA = a.priorityScore ?? 0.0;
+        final scoreB = b.priorityScore ?? 0.0;
+        if (scoreA != scoreB) return scoreA.compareTo(scoreB);
+        return a.timestamp.compareTo(b.timestamp);
+      });
+
+      final overflowCount = activeItems.length - maxActiveQueueSize;
+      final idsToExpire = activeItems.take(overflowCount).map((n) => n.id).toSet();
+      final now = DateTime.now();
+
+      state = [
+        for (final n in state)
+          if (idsToExpire.contains(n.id))
+            n.copyWith(state: ReviewState.EXPIRED, lastUpdated: now)
+          else
+            n
+      ];
     }
   }
 
@@ -170,9 +203,28 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
   }
 
   /// Re-scores notifications and applies auto-expiry/cleanup rules.
-  Future<void> rescore() async {
+  /// Bounded and fault-tolerant to prevent startup rescore freezes.
+  Future<void> rescore({
+    bool isStartup = false,
+    int? maxItems,
+    Duration timeout = const Duration(seconds: 3),
+  }) async {
+    try {
+      await _rescoreInternal(isStartup: isStartup, maxItems: maxItems).timeout(timeout);
+    } catch (e, st) {
+      debugPrint('ReviewQueueNotifier: rescore operation encountered error or timeout: $e\n$st');
+    }
+  }
+
+  Future<void> _rescoreInternal({
+    bool isStartup = false,
+    int? maxItems,
+  }) async {
     final now = DateTime.now();
     final updated = <AppNotification>[];
+
+    final effectiveMaxItems = maxItems ?? (isStartup ? defaultMaxStartupRescoreItems : null);
+    int processedCount = 0;
 
     for (final item in state) {
       // Don't re-score/auto-expire archived or reviewed notifications
@@ -181,69 +233,84 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
         continue;
       }
 
-      // 1. Un-snooze if duration elapsed
-      ReviewState currentState = item.state;
-      if (currentState == ReviewState.SNOOZED &&
-          item.snoozedUntil != null &&
-          now.isAfter(item.snoozedUntil!)) {
-        currentState = ReviewState.ACTIVE;
+      // Cap startup rescore to effectiveMaxItems
+      if (effectiveMaxItems != null && processedCount >= effectiveMaxItems) {
+        updated.add(item);
+        continue;
       }
 
-      // 2. Perform re-scoring prediction via GhostAI
-      final ghostResult = await GhostAI.predict(item);
+      processedCount++;
 
-      var updatedItem = item.copyWith(
-        priorityScore: ghostResult.reviewScore,
-        state: currentState,
-        lastUpdated: now,
-      );
+      // Error boundary for individual notification item re-scoring
+      try {
+        // 1. Un-snooze if duration elapsed
+        ReviewState currentState = item.state;
+        if (currentState == ReviewState.SNOOZED &&
+            item.snoozedUntil != null &&
+            now.isAfter(item.snoozedUntil!)) {
+          currentState = ReviewState.ACTIVE;
+        }
 
-      // 3. Auto-expire OTPs
-      final hasOtp = updatedItem.extractedFeatures?['otp'] != null ||
-          updatedItem.title.toLowerCase().contains('otp') ||
-          updatedItem.content.toLowerCase().contains('otp');
-      if (hasOtp && ghostResult.reviewScore == 0.0) {
-        updatedItem = updatedItem.copyWith(state: ReviewState.EXPIRED);
-      }
+        // 2. Perform re-scoring prediction via GhostAI
+        final ghostResult = await GhostAI.predict(item);
 
-      // 4. Auto-expire reminders
-      final hasDeadline = updatedItem.extractedFeatures?['hasDeadline'] == true ||
-          updatedItem.title.toLowerCase().contains('deadline') ||
-          updatedItem.content.toLowerCase().contains('deadline') ||
-          updatedItem.title.toLowerCase().contains('reminder') ||
-          updatedItem.content.toLowerCase().contains('reminder') ||
-          RegExp(r'\bin\s+(\d{1,4})\s*(minute|minutes|min|mins|hour|hours|hr|hrs|day|days)\b', caseSensitive: false)
-              .hasMatch(updatedItem.content.toLowerCase());
-      if (hasDeadline && ghostResult.reviewScore == 0.0) {
-        updatedItem = updatedItem.copyWith(state: ReviewState.EXPIRED);
-      }
+        var updatedItem = item.copyWith(
+          priorityScore: ghostResult.reviewScore,
+          state: currentState,
+          lastUpdated: now,
+        );
 
-      // 5. Remove completed payment reminders (transition to ARCHIVED)
-      final isFinance =
-          (updatedItem.classifiedCategory ?? updatedItem.category ?? '').toLowerCase() == 'finance' ||
-              updatedItem.extractedFeatures?['amount'] != null ||
-              updatedItem.title.toLowerCase().contains('bill') ||
-              updatedItem.title.toLowerCase().contains('payment') ||
-              updatedItem.title.toLowerCase().contains('finance') ||
-              updatedItem.content.toLowerCase().contains('bill') ||
-              updatedItem.content.toLowerCase().contains('payment') ||
-              updatedItem.content.toLowerCase().contains('finance') ||
-              updatedItem.content.toLowerCase().contains('rs');
-      final isCompleted = _checkCompletedKeywords(updatedItem.title, updatedItem.content);
-      if (isFinance && isCompleted) {
-        updatedItem = updatedItem.copyWith(state: ReviewState.ARCHIVED);
-      }
+        // 3. Auto-expire OTPs
+        final hasOtp = updatedItem.extractedFeatures?['otp'] != null ||
+            updatedItem.title.toLowerCase().contains('otp') ||
+            updatedItem.content.toLowerCase().contains('otp');
+        if (hasOtp && ghostResult.reviewScore == 0.0) {
+          updatedItem = updatedItem.copyWith(state: ReviewState.EXPIRED);
+        }
 
-      updated.add(updatedItem);
+        // 4. Auto-expire reminders
+        final hasDeadline = updatedItem.extractedFeatures?['hasDeadline'] == true ||
+            updatedItem.title.toLowerCase().contains('deadline') ||
+            updatedItem.content.toLowerCase().contains('deadline') ||
+            updatedItem.title.toLowerCase().contains('reminder') ||
+            updatedItem.content.toLowerCase().contains('reminder') ||
+            RegExp(r'\bin\s+(\d{1,4})\s*(minute|minutes|min|mins|hour|hours|hr|hrs|day|days)\b', caseSensitive: false)
+                .hasMatch(updatedItem.content.toLowerCase());
+        if (hasDeadline && ghostResult.reviewScore == 0.0) {
+          updatedItem = updatedItem.copyWith(state: ReviewState.EXPIRED);
+        }
 
-      // Save updated items to DB
-      if (_db != null) {
-        await DriftNotificationStorage(_db).save(updatedItem);
-        await _saveQueueEntry(updatedItem, expiry: updatedItem.snoozedUntil);
+        // 5. Remove completed payment reminders (transition to ARCHIVED)
+        final isFinance =
+            (updatedItem.classifiedCategory ?? updatedItem.category ?? '').toLowerCase() == 'finance' ||
+                updatedItem.extractedFeatures?['amount'] != null ||
+                updatedItem.title.toLowerCase().contains('bill') ||
+                updatedItem.title.toLowerCase().contains('payment') ||
+                updatedItem.title.toLowerCase().contains('finance') ||
+                updatedItem.content.toLowerCase().contains('bill') ||
+                updatedItem.content.toLowerCase().contains('payment') ||
+                updatedItem.content.toLowerCase().contains('finance') ||
+                updatedItem.content.toLowerCase().contains('rs');
+        final isCompleted = _checkCompletedKeywords(updatedItem.title, updatedItem.content);
+        if (isFinance && isCompleted) {
+          updatedItem = updatedItem.copyWith(state: ReviewState.ARCHIVED);
+        }
+
+        updated.add(updatedItem);
+
+        // Save updated items to DB
+        if (_db != null) {
+          await DriftNotificationStorage(_db).save(updatedItem);
+          await _saveQueueEntry(updatedItem, expiry: updatedItem.snoozedUntil);
+        }
+      } catch (e, st) {
+        debugPrint('ReviewQueueNotifier: Error re-scoring notification ${item.id}: $e\n$st');
+        updated.add(item); // Fallback: retain item on item-level error
       }
     }
 
     state = updated;
+    _enforceQueueBounds();
   }
 
   /// Clears all items in the queue (used for testing).
