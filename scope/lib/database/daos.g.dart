@@ -72,3 +72,19 @@ class DailyBriefDaoManager {
         _db.dailyBriefTable,
       );
 }
+
+mixin _$AppExclusionsDaoMixin on DatabaseAccessor<AttentionDatabase> {
+  $AppExclusionsTableTable get appExclusionsTable =>
+      attachedDatabase.appExclusionsTable;
+  AppExclusionsDaoManager get managers => AppExclusionsDaoManager(this);
+}
+
+class AppExclusionsDaoManager {
+  final _$AppExclusionsDaoMixin _db;
+  AppExclusionsDaoManager(this._db);
+  $$AppExclusionsTableTableTableManager get appExclusionsTable =>
+      $$AppExclusionsTableTableTableManager(
+        _db.attachedDatabase,
+        _db.appExclusionsTable,
+      );
+}

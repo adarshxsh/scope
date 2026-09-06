@@ -16,12 +16,14 @@ part 'attention_database.g.dart';
     ReviewQueueTable,
     FocusSessionsTable,
     DailyBriefTable,
+    AppExclusionsTable,
   ],
   daos: [
     NotificationDao,
     ReviewQueueDao,
     FocusSessionDao,
     DailyBriefDao,
+    AppExclusionsDao,
   ],
 )
 class AttentionDatabase extends _$AttentionDatabase {

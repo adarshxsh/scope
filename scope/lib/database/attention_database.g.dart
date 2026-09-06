@@ -2709,6 +2709,437 @@ class DailyBriefTableCompanion extends UpdateCompanion<DailyBriefEntry> {
   }
 }
 
+class $AppExclusionsTableTable extends AppExclusionsTable
+    with TableInfo<$AppExclusionsTableTable, AppExclusionEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AppExclusionsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _packageNameMeta = const VerificationMeta(
+    'packageName',
+  );
+  @override
+  late final GeneratedColumn<String> packageName = GeneratedColumn<String>(
+    'package_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _appNameMeta = const VerificationMeta(
+    'appName',
+  );
+  @override
+  late final GeneratedColumn<String> appName = GeneratedColumn<String>(
+    'app_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _categoryMeta = const VerificationMeta(
+    'category',
+  );
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+    'category',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isExcludedMeta = const VerificationMeta(
+    'isExcluded',
+  );
+  @override
+  late final GeneratedColumn<bool> isExcluded = GeneratedColumn<bool>(
+    'is_excluded',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_excluded" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _isDefaultMeta = const VerificationMeta(
+    'isDefault',
+  );
+  @override
+  late final GeneratedColumn<bool> isDefault = GeneratedColumn<bool>(
+    'is_default',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_default" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    packageName,
+    appName,
+    category,
+    isExcluded,
+    isDefault,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'app_exclusions_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AppExclusionEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('package_name')) {
+      context.handle(
+        _packageNameMeta,
+        packageName.isAcceptableOrUnknown(
+          data['package_name']!,
+          _packageNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_packageNameMeta);
+    }
+    if (data.containsKey('app_name')) {
+      context.handle(
+        _appNameMeta,
+        appName.isAcceptableOrUnknown(data['app_name']!, _appNameMeta),
+      );
+    }
+    if (data.containsKey('category')) {
+      context.handle(
+        _categoryMeta,
+        category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
+      );
+    }
+    if (data.containsKey('is_excluded')) {
+      context.handle(
+        _isExcludedMeta,
+        isExcluded.isAcceptableOrUnknown(data['is_excluded']!, _isExcludedMeta),
+      );
+    }
+    if (data.containsKey('is_default')) {
+      context.handle(
+        _isDefaultMeta,
+        isDefault.isAcceptableOrUnknown(data['is_default']!, _isDefaultMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {packageName};
+  @override
+  AppExclusionEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AppExclusionEntry(
+      packageName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}package_name'],
+      )!,
+      appName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}app_name'],
+      ),
+      category: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category'],
+      ),
+      isExcluded: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_excluded'],
+      )!,
+      isDefault: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_default'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AppExclusionsTableTable createAlias(String alias) {
+    return $AppExclusionsTableTable(attachedDatabase, alias);
+  }
+}
+
+class AppExclusionEntry extends DataClass
+    implements Insertable<AppExclusionEntry> {
+  final String packageName;
+  final String? appName;
+  final String? category;
+  final bool isExcluded;
+  final bool isDefault;
+  final DateTime updatedAt;
+  const AppExclusionEntry({
+    required this.packageName,
+    this.appName,
+    this.category,
+    required this.isExcluded,
+    required this.isDefault,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['package_name'] = Variable<String>(packageName);
+    if (!nullToAbsent || appName != null) {
+      map['app_name'] = Variable<String>(appName);
+    }
+    if (!nullToAbsent || category != null) {
+      map['category'] = Variable<String>(category);
+    }
+    map['is_excluded'] = Variable<bool>(isExcluded);
+    map['is_default'] = Variable<bool>(isDefault);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  AppExclusionsTableCompanion toCompanion(bool nullToAbsent) {
+    return AppExclusionsTableCompanion(
+      packageName: Value(packageName),
+      appName: appName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(appName),
+      category: category == null && nullToAbsent
+          ? const Value.absent()
+          : Value(category),
+      isExcluded: Value(isExcluded),
+      isDefault: Value(isDefault),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory AppExclusionEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AppExclusionEntry(
+      packageName: serializer.fromJson<String>(json['packageName']),
+      appName: serializer.fromJson<String?>(json['appName']),
+      category: serializer.fromJson<String?>(json['category']),
+      isExcluded: serializer.fromJson<bool>(json['isExcluded']),
+      isDefault: serializer.fromJson<bool>(json['isDefault']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'packageName': serializer.toJson<String>(packageName),
+      'appName': serializer.toJson<String?>(appName),
+      'category': serializer.toJson<String?>(category),
+      'isExcluded': serializer.toJson<bool>(isExcluded),
+      'isDefault': serializer.toJson<bool>(isDefault),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  AppExclusionEntry copyWith({
+    String? packageName,
+    Value<String?> appName = const Value.absent(),
+    Value<String?> category = const Value.absent(),
+    bool? isExcluded,
+    bool? isDefault,
+    DateTime? updatedAt,
+  }) => AppExclusionEntry(
+    packageName: packageName ?? this.packageName,
+    appName: appName.present ? appName.value : this.appName,
+    category: category.present ? category.value : this.category,
+    isExcluded: isExcluded ?? this.isExcluded,
+    isDefault: isDefault ?? this.isDefault,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  AppExclusionEntry copyWithCompanion(AppExclusionsTableCompanion data) {
+    return AppExclusionEntry(
+      packageName: data.packageName.present
+          ? data.packageName.value
+          : this.packageName,
+      appName: data.appName.present ? data.appName.value : this.appName,
+      category: data.category.present ? data.category.value : this.category,
+      isExcluded: data.isExcluded.present
+          ? data.isExcluded.value
+          : this.isExcluded,
+      isDefault: data.isDefault.present ? data.isDefault.value : this.isDefault,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AppExclusionEntry(')
+          ..write('packageName: $packageName, ')
+          ..write('appName: $appName, ')
+          ..write('category: $category, ')
+          ..write('isExcluded: $isExcluded, ')
+          ..write('isDefault: $isDefault, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    packageName,
+    appName,
+    category,
+    isExcluded,
+    isDefault,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AppExclusionEntry &&
+          other.packageName == this.packageName &&
+          other.appName == this.appName &&
+          other.category == this.category &&
+          other.isExcluded == this.isExcluded &&
+          other.isDefault == this.isDefault &&
+          other.updatedAt == this.updatedAt);
+}
+
+class AppExclusionsTableCompanion extends UpdateCompanion<AppExclusionEntry> {
+  final Value<String> packageName;
+  final Value<String?> appName;
+  final Value<String?> category;
+  final Value<bool> isExcluded;
+  final Value<bool> isDefault;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const AppExclusionsTableCompanion({
+    this.packageName = const Value.absent(),
+    this.appName = const Value.absent(),
+    this.category = const Value.absent(),
+    this.isExcluded = const Value.absent(),
+    this.isDefault = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AppExclusionsTableCompanion.insert({
+    required String packageName,
+    this.appName = const Value.absent(),
+    this.category = const Value.absent(),
+    this.isExcluded = const Value.absent(),
+    this.isDefault = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : packageName = Value(packageName);
+  static Insertable<AppExclusionEntry> custom({
+    Expression<String>? packageName,
+    Expression<String>? appName,
+    Expression<String>? category,
+    Expression<bool>? isExcluded,
+    Expression<bool>? isDefault,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (packageName != null) 'package_name': packageName,
+      if (appName != null) 'app_name': appName,
+      if (category != null) 'category': category,
+      if (isExcluded != null) 'is_excluded': isExcluded,
+      if (isDefault != null) 'is_default': isDefault,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AppExclusionsTableCompanion copyWith({
+    Value<String>? packageName,
+    Value<String?>? appName,
+    Value<String?>? category,
+    Value<bool>? isExcluded,
+    Value<bool>? isDefault,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return AppExclusionsTableCompanion(
+      packageName: packageName ?? this.packageName,
+      appName: appName ?? this.appName,
+      category: category ?? this.category,
+      isExcluded: isExcluded ?? this.isExcluded,
+      isDefault: isDefault ?? this.isDefault,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (packageName.present) {
+      map['package_name'] = Variable<String>(packageName.value);
+    }
+    if (appName.present) {
+      map['app_name'] = Variable<String>(appName.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (isExcluded.present) {
+      map['is_excluded'] = Variable<bool>(isExcluded.value);
+    }
+    if (isDefault.present) {
+      map['is_default'] = Variable<bool>(isDefault.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AppExclusionsTableCompanion(')
+          ..write('packageName: $packageName, ')
+          ..write('appName: $appName, ')
+          ..write('category: $category, ')
+          ..write('isExcluded: $isExcluded, ')
+          ..write('isDefault: $isDefault, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AttentionDatabase extends GeneratedDatabase {
   _$AttentionDatabase(QueryExecutor e) : super(e);
   $AttentionDatabaseManager get managers => $AttentionDatabaseManager(this);
@@ -2722,6 +3153,8 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final $DailyBriefTableTable dailyBriefTable = $DailyBriefTableTable(
     this,
   );
+  late final $AppExclusionsTableTable appExclusionsTable =
+      $AppExclusionsTableTable(this);
   late final NotificationDao notificationDao = NotificationDao(
     this as AttentionDatabase,
   );
@@ -2734,6 +3167,9 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final DailyBriefDao dailyBriefDao = DailyBriefDao(
     this as AttentionDatabase,
   );
+  late final AppExclusionsDao appExclusionsDao = AppExclusionsDao(
+    this as AttentionDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2743,6 +3179,7 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
     reviewQueueTable,
     focusSessionsTable,
     dailyBriefTable,
+    appExclusionsTable,
   ];
 }
 
@@ -3406,7 +3843,9 @@ class $$NotificationsTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$NotificationsTableTable, NotificationEntry>(
+                    table,
+                  ),
                   $$NotificationsTableTableReferences(db, table, e),
                 ),
               )
@@ -3749,7 +4188,7 @@ class $$ReviewQueueTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$ReviewQueueTableTable, ReviewQueueEntry>(table),
                   $$ReviewQueueTableTableReferences(db, table, e),
                 ),
               )
@@ -4021,7 +4460,18 @@ class $$FocusSessionsTableTableTableManager
                 duration: duration,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$FocusSessionsTableTable, FocusSessionEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $FocusSessionsTableTable,
+                    FocusSessionEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4273,7 +4723,16 @@ class $$DailyBriefTableTableTableManager
                 archivedCount: archivedCount,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$DailyBriefTableTable, DailyBriefEntry>(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $DailyBriefTableTable,
+                    DailyBriefEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4301,6 +4760,253 @@ typedef $$DailyBriefTableTableProcessedTableManager =
       DailyBriefEntry,
       PrefetchHooks Function()
     >;
+typedef $$AppExclusionsTableTableCreateCompanionBuilder =
+    AppExclusionsTableCompanion Function({
+      required String packageName,
+      Value<String?> appName,
+      Value<String?> category,
+      Value<bool> isExcluded,
+      Value<bool> isDefault,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$AppExclusionsTableTableUpdateCompanionBuilder =
+    AppExclusionsTableCompanion Function({
+      Value<String> packageName,
+      Value<String?> appName,
+      Value<String?> category,
+      Value<bool> isExcluded,
+      Value<bool> isDefault,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$AppExclusionsTableTableFilterComposer
+    extends Composer<_$AttentionDatabase, $AppExclusionsTableTable> {
+  $$AppExclusionsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get packageName => $composableBuilder(
+    column: $table.packageName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get appName => $composableBuilder(
+    column: $table.appName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isExcluded => $composableBuilder(
+    column: $table.isExcluded,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDefault => $composableBuilder(
+    column: $table.isDefault,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AppExclusionsTableTableOrderingComposer
+    extends Composer<_$AttentionDatabase, $AppExclusionsTableTable> {
+  $$AppExclusionsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get packageName => $composableBuilder(
+    column: $table.packageName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get appName => $composableBuilder(
+    column: $table.appName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isExcluded => $composableBuilder(
+    column: $table.isExcluded,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDefault => $composableBuilder(
+    column: $table.isDefault,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AppExclusionsTableTableAnnotationComposer
+    extends Composer<_$AttentionDatabase, $AppExclusionsTableTable> {
+  $$AppExclusionsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get packageName => $composableBuilder(
+    column: $table.packageName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get appName =>
+      $composableBuilder(column: $table.appName, builder: (column) => column);
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumn<bool> get isExcluded => $composableBuilder(
+    column: $table.isExcluded,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isDefault =>
+      $composableBuilder(column: $table.isDefault, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$AppExclusionsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AttentionDatabase,
+          $AppExclusionsTableTable,
+          AppExclusionEntry,
+          $$AppExclusionsTableTableFilterComposer,
+          $$AppExclusionsTableTableOrderingComposer,
+          $$AppExclusionsTableTableAnnotationComposer,
+          $$AppExclusionsTableTableCreateCompanionBuilder,
+          $$AppExclusionsTableTableUpdateCompanionBuilder,
+          (
+            AppExclusionEntry,
+            BaseReferences<
+              _$AttentionDatabase,
+              $AppExclusionsTableTable,
+              AppExclusionEntry
+            >,
+          ),
+          AppExclusionEntry,
+          PrefetchHooks Function()
+        > {
+  $$AppExclusionsTableTableTableManager(
+    _$AttentionDatabase db,
+    $AppExclusionsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AppExclusionsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AppExclusionsTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AppExclusionsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> packageName = const Value.absent(),
+                Value<String?> appName = const Value.absent(),
+                Value<String?> category = const Value.absent(),
+                Value<bool> isExcluded = const Value.absent(),
+                Value<bool> isDefault = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AppExclusionsTableCompanion(
+                packageName: packageName,
+                appName: appName,
+                category: category,
+                isExcluded: isExcluded,
+                isDefault: isDefault,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String packageName,
+                Value<String?> appName = const Value.absent(),
+                Value<String?> category = const Value.absent(),
+                Value<bool> isExcluded = const Value.absent(),
+                Value<bool> isDefault = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AppExclusionsTableCompanion.insert(
+                packageName: packageName,
+                appName: appName,
+                category: category,
+                isExcluded: isExcluded,
+                isDefault: isDefault,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$AppExclusionsTableTable, AppExclusionEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $AppExclusionsTableTable,
+                    AppExclusionEntry
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AppExclusionsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AttentionDatabase,
+      $AppExclusionsTableTable,
+      AppExclusionEntry,
+      $$AppExclusionsTableTableFilterComposer,
+      $$AppExclusionsTableTableOrderingComposer,
+      $$AppExclusionsTableTableAnnotationComposer,
+      $$AppExclusionsTableTableCreateCompanionBuilder,
+      $$AppExclusionsTableTableUpdateCompanionBuilder,
+      (
+        AppExclusionEntry,
+        BaseReferences<
+          _$AttentionDatabase,
+          $AppExclusionsTableTable,
+          AppExclusionEntry
+        >,
+      ),
+      AppExclusionEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AttentionDatabaseManager {
   final _$AttentionDatabase _db;
@@ -4313,4 +5019,6 @@ class $AttentionDatabaseManager {
       $$FocusSessionsTableTableTableManager(_db, _db.focusSessionsTable);
   $$DailyBriefTableTableTableManager get dailyBriefTable =>
       $$DailyBriefTableTableTableManager(_db, _db.dailyBriefTable);
+  $$AppExclusionsTableTableTableManager get appExclusionsTable =>
+      $$AppExclusionsTableTableTableManager(_db, _db.appExclusionsTable);
 }
