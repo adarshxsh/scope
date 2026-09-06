@@ -69,6 +69,8 @@ class DriftNotificationStorage implements NotificationStorage {
       reviewed: n.state == ReviewState.REVIEWED,
       dismissed: n.state == ReviewState.ARCHIVED || n.state == ReviewState.EXPIRED,
       createdAt: DateTime.now(),
+      userRating: n.userRating,
+      targetLabel: n.targetLabel,
     );
   }
 
@@ -93,6 +95,8 @@ class DriftNotificationStorage implements NotificationStorage {
       state: entry.state,
       snoozedUntil: entry.snoozedUntil,
       lastUpdated: entry.lastUpdated,
+      userRating: entry.userRating,
+      targetLabel: entry.targetLabel,
     );
   }
 }
