@@ -15,6 +15,7 @@ void main() {
       // Should not throw, should log and proceed with isModelLoaded = false
       await GhostAI.instance.initialize();
       expect(GhostAI.instance.isModelLoaded, isFalse);
+      expect(GhostAI.instance.expectedInputLength, isNull);
     });
 
     test('predict outputs basic inference results and falls back to heuristics', () async {

@@ -78,6 +78,7 @@ def main() -> None:
 
     records = read_jsonl(args.data)
     dataset = build_dataset(records)
+    feature_vector_size = dataset.features.shape[1]
     splits = split_dataset(dataset.features, dataset.target, SplitConfig(), args.seed)
 
     # Calculate mean and variance using numpy to perform direct graph-level normalization
@@ -96,6 +97,7 @@ def main() -> None:
         mean=mean_val.tolist(),
         stddev=stddev_val.tolist(),
         learning_rate=config.learning_rate,
+        feature_vector_size=feature_vector_size,
     )
 
     callbacks = [
@@ -155,12 +157,12 @@ def main() -> None:
         "created_at": datetime.now(timezone.utc).isoformat(),
         "dataset_path": str(args.data),
         "sample_count": len(records),
-        "feature_vector_size": FEATURE_VECTOR_SIZE,
+        "feature_vector_size": feature_vector_size,
         "feature_source": "Flutter deterministic FeatureExtractor",
         "python_feature_generation": False,
         "target": "look_again_score",
         "architecture": [
-            "Input(63)",
+            f"Input({feature_vector_size})",
             "Normalization",
             "Dense(128, relu)",
             "Dropout(0.2)",
@@ -185,7 +187,7 @@ def main() -> None:
         },
         "flutter": {
             "input_dtype": "float32",
-            "input_shape": [1, FEATURE_VECTOR_SIZE],
+            "input_shape": [1, feature_vector_size],
             "output_dtype": "float32",
             "output_shape": [1, 1],
             "output_name": "look_again_score",

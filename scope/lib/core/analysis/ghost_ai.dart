@@ -39,6 +39,7 @@ class GhostAIResult {
 class GhostAI {
   static GhostAI? _instance;
   Interpreter? _interpreter;
+  int? _expectedInputLength;
   final RuleEngine _ruleEngine = RuleEngine();
 
   // Slide-cache for duplicate detection
@@ -56,15 +57,38 @@ class GhostAI {
   /// Returns whether the model is loaded.
   bool get isModelLoaded => _interpreter != null;
 
+  /// Exposes expected input feature vector length.
+  int? get expectedInputLength => _expectedInputLength;
+
   /// Initializes the TFLite interpreter and rules database once on startup.
   Future<void> initialize() async {
     if (_interpreter != null) return;
     try {
       // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      final interpreter = await Interpreter.fromAsset('assets/model.tflite');
+
+      // Inspect loaded model's input tensor shape
+      final inputTensors = interpreter.getInputTensors();
+      if (inputTensors.isEmpty) {
+        throw Exception('No input tensors found in TFLite model.');
+      }
+      final inputShape = inputTensors.first.shape;
+      if (inputShape.isEmpty) {
+        throw Exception('Input tensor shape is empty.');
+      }
+      final expectedLength = inputShape.last;
+      if (expectedLength <= 0) {
+        throw Exception('Invalid input tensor dimension: $expectedLength');
+      }
+
+      _interpreter = interpreter;
+      _expectedInputLength = expectedLength;
+      debugPrint('GhostAI: TFLite interpreter loaded successfully with shape $inputShape (expected input length: $expectedLength).');
     } catch (e) {
-      debugPrint('GhostAI: Failed to load TFLite model: $e');
+      debugPrint('GhostAI: Failed to load TFLite model or inspect shape: $e');
+      _interpreter?.close();
+      _interpreter = null;
+      _expectedInputLength = null;
     }
 
     try {
@@ -86,23 +110,31 @@ class GhostAI {
     final stopwatch = Stopwatch()..start();
 
     // 1. Feature extraction using the existing FeatureExtractor
-    final featureVector = FeatureExtractor.extractFromAppNotification(notification);
+    final rawFeatureVector = FeatureExtractor.extractFromAppNotification(notification);
 
     // 2. Model inference
     double predictedScore = 0.0;
     int inferenceTimeUs = 0;
+    List<double> featureVector = rawFeatureVector;
 
     if (_interpreter != null) {
-      final input = [featureVector];
-      final output = List<double>.filled(1, 0.0).reshape([1, 1]);
+      try {
+        final targetLength = _expectedInputLength ?? _interpreter!.getInputTensors().first.shape.last;
+        featureVector = FeatureExtractor.adaptVectorLength(rawFeatureVector, targetLength);
+        final input = [featureVector];
+        final output = List<double>.filled(1, 0.0).reshape([1, 1]);
 
-      final inferStopwatch = Stopwatch()..start();
-      _interpreter!.run(input, output);
-      inferStopwatch.stop();
+        final inferStopwatch = Stopwatch()..start();
+        _interpreter!.run(input, output);
+        inferStopwatch.stop();
 
-      inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
-      // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
-      predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+        inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
+        // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
+        predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+      } catch (e) {
+        debugPrint('GhostAI: Inference error, falling back to heuristics: $e');
+        predictedScore = _heuristicLookAgainScore(featureVector);
+      }
     } else {
       // Heuristic fallback if model not loaded
       predictedScore = _heuristicLookAgainScore(featureVector);

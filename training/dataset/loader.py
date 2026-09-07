@@ -34,12 +34,14 @@ def load_jsonl_dataset(path: Path) -> list[dict[str, Any]]:
     return records
 
 
-def validate_feature_vector(features: Any, sample_name: str) -> list[float]:
+def validate_feature_vector(
+    features: Any, sample_name: str, expected_size: int | None = None
+) -> list[float]:
     if not isinstance(features, list):
         raise ValueError(f"{sample_name}.features must be a list.")
-    if len(features) != FEATURE_VECTOR_SIZE:
+    if expected_size is not None and len(features) != expected_size:
         raise ValueError(
-            f"{sample_name}.features must contain {FEATURE_VECTOR_SIZE} values; "
+            f"{sample_name}.features must contain {expected_size} values; "
             f"received {len(features)}."
         )
 

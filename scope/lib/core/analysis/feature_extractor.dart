@@ -533,6 +533,21 @@ class FeatureExtractor {
     );
   }
 
+  /// Dynamically adjusts a feature vector to match a required target length.
+  ///
+  /// If the vector is shorter than [targetLength], it is zero-padded at higher indices.
+  /// If the vector is longer than [targetLength], it is truncated by dropping higher-index features first.
+  static List<double> adaptVectorLength(List<double> vector, int targetLength) {
+    if (targetLength <= 0) return const [];
+    if (vector.length == targetLength) return vector;
+    if (vector.length > targetLength) {
+      return vector.sublist(0, targetLength);
+    }
+    final adapted = List<double>.from(vector, growable: true);
+    adapted.addAll(List<double>.filled(targetLength - vector.length, 0.0));
+    return adapted;
+  }
+
   /// Extracts a fixed-width numerical feature vector from an app notification.
   static List<double> extractFromAppNotification(
     AppNotification notification, {
