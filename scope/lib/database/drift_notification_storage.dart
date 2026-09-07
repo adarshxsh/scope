@@ -36,7 +36,15 @@ class DriftNotificationStorage implements NotificationStorage {
   }
 
   @override
+  Future<int> deleteByIds(List<String> ids) async {
+    if (ids.isEmpty) return 0;
+    await _db.deleteNotificationsByIds(ids);
+    return ids.length;
+  }
+
+  @override
   Future<void> clear() async {
+
     await _db.notificationDao.clearAll();
   }
 
