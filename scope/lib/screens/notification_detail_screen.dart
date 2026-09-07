@@ -143,17 +143,31 @@ class NotificationDetailScreen extends StatelessWidget {
                             children: [
                               if (features.hasDeadline)
                                 const ScopeInfoRow(label: 'Deadline', value: 'Detected'),
-                              if (features.amount != null)
-                                ScopeInfoRow(label: 'Amount', value: '₹${features.amount}'),
+                              if (features.hasAmount)
+                                ScopeInfoRow(
+                                  label: 'Amount',
+                                  value: (features.amountDisplay != null && features.amountDisplay!.contains('REDACTED'))
+                                      ? features.amountDisplay!
+                                      : (features.amount != null ? '₹${features.amount}' : '[REDACTED_AMOUNT]'),
+                                ),
                               if (features.urls.isNotEmpty)
-                                ScopeInfoRow(label: 'Website', value: features.urls.first),
+                                ScopeInfoRow(
+                                  label: 'Website',
+                                  value: features.urls.first.contains('REDACTED') ? features.urls.first : '[REDACTED_URL]',
+                                ),
                               if (features.phoneNumbers.isNotEmpty)
-                                ScopeInfoRow(label: 'Phone', value: features.phoneNumbers.first),
+                                ScopeInfoRow(
+                                  label: 'Phone',
+                                  value: features.phoneNumbers.first.contains('REDACTED') ? features.phoneNumbers.first : '[REDACTED_PHONE]',
+                                ),
                               if (features.emails.isNotEmpty)
-                                ScopeInfoRow(label: 'Email', value: features.emails.first),
+                                ScopeInfoRow(
+                                  label: 'Email',
+                                  value: features.emails.first.contains('REDACTED') ? features.emails.first : '[REDACTED_EMAIL]',
+                                ),
                               ScopeInfoRow(label: 'Organization', value: notification.packageName),
                               if (!features.hasDeadline &&
-                                  features.amount == null &&
+                                  !features.hasAmount &&
                                   features.urls.isEmpty &&
                                   features.phoneNumbers.isEmpty &&
                                   features.emails.isEmpty)
