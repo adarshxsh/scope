@@ -35,13 +35,46 @@ class AttentionDatabase extends _$AttentionDatabase {
   int get schemaVersion => 1;
 
   /// Runs a single-step atomic transaction to clean up expired notifications
-  /// and any orphaned review queue entries, avoiding main-thread loops.
-  Future<void> runSetBasedCleanup(int cutoffTimestamp) async {
+  /// based on cutoff timestamp, enforce max row count caps, delete orphaned review
+  /// queue entries, and execute SQLite disk compaction (VACUUM).
+  Future<void> runSetBasedCleanup(
+    int cutoffTimestamp, {
+    int maxRows = 500,
+    bool compact = true,
+  }) async {
     await transaction(() async {
       // 1. Delete expired notifications based on cutoff timestamp
-      await (delete(notificationsTable)..where((t) => t.timestamp.isSmallerThanValue(cutoffTimestamp))).go();
+      await (delete(notificationsTable)
+            ..where((t) => t.timestamp.isSmallerThanValue(cutoffTimestamp)))
+          .go();
 
-      // 2. Delete orphaned review queue entries in a set-based query
+      // 2. Enforce maximum row count caps
+      final countExpr = notificationsTable.id.count();
+      final countQuery = selectOnly(notificationsTable)..addColumns([countExpr]);
+      final totalRow = await countQuery.getSingle();
+      int currentCount = totalRow.read(countExpr) ?? 0;
+
+      if (currentCount > maxRows) {
+        // Prune auto-expired items first
+        int excess = currentCount - maxRows;
+        final deletedExpired = await _deleteOldestInState(ReviewState.EXPIRED, excess);
+        currentCount -= deletedExpired;
+
+        // Prune archived items next
+        if (currentCount > maxRows) {
+          excess = currentCount - maxRows;
+          final deletedArchived = await _deleteOldestInState(ReviewState.ARCHIVED, excess);
+          currentCount -= deletedArchived;
+
+          // Prune reviewed items next
+          if (currentCount > maxRows) {
+            excess = currentCount - maxRows;
+            await _deleteOldestInState(ReviewState.REVIEWED, excess);
+          }
+        }
+      }
+
+      // 3. Delete orphaned review queue entries in a set-based query
       final orphanedQuery = delete(reviewQueueTable)..where((t) {
         final hasNotification = selectOnly(notificationsTable)
           ..addColumns([notificationsTable.id]);
@@ -49,6 +82,25 @@ class AttentionDatabase extends _$AttentionDatabase {
       });
       await orphanedQuery.go();
     });
+
+    // 4. Compact database disk storage (outside transaction)
+    if (compact) {
+      try {
+        await customStatement('VACUUM;');
+      } catch (_) {
+        // Silently handle exceptions during vacuum (e.g., in-memory or locked DB)
+      }
+    }
+  }
+
+  Future<int> _deleteOldestInState(ReviewState targetState, int maxToDelete) async {
+    if (maxToDelete <= 0) return 0;
+    final subquery = selectOnly(notificationsTable)
+      ..addColumns([notificationsTable.id])
+      ..where(notificationsTable.state.equals(targetState.name))
+      ..orderBy([OrderingTerm.asc(notificationsTable.timestamp)])
+      ..limit(maxToDelete);
+    return await (delete(notificationsTable)..where((t) => t.id.isInQuery(subquery))).go();
   }
 }
 

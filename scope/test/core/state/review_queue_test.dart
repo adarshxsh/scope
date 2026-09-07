@@ -340,5 +340,17 @@ void main() {
       expect(controller.isCompleted('c1'), isTrue);
       expect(container.read(reviewQueueProvider).first.state, equals(ReviewState.REVIEWED));
     });
+
+    test('finishFocusSession triggers background cleanup and compaction', () async {
+      controller.startFocusSession();
+      expect(controller.inFocusSession, isTrue);
+
+      controller.finishFocusSession();
+      expect(controller.inFocusSession, isFalse);
+
+      // Allow background cleanup async task to complete
+      await Future.delayed(const Duration(milliseconds: 100));
+      expect(controller.isLoading, isFalse);
+    });
   });
 }

@@ -27,6 +27,13 @@ abstract class NotificationStorage {
   /// Returns the number of deleted notifications.
   Future<int> deleteOlderThan(int cutoffTimestamp);
 
+  /// Runs database cleanup enforcing age cutoff, max row count cap, and optional compaction.
+  Future<void> runCleanup({
+    required int cutoffTimestamp,
+    int maxRows = 500,
+    bool compact = true,
+  });
+
   /// Delete all stored notifications.
   Future<void> clear();
 
@@ -78,6 +85,32 @@ class InMemoryNotificationStorage implements NotificationStorage {
     final before = _store.length;
     _store.removeWhere((n) => n.timestamp < cutoffTimestamp);
     return before - _store.length;
+  }
+
+  @override
+  Future<void> runCleanup({
+    required int cutoffTimestamp,
+    int maxRows = 500,
+    bool compact = true,
+  }) async {
+    await deleteOlderThan(cutoffTimestamp);
+
+    if (_store.length > maxRows) {
+      void pruneState(ReviewState targetState) {
+        if (_store.length <= maxRows) return;
+        final excess = _store.length - maxRows;
+        final candidates = _store
+            .where((n) => n.state == targetState)
+            .toList()
+          ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+        final toRemove = candidates.take(excess).map((n) => n.id).toSet();
+        _store.removeWhere((n) => toRemove.contains(n.id));
+      }
+
+      pruneState(ReviewState.EXPIRED);
+      pruneState(ReviewState.ARCHIVED);
+      pruneState(ReviewState.REVIEWED);
+    }
   }
 
   @override

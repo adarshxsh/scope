@@ -241,6 +241,9 @@ class NotificationController extends ChangeNotifier {
     _focusSessionQueueIds.clear();
     clearFilter();
     notifyListeners();
+
+    // Trigger immediate post-session cleanup and disk compaction
+    runBackgroundCleanup(forceCompaction: true);
   }
 
   void recordFocusInterruption() {
@@ -319,18 +322,19 @@ class NotificationController extends ChangeNotifier {
   }
 
   Future<void> _loadInitialNotifications() async {
-    if (_initialLoadCompleted) return;
+    if (_initialLoadCompleted || _isDisposed) return;
     final loaded = await _storage.getAll();
-    if (_initialLoadCompleted) return;
+    if (_initialLoadCompleted || _isDisposed) return;
 
     if (_notifications.isEmpty) {
       _notifications = loaded;
     }
-    if (_notifications.isNotEmpty) {
+    if (_notifications.isNotEmpty && !_isDisposed) {
       final notifier = _container.read(reviewQueueProvider.notifier);
       notifier.load(_notifications);
       await notifier.rescore();
     }
+    if (_isDisposed) return;
     _initialLoadCompleted = true;
     _isLoading = false;
     notifyListeners();
@@ -340,29 +344,55 @@ class NotificationController extends ChangeNotifier {
     
     // Set up daily cleanup timer
     _cleanupTimer?.cancel();
-    _cleanupTimer = Timer.periodic(const Duration(hours: 24), (_) {
-      runBackgroundCleanup();
-    });
+    if (!_isDisposed) {
+      _cleanupTimer = Timer.periodic(const Duration(hours: 24), (_) {
+        runBackgroundCleanup();
+      });
+    }
   }
 
-  /// Cleans up old notifications (older than 7 days) and orphaned review queue items.
-  Future<void> runBackgroundCleanup() async {
-    if (_isCleaningUp) return;
+  /// Cleans up old notifications, enforces max row caps, and compacts database storage.
+  Future<void> runBackgroundCleanup({
+    bool forceCompaction = true,
+    int maxRows = 500,
+  }) async {
+    if (_isCleaningUp || _isDisposed) return;
 
     try {
       _isCleaningUp = true;
       
       // Defer execution if user is engaged in active focus session interactions
       while (_inFocusSession) {
-        await Future.delayed(const Duration(minutes: 5));
+        await Future.delayed(const Duration(milliseconds: 500));
         if (_isDisposed) return;
       }
 
+      if (_isDisposed) return;
+
       final cutoff = DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch;
-      final db = _container.read(databaseProvider);
       
-      // Execute the single-step atomic transaction
-      await db.runSetBasedCleanup(cutoff);
+      await _storage.runCleanup(
+        cutoffTimestamp: cutoff,
+        maxRows: maxRows,
+        compact: forceCompaction,
+      );
+
+      if (_isDisposed) return;
+
+      final loaded = await _storage.getAll();
+      if (_isDisposed) return;
+
+      final idsBefore = _notifications.map((n) => n.id).toSet();
+      final idsAfter = loaded.map((n) => n.id).toSet();
+
+      if (idsBefore.length != idsAfter.length || !idsBefore.containsAll(idsAfter)) {
+        _notifications = loaded;
+        final notifier = _container.read(reviewQueueProvider.notifier);
+        notifier.load(loaded);
+        await notifier.rescore();
+        if (_isDisposed) return;
+        notifyListeners();
+      }
 
     } catch (_) {
       // Silently handle errors to not interrupt UI
