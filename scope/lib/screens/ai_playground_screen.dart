@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/extracted_features.dart';
+import 'package:scope/core/analysis/ghost_ai.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/state/notification_controller.dart';
@@ -88,27 +89,54 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     });
   }
 
-  void _submitFeedback(bool isReward) {
+  void _submitFeedback(bool isReward) async {
     if (_selectedNotification == null) return;
 
+    await widget.controller.recordFeedback(
+      notification: _selectedNotification!,
+      isReward: isReward,
+    );
+
     if (isReward) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Reward (+1) recorded! AI model confidence reinforced.'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Reward (+1) recorded to database with 63-feature vector!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     } else {
+      await widget.controller.recordFeedback(
+        notification: _selectedNotification!,
+        isReward: false,
+      );
       setState(() {
         _showCorrectionForm = true;
       });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Penalty (-1) recorded to database. Set corrected classification below:'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
     }
   }
 
-  void _applyReinforcementRule() {
+  void _applyReinforcementRule() async {
     if (_selectedNotification == null) return;
 
     final n = _selectedNotification!;
+
+    await widget.controller.recordFeedback(
+      notification: n,
+      isReward: false,
+      correctedCategory: _selectedCategory,
+      correctedPriority: _selectedPriority,
+    );
+
     // Extract defining keywords (e.g. words > 3 chars)
     final words = <String>[];
     for (final w in n.title.split(' ')) {
@@ -136,12 +164,52 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
       _showCorrectionForm = false;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Reinforcement Rule Learned! Similar messages will now be classified as $_selectedPriority ($_selectedCategory).'),
-        backgroundColor: AppColors.seed,
-      ),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Correction & 63-feature vector saved! Similar messages will now be classified as $_selectedPriority ($_selectedCategory).'),
+          backgroundColor: AppColors.seed,
+        ),
+      );
+    }
+  }
+
+  void _exportDataset() async {
+    try {
+      final file = await widget.controller.exportDatasetToJsonl();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Dataset exported to JSONL: ${file.path}'),
+            backgroundColor: AppColors.seed,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to export dataset: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _reloadModel() async {
+    final success = await widget.controller.reloadModel();
+    setState(() {});
+    if (mounted) {
+      final source = GhostAI.instance.modelSource;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(success ? 'Model reloaded successfully! Source: $source' : 'Model reload fallback to heuristics.'),
+          backgroundColor: success ? Colors.green : Colors.orange,
+        ),
+      );
+    }
   }
 
   @override
@@ -178,6 +246,51 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              ScopeSurface(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Active TFLite Model:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        Chip(
+                          label: Text(
+                            GhostAI.instance.modelSource.toUpperCase().replaceAll('_', ' '),
+                            style: const TextStyle(fontSize: 10, color: Colors.white),
+                          ),
+                          backgroundColor: GhostAI.instance.modelSource == 'local_storage'
+                              ? Colors.green.shade800
+                              : AppColors.seed.withValues(alpha: 0.4),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: _exportDataset,
+                            icon: const Icon(Icons.download_rounded, size: 16),
+                            label: const Text('Export JSONL', style: TextStyle(fontSize: 12)),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: _reloadModel,
+                            icon: const Icon(Icons.refresh_rounded, size: 16),
+                            label: const Text('Reload Model', style: TextStyle(fontSize: 12)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: AppSpacing.md),
               if (_isCustomMode) _buildSimulatorForm() else _buildRecentList(notifications),

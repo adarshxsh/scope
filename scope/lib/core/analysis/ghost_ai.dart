@@ -1,5 +1,8 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
@@ -39,6 +42,8 @@ class GhostAIResult {
 class GhostAI {
   static GhostAI? _instance;
   Interpreter? _interpreter;
+  String _modelSource = 'uninitialized';
+  File? _lastLoadedFile;
   final RuleEngine _ruleEngine = RuleEngine();
 
   // Slide-cache for duplicate detection
@@ -56,24 +61,94 @@ class GhostAI {
   /// Returns whether the model is loaded.
   bool get isModelLoaded => _interpreter != null;
 
-  /// Initializes the TFLite interpreter and rules database once on startup.
-  Future<void> initialize() async {
-    if (_interpreter != null) return;
+  /// Returns the current source of the loaded model: 'local_storage', 'bundled_asset', or 'fallback_heuristics'.
+  String get modelSource => _modelSource;
+
+  /// Helper to get the standard local model file location in app storage.
+  static Future<File> getLocalModelFile() async {
     try {
-      // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
-    } catch (e) {
-      debugPrint('GhostAI: Failed to load TFLite model: $e');
+      final docsDir = await getApplicationDocumentsDirectory();
+      return File(p.join(docsDir.path, 'model.tflite'));
+    } catch (_) {
+      return File('model.tflite');
     }
+  }
+
+  /// Initializes the TFLite interpreter and rules database once on startup.
+  Future<void> initialize({File? customModelFile}) async {
+    await reloadModel(modelFile: customModelFile);
 
     try {
-      // 2. Load and compile rules database
+      // Load and compile rules database if not compiled
       final jsonStr = await rootBundle.loadString('assets/rules.json');
       _ruleEngine.compile(jsonStr);
       debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
     } catch (e) {
       debugPrint('GhostAI: Failed to initialize rules database: $e');
+    }
+  }
+
+  /// Reloads the model binary from local storage (or asset fallback if local file missing/invalid).
+  Future<bool> reloadModel({File? modelFile}) async {
+    _interpreter?.close();
+    _interpreter = null;
+    _modelSource = 'uninitialized';
+
+    File? targetLocalFile = modelFile;
+    if (targetLocalFile == null) {
+      try {
+        final defaultFile = await getLocalModelFile();
+        if (defaultFile.existsSync()) {
+          targetLocalFile = defaultFile;
+        }
+      } catch (_) {}
+    }
+
+    // 1. Try loading from local app storage if present
+    if (targetLocalFile != null && targetLocalFile.existsSync()) {
+      try {
+        _interpreter = Interpreter.fromFile(targetLocalFile);
+        _modelSource = 'local_storage';
+        _lastLoadedFile = targetLocalFile;
+        debugPrint('GhostAI: Loaded dynamic TFLite model from local storage: ${targetLocalFile.path}');
+        return true;
+      } catch (e) {
+        debugPrint('GhostAI: Failed to parse local model binary at ${targetLocalFile.path}, falling back: $e');
+        _interpreter = null;
+      }
+    }
+
+    // 2. Fall back to bundled asset model binary
+    try {
+      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
+      _modelSource = 'bundled_asset';
+      _lastLoadedFile = null;
+      debugPrint('GhostAI: Loaded bundled asset TFLite model.');
+      return true;
+    } catch (e) {
+      debugPrint('GhostAI: Failed to load bundled asset model: $e');
+      _interpreter = null;
+      _modelSource = 'fallback_heuristics';
+      _lastLoadedFile = null;
+      return false;
+    }
+  }
+
+  /// Ensures active model matches file state before inference.
+  Future<void> _syncModelFileState() async {
+    if (_modelSource == 'local_storage') {
+      if (_lastLoadedFile != null && !_lastLoadedFile!.existsSync()) {
+        debugPrint('GhostAI: Local model file removed. Falling back to bundled asset model.');
+        await reloadModel();
+      }
+    } else {
+      try {
+        final localFile = await getLocalModelFile();
+        if (localFile.existsSync()) {
+          debugPrint('GhostAI: New local model file detected. Reloading dynamic model.');
+          await reloadModel(modelFile: localFile);
+        }
+      } catch (_) {}
     }
   }
 
@@ -83,6 +158,7 @@ class GhostAI {
   }
 
   Future<GhostAIResult> _predict(AppNotification notification) async {
+    await _syncModelFileState();
     final stopwatch = Stopwatch()..start();
 
     // 1. Feature extraction using the existing FeatureExtractor
