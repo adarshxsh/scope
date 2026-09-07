@@ -1,9 +1,14 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:scope/core/analysis/feature_extractor.dart';
+import 'package:scope/core/analysis/ghost_ai.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
+import 'package:scope/core/export/dataset_exporter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/storage/notification_storage.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
@@ -566,5 +571,81 @@ class NotificationController extends ChangeNotifier {
           n.packageName.toLowerCase().contains(q) ||
           (n.classifiedCategory?.toLowerCase().contains(q) ?? false);
     }).toList();
+  }
+
+  /// Persists full 63-feature vector and feedback rating (+1 reward / -1 penalty) into local SQLite database.
+  Future<void> recordFeedback({
+    required AppNotification notification,
+    required bool isReward,
+    String? correctedCategory,
+    String? correctedPriority,
+  }) async {
+    final featureVector = FeatureExtractor.extractFromAppNotification(notification);
+    final jsonVector = jsonEncode(featureVector);
+
+    final rating = isReward ? 1 : -1;
+    final feedbackType = isReward ? 'reward' : 'penalty';
+    final category = correctedCategory ?? notification.classifiedCategory ?? notification.category ?? 'personal';
+    final priority = correctedPriority ?? notification.priority ?? (isReward ? 'high' : 'low');
+    final lookAgainScore = isReward
+        ? 1.0
+        : (priority == 'critical'
+            ? 1.0
+            : priority == 'high'
+                ? 0.85
+                : priority == 'medium'
+                    ? 0.50
+                    : 0.15);
+
+    final db = _container.read(databaseProvider);
+    await db.userFeedbackDao.insertFeedback(UserFeedbackTableCompanion.insert(
+      notificationId: notification.id,
+      packageName: notification.packageName,
+      title: notification.title,
+      content: notification.content,
+      rating: rating,
+      feedbackType: feedbackType,
+      featureVector: jsonVector,
+      category: Value(category),
+      priority: Value(priority),
+      lookAgainScore: Value(lookAgainScore),
+    ));
+
+    notifyListeners();
+  }
+
+  /// Exports recorded user feedback entries into a JSONL dataset file on local disk matching training schema.
+  Future<File> exportDatasetToJsonl({File? targetFile}) async {
+    final db = _container.read(databaseProvider);
+    var feedbackEntries = await db.userFeedbackDao.getAll();
+
+    // If no feedback entries exist yet, construct feedback entries from active notifications so export works immediately
+    if (feedbackEntries.isEmpty) {
+      for (final n in _notifications) {
+        final featureVector = FeatureExtractor.extractFromAppNotification(n);
+        await db.userFeedbackDao.insertFeedback(UserFeedbackTableCompanion.insert(
+          notificationId: n.id,
+          packageName: n.packageName,
+          title: n.title,
+          content: n.content,
+          rating: 1,
+          feedbackType: 'reward',
+          featureVector: jsonEncode(featureVector),
+          category: Value(n.classifiedCategory ?? n.category ?? 'personal'),
+          priority: Value(n.priority ?? 'high'),
+          lookAgainScore: Value(n.priorityScore ?? 0.85),
+        ));
+      }
+      feedbackEntries = await db.userFeedbackDao.getAll();
+    }
+
+    return await DatasetExporter.exportToJsonl(feedbackEntries, outputFile: targetFile);
+  }
+
+  /// Dynamically reloads the TFLite model binary from local storage or asset fallback.
+  Future<bool> reloadModel({File? customFile}) async {
+    final success = await GhostAI.instance.reloadModel(modelFile: customFile);
+    notifyListeners();
+    return success;
   }
 }
