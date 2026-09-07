@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:scope/core/analysis/model_manager.dart';
+import 'package:scope/core/analysis/model_metadata.dart';
 import 'package:scope/core/state/notification_controller.dart';
 import 'package:scope/screens/ai_playground_screen.dart';
 import 'package:scope/screens/diagnostic_screen.dart';
@@ -38,6 +40,48 @@ class SettingsScreen extends StatelessWidget {
                     title: 'Ghost AI Engine',
                     subtitle: 'On-device hybrid analysis pipeline',
                     onTap: null,
+                  ),
+                  const Divider(height: 1, indent: 56),
+                  _SettingsTile(
+                    icon: Icons.published_with_changes_rounded,
+                    title: 'Model Manager (Hot-Swap)',
+                    subtitle: 'Active: v${ModelManager.instance.activeVersion} (${ModelManager.instance.activeSource.name})',
+                    onTap: () async {
+                      final manager = ModelManager.instance;
+                      if (manager.isDynamicModelLoaded) {
+                        await manager.revertToBaseline();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Reverted to bundled baseline model.'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        }
+                      } else {
+                        // Simulate live hot-swap to updated model spec
+                        final updatedEngine = SimulatedInferenceEngine(
+                          inputShape: [1, 63],
+                          outputShape: [1, 1],
+                          predictHandler: (features) => 88.0,
+                        );
+                        final metadata = const ModelMetadata(
+                          modelName: 'ghost_ai_v2_hotswap',
+                          version: '2.0.0-dynamic',
+                          inputShape: [1, 63],
+                          outputShape: [1, 1],
+                        );
+                        final result = await manager.hotSwapEngine(updatedEngine, metadata: metadata);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(result.message),
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        }
+                      }
+                    },
                   ),
                   const Divider(height: 1, indent: 56),
                   _SettingsTile(

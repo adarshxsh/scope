@@ -7,6 +7,7 @@ import 'package:scope/core/analysis/score_fusion.dart';
 import 'package:scope/core/analysis/explanation_generator.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
+import 'package:scope/core/analysis/model_manager.dart';
 
 /// The central hub of Ghost AI coordinating all classification stages.
 class GhostAnalysisEngine {
@@ -100,7 +101,7 @@ class GhostAnalysisEngine {
       explanation: explanation,
       latencyMs: stopwatch.elapsedMilliseconds,
       ruleVersion: ruleEngine.version,
-      modelVersion: GhostAI.instance.isModelLoaded ? '1.0.0-tflite' : 'fallback-heuristics',
+      modelVersion: ModelManager.instance.isModelLoaded ? ModelManager.instance.activeVersion : 'fallback-heuristics',
       engineVersion: '2.0.0-hybrid',
       extractedFeatures: features.toMap(),
     );
