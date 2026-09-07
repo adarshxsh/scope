@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
+import 'package:scope/core/analysis/model_manager.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/widgets/scope_card.dart';
@@ -405,12 +406,24 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
         // 3. Versions and Metadata
         ScopeCard(
           padding: const EdgeInsets.all(12.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+          child: Column(
             children: [
-              _buildVersionItem('Engine', notif.engineVersion ?? 'None'),
-              _buildVersionItem('Rules', notif.ruleVersion ?? 'None'),
-              _buildVersionItem('Model', notif.modelVersion ?? 'None'),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildVersionItem('Engine', notif.engineVersion ?? 'None'),
+                  _buildVersionItem('Rules', notif.ruleVersion ?? 'None'),
+                  _buildVersionItem('Model', notif.modelVersion ?? 'None'),
+                ],
+              ),
+              const Divider(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildVersionItem('Source', ModelManager.instance.activeSource.name.toUpperCase()),
+                  _buildVersionItem('Tensor Contract', '[1, 63] (63 features)'),
+                ],
+              ),
             ],
           ),
         ),
