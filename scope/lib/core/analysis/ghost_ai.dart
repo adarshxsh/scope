@@ -70,7 +70,8 @@ class GhostAI {
     try {
       // 2. Load and compile rules database
       final jsonStr = await rootBundle.loadString('assets/rules.json');
-      _ruleEngine.compile(jsonStr);
+      await _ruleEngine.compile(jsonStr);
+      await _ruleEngine.loadCustomRules();
       debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
     } catch (e) {
       debugPrint('GhostAI: Failed to initialize rules database: $e');

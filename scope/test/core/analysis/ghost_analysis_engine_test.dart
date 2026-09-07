@@ -1,13 +1,14 @@
+import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
+import 'package:scope/core/analysis/rule_crypto.dart';
 import 'package:scope/core/models/notification_model.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('GhostAnalysisEngine', () {
-    const String sampleJson = '''
-    {
+    final Map<String, dynamic> samplePayload = {
       "version": "1.0",
       "rules": [
         {
@@ -19,14 +20,14 @@ void main() {
           }
         }
       ]
-    }
-    ''';
+    };
 
     late GhostAnalysisEngine engine;
 
-    setUp(() {
+    setUp(() async {
       engine = GhostAnalysisEngine();
-      engine.ruleEngine.compile(sampleJson);
+      final envelope = await RuleCrypto.createSignedBaseRulesEnvelope(samplePayload);
+      await engine.ruleEngine.compile(json.encode(envelope));
     });
 
     test('orchestrates pipeline and classifies bank debit notification as critical', () async {
