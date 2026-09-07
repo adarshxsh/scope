@@ -13,23 +13,26 @@ class LiteRtClassifier implements NotificationAnalyzer {
   bool _isModelLoaded = false;
 
   LiteRtClassifier() {
-    _initialize();
+    initialize();
   }
 
-  Future<void> _initialize() async {
+  Future<void> initialize() async {
+    if (_isModelLoaded && _interpreter != null) return;
     try {
       // 1. Load Vocab
       final vocabStr = await rootBundle.loadString('assets/vocab.txt');
       final lines = vocabStr.split('\n');
       _tokenizer = WordPieceTokenizer.fromLines(lines);
 
-      // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
-      _isModelLoaded = false;
+      // 2. Load Interpreter for dedicated category classifier
+      _interpreter = await Interpreter.fromAsset('assets/category_model.tflite');
+      _isModelLoaded = true;
     } catch (e) {
       // Graceful degradation: Log and set flags so analyze runs in fallback mode
       // ignore: avoid_print
       print('LiteRtClassifier failed to initialize: $e');
       _isModelLoaded = false;
+      _interpreter = null;
 
       // Ensure tokenizer is loaded even if interpreter fails (so we can test tokenization in fallback)
       if (_tokenizer == null) {
@@ -51,7 +54,7 @@ class LiteRtClassifier implements NotificationAnalyzer {
 
     // Ensure initialization finished
     if (_tokenizer == null) {
-      await _initialize();
+      await initialize();
     }
 
     final tokenIds = _tokenizer?.tokenize(combinedText) ?? List<int>.filled(64, 0);
@@ -74,7 +77,7 @@ class LiteRtClassifier implements NotificationAnalyzer {
     try {
       // Run model inference
       // Assume input shape: [1, 64]
-      final input = [tokenIds];
+      final input = [tokenIds.map((e) => e.toDouble()).toList()];
       
       // Output logit tensor shape: [1, 5] (Promo, Social, System, Message, Finance)
       final output = List<double>.filled(5, 0.0).reshape([1, 5]);
