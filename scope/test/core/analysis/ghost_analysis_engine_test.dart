@@ -45,7 +45,7 @@ void main() {
       expect(analyzed.explanation, contains('Amount: Found transaction amount'));
       expect(analyzed.latencyMs, isNotNull);
       expect(analyzed.extractedFeatures, isNotNull);
-      expect(analyzed.extractedFeatures!['amount'], equals(5000.0));
+      expect(analyzed.extractedFeatures!['amount'], equals('[REDACTED_AMOUNT]'));
     });
 
     test('orchestrates pipeline and classifies OTP messages as critical priority', () async {
@@ -60,7 +60,7 @@ void main() {
       final analyzed = await engine.analyze(notif);
 
       expect(analyzed.priority, equals('critical'));
-      expect(analyzed.extractedFeatures!['otp'], equals('882715'));
+      expect(analyzed.extractedFeatures!['otp'], equals('[REDACTED_OTP]'));
     });
 
     test('categorizes low priority promo keywords as low', () async {
