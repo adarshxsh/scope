@@ -51,17 +51,17 @@ void main() {
   }) {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
-      switch (call.method) {
-        case 'isListenerEnabled':
-          return isListenerEnabled;
-        case 'getNotifications':
-          return notifications;
-        case 'openNotificationSettings':
-          return true;
-        default:
-          return null;
-      }
-    });
+          switch (call.method) {
+            case 'isListenerEnabled':
+              return isListenerEnabled;
+            case 'getNotifications':
+              return notifications;
+            case 'openNotificationSettings':
+              return true;
+            default:
+              return null;
+          }
+        });
   }
 
   Widget buildApp({
@@ -88,8 +88,9 @@ void main() {
       expect(find.text('AttentionOS'), findsOneWidget);
     });
 
-    testWidgets('shows permission banner when listener is disabled',
-        (tester) async {
+    testWidgets('shows permission banner when listener is disabled', (
+      tester,
+    ) async {
       setupMock(isListenerEnabled: false, notifications: []);
       await tester.pumpWidget(buildApp());
       await tester.pumpAndSettle();
@@ -102,8 +103,9 @@ void main() {
       );
     });
 
-    testWidgets('hides permission banner when listener is enabled',
-        (tester) async {
+    testWidgets('hides permission banner when listener is enabled', (
+      tester,
+    ) async {
       setupMock(isListenerEnabled: true, notifications: []);
       await tester.pumpWidget(buildApp());
       await tester.pumpAndSettle();

@@ -24,8 +24,12 @@ class NotificationDetailScreen extends StatelessWidget {
   });
 
   String get _summary {
-    if (notification.explanation != null && notification.explanation!.isNotEmpty) {
-      return notification.explanation!.split('\n').first.replaceAll(RegExp(r'^[-•*]\s*'), '');
+    if (notification.explanation != null &&
+        notification.explanation!.isNotEmpty) {
+      return notification.explanation!
+          .split('\n')
+          .first
+          .replaceAll(RegExp(r'^[-•*]\s*'), '');
     }
     return notification.content.isNotEmpty
         ? notification.content
@@ -42,10 +46,7 @@ class NotificationDetailScreen extends StatelessWidget {
     final urgencyColor = AppColors.urgency(notification.priority);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Ghost AI Analysis'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('Ghost AI Analysis'), centerTitle: true),
       body: ScopeScreenBody(
         child: ListView(
           padding: const EdgeInsets.only(bottom: AppSpacing.xl),
@@ -62,7 +63,9 @@ class NotificationDetailScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        notification.title.isNotEmpty ? notification.title : notification.packageName,
+                        notification.title.isNotEmpty
+                            ? notification.title
+                            : notification.packageName,
                         style: theme.textTheme.titleMedium,
                       ),
                       Text(
@@ -72,13 +75,19 @@ class NotificationDetailScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (notification.priority != null && notification.priority != 'low')
+                if (notification.priority != null &&
+                    notification.priority != 'low')
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: urgencyColor.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: urgencyColor.withValues(alpha: 0.3)),
+                      border: Border.all(
+                        color: urgencyColor.withValues(alpha: 0.3),
+                      ),
                     ),
                     child: Text(
                       notification.priority!.toUpperCase(),
@@ -126,7 +135,10 @@ class NotificationDetailScreen extends StatelessWidget {
             Theme(
               data: theme.copyWith(dividerColor: Colors.transparent),
               child: ExpansionTile(
-                title: Text('Under the hood', style: theme.textTheme.titleMedium),
+                title: Text(
+                  'Under the hood',
+                  style: theme.textTheme.titleMedium,
+                ),
                 childrenPadding: const EdgeInsets.only(bottom: AppSpacing.md),
                 children: [
                   ScopeSurface(
@@ -134,7 +146,13 @@ class NotificationDetailScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _DetailSection(title: 'Raw Message', child: Text(notification.content, style: theme.textTheme.bodyMedium)),
+                        _DetailSection(
+                          title: 'Raw Message',
+                          child: Text(
+                            notification.content,
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                        ),
                         const SizedBox(height: AppSpacing.md),
                         _DetailSection(
                           title: 'What I found',
@@ -142,22 +160,43 @@ class NotificationDetailScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               if (features.hasDeadline)
-                                const ScopeInfoRow(label: 'Deadline', value: 'Detected'),
+                                const ScopeInfoRow(
+                                  label: 'Deadline',
+                                  value: 'Detected',
+                                ),
                               if (features.amount != null)
-                                ScopeInfoRow(label: 'Amount', value: '₹${features.amount}'),
+                                ScopeInfoRow(
+                                  label: 'Amount',
+                                  value: '₹${features.amount}',
+                                ),
                               if (features.urls.isNotEmpty)
-                                ScopeInfoRow(label: 'Website', value: features.urls.first),
+                                ScopeInfoRow(
+                                  label: 'Website',
+                                  value: features.urls.first,
+                                ),
                               if (features.phoneNumbers.isNotEmpty)
-                                ScopeInfoRow(label: 'Phone', value: features.phoneNumbers.first),
+                                ScopeInfoRow(
+                                  label: 'Phone',
+                                  value: features.phoneNumbers.first,
+                                ),
                               if (features.emails.isNotEmpty)
-                                ScopeInfoRow(label: 'Email', value: features.emails.first),
-                              ScopeInfoRow(label: 'Organization', value: notification.packageName),
+                                ScopeInfoRow(
+                                  label: 'Email',
+                                  value: features.emails.first,
+                                ),
+                              ScopeInfoRow(
+                                label: 'Organization',
+                                value: notification.packageName,
+                              ),
                               if (!features.hasDeadline &&
                                   features.amount == null &&
                                   features.urls.isEmpty &&
                                   features.phoneNumbers.isEmpty &&
                                   features.emails.isEmpty)
-                                Text('No structured data extracted.', style: theme.textTheme.bodyMedium),
+                                Text(
+                                  'No structured data extracted.',
+                                  style: theme.textTheme.bodyMedium,
+                                ),
                             ],
                           ),
                         ),
@@ -201,26 +240,29 @@ class NotificationDetailScreen extends StatelessWidget {
         break;
       default:
         controller.recordAction();
-        controller.complete(notification.id); // Mark complete since we are executing it
+        controller.complete(
+          notification.id,
+        ); // Mark complete since we are executing it
         shouldPop = true;
         break;
     }
-    
+
     if (context.mounted) {
-      final isGeneric = action.type == SmartActionType.archive || 
-                        action.type == SmartActionType.complete ||
-                        action.type == SmartActionType.addCalendar ||
-                        action.type == SmartActionType.remind ||
-                        action.type == SmartActionType.track;
-      
-      final msg = isGeneric 
+      final isGeneric =
+          action.type == SmartActionType.archive ||
+          action.type == SmartActionType.complete ||
+          action.type == SmartActionType.addCalendar ||
+          action.type == SmartActionType.remind ||
+          action.type == SmartActionType.track;
+
+      final msg = isGeneric
           ? '${action.label} recorded'
           : 'Opening App for: ${action.label}...';
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(msg), duration: const Duration(seconds: 2)),
       );
-      
+
       if (shouldPop && Navigator.canPop(context)) {
         Navigator.pop(context);
       }

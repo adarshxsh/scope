@@ -16,19 +16,20 @@ abstract final class AppTheme {
   static ThemeData _build() {
     const brightness = Brightness.dark;
 
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: AppColors.seed,
-      brightness: brightness,
-      surface: AppColors.surface,
-      onSurface: AppColors.onSurface,
-    ).copyWith(
-      // Override generated values with our hand-tuned tokens.
-      surface: AppColors.surface,
-      onSurface: AppColors.onSurface,
-      surfaceContainerHighest: AppColors.surfaceHigh,
-      outline: AppColors.border,
-      outlineVariant: AppColors.border,
-    );
+    final colorScheme =
+        ColorScheme.fromSeed(
+          seedColor: AppColors.seed,
+          brightness: brightness,
+          surface: AppColors.surface,
+          onSurface: AppColors.onSurface,
+        ).copyWith(
+          // Override generated values with our hand-tuned tokens.
+          surface: AppColors.surface,
+          onSurface: AppColors.onSurface,
+          surfaceContainerHighest: AppColors.surfaceHigh,
+          outline: AppColors.border,
+          outlineVariant: AppColors.border,
+        );
 
     return ThemeData(
       useMaterial3: true,
@@ -259,5 +260,6 @@ abstract final class AppTheme {
   static const double chipRadius = radiusMd;
 
   static Color urgencyColor(String? priority) => AppColors.urgency(priority);
-  static Color urgencyBackground(String? priority) => AppColors.urgencyBg(priority);
+  static Color urgencyBackground(String? priority) =>
+      AppColors.urgencyBg(priority);
 }

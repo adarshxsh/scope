@@ -67,7 +67,10 @@ class _MainShellState extends State<MainShell> {
   Widget _buildFloatingNavBar(BuildContext context) {
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.md,
+        ),
         child: Container(
           height: 64,
           decoration: BoxDecoration(
@@ -169,7 +172,9 @@ class _NavBarItem extends StatelessWidget {
           vertical: AppSpacing.sm,
         ),
         decoration: BoxDecoration(
-          color: isActive ? AppColors.medium.withValues(alpha: 0.15) : Colors.transparent,
+          color: isActive
+              ? AppColors.medium.withValues(alpha: 0.15)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
@@ -177,7 +182,8 @@ class _NavBarItem extends StatelessWidget {
           children: [
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 200),
-              transitionBuilder: (child, animation) => ScaleTransition(scale: animation, child: child),
+              transitionBuilder: (child, animation) =>
+                  ScaleTransition(scale: animation, child: child),
               child: Icon(
                 isActive ? activeIcon : icon,
                 key: ValueKey(isActive),
@@ -204,5 +210,4 @@ class _NavBarItem extends StatelessWidget {
       ),
     );
   }
-  
 }

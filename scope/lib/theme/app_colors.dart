@@ -60,10 +60,10 @@ abstract final class AppColors {
 
   // ── Action colours ───────────────────────────────────────────────────────────
   static const calendar = Color(0xFF3A7BD5);
-  static const remind    = Color(0xFFE5923A);
-  static const complete  = Color(0xFF3DAA6F);
-  static const finance   = Color(0xFF8B5CF6);
-  static const portal    = Color(0xFF2DB8A8);
+  static const remind = Color(0xFFE5923A);
+  static const complete = Color(0xFF3DAA6F);
+  static const finance = Color(0xFF8B5CF6);
+  static const portal = Color(0xFF2DB8A8);
 
   // ── Focus gradient (immersive session) ──────────────────────────────────────
   static const LinearGradient focusGradient = LinearGradient(
@@ -74,11 +74,11 @@ abstract final class AppColors {
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
   static Color urgency(String? priority) => switch (priority) {
-        'critical' => critical,
-        'high'     => high,
-        'medium'   => medium,
-        _          => low,
-      };
+    'critical' => critical,
+    'high' => high,
+    'medium' => medium,
+    _ => low,
+  };
 
   static Color urgencyBg(String? priority) =>
       urgency(priority).withValues(alpha: 0.12);

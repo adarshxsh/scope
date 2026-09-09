@@ -49,23 +49,26 @@ void main() {
       expect(engine.version, equals('1.2.3'));
     });
 
-    test('matches a debit transaction rule successfully (AND condition title+content)', () {
-      final notif = AppNotification(
-        id: '1',
-        packageName: 'com.hdfc.mobilebanking',
-        title: 'HDFC Bank Alert',
-        content: 'Your account has been debited Rs. 15,000.',
-        timestamp: DateTime.now().millisecondsSinceEpoch,
-      );
+    test(
+      'matches a debit transaction rule successfully (AND condition title+content)',
+      () {
+        final notif = AppNotification(
+          id: '1',
+          packageName: 'com.hdfc.mobilebanking',
+          title: 'HDFC Bank Alert',
+          content: 'Your account has been debited Rs. 15,000.',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
 
-      final result = engine.match(notif);
-      expect(result, isNotNull);
-      expect(result!.ruleId, equals('bank_debit'));
-      expect(result.category, equals('finance'));
-      expect(result.priority, equals('critical'));
-      expect(result.matchedSignal, contains('Title matches "Alert"'));
-      expect(result.matchedSignal, contains('Content matches "debited"'));
-    });
+        final result = engine.match(notif);
+        expect(result, isNotNull);
+        expect(result!.ruleId, equals('bank_debit'));
+        expect(result.category, equals('finance'));
+        expect(result.priority, equals('critical'));
+        expect(result.matchedSignal, contains('Title matches "Alert"'));
+        expect(result.matchedSignal, contains('Content matches "debited"'));
+      },
+    );
 
     test('does not match debit rule if title condition is missing', () {
       final notif = AppNotification(

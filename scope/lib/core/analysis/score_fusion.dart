@@ -11,7 +11,8 @@ class ScoreFusion {
   }) {
     // 1. Check for deterministic critical bypass rules
     if (ruleResult != null) {
-      final isBypass = ruleResult.priority == 'critical' ||
+      final isBypass =
+          ruleResult.priority == 'critical' ||
           ruleResult.ruleId == 'otp_security' ||
           ruleResult.ruleId == 'finance_debit' ||
           ruleResult.ruleId == 'scholarship_portal';
@@ -37,6 +38,20 @@ class ScoreFusion {
     final category = ruleResult.category;
     double score = 0.85; // Base high confidence for custom rule matches
 
+    if (modelResult.isFallback) {
+      return AnalysisResult(
+        category: category,
+        score: score,
+        engineName: 'score_fusion (rule only, model fallback)',
+        matchedSignals: [
+          'Rule matched: ${ruleResult.ruleId} (${ruleResult.matchedSignal})',
+          'Model fallback ignored: ${modelResult.category}',
+        ],
+        latencyMs: 0,
+        isFallback: true,
+      );
+    }
+
     final modelAgrees = modelResult.category == ruleResult.category;
     if (modelAgrees) {
       // Confidence boost if both agree
@@ -54,7 +69,7 @@ class ScoreFusion {
       engineName: 'score_fusion (hybrid)',
       matchedSignals: [
         'Rule matched: ${ruleResult.ruleId} (${ruleResult.matchedSignal})',
-        'Model predicted: ${modelResult.category} (${(modelResult.score * 100).toStringAsFixed(1)}% confidence)'
+        'Model predicted: ${modelResult.category} (${(modelResult.score * 100).toStringAsFixed(1)}% confidence)',
       ],
       latencyMs: 0,
     );
