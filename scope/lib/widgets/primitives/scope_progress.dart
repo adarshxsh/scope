@@ -100,7 +100,11 @@ class FocusSessionProgress extends StatelessWidget {
   final int current;
   final int total;
 
-  const FocusSessionProgress({super.key, required this.current, required this.total});
+  const FocusSessionProgress({
+    super.key,
+    required this.current,
+    required this.total,
+  });
 
   @override
   Widget build(BuildContext context) {

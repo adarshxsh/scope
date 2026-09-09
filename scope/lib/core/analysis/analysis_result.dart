@@ -15,7 +15,7 @@ class AnalysisResult {
   /// Latency of the analysis step in milliseconds.
   final int latencyMs;
 
-  /// Whether this result was produced by a fallback heuristic due to model initialization bypass or error.
+  /// Whether this result was produced by fallback heuristics due to model initialization bypass or error.
   final bool isFallback;
 
   const AnalysisResult({
@@ -28,6 +28,7 @@ class AnalysisResult {
   });
 
   @override
-  String toString() => 'AnalysisResult(category: $category, score: $score, '
+  String toString() =>
+      'AnalysisResult(category: $category, score: $score, '
       'engineName: $engineName, matchedSignals: $matchedSignals, latencyMs: ${latencyMs}ms, isFallback: $isFallback)';
 }

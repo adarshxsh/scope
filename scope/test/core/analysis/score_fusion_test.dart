@@ -6,14 +6,14 @@ import 'package:scope/core/analysis/score_fusion.dart';
 void main() {
   group('ScoreFusion Tests', () {
     test('critical bypass rule returns max confidence bypass result', () {
-      final rule = MatchedRuleResult(
+      final rule = const MatchedRuleResult(
         ruleId: 'otp_security',
         category: 'sys',
         priority: 'critical',
         matchedSignal: 'Matched keyword "otp"',
       );
 
-      final modelResult = AnalysisResult(
+      final modelResult = const AnalysisResult(
         category: 'sys',
         score: 0.60,
         engineName: 'litert_model',
@@ -34,14 +34,14 @@ void main() {
     });
 
     test('authentic model result blends scores when rule matches', () {
-      final rule = MatchedRuleResult(
+      final rule = const MatchedRuleResult(
         ruleId: 'custom_rule_1',
         category: 'msg',
         priority: 'medium',
         matchedSignal: 'Matched message rule',
       );
 
-      final modelResult = AnalysisResult(
+      final modelResult = const AnalysisResult(
         category: 'msg',
         score: 0.80,
         engineName: 'litert_model',
@@ -62,14 +62,14 @@ void main() {
     });
 
     test('fallback model result does NOT blend score into rule match result', () {
-      final rule = MatchedRuleResult(
+      final rule = const MatchedRuleResult(
         ruleId: 'custom_rule_2',
         category: 'finance',
         priority: 'high',
         matchedSignal: 'Matched finance keyword',
       );
 
-      final fallbackModelResult = AnalysisResult(
+      final fallbackModelResult = const AnalysisResult(
         category: 'finance',
         score: 0.0,
         engineName: 'litert_model (fallback)',
@@ -90,7 +90,7 @@ void main() {
     });
 
     test('fallback model result returned directly when no rule matches', () {
-      final fallbackModelResult = AnalysisResult(
+      final fallbackModelResult = const AnalysisResult(
         category: 'msg',
         score: 0.0,
         engineName: 'litert_model (fallback)',

@@ -98,12 +98,11 @@ class _PhysicsSwipeCardState extends State<PhysicsSwipeCard>
           : Offset(pos.dx < 0 ? -size.width * 1.5 : size.width * 1.5, 0);
 
       final tween = Tween<Offset>(begin: pos, end: exitOffset);
-      
+
       // Simulate spring duration based on velocity
-      final anim = tween.animate(CurvedAnimation(
-        parent: _animController,
-        curve: Curves.easeOutCubic,
-      ));
+      final anim = tween.animate(
+        CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
+      );
 
       anim.addListener(() {
         _offset.value = anim.value;
@@ -135,10 +134,9 @@ class _PhysicsSwipeCardState extends State<PhysicsSwipeCard>
     } else {
       // Snap back to center
       final tween = Tween<Offset>(begin: pos, end: Offset.zero);
-      final anim = tween.animate(CurvedAnimation(
-        parent: _animController,
-        curve: Curves.fastOutSlowIn,
-      ));
+      final anim = tween.animate(
+        CurvedAnimation(parent: _animController, curve: Curves.fastOutSlowIn),
+      );
       anim.addListener(() {
         _offset.value = anim.value;
       });
@@ -162,21 +160,21 @@ class _PhysicsSwipeCardState extends State<PhysicsSwipeCard>
           // Normalize [-1, 1] for both axes based on 45% of screen size
           final normX = (pos.dx / (size.width * 0.45)).clamp(-1.0, 1.0);
           final normY = (pos.dy / (size.height * 0.45)).clamp(-1.0, 1.0);
-          
+
           final absX = normX.abs();
           final absY = normY.abs();
           final maxAbs = math.max(absX, absY); // For scale/shadow
 
           final isUp = pos.dy < 0;
           final isDown = pos.dy > 0;
-          
+
           final isPrimaryVertical = absY > absX;
 
           // 3D Tilt: rotateX based on Y drag, rotateY based on X drag
           final rotXRad = normY * -5.0 * math.pi / 180.0;
           final rotYRad = normX * 5.0 * math.pi / 180.0;
           // Z rotation for extra physical feel
-          final rotZRad = normX * 3.0 * math.pi / 180.0; 
+          final rotZRad = normX * 3.0 * math.pi / 180.0;
 
           final scale = 1.0 - maxAbs * 0.02; // subtle shrink
           final shadowBlur = 8.0 + maxAbs * 25.0; // deeper shadow
@@ -190,8 +188,8 @@ class _PhysicsSwipeCardState extends State<PhysicsSwipeCard>
           if (isPrimaryVertical) {
             actionColor = isUp ? AppColors.complete : AppColors.remind;
           } else {
-             // For horizontal, maybe standard blue or just transparent
-             actionColor = AppColors.seed;
+            // For horizontal, maybe standard blue or just transparent
+            actionColor = AppColors.seed;
           }
 
           return Stack(
@@ -207,8 +205,12 @@ class _PhysicsSwipeCardState extends State<PhysicsSwipeCard>
                       child: DecoratedBox(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            begin: isUp ? Alignment.topCenter : Alignment.bottomCenter,
-                            end: isUp ? Alignment.bottomCenter : Alignment.topCenter,
+                            begin: isUp
+                                ? Alignment.topCenter
+                                : Alignment.bottomCenter,
+                            end: isUp
+                                ? Alignment.bottomCenter
+                                : Alignment.topCenter,
                             colors: [
                               actionColor.withValues(alpha: 0.22),
                               Colors.transparent,
@@ -259,7 +261,7 @@ class _PhysicsSwipeCardState extends State<PhysicsSwipeCard>
                 ),
 
               // Left/Right badges (optional, keeping minimal for now)
-              
+
               // 3D Card
               Positioned.fill(
                 child: Transform(

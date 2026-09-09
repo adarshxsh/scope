@@ -158,13 +158,16 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.settings_input_component, color: Theme.of(context).colorScheme.primary),
+              Icon(
+                Icons.settings_input_component,
+                color: Theme.of(context).colorScheme.primary,
+              ),
               const SizedBox(width: 8),
               Text(
                 'Input Notification Spec',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -178,16 +181,46 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
               contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             ),
             items: [
-              const DropdownMenuItem(value: 'Custom', child: Text('Custom Entry (Blank)')),
-              const DropdownMenuItem(value: 'message', child: Text('WhatsApp Msg (Mom)')),
-              const DropdownMenuItem(value: 'finance', child: Text('HDFC Bank Debit Alert')),
-              const DropdownMenuItem(value: 'scholarship', child: Text('Scholarship Deadline')),
-              const DropdownMenuItem(value: 'chat', child: Text('Slack Mention')),
-              const DropdownMenuItem(value: 'email', child: Text('GSOC Accepted Email')),
-              const DropdownMenuItem(value: 'promo', child: Text('Amazon Sale Offer')),
-              const DropdownMenuItem(value: 'health', child: Text('Apollo Medical Appointment')),
-              const DropdownMenuItem(value: 'system', child: Text('Android OS Patch')),
-              const DropdownMenuItem(value: 'social', child: Text('Instagram Like Alert')),
+              const DropdownMenuItem(
+                value: 'Custom',
+                child: Text('Custom Entry (Blank)'),
+              ),
+              const DropdownMenuItem(
+                value: 'message',
+                child: Text('WhatsApp Msg (Mom)'),
+              ),
+              const DropdownMenuItem(
+                value: 'finance',
+                child: Text('HDFC Bank Debit Alert'),
+              ),
+              const DropdownMenuItem(
+                value: 'scholarship',
+                child: Text('Scholarship Deadline'),
+              ),
+              const DropdownMenuItem(
+                value: 'chat',
+                child: Text('Slack Mention'),
+              ),
+              const DropdownMenuItem(
+                value: 'email',
+                child: Text('GSOC Accepted Email'),
+              ),
+              const DropdownMenuItem(
+                value: 'promo',
+                child: Text('Amazon Sale Offer'),
+              ),
+              const DropdownMenuItem(
+                value: 'health',
+                child: Text('Apollo Medical Appointment'),
+              ),
+              const DropdownMenuItem(
+                value: 'system',
+                child: Text('Android OS Patch'),
+              ),
+              const DropdownMenuItem(
+                value: 'social',
+                child: Text('Instagram Like Alert'),
+              ),
             ],
             onChanged: (val) {
               if (val != null) {
@@ -230,7 +263,9 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
           // Ongoing
           SwitchListTile(
             title: const Text('Ongoing (Persistent) Notification'),
-            subtitle: const Text('System downloads, call logs, active music players'),
+            subtitle: const Text(
+              'System downloads, call logs, active music players',
+            ),
             value: _isOngoing,
             onChanged: (val) {
               setState(() => _isOngoing = val);
@@ -249,10 +284,15 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
           ? const SizedBox(
               width: 20,
               height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
             )
           : const Icon(Icons.analytics),
-      label: Text(_isAnalyzing ? 'RUNNING PIPELINE...' : 'ANALYZE NOTIFICATION'),
+      label: Text(
+        _isAnalyzing ? 'RUNNING PIPELINE...' : 'ANALYZE NOTIFICATION',
+      ),
       style: FilledButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 16),
         textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
@@ -275,10 +315,14 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
     final urlsStr = urls != null && urls.isNotEmpty ? urls.toString() : null;
 
     final emails = features['emails'] as List?;
-    final emailsStr = emails != null && emails.isNotEmpty ? emails.toString() : null;
+    final emailsStr = emails != null && emails.isNotEmpty
+        ? emails.toString()
+        : null;
 
     final phoneNumbers = features['phoneNumbers'] as List?;
-    final phoneNumbersStr = phoneNumbers != null && phoneNumbers.isNotEmpty ? phoneNumbers.toString() : null;
+    final phoneNumbersStr = phoneNumbers != null && phoneNumbers.isNotEmpty
+        ? phoneNumbers.toString()
+        : null;
 
     final theme = Theme.of(context);
 
@@ -289,8 +333,8 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
         Text(
           'Analysis Pipeline Results',
           style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+            fontWeight: FontWeight.bold,
+          ),
         ),
         const SizedBox(height: 12),
 
@@ -323,7 +367,10 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
                         ),
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: priorityColor.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(10),
@@ -337,6 +384,33 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
                             ),
                           ),
                         ),
+                        if (notif.isFallback) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.shade800.withValues(
+                                alpha: 0.2,
+                              ),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: Colors.amber.shade800,
+                                width: 1,
+                              ),
+                            ),
+                            child: Text(
+                              'Fallback',
+                              style: TextStyle(
+                                color: Colors.amber.shade900,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -362,8 +436,10 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
                 children: [
                   Icon(Icons.comment_bank, color: theme.colorScheme.primary),
                   const SizedBox(width: 8),
-                  const Text('Pipeline Explanation Trace',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Pipeline Explanation Trace',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ],
               ),
               const Divider(height: 20),
@@ -384,10 +460,15 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.filter_list_alt, color: theme.colorScheme.secondary),
+                  Icon(
+                    Icons.filter_list_alt,
+                    color: theme.colorScheme.secondary,
+                  ),
                   const SizedBox(width: 8),
-                  const Text('Extracted Text Features',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Extracted Text Features',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ],
               ),
               const Divider(height: 20),
@@ -424,7 +505,10 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('$label: ', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+          Text(
+            '$label: ',
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+          ),
           Expanded(
             child: Text(
               value ?? 'None',
@@ -445,7 +529,10 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       children: [
         Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
         const SizedBox(height: 2),
-        Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+        ),
       ],
     );
   }
