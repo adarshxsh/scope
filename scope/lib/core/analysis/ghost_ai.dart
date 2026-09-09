@@ -39,6 +39,7 @@ class GhostAIResult {
 class GhostAI {
   static GhostAI? _instance;
   Interpreter? _interpreter;
+  int? _expectedInputSize;
   final RuleEngine _ruleEngine = RuleEngine();
 
   // Slide-cache for duplicate detection
@@ -56,13 +57,36 @@ class GhostAI {
   /// Returns whether the model is loaded.
   bool get isModelLoaded => _interpreter != null;
 
+  /// Returns expected model input dimension derived from interpreter input tensor shape.
+  int? get expectedInputSize => _expectedInputSize;
+
+  /// Allows setting interpreter and expected shape for testing.
+  @visibleForTesting
+  void setInterpreterForTesting(Interpreter? interpreter, {int? expectedInputSize}) {
+    _interpreter = interpreter;
+    if (interpreter != null) {
+      if (expectedInputSize != null) {
+        _expectedInputSize = expectedInputSize;
+      } else {
+        final shape = interpreter.getInputTensor(0).shape;
+        _expectedInputSize = shape.isNotEmpty ? shape.last : null;
+      }
+    } else {
+      _expectedInputSize = null;
+    }
+  }
+
   /// Initializes the TFLite interpreter and rules database once on startup.
   Future<void> initialize() async {
     if (_interpreter != null) return;
     try {
       // 1. Load interpreter from assets
       _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      final shape = _interpreter!.getInputTensor(0).shape;
+      _expectedInputSize = shape.isNotEmpty ? shape.last : null;
+      debugPrint(
+        'GhostAI: TFLite interpreter loaded successfully (Expected input size: $_expectedInputSize).',
+      );
     } catch (e) {
       debugPrint('GhostAI: Failed to load TFLite model: $e');
     }
@@ -92,7 +116,10 @@ class GhostAI {
     double predictedScore = 0.0;
     int inferenceTimeUs = 0;
 
-    if (_interpreter != null) {
+    final expectedSize = _expectedInputSize ??
+        (_interpreter != null ? _interpreter!.getInputTensor(0).shape.last : null);
+
+    if (_interpreter != null && expectedSize != null && featureVector.length == expectedSize) {
       final input = [featureVector];
       final output = List<double>.filled(1, 0.0).reshape([1, 1]);
 
@@ -104,7 +131,12 @@ class GhostAI {
       // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
       predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
     } else {
-      // Heuristic fallback if model not loaded
+      if (_interpreter != null && expectedSize != null && featureVector.length != expectedSize) {
+        debugPrint(
+          'GhostAI WARNING: Feature vector dimension mismatch (extracted: ${featureVector.length}, expected: $expectedSize). Falling back to heuristic scoring.',
+        );
+      }
+      // Heuristic fallback if model not loaded or shape mismatch occurs
       predictedScore = _heuristicLookAgainScore(featureVector);
     }
 
