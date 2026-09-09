@@ -1,0 +1,14 @@
+{
+  "ghost_ai": {
+    "feature_version": 1,
+    "input_shape": [1, 63],
+    "output_shape": [1, 1],
+    "compatibility_hash": "ghost_ai_v1_default_hash"
+  },
+  "text_classifier": {
+    "feature_version": 1,
+    "input_shape": [1, 64],
+    "output_shape": [1, 5],
+    "compatibility_hash": "text_classifier_v1_default_hash"
+  }
+}

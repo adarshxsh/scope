@@ -4,6 +4,7 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
+import 'package:scope/core/analysis/model_lifecycle_manager.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -57,12 +58,16 @@ class GhostAI {
   bool get isModelLoaded => _interpreter != null;
 
   /// Initializes the TFLite interpreter and rules database once on startup.
-  Future<void> initialize() async {
-    if (_interpreter != null) return;
+  Future<void> initialize({bool reloadInterpreter = false}) async {
+    if (_interpreter != null && !reloadInterpreter) return;
     try {
-      // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      // 1. Load interpreter dynamically via ModelLifecycleManager
+      _interpreter = await ModelLifecycleManager.instance.loadGhostAiInterpreter();
+      if (_interpreter != null) {
+        debugPrint('GhostAI: TFLite interpreter loaded successfully via ModelLifecycleManager.');
+      } else {
+        debugPrint('GhostAI: Interpreter unavailable, running in fallback mode.');
+      }
     } catch (e) {
       debugPrint('GhostAI: Failed to load TFLite model: $e');
     }
