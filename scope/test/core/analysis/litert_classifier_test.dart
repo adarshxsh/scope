@@ -22,6 +22,8 @@ void main() {
       expect(result.category, equals('msg'));
       expect(result.engineName, contains('fallback'));
       expect(result.score, equals(0.50));
+      expect(result.isFallback, isTrue);
+      expect(result.fallbackReason, equals('Model asset uninitialized'));
     });
 
     test('fallback correctly categorizes bank alerts', () async {

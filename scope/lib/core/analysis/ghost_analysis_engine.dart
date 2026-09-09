@@ -103,6 +103,8 @@ class GhostAnalysisEngine {
       modelVersion: GhostAI.instance.isModelLoaded ? '1.0.0-tflite' : 'fallback-heuristics',
       engineVersion: '2.0.0-hybrid',
       extractedFeatures: features.toMap(),
+      isFallback: fusedResult.isFallback,
+      fallbackReason: fusedResult.fallbackReason,
     );
   }
 
