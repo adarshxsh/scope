@@ -34,7 +34,8 @@ class SavedActionItemsWidget extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
             scrollDirection: Axis.horizontal,
             itemCount: items.length,
-            separatorBuilder: (context, index) => const SizedBox(width: AppSpacing.sm),
+            separatorBuilder: (context, index) =>
+                const SizedBox(width: AppSpacing.sm),
             itemBuilder: (context, index) {
               final item = items[index];
               return InkWell(
@@ -49,18 +50,29 @@ class SavedActionItemsWidget extends StatelessWidget {
                 },
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
-                    color: item.action.color?.withValues(alpha: 0.15) ?? Colors.white10,
+                    color:
+                        item.action.color?.withValues(alpha: 0.15) ??
+                        Colors.white10,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: item.action.color?.withValues(alpha: 0.3) ?? Colors.white24,
+                      color:
+                          item.action.color?.withValues(alpha: 0.3) ??
+                          Colors.white24,
                     ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(item.action.icon, size: 16, color: item.action.color ?? Colors.white70),
+                      Icon(
+                        item.action.icon,
+                        size: 16,
+                        color: item.action.color ?? Colors.white70,
+                      ),
                       const SizedBox(width: 8),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -75,8 +87,13 @@ class SavedActionItemsWidget extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            item.notification.title.isEmpty ? item.notification.packageName : item.notification.title,
-                            style: const TextStyle(fontSize: 10, color: Colors.white70),
+                            item.notification.title.isEmpty
+                                ? item.notification.packageName
+                                : item.notification.title,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: Colors.white70,
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),

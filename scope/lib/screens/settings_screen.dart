@@ -50,7 +50,9 @@ class SettingsScreen extends StatelessWidget {
                   _SettingsTile(
                     icon: Icons.notifications_active_outlined,
                     title: 'Notification Access',
-                    subtitle: controller.isListenerEnabled ? 'Enabled' : 'Not enabled',
+                    subtitle: controller.isListenerEnabled
+                        ? 'Enabled'
+                        : 'Not enabled',
                     onTap: controller.openNotificationSettings,
                   ),
                 ],

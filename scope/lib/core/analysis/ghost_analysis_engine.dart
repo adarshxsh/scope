@@ -13,11 +13,9 @@ class GhostAnalysisEngine {
   final RuleEngine ruleEngine;
   final LiteRtClassifier mlClassifier;
 
-  GhostAnalysisEngine({
-    RuleEngine? ruleEngine,
-    LiteRtClassifier? mlClassifier,
-  })  : ruleEngine = ruleEngine ?? RuleEngine(),
-        mlClassifier = mlClassifier ?? LiteRtClassifier();
+  GhostAnalysisEngine({RuleEngine? ruleEngine, LiteRtClassifier? mlClassifier})
+    : ruleEngine = ruleEngine ?? RuleEngine(),
+      mlClassifier = mlClassifier ?? LiteRtClassifier();
 
   /// Compiles rules loaded from assets on engine startup.
   Future<void> initialize() async {
@@ -100,14 +98,18 @@ class GhostAnalysisEngine {
       explanation: explanation,
       latencyMs: stopwatch.elapsedMilliseconds,
       ruleVersion: ruleEngine.version,
-      modelVersion: GhostAI.instance.isModelLoaded ? '1.0.0-tflite' : 'fallback-heuristics',
+      modelVersion: GhostAI.instance.isModelLoaded
+          ? '1.0.0-tflite'
+          : 'fallback-heuristics',
       engineVersion: '2.0.0-hybrid',
+      isFallback: fusedResult.isFallback,
       extractedFeatures: features.toMap(),
     );
   }
 
   bool _isStatusOrProgressNotification(AppNotification notification) {
-    if (notification.category == 'progress' || notification.category == 'status') {
+    if (notification.category == 'progress' ||
+        notification.category == 'status') {
       return true;
     }
 

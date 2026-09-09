@@ -28,13 +28,7 @@ class ReviewSessionStats {
 }
 
 /// Central state for notifications, user actions, and review sessions.
-enum FocusFilterType {
-  none,
-  needsAction,
-  important,
-  archived,
-  focusArea,
-}
+enum FocusFilterType { none, needsAction, important, archived, focusArea }
 
 /// Central state for notifications, user actions, and review sessions.
 class NotificationController extends ChangeNotifier {
@@ -43,14 +37,22 @@ class NotificationController extends ChangeNotifier {
     NotificationStorage? storage,
     GhostAnalysisEngine? engine,
     ProviderContainer? container,
-  })  : _bridge = bridge ?? NotificationBridge(),
-        _container = container ?? providerContainer,
-        _storage = storage ?? DriftNotificationStorage(container?.read(databaseProvider) ?? providerContainer.read(databaseProvider)),
-        _engine = engine ?? GhostAnalysisEngine() {
+  }) : _bridge = bridge ?? NotificationBridge(),
+       _container = container ?? providerContainer,
+       _storage =
+           storage ??
+           DriftNotificationStorage(
+             container?.read(databaseProvider) ??
+                 providerContainer.read(databaseProvider),
+           ),
+       _engine = engine ?? GhostAnalysisEngine() {
     _engine.initialize();
 
     // Listen to changes in Riverpod's reviewQueueProvider to keep legacy notifier list in sync
-    _container.listen<List<AppNotification>>(reviewQueueProvider, (previous, next) {
+    _container.listen<List<AppNotification>>(reviewQueueProvider, (
+      previous,
+      next,
+    ) {
       _notifications = next;
       notifyListeners();
     });
@@ -95,7 +97,8 @@ class NotificationController extends ChangeNotifier {
   GhostAnalysisEngine get engine => _engine;
 
   bool get inFocusSession => _inFocusSession;
-  List<String> get focusSessionQueueIds => List.unmodifiable(_focusSessionQueueIds);
+  List<String> get focusSessionQueueIds =>
+      List.unmodifiable(_focusSessionQueueIds);
   DateTime? get focusSessionStart => _focusSessionStart;
   int get focusSessionInterruptions => _focusSessionInterruptions;
 
@@ -113,18 +116,20 @@ class NotificationController extends ChangeNotifier {
       .where((n) => n.priority == 'medium' || n.priority == null)
       .toList();
 
-  List<AppNotification> get archivedNotifications =>
-      _countable(_notifications.where((n) => n.state == ReviewState.ARCHIVED).toList());
+  List<AppNotification> get archivedNotifications => _countable(
+    _notifications.where((n) => n.state == ReviewState.ARCHIVED).toList(),
+  );
 
-  List<AppNotification> get completedToday =>
-      _countable(_notifications.where((n) => n.state == ReviewState.REVIEWED).toList());
+  List<AppNotification> get completedToday => _countable(
+    _notifications.where((n) => n.state == ReviewState.REVIEWED).toList(),
+  );
 
   /// Total notifications excluding app promotional cards (for display counts).
   int get countableTotal => _countable(_notifications).length;
 
   List<AppNotification> get reviewQueue {
     final queue = _container.read(sortedReviewQueueProvider);
-    
+
     switch (_filterType) {
       case FocusFilterType.none:
         return queue;
@@ -146,7 +151,8 @@ class NotificationController extends ChangeNotifier {
     }
   }
 
-  Map<FocusArea, int> get focusAreaCounts => FocusAreaMapper.countsFor(_countableActive);
+  Map<FocusArea, int> get focusAreaCounts =>
+      FocusAreaMapper.countsFor(_countableActive);
 
   int get actionCountToday => needsAction.length;
 
@@ -155,10 +161,10 @@ class NotificationController extends ChangeNotifier {
       .length;
 
   int get financialUpdateCount => _countableActive.where((n) {
-        final features = n.extractedFeatures;
-        return features?['amount'] != null ||
-            (n.classifiedCategory ?? n.category ?? '').toLowerCase() == 'finance';
-      }).length;
+    final features = n.extractedFeatures;
+    return features?['amount'] != null ||
+        (n.classifiedCategory ?? n.category ?? '').toLowerCase() == 'finance';
+  }).length;
 
   /// ~30 seconds per notification in a Focus session.
   int get estimatedReviewMinutes {
@@ -168,7 +174,9 @@ class NotificationController extends ChangeNotifier {
   }
 
   List<AppNotification> notificationsForArea(FocusArea area) =>
-      activeNotifications.where((n) => FocusAreaMapper.areaFor(n) == area).toList();
+      activeNotifications
+          .where((n) => FocusAreaMapper.areaFor(n) == area)
+          .toList();
 
   void setFilter(FocusFilterType type, [FocusArea? area]) {
     _filterType = type;
@@ -200,13 +208,15 @@ class NotificationController extends ChangeNotifier {
     resetSessionStats();
 
     final db = _container.read(databaseProvider);
-    db.focusSessionDao.insertSession(FocusSessionEntry(
-      id: 0,
-      sessionStart: _focusSessionStart!,
-      interruptions: 0,
-      completion: false,
-      duration: 0,
-    ));
+    db.focusSessionDao.insertSession(
+      FocusSessionEntry(
+        id: 0,
+        sessionStart: _focusSessionStart!,
+        interruptions: 0,
+        completion: false,
+        duration: 0,
+      ),
+    );
 
     notifyListeners();
   }
@@ -229,12 +239,14 @@ class NotificationController extends ChangeNotifier {
     final db = _container.read(databaseProvider);
     db.focusSessionDao.getActiveSession().then((active) {
       if (active != null) {
-        db.focusSessionDao.updateSession(active.copyWith(
-          sessionEnd: Value(now),
-          completion: true,
-          duration: durationSeconds,
-          interruptions: _focusSessionInterruptions,
-        ));
+        db.focusSessionDao.updateSession(
+          active.copyWith(
+            sessionEnd: Value(now),
+            completion: true,
+            duration: durationSeconds,
+            interruptions: _focusSessionInterruptions,
+          ),
+        );
       }
     });
 
@@ -252,12 +264,15 @@ class NotificationController extends ChangeNotifier {
 
   // Action Items State
   final List<SavedActionItem> _savedActionItems = [];
-  List<SavedActionItem> get savedActionItems => List.unmodifiable(_savedActionItems);
+  List<SavedActionItem> get savedActionItems =>
+      List.unmodifiable(_savedActionItems);
 
   void saveActionItem(AppNotification notification, SmartAction action) {
     // Add to saved items
-    _savedActionItems.add(SavedActionItem(notification: notification, action: action));
-    
+    _savedActionItems.add(
+      SavedActionItem(notification: notification, action: action),
+    );
+
     // Archive it so it leaves the review queue
     archive(notification.id);
   }
@@ -337,7 +352,7 @@ class NotificationController extends ChangeNotifier {
 
     // Trigger initial cleanup once on startup
     runBackgroundCleanup();
-    
+
     // Set up daily cleanup timer
     _cleanupTimer?.cancel();
     _cleanupTimer = Timer.periodic(const Duration(hours: 24), (_) {
@@ -351,19 +366,20 @@ class NotificationController extends ChangeNotifier {
 
     try {
       _isCleaningUp = true;
-      
+
       // Defer execution if user is engaged in active focus session interactions
       while (_inFocusSession) {
         await Future.delayed(const Duration(minutes: 5));
         if (_isDisposed) return;
       }
 
-      final cutoff = DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch;
+      final cutoff = DateTime.now()
+          .subtract(const Duration(days: 7))
+          .millisecondsSinceEpoch;
       final db = _container.read(databaseProvider);
-      
+
       // Execute the single-step atomic transaction
       await db.runSetBasedCleanup(cutoff);
-
     } catch (_) {
       // Silently handle errors to not interrupt UI
     } finally {
@@ -391,18 +407,22 @@ class NotificationController extends ChangeNotifier {
         // Ignore ongoing background/system notifications (e.g. charging, media playback)
         if (raw.isOngoing) continue;
 
-        final isDuplicate = _notifications.any((n) =>
-            n.packageName == raw.packageName &&
-            n.timestamp == raw.timestamp &&
-            n.title == raw.title &&
-            n.content == raw.content);
-
-        if (!isDuplicate) {
-          final inBatch = analyzed.any((n) =>
+        final isDuplicate = _notifications.any(
+          (n) =>
               n.packageName == raw.packageName &&
               n.timestamp == raw.timestamp &&
               n.title == raw.title &&
-              n.content == raw.content);
+              n.content == raw.content,
+        );
+
+        if (!isDuplicate) {
+          final inBatch = analyzed.any(
+            (n) =>
+                n.packageName == raw.packageName &&
+                n.timestamp == raw.timestamp &&
+                n.title == raw.title &&
+                n.content == raw.content,
+          );
           if (!inBatch) {
             analyzed.add(await _engine.analyze(raw));
           }
@@ -433,18 +453,22 @@ class NotificationController extends ChangeNotifier {
     final analyzed = <AppNotification>[];
 
     for (final raw in testNotifs) {
-      final isDuplicate = _notifications.any((n) =>
-          n.packageName == raw.packageName &&
-          n.timestamp == raw.timestamp &&
-          n.title == raw.title &&
-          n.content == raw.content);
-
-      if (!isDuplicate) {
-        final inBatch = analyzed.any((n) =>
+      final isDuplicate = _notifications.any(
+        (n) =>
             n.packageName == raw.packageName &&
             n.timestamp == raw.timestamp &&
             n.title == raw.title &&
-            n.content == raw.content);
+            n.content == raw.content,
+      );
+
+      if (!isDuplicate) {
+        final inBatch = analyzed.any(
+          (n) =>
+              n.packageName == raw.packageName &&
+              n.timestamp == raw.timestamp &&
+              n.title == raw.title &&
+              n.content == raw.content,
+        );
         if (!inBatch) {
           analyzed.add(await _engine.analyze(raw));
         }
@@ -558,7 +582,7 @@ class NotificationController extends ChangeNotifier {
     if (query.trim().isEmpty) {
       return targetList.take(50).toList();
     }
-    
+
     final q = query.toLowerCase();
     return targetList.where((n) {
       return n.title.toLowerCase().contains(q) ||

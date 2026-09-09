@@ -23,7 +23,9 @@ class NotificationInsightCard extends StatelessWidget {
 
     return ScopeSurface(
       onTap: onTap,
-      borderColor: showUrgency ? AppColors.urgency(priority).withValues(alpha: 0.12) : null,
+      borderColor: showUrgency
+          ? AppColors.urgency(priority).withValues(alpha: 0.12)
+          : null,
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

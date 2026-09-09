@@ -54,20 +54,22 @@ class LiteRtClassifier implements NotificationAnalyzer {
       await _initialize();
     }
 
-    final tokenIds = _tokenizer?.tokenize(combinedText) ?? List<int>.filled(64, 0);
+    final tokenIds =
+        _tokenizer?.tokenize(combinedText) ?? List<int>.filled(64, 0);
 
     if (!_isModelLoaded || _interpreter == null) {
       // Graceful fallback heuristic classifier
       final category = _runFallbackHeuristic(combinedText);
       return AnalysisResult(
         category: category,
-        score: 0.50, // Base default score for fallback
+        score: 0.0, // Zero confidence score for fallback
         engineName: 'litert_model (fallback)',
         matchedSignals: [
           'Model asset invalid or uninitialized',
-          'Tokenizer parsed ${tokenIds.take(5).toList()}...'
+          'Tokenizer parsed ${tokenIds.take(5).toList()}...',
         ],
         latencyMs: stopwatch.elapsedMilliseconds,
+        isFallback: true,
       );
     }
 
@@ -75,7 +77,7 @@ class LiteRtClassifier implements NotificationAnalyzer {
       // Run model inference
       // Assume input shape: [1, 64]
       final input = [tokenIds];
-      
+
       // Output logit tensor shape: [1, 5] (Promo, Social, System, Message, Finance)
       final output = List<double>.filled(5, 0.0).reshape([1, 5]);
 
@@ -102,35 +104,50 @@ class LiteRtClassifier implements NotificationAnalyzer {
         engineName: 'litert_model',
         matchedSignals: ['Softmax scores: $softmaxScores'],
         latencyMs: stopwatch.elapsedMilliseconds,
+        isFallback: false,
       );
     } catch (e) {
       // Fallback on inference error
       final category = _runFallbackHeuristic(combinedText);
       return AnalysisResult(
         category: category,
-        score: 0.50,
+        score: 0.0,
         engineName: 'litert_model (fallback on error)',
         matchedSignals: ['Inference error: $e'],
         latencyMs: stopwatch.elapsedMilliseconds,
+        isFallback: true,
       );
     }
   }
 
   String _runFallbackHeuristic(String text) {
     final lower = text.toLowerCase();
-    if (lower.contains('otp') || lower.contains('verification') || lower.contains('code')) {
+    if (lower.contains('otp') ||
+        lower.contains('verification') ||
+        lower.contains('code')) {
       return 'sys';
     }
-    if (lower.contains('debited') || lower.contains('spent') || lower.contains('withdraw') || lower.contains('rs.') || lower.contains('inr')) {
+    if (lower.contains('debited') ||
+        lower.contains('spent') ||
+        lower.contains('withdraw') ||
+        lower.contains('rs.') ||
+        lower.contains('inr')) {
       return 'finance';
     }
-    if (lower.contains('appointment') || lower.contains('doctor') || lower.contains('medicine')) {
+    if (lower.contains('appointment') ||
+        lower.contains('doctor') ||
+        lower.contains('medicine')) {
       return 'health';
     }
-    if (lower.contains('sale') || lower.contains('discount') || lower.contains('promo') || lower.contains('off')) {
+    if (lower.contains('sale') ||
+        lower.contains('discount') ||
+        lower.contains('promo') ||
+        lower.contains('off')) {
       return 'promo';
     }
-    if (lower.contains('liked') || lower.contains('followed') || lower.contains('commented')) {
+    if (lower.contains('liked') ||
+        lower.contains('followed') ||
+        lower.contains('commented')) {
       return 'social';
     }
     if (lower.contains('deadline') || lower.contains('scholarship')) {
@@ -143,7 +160,8 @@ class LiteRtClassifier implements NotificationAnalyzer {
     double max = logits.reduce((curr, next) => curr > next ? curr : next);
     List<double> exps = logits.map((x) => math.exp(x - max)).toList();
     final sum = exps.reduce((curr, next) => curr + next);
-    if (sum == 0.0) return List<double>.filled(logits.length, 1.0 / logits.length);
+    if (sum == 0.0)
+      return List<double>.filled(logits.length, 1.0 / logits.length);
     return exps.map((x) => x / sum).toList();
   }
 }

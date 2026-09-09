@@ -24,23 +24,26 @@ void main() {
       expect(container.read(reviewQueueProvider), isEmpty);
     });
 
-    test('add() inserts a notification in ACTIVE state and updates lastUpdated', () {
-      final notif = AppNotification(
-        id: 'n1',
-        packageName: 'com.whatsapp',
-        title: 'Alice',
-        content: 'Hey there',
-        timestamp: DateTime.now().millisecondsSinceEpoch,
-      );
+    test(
+      'add() inserts a notification in ACTIVE state and updates lastUpdated',
+      () {
+        final notif = AppNotification(
+          id: 'n1',
+          packageName: 'com.whatsapp',
+          title: 'Alice',
+          content: 'Hey there',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
 
-      notifier.add(notif);
+        notifier.add(notif);
 
-      final list = container.read(reviewQueueProvider);
-      expect(list.length, equals(1));
-      expect(list.first.id, equals('n1'));
-      expect(list.first.state, equals(ReviewState.ACTIVE));
-      expect(list.first.lastUpdated, isNotNull);
-    });
+        final list = container.read(reviewQueueProvider);
+        expect(list.length, equals(1));
+        expect(list.first.id, equals('n1'));
+        expect(list.first.state, equals(ReviewState.ACTIVE));
+        expect(list.first.lastUpdated, isNotNull);
+      },
+    );
 
     test('remove() deletes a notification from state', () {
       final notif = AppNotification(
@@ -70,10 +73,16 @@ void main() {
       notifier.add(notif);
 
       notifier.archive('n1');
-      expect(container.read(reviewQueueProvider).first.state, equals(ReviewState.ARCHIVED));
+      expect(
+        container.read(reviewQueueProvider).first.state,
+        equals(ReviewState.ARCHIVED),
+      );
 
       notifier.expire('n1');
-      expect(container.read(reviewQueueProvider).first.state, equals(ReviewState.EXPIRED));
+      expect(
+        container.read(reviewQueueProvider).first.state,
+        equals(ReviewState.EXPIRED),
+      );
     });
 
     test('snooze() transitions state to SNOOZED and sets snoozedUntil', () {
@@ -91,30 +100,38 @@ void main() {
       final item = container.read(reviewQueueProvider).first;
       expect(item.state, equals(ReviewState.SNOOZED));
       expect(item.snoozedUntil, isNotNull);
-      expect(item.snoozedUntil!.isAfter(DateTime.now().add(const Duration(minutes: 110))), isTrue);
-    });
-
-    test('rescore() un-snoozes notifications whose snooze duration has elapsed', () async {
-      final notif = AppNotification(
-        id: 'n1',
-        packageName: 'com.whatsapp',
-        title: 'Alice',
-        content: 'Hey there',
-        timestamp: DateTime.now().millisecondsSinceEpoch,
+      expect(
+        item.snoozedUntil!.isAfter(
+          DateTime.now().add(const Duration(minutes: 110)),
+        ),
+        isTrue,
       );
-
-      notifier.add(notif);
-      // Snooze with negative duration so it is immediately expired
-      notifier.snooze('n1', const Duration(seconds: -10));
-
-      final snoozedItem = container.read(reviewQueueProvider).first;
-      expect(snoozedItem.state, equals(ReviewState.SNOOZED));
-
-      await notifier.rescore();
-
-      final rescoredItem = container.read(reviewQueueProvider).first;
-      expect(rescoredItem.state, equals(ReviewState.ACTIVE));
     });
+
+    test(
+      'rescore() un-snoozes notifications whose snooze duration has elapsed',
+      () async {
+        final notif = AppNotification(
+          id: 'n1',
+          packageName: 'com.whatsapp',
+          title: 'Alice',
+          content: 'Hey there',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        notifier.add(notif);
+        // Snooze with negative duration so it is immediately expired
+        notifier.snooze('n1', const Duration(seconds: -10));
+
+        final snoozedItem = container.read(reviewQueueProvider).first;
+        expect(snoozedItem.state, equals(ReviewState.SNOOZED));
+
+        await notifier.rescore();
+
+        final rescoredItem = container.read(reviewQueueProvider).first;
+        expect(rescoredItem.state, equals(ReviewState.ACTIVE));
+      },
+    );
 
     test('merge duplicate notifications correctly', () {
       final notif1 = AppNotification(
@@ -134,7 +151,10 @@ void main() {
       );
 
       notifier.add(notif1);
-      notifier.snooze('original-id', const Duration(minutes: 5)); // Set to snoozed
+      notifier.snooze(
+        'original-id',
+        const Duration(minutes: 5),
+      ); // Set to snoozed
 
       notifier.add(notif2); // Duplicate add
 
@@ -151,7 +171,9 @@ void main() {
         packageName: 'com.whatsapp',
         title: 'OTP Verification',
         content: 'Your verification code is 883102. Valid for 5 minutes.',
-        timestamp: DateTime.now().millisecondsSinceEpoch - 6 * 60 * 1000, // 6 minutes ago
+        timestamp:
+            DateTime.now().millisecondsSinceEpoch -
+            6 * 60 * 1000, // 6 minutes ago
       );
 
       notifier.add(oldOtp);
@@ -162,22 +184,27 @@ void main() {
       expect(item.priorityScore, equals(0.0));
     });
 
-    test('rescore() auto-expires relative deadline reminders after they pass', () async {
-      final oldReminder = AppNotification(
-        id: 'rem-old',
-        packageName: 'com.google.android.calendar',
-        title: 'Upcoming meeting reminder',
-        content: 'Starts in 10 minutes',
-        timestamp: DateTime.now().millisecondsSinceEpoch - 11 * 60 * 1000, // 11 minutes ago
-      );
+    test(
+      'rescore() auto-expires relative deadline reminders after they pass',
+      () async {
+        final oldReminder = AppNotification(
+          id: 'rem-old',
+          packageName: 'com.google.android.calendar',
+          title: 'Upcoming meeting reminder',
+          content: 'Starts in 10 minutes',
+          timestamp:
+              DateTime.now().millisecondsSinceEpoch -
+              11 * 60 * 1000, // 11 minutes ago
+        );
 
-      notifier.add(oldReminder);
-      await notifier.rescore();
+        notifier.add(oldReminder);
+        await notifier.rescore();
 
-      final item = container.read(reviewQueueProvider).first;
-      expect(item.state, equals(ReviewState.EXPIRED));
-      expect(item.priorityScore, equals(0.0));
-    });
+        final item = container.read(reviewQueueProvider).first;
+        expect(item.state, equals(ReviewState.EXPIRED));
+        expect(item.priorityScore, equals(0.0));
+      },
+    );
 
     test('rescore() auto-archives completed payment reminders', () async {
       final completedPayment = AppNotification(
@@ -209,28 +236,73 @@ void main() {
       container.dispose();
     });
 
-    test('filters out archived and snoozed notifications from active sorted queue', () {
-      final active = AppNotification(id: 'a1', packageName: 'whatsapp', title: 'A', content: 'Act', timestamp: 1);
-      final archived = AppNotification(id: 'a2', packageName: 'whatsapp', title: 'B', content: 'Arc', timestamp: 2, state: ReviewState.ARCHIVED);
-      final snoozed = AppNotification(id: 'a3', packageName: 'whatsapp', title: 'C', content: 'Snooze', timestamp: 3, state: ReviewState.SNOOZED, snoozedUntil: DateTime.now().add(const Duration(minutes: 5)));
+    test(
+      'filters out archived and snoozed notifications from active sorted queue',
+      () {
+        final active = AppNotification(
+          id: 'a1',
+          packageName: 'whatsapp',
+          title: 'A',
+          content: 'Act',
+          timestamp: 1,
+        );
+        final archived = AppNotification(
+          id: 'a2',
+          packageName: 'whatsapp',
+          title: 'B',
+          content: 'Arc',
+          timestamp: 2,
+          state: ReviewState.ARCHIVED,
+        );
+        final snoozed = AppNotification(
+          id: 'a3',
+          packageName: 'whatsapp',
+          title: 'C',
+          content: 'Snooze',
+          timestamp: 3,
+          state: ReviewState.SNOOZED,
+          snoozedUntil: DateTime.now().add(const Duration(minutes: 5)),
+        );
 
-      notifier.add(active);
-      notifier.add(archived);
-      notifier.add(snoozed);
+        notifier.add(active);
+        notifier.add(archived);
+        notifier.add(snoozed);
 
-      // Force archive state directly for a2 since add() resets state to ACTIVE
-      notifier.archive('a2');
-      notifier.snooze('a3', const Duration(minutes: 5));
+        // Force archive state directly for a2 since add() resets state to ACTIVE
+        notifier.archive('a2');
+        notifier.snooze('a3', const Duration(minutes: 5));
 
-      final sortedQueue = container.read(sortedReviewQueueProvider);
-      expect(sortedQueue.length, equals(1));
-      expect(sortedQueue.first.id, equals('a1'));
-    });
+        final sortedQueue = container.read(sortedReviewQueueProvider);
+        expect(sortedQueue.length, equals(1));
+        expect(sortedQueue.first.id, equals('a1'));
+      },
+    );
 
     test('sorts by review score descending', () {
-      final low = AppNotification(id: 'low', packageName: 'promo', title: 'Promo', content: 'Buy', timestamp: 1, priorityScore: 0.1);
-      final high = AppNotification(id: 'high', packageName: 'whatsapp', title: 'Mom', content: 'Emergency', timestamp: 2, priorityScore: 0.95);
-      final mid = AppNotification(id: 'mid', packageName: 'gmail', title: 'Work', content: 'Updates', timestamp: 3, priorityScore: 0.5);
+      final low = AppNotification(
+        id: 'low',
+        packageName: 'promo',
+        title: 'Promo',
+        content: 'Buy',
+        timestamp: 1,
+        priorityScore: 0.1,
+      );
+      final high = AppNotification(
+        id: 'high',
+        packageName: 'whatsapp',
+        title: 'Mom',
+        content: 'Emergency',
+        timestamp: 2,
+        priorityScore: 0.95,
+      );
+      final mid = AppNotification(
+        id: 'mid',
+        packageName: 'gmail',
+        title: 'Work',
+        content: 'Updates',
+        timestamp: 3,
+        priorityScore: 0.5,
+      );
 
       notifier.add(low);
       notifier.add(high);
@@ -241,7 +313,8 @@ void main() {
       notifier.update(high.copyWith(priorityScore: 0.95));
       notifier.update(mid.copyWith(priorityScore: 0.50));
 
-      container.read(reviewQueueSortOrderProvider.notifier).state = QueueSortOrder.reviewScore;
+      container.read(reviewQueueSortOrderProvider.notifier).state =
+          QueueSortOrder.reviewScore;
 
       final sorted = container.read(sortedReviewQueueProvider);
       expect(sorted.length, equals(3));
@@ -251,20 +324,45 @@ void main() {
     });
 
     test('sorts by deadline ascending (closer deadlines first)', () {
-      final far = AppNotification(id: 'far', packageName: 'cal', title: 'meeting reminder', content: 'starts in 60 minutes', timestamp: DateTime.now().millisecondsSinceEpoch);
-      final near = AppNotification(id: 'near', packageName: 'cal', title: 'meeting reminder', content: 'starts in 5 minutes', timestamp: DateTime.now().millisecondsSinceEpoch);
-      final none = AppNotification(id: 'none', packageName: 'whatsapp', title: 'Chat', content: 'Hello', timestamp: DateTime.now().millisecondsSinceEpoch - 5000);
+      final far = AppNotification(
+        id: 'far',
+        packageName: 'cal',
+        title: 'meeting reminder',
+        content: 'starts in 60 minutes',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+      final near = AppNotification(
+        id: 'near',
+        packageName: 'cal',
+        title: 'meeting reminder',
+        content: 'starts in 5 minutes',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+      final none = AppNotification(
+        id: 'none',
+        packageName: 'whatsapp',
+        title: 'Chat',
+        content: 'Hello',
+        timestamp: DateTime.now().millisecondsSinceEpoch - 5000,
+      );
 
       notifier.add(far);
       notifier.add(near);
       notifier.add(none);
 
       // Verify and set deadline features manually to match FeatureExtractor representation
-      notifier.update(far.copyWith(extractedFeatures: {'deadline_minutes_remaining': 60}));
-      notifier.update(near.copyWith(extractedFeatures: {'deadline_minutes_remaining': 5}));
-      notifier.update(none.copyWith(extractedFeatures: {'deadline_minutes_remaining': -1}));
+      notifier.update(
+        far.copyWith(extractedFeatures: {'deadline_minutes_remaining': 60}),
+      );
+      notifier.update(
+        near.copyWith(extractedFeatures: {'deadline_minutes_remaining': 5}),
+      );
+      notifier.update(
+        none.copyWith(extractedFeatures: {'deadline_minutes_remaining': -1}),
+      );
 
-      container.read(reviewQueueSortOrderProvider.notifier).state = QueueSortOrder.deadline;
+      container.read(reviewQueueSortOrderProvider.notifier).state =
+          QueueSortOrder.deadline;
 
       final sorted = container.read(sortedReviewQueueProvider);
       expect(sorted.length, equals(3));
@@ -275,19 +373,45 @@ void main() {
 
     test('sorts by lastUpdated descending', () {
       final now = DateTime.now();
-      final item1 = AppNotification(id: 'i1', packageName: 'whatsapp', title: 'A', content: 'Msg', timestamp: 10, lastUpdated: now.subtract(const Duration(minutes: 10)));
-      final item2 = AppNotification(id: 'i2', packageName: 'whatsapp', title: 'B', content: 'Msg', timestamp: 20, lastUpdated: now);
-      final item3 = AppNotification(id: 'i3', packageName: 'whatsapp', title: 'C', content: 'Msg', timestamp: 30, lastUpdated: now.subtract(const Duration(minutes: 5)));
+      final item1 = AppNotification(
+        id: 'i1',
+        packageName: 'whatsapp',
+        title: 'A',
+        content: 'Msg',
+        timestamp: 10,
+        lastUpdated: now.subtract(const Duration(minutes: 10)),
+      );
+      final item2 = AppNotification(
+        id: 'i2',
+        packageName: 'whatsapp',
+        title: 'B',
+        content: 'Msg',
+        timestamp: 20,
+        lastUpdated: now,
+      );
+      final item3 = AppNotification(
+        id: 'i3',
+        packageName: 'whatsapp',
+        title: 'C',
+        content: 'Msg',
+        timestamp: 30,
+        lastUpdated: now.subtract(const Duration(minutes: 5)),
+      );
 
       notifier.add(item1);
       notifier.add(item2);
       notifier.add(item3);
 
-      notifier.update(item1.copyWith(lastUpdated: now.subtract(const Duration(minutes: 10))));
+      notifier.update(
+        item1.copyWith(lastUpdated: now.subtract(const Duration(minutes: 10))),
+      );
       notifier.update(item2.copyWith(lastUpdated: now));
-      notifier.update(item3.copyWith(lastUpdated: now.subtract(const Duration(minutes: 5))));
+      notifier.update(
+        item3.copyWith(lastUpdated: now.subtract(const Duration(minutes: 5))),
+      );
 
-      container.read(reviewQueueSortOrderProvider.notifier).state = QueueSortOrder.lastUpdated;
+      container.read(reviewQueueSortOrderProvider.notifier).state =
+          QueueSortOrder.lastUpdated;
 
       final sorted = container.read(sortedReviewQueueProvider);
       expect(sorted.length, equals(3));
@@ -311,34 +435,49 @@ void main() {
       controller.dispose();
     });
 
-    test('adds test data and synchronizes controller notifications with Riverpod providers', () async {
-      await controller.generateTestData();
+    test(
+      'adds test data and synchronizes controller notifications with Riverpod providers',
+      () async {
+        await controller.generateTestData();
 
-      expect(controller.notifications, isNotEmpty);
-      expect(container.read(reviewQueueProvider), isNotEmpty);
-      expect(controller.notifications.length, equals(container.read(reviewQueueProvider).length));
-    });
+        expect(controller.notifications, isNotEmpty);
+        expect(container.read(reviewQueueProvider), isNotEmpty);
+        expect(
+          controller.notifications.length,
+          equals(container.read(reviewQueueProvider).length),
+        );
+      },
+    );
 
-    test('completing and archiving in controller updates review states inside Riverpod', () async {
-      final notif = AppNotification(
-        id: 'c1',
-        packageName: 'whatsapp',
-        title: 'Alice',
-        content: 'Hello',
-        timestamp: DateTime.now().millisecondsSinceEpoch,
-      );
+    test(
+      'completing and archiving in controller updates review states inside Riverpod',
+      () async {
+        final notif = AppNotification(
+          id: 'c1',
+          packageName: 'whatsapp',
+          title: 'Alice',
+          content: 'Hello',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
 
-      container.read(reviewQueueProvider.notifier).add(notif);
+        container.read(reviewQueueProvider.notifier).add(notif);
 
-      // Archive test
-      controller.archive('c1');
-      expect(controller.isArchived('c1'), isTrue);
-      expect(container.read(reviewQueueProvider).first.state, equals(ReviewState.ARCHIVED));
+        // Archive test
+        controller.archive('c1');
+        expect(controller.isArchived('c1'), isTrue);
+        expect(
+          container.read(reviewQueueProvider).first.state,
+          equals(ReviewState.ARCHIVED),
+        );
 
-      // Complete test
-      controller.complete('c1');
-      expect(controller.isCompleted('c1'), isTrue);
-      expect(container.read(reviewQueueProvider).first.state, equals(ReviewState.REVIEWED));
-    });
+        // Complete test
+        controller.complete('c1');
+        expect(controller.isCompleted('c1'), isTrue);
+        expect(
+          container.read(reviewQueueProvider).first.state,
+          equals(ReviewState.REVIEWED),
+        );
+      },
+    );
   });
 }

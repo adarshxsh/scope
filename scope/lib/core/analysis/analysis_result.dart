@@ -15,15 +15,20 @@ class AnalysisResult {
   /// Latency of the analysis step in milliseconds.
   final int latencyMs;
 
+  /// Whether the result was produced by fallback heuristics.
+  final bool isFallback;
+
   const AnalysisResult({
     required this.category,
     required this.score,
     required this.engineName,
     required this.matchedSignals,
     required this.latencyMs,
+    this.isFallback = false,
   });
 
   @override
-  String toString() => 'AnalysisResult(category: $category, score: $score, '
-      'engineName: $engineName, matchedSignals: $matchedSignals, latencyMs: ${latencyMs}ms)';
+  String toString() =>
+      'AnalysisResult(category: $category, score: $score, '
+      'engineName: $engineName, matchedSignals: $matchedSignals, latencyMs: ${latencyMs}ms, isFallback: $isFallback)';
 }
