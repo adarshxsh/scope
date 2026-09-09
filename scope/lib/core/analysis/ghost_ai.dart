@@ -72,6 +72,8 @@ class GhostAI {
       final jsonStr = await rootBundle.loadString('assets/rules.json');
       _ruleEngine.compile(jsonStr);
       debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
+    } on IntegrityException catch (e) {
+      debugPrint('[SECURITY AUDIT] GhostAI: Rule database payload verification failed - $e');
     } catch (e) {
       debugPrint('GhostAI: Failed to initialize rules database: $e');
     }
