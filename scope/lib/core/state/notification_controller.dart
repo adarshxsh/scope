@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/privacy/privacy_budget_engine.dart';
 import 'package:scope/core/storage/notification_storage.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/core/utils/focus_area_mapper.dart';
@@ -43,11 +44,14 @@ class NotificationController extends ChangeNotifier {
     NotificationStorage? storage,
     GhostAnalysisEngine? engine,
     ProviderContainer? container,
+    PrivacyBudgetEngine? privacyBudgetEngine,
   })  : _bridge = bridge ?? NotificationBridge(),
         _container = container ?? providerContainer,
         _storage = storage ?? DriftNotificationStorage(container?.read(databaseProvider) ?? providerContainer.read(databaseProvider)),
-        _engine = engine ?? GhostAnalysisEngine() {
+        _engine = engine ?? GhostAnalysisEngine(),
+        _privacyBudgetEngine = privacyBudgetEngine ?? (container?.read(privacyBudgetEngineProvider) ?? providerContainer.read(privacyBudgetEngineProvider)) {
     _engine.initialize();
+    _privacyBudgetEngine.initialize();
 
     // Listen to changes in Riverpod's reviewQueueProvider to keep legacy notifier list in sync
     _container.listen<List<AppNotification>>(reviewQueueProvider, (previous, next) {
@@ -63,6 +67,7 @@ class NotificationController extends ChangeNotifier {
   final NotificationStorage _storage;
   final GhostAnalysisEngine _engine;
   final ProviderContainer _container;
+  final PrivacyBudgetEngine _privacyBudgetEngine;
 
   List<AppNotification> _notifications = [];
   bool _isListenerEnabled = false;
@@ -191,6 +196,83 @@ class NotificationController extends ChangeNotifier {
   }
 
   void clearFocusAreaFilter() => clearFilter();
+
+  PrivacyBudgetEngine get privacyBudgetEngine => _privacyBudgetEngine;
+
+  /// Delegated budget-aware telemetry query for priority distribution.
+  Future<PrivacyQueryResult<Map<String, int>>> getNoisyPriorityDistribution({double epsilonQuery = 0.1}) {
+    final priorities = {'critical': 0, 'high': 0, 'medium': 0, 'low': 0};
+    for (final n in _notifications) {
+      final p = n.priority ?? 'medium';
+      priorities[p] = (priorities[p] ?? 0) + 1;
+    }
+    return _privacyBudgetEngine.evaluateIntMapQuery<String>(
+      rawMap: priorities,
+      sensitivity: 1.0,
+      epsilonQuery: epsilonQuery,
+      minVal: 0,
+    );
+  }
+
+  /// Delegated budget-aware telemetry query for hourly volume.
+  Future<PrivacyQueryResult<List<int>>> getNoisyHourlyVolume({double epsilonQuery = 0.1}) {
+    final hourlyVolume = List<int>.filled(24, 0);
+    for (final n in _notifications) {
+      final hour = DateTime.fromMillisecondsSinceEpoch(n.timestamp).hour;
+      hourlyVolume[hour]++;
+    }
+    return _privacyBudgetEngine.evaluateIntListQuery(
+      rawValues: hourlyVolume,
+      sensitivity: 1.0,
+      epsilonQuery: epsilonQuery,
+      minVal: 0,
+    );
+  }
+
+  /// Delegated budget-aware telemetry query for focus area counts.
+  Future<PrivacyQueryResult<Map<FocusArea, int>>> getNoisyFocusAreaCounts({double epsilonQuery = 0.1}) {
+    final rawCounts = focusAreaCounts;
+    return _privacyBudgetEngine.evaluateIntMapQuery<FocusArea>(
+      rawMap: rawCounts,
+      sensitivity: 1.0,
+      epsilonQuery: epsilonQuery,
+      minVal: 0,
+    );
+  }
+
+  /// Delegated budget-aware telemetry query for overview metrics.
+  Future<PrivacyQueryResult<Map<String, int>>> getNoisyOverviewMetrics({double epsilonQuery = 0.1}) {
+    final withLatency = _notifications.where((n) => n.latencyMs != null).toList();
+    final avgLatency = withLatency.isEmpty
+        ? 0
+        : withLatency.map((n) => n.latencyMs!).fold<int>(0, (a, b) => a + b) ~/ withLatency.length;
+
+    final rawMetrics = {
+      'totalCaptured': _notifications.length,
+      'needsAction': needsAction.length,
+      'completedToday': completedToday.length,
+      'avgLatencyMs': avgLatency,
+    };
+
+    return _privacyBudgetEngine.evaluateIntMapQuery<String>(
+      rawMap: rawMetrics,
+      sensitivity: 1.0,
+      epsilonQuery: epsilonQuery,
+      minVal: 0,
+    );
+  }
+
+  /// Delegated budget-aware focus session aggregate stats query via DAO.
+  Future<PrivacyQueryResult<FocusSessionAggregateStats>> getBudgetAwareFocusSessionStats({double epsilonQuery = 0.1}) {
+    final db = _container.read(databaseProvider);
+    return db.focusSessionDao.getBudgetAwareAggregateStats(_privacyBudgetEngine, epsilonQuery: epsilonQuery);
+  }
+
+  /// Delegated budget-aware daily brief stats query via DAO.
+  Future<PrivacyQueryResult<DailyBriefEntry>> getBudgetAwareDailyBrief(String date, {double epsilonQuery = 0.1}) {
+    final db = _container.read(databaseProvider);
+    return db.dailyBriefDao.getBudgetAwareBriefForDate(date, _privacyBudgetEngine, epsilonQuery: epsilonQuery);
+  }
 
   void startFocusSession() {
     _inFocusSession = true;

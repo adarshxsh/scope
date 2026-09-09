@@ -72,3 +72,19 @@ class DailyBriefDaoManager {
         _db.dailyBriefTable,
       );
 }
+
+mixin _$PrivacyBudgetDaoMixin on DatabaseAccessor<AttentionDatabase> {
+  $PrivacyBudgetTableTable get privacyBudgetTable =>
+      attachedDatabase.privacyBudgetTable;
+  PrivacyBudgetDaoManager get managers => PrivacyBudgetDaoManager(this);
+}
+
+class PrivacyBudgetDaoManager {
+  final _$PrivacyBudgetDaoMixin _db;
+  PrivacyBudgetDaoManager(this._db);
+  $$PrivacyBudgetTableTableTableManager get privacyBudgetTable =>
+      $$PrivacyBudgetTableTableTableManager(
+        _db.attachedDatabase,
+        _db.privacyBudgetTable,
+      );
+}
