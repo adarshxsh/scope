@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/privacy/privacy_budget_manager.dart';
 import 'package:scope/core/storage/notification_storage.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/core/utils/focus_area_mapper.dart';
@@ -43,10 +44,12 @@ class NotificationController extends ChangeNotifier {
     NotificationStorage? storage,
     GhostAnalysisEngine? engine,
     ProviderContainer? container,
+    PrivacyBudgetManager? privacyBudgetManager,
   })  : _bridge = bridge ?? NotificationBridge(),
         _container = container ?? providerContainer,
         _storage = storage ?? DriftNotificationStorage(container?.read(databaseProvider) ?? providerContainer.read(databaseProvider)),
-        _engine = engine ?? GhostAnalysisEngine() {
+        _engine = engine ?? GhostAnalysisEngine(),
+        _privacyBudgetManager = privacyBudgetManager {
     _engine.initialize();
 
     // Listen to changes in Riverpod's reviewQueueProvider to keep legacy notifier list in sync
@@ -63,6 +66,12 @@ class NotificationController extends ChangeNotifier {
   final NotificationStorage _storage;
   final GhostAnalysisEngine _engine;
   final ProviderContainer _container;
+  PrivacyBudgetManager? _privacyBudgetManager;
+
+  PrivacyBudgetManager get privacyBudgetManager =>
+      _privacyBudgetManager ??= PrivacyBudgetManager(
+        db: _container.read(databaseProvider),
+      );
 
   List<AppNotification> _notifications = [];
   bool _isListenerEnabled = false;
@@ -477,6 +486,10 @@ class NotificationController extends ChangeNotifier {
   void archive(String id) {
     _container.read(reviewQueueProvider.notifier).archive(id);
     _savedActionItems.removeWhere((item) => item.notification.id == id);
+    final idx = _notifications.indexWhere((n) => n.id == id);
+    if (idx != -1) {
+      _notifications[idx] = _notifications[idx].copyWith(state: ReviewState.ARCHIVED);
+    }
     sessionStats.archived++;
     notifyListeners();
   }
@@ -484,12 +497,23 @@ class NotificationController extends ChangeNotifier {
   void complete(String id) {
     _container.read(reviewQueueProvider.notifier).reviewed(id);
     _savedActionItems.removeWhere((item) => item.notification.id == id);
+    final idx = _notifications.indexWhere((n) => n.id == id);
+    if (idx != -1) {
+      _notifications[idx] = _notifications[idx].copyWith(state: ReviewState.REVIEWED);
+    }
     sessionStats.actionsCompleted++;
     notifyListeners();
   }
 
   void snooze(String id, Duration duration) {
     _container.read(reviewQueueProvider.notifier).snooze(id, duration);
+    final idx = _notifications.indexWhere((n) => n.id == id);
+    if (idx != -1) {
+      _notifications[idx] = _notifications[idx].copyWith(
+        state: ReviewState.SNOOZED,
+        snoozedUntil: DateTime.now().add(duration),
+      );
+    }
     notifyListeners();
   }
 
@@ -567,4 +591,83 @@ class NotificationController extends ChangeNotifier {
           (n.classifiedCategory?.toLowerCase().contains(q) ?? false);
     }).toList();
   }
+
+  // Differential Privacy Telemetry & Analytical Queries
+  Future<PrivacyBudgetStatus> getPrivacyBudgetStatus() =>
+      privacyBudgetManager.getStatus();
+
+  Future<Map<String, NoisedQueryResult<int>>> getNoisedPriorityDistribution({
+    double? epsilon,
+  }) async {
+    final priorities = ['critical', 'high', 'medium', 'low'];
+    final map = <String, NoisedQueryResult<int>>{};
+    final qEps = (epsilon ?? privacyBudgetManager.defaultEpsilonPerQuery) / priorities.length;
+
+    for (final p in priorities) {
+      map[p] = await privacyBudgetManager.executeNoisedQuery<int>(
+        sensitivity: 1.0,
+        epsilon: qEps,
+        exactQuery: () async => _countableActive.where((n) => (n.priority ?? 'medium') == p).length,
+      );
+    }
+    return map;
+  }
+
+  Future<List<NoisedQueryResult<num>>> getNoisedHourlyVolume({
+    double? epsilon,
+  }) async {
+    return privacyBudgetManager.executeVectorQuery(
+      sensitivityPerElement: 1.0,
+      totalEpsilon: epsilon,
+      exactQuery: () async {
+        final hourlyVolume = List<num>.filled(24, 0);
+        for (final n in _notifications) {
+          final hour = DateTime.fromMillisecondsSinceEpoch(n.timestamp).hour;
+          hourlyVolume[hour]++;
+        }
+        return hourlyVolume;
+      },
+    );
+  }
+
+  Future<NoisedQueryResult<int>> getNoisedTotalCapturedCount({
+    double? epsilon,
+  }) async {
+    return privacyBudgetManager.executeNoisedQuery<int>(
+      sensitivity: 1.0,
+      epsilon: epsilon,
+      exactQuery: () async => _notifications.length,
+    );
+  }
+
+  Future<Map<FocusArea, NoisedQueryResult<int>>> getNoisedFocusAreaCounts({
+    double? epsilon,
+  }) async {
+    final areas = FocusArea.values;
+    final map = <FocusArea, NoisedQueryResult<int>>{};
+    final qEps = (epsilon ?? privacyBudgetManager.defaultEpsilonPerQuery) / areas.length;
+
+    for (final area in areas) {
+      map[area] = await privacyBudgetManager.executeNoisedQuery<int>(
+        sensitivity: 1.0,
+        epsilon: qEps,
+        exactQuery: () async {
+          final counts = FocusAreaMapper.countsFor(_countableActive);
+          return counts[area] ?? 0;
+        },
+      );
+    }
+    return map;
+  }
+
+  Future<NoisedQueryResult<int>> getNoisedTotalFocusDuration({
+    double? epsilon,
+  }) async {
+    final db = _container.read(databaseProvider);
+    return db.focusSessionDao.getNoisedTotalFocusDuration(
+      privacyBudgetManager,
+      epsilon: epsilon,
+    );
+  }
 }
+
