@@ -110,6 +110,22 @@ void main() {
       expect(find.text('CRITICAL'), findsOneWidget);
       expect(find.text('Pipeline Explanation Trace'), findsOneWidget);
       expect(find.text('Extracted Text Features'), findsOneWidget);
+
+      // Verify default masking of OTP (••••52 instead of cleartext 987652)
+      expect(find.text('••••52'), findsOneWidget);
+      expect(find.text('987652'), findsNothing);
+
+      // Toggle unmask switch
+      final unmaskSwitch = find.byKey(const Key('unmask_pii_switch'));
+      expect(unmaskSwitch, findsOneWidget);
+      await tester.ensureVisible(unmaskSwitch);
+      await tester.tap(unmaskSwitch);
+      await tester.pumpAndSettle();
+
+
+      // Verify cleartext OTP is now revealed in diagnostic mode
+      expect(find.text('987652'), findsWidgets);
     });
   });
 }
+

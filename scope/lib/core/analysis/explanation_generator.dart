@@ -1,5 +1,6 @@
 import 'package:scope/core/analysis/analysis_result.dart';
 import 'package:scope/core/analysis/extracted_features.dart';
+import 'package:scope/core/services/pii_redaction_service.dart';
 
 /// Generates a bulleted trace explaining the pipeline decisions.
 class ExplanationGenerator {
@@ -17,10 +18,10 @@ class ExplanationGenerator {
     buffer.writeln('• Confidence: **${(fusedResult.score * 100).toStringAsFixed(0)}%**.');
 
     if (features.otp != null) {
-      buffer.writeln('• OTP Code: Found verification code **${features.otp}**.');
+      buffer.writeln('• OTP Code: Found verification code **${PiiRedactionService.maskOtp(features.otp)}**.');
     }
     if (features.amount != null) {
-      buffer.writeln('• Amount: Found transaction amount **Rs. ${features.amount}**.');
+      buffer.writeln('• Amount: Found transaction amount **${PiiRedactionService.maskAmount(features.amount, currencyPrefix: "Rs. ")}**.');
     }
     if (features.hasDeadline) {
       buffer.writeln('• Deadline: Found urgent timing keywords.');
@@ -33,3 +34,4 @@ class ExplanationGenerator {
     return buffer.toString().trim();
   }
 }
+
