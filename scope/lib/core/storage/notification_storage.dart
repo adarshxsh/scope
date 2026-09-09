@@ -32,6 +32,19 @@ abstract class NotificationStorage {
 
   /// Returns the current count of stored notifications.
   Future<int> get count;
+
+  /// Save user feedback (reward or penalty) permanently in local storage.
+  Future<void> saveFeedback({
+    required String notificationId,
+    required String feedbackType,
+    String? originalPriority,
+    String? correctedPriority,
+    String? originalCategory,
+    String? correctedCategory,
+  });
+
+  /// Retrieve all recorded feedback logs.
+  Future<List<Map<String, dynamic>>> getFeedbackLogs();
 }
 
 /// In-memory implementation of [NotificationStorage].
@@ -41,6 +54,7 @@ abstract class NotificationStorage {
 /// Will be replaced by a persistent backend in a later phase.
 class InMemoryNotificationStorage implements NotificationStorage {
   final List<AppNotification> _store = [];
+  final List<Map<String, dynamic>> _feedbackLogs = [];
 
   @override
   Future<void> save(AppNotification notification) async {
@@ -83,8 +97,35 @@ class InMemoryNotificationStorage implements NotificationStorage {
   @override
   Future<void> clear() async {
     _store.clear();
+    _feedbackLogs.clear();
   }
 
   @override
   Future<int> get count async => _store.length;
+
+  @override
+  Future<void> saveFeedback({
+    required String notificationId,
+    required String feedbackType,
+    String? originalPriority,
+    String? correctedPriority,
+    String? originalCategory,
+    String? correctedCategory,
+  }) async {
+    _feedbackLogs.add({
+      'notificationId': notificationId,
+      'feedbackType': feedbackType,
+      'originalPriority': originalPriority,
+      'correctedPriority': correctedPriority,
+      'originalCategory': originalCategory,
+      'correctedCategory': correctedCategory,
+      'timestamp': DateTime.now().toIso8601String(),
+    });
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getFeedbackLogs() async {
+    return List.unmodifiable(_feedbackLogs);
+  }
 }
+

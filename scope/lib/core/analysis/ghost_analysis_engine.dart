@@ -16,7 +16,7 @@ class GhostAnalysisEngine {
   GhostAnalysisEngine({
     RuleEngine? ruleEngine,
     LiteRtClassifier? mlClassifier,
-  })  : ruleEngine = ruleEngine ?? RuleEngine(),
+  })  : ruleEngine = ruleEngine ?? GhostAI.instance.ruleEngine,
         mlClassifier = mlClassifier ?? LiteRtClassifier();
 
   /// Compiles rules loaded from assets on engine startup.

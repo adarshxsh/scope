@@ -11,6 +11,16 @@ class ScoreFusion {
   }) {
     // 1. Check for deterministic critical bypass rules
     if (ruleResult != null) {
+      if (ruleResult.ruleId.startsWith('rlhf-')) {
+        return AnalysisResult(
+          category: ruleResult.category,
+          score: 1.0,
+          engineName: 'score_fusion (rlhf rule: ${ruleResult.ruleId})',
+          matchedSignals: ['rlhf_rule:${ruleResult.priority}:${ruleResult.ruleId}'],
+          latencyMs: 0,
+        );
+      }
+
       final isBypass = ruleResult.priority == 'critical' ||
           ruleResult.ruleId == 'otp_security' ||
           ruleResult.ruleId == 'finance_debit' ||
