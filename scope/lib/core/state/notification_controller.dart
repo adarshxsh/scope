@@ -6,6 +6,7 @@ import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/storage/notification_storage.dart';
+import 'package:scope/core/telemetry/telemetry_governance_service.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/core/utils/focus_area_mapper.dart';
 import 'package:scope/core/utils/smart_actions.dart';
@@ -42,11 +43,14 @@ class NotificationController extends ChangeNotifier {
     NotificationBridge? bridge,
     NotificationStorage? storage,
     GhostAnalysisEngine? engine,
+    TelemetryGovernanceService? telemetryService,
     ProviderContainer? container,
   })  : _bridge = bridge ?? NotificationBridge(),
         _container = container ?? providerContainer,
         _storage = storage ?? DriftNotificationStorage(container?.read(databaseProvider) ?? providerContainer.read(databaseProvider)),
-        _engine = engine ?? GhostAnalysisEngine() {
+        _engine = engine ?? GhostAnalysisEngine(),
+        _telemetryService = telemetryService ??
+            (container ?? providerContainer).read(telemetryGovernanceServiceProvider) {
     _engine.initialize();
 
     // Listen to changes in Riverpod's reviewQueueProvider to keep legacy notifier list in sync
@@ -63,6 +67,7 @@ class NotificationController extends ChangeNotifier {
   final NotificationStorage _storage;
   final GhostAnalysisEngine _engine;
   final ProviderContainer _container;
+  final TelemetryGovernanceService _telemetryService;
 
   List<AppNotification> _notifications = [];
   bool _isListenerEnabled = false;
@@ -192,21 +197,14 @@ class NotificationController extends ChangeNotifier {
 
   void clearFocusAreaFilter() => clearFilter();
 
-  void startFocusSession() {
+  Future<void> startFocusSession() async {
     _inFocusSession = true;
     _focusSessionQueueIds = reviewQueue.map((n) => n.id).toList();
     _focusSessionStart = DateTime.now();
     _focusSessionInterruptions = 0;
     resetSessionStats();
 
-    final db = _container.read(databaseProvider);
-    db.focusSessionDao.insertSession(FocusSessionEntry(
-      id: 0,
-      sessionStart: _focusSessionStart!,
-      interruptions: 0,
-      completion: false,
-      duration: 0,
-    ));
+    await _telemetryService.startFocusSession(_focusSessionStart!);
 
     notifyListeners();
   }
@@ -219,24 +217,28 @@ class NotificationController extends ChangeNotifier {
     }
   }
 
-  void finishFocusSession() {
+  Future<void> finishFocusSession() async {
     _inFocusSession = false;
     final now = DateTime.now();
-    final durationSeconds = _focusSessionStart != null
-        ? now.difference(_focusSessionStart!).inSeconds
-        : 0;
 
-    final db = _container.read(databaseProvider);
-    db.focusSessionDao.getActiveSession().then((active) {
-      if (active != null) {
-        db.focusSessionDao.updateSession(active.copyWith(
-          sessionEnd: Value(now),
-          completion: true,
-          duration: durationSeconds,
-          interruptions: _focusSessionInterruptions,
-        ));
-      }
-    });
+    if (_focusSessionStart != null) {
+      await _telemetryService.finishFocusSession(
+        startTime: _focusSessionStart!,
+        endTime: now,
+        interruptions: _focusSessionInterruptions,
+        completion: true,
+      );
+
+      final dateStr = DateTime.now().toIso8601String().split('T')[0];
+      await _telemetryService.recordDailyBriefStats(
+        dateStr,
+        notificationsReviewed: sessionStats.notificationsReviewed,
+        actionsCompleted: sessionStats.actionsCompleted,
+        calendarEventsCreated: sessionStats.calendarEventsCreated,
+        remindersCreated: sessionStats.remindersCreated,
+        archivedCount: sessionStats.archived,
+      );
+    }
 
     _focusSessionQueueIds.clear();
     clearFilter();
