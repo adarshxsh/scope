@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/native.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/telemetry/telemetry_governance_service.dart';
 import 'package:scope/database/attention_database.dart';
 
 void main() {
@@ -154,7 +155,12 @@ void main() {
       expect(brief, isNotNull);
       expect(brief!.notificationsReviewed, equals(5));
 
-      await db.dailyBriefDao.incrementStats(date, reviewed: 2, completed: 1);
+      await db.dailyBriefDao.incrementStats(
+        date,
+        reviewed: 2,
+        completed: 1,
+        telemetryService: TelemetryGovernanceService(db: db, epsilon: double.infinity),
+      );
       brief = await db.dailyBriefDao.getBriefForDate(date);
       expect(brief!.notificationsReviewed, equals(7));
       expect(brief.actionsCompleted, equals(3));
