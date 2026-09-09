@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:scope/core/state/notification_controller.dart';
 import 'package:scope/screens/ai_playground_screen.dart';
 import 'package:scope/screens/diagnostic_screen.dart';
+import 'package:scope/screens/notification_privacy_screen.dart';
 import 'package:scope/theme/app_spacing.dart';
 import 'package:scope/theme/scope_navigator.dart';
 import 'package:scope/widgets/primitives/scope_icon_box.dart';
@@ -42,9 +43,12 @@ class SettingsScreen extends StatelessWidget {
                   const Divider(height: 1, indent: 56),
                   _SettingsTile(
                     icon: Icons.shield_outlined,
-                    title: 'Privacy',
-                    subtitle: 'All analysis runs on your device',
-                    onTap: null,
+                    title: 'Notification Privacy',
+                    subtitle: 'App blacklists & sensitive category rules',
+                    onTap: () => ScopeNavigator.push(
+                      context,
+                      NotificationPrivacyScreen(controller: controller),
+                    ),
                   ),
                   const Divider(height: 1, indent: 56),
                   _SettingsTile(
