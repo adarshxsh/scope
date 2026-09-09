@@ -10,9 +10,10 @@
   ],
   "artifacts": {
     "evaluation_dir": "runs/experiment1/evaluation",
+    "float32_tflite": "runs/experiment1/export/ghost_ai_float32.tflite",
     "history_csv": "runs/experiment1/history.csv",
     "label_encoder": "runs/experiment1/label_encoder.json",
-    "quantized_tflite": "runs/experiment1/export/ghost_ai.tflite",
+    "quantized_tflite": "runs/experiment1/export/ghost_ai_quantized.tflite",
     "saved_model": "runs/experiment1/export/saved_model"
   },
   "created_at": "2026-06-26T20:58:33.117663+00:00",
