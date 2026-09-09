@@ -11,6 +11,10 @@ class LiteRtClassifier implements NotificationAnalyzer {
   Interpreter? _interpreter;
   WordPieceTokenizer? _tokenizer;
   bool _isModelLoaded = false;
+  String? _vocabValidationError;
+
+  static const String expectedVocabSha256 =
+      WordPieceTokenizer.defaultVocabSha256;
 
   LiteRtClassifier() {
     _initialize();
@@ -18,10 +22,14 @@ class LiteRtClassifier implements NotificationAnalyzer {
 
   Future<void> _initialize() async {
     try {
+      _vocabValidationError = null;
       // 1. Load Vocab
       final vocabStr = await rootBundle.loadString('assets/vocab.txt');
       final lines = vocabStr.split('\n');
-      _tokenizer = WordPieceTokenizer.fromLines(lines);
+      _tokenizer = WordPieceTokenizer.fromLines(
+        lines,
+        expectedHash: expectedVocabSha256,
+      );
 
       // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
       _isModelLoaded = false;
@@ -30,14 +38,8 @@ class LiteRtClassifier implements NotificationAnalyzer {
       // ignore: avoid_print
       print('LiteRtClassifier failed to initialize: $e');
       _isModelLoaded = false;
-
-      // Ensure tokenizer is loaded even if interpreter fails (so we can test tokenization in fallback)
-      if (_tokenizer == null) {
-        try {
-          final vocabStr = await rootBundle.loadString('assets/vocab.txt');
-          _tokenizer = WordPieceTokenizer.fromLines(vocabStr.split('\n'));
-        } catch (_) {}
-      }
+      _tokenizer = null;
+      _vocabValidationError = e.toString();
     }
   }
 
@@ -50,28 +52,39 @@ class LiteRtClassifier implements NotificationAnalyzer {
     final combinedText = '${notification.title} ${notification.content}';
 
     // Ensure initialization finished
-    if (_tokenizer == null) {
+    if (_tokenizer == null && _vocabValidationError == null) {
       await _initialize();
     }
 
-    final tokenIds = _tokenizer?.tokenize(combinedText) ?? List<int>.filled(64, 0);
-
-    if (!_isModelLoaded || _interpreter == null) {
+    if (_tokenizer == null || !_isModelLoaded || _interpreter == null) {
       // Graceful fallback heuristic classifier
       final category = _runFallbackHeuristic(combinedText);
+      final matchedSignals = <String>[];
+      if (_vocabValidationError != null) {
+        matchedSignals.add('Vocabulary validation failed: $_vocabValidationError');
+      } else {
+        matchedSignals.add('Model asset invalid or uninitialized');
+      }
+
+      if (_tokenizer != null) {
+        final tokenIds = _tokenizer!.tokenize(combinedText);
+        matchedSignals.add('Tokenizer parsed ${tokenIds.take(5).toList()}...');
+      } else {
+        matchedSignals.add('Tokenizer unavailable due to validation failure');
+      }
+
       return AnalysisResult(
         category: category,
         score: 0.50, // Base default score for fallback
         engineName: 'litert_model (fallback)',
-        matchedSignals: [
-          'Model asset invalid or uninitialized',
-          'Tokenizer parsed ${tokenIds.take(5).toList()}...'
-        ],
+        matchedSignals: matchedSignals,
         latencyMs: stopwatch.elapsedMilliseconds,
       );
     }
 
     try {
+      final tokenIds = _tokenizer!.tokenize(combinedText);
+
       // Run model inference
       // Assume input shape: [1, 64]
       final input = [tokenIds];

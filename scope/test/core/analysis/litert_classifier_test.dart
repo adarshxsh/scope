@@ -39,6 +39,7 @@ void main() {
       
       expect(result.category, equals('finance'));
       expect(result.engineName, contains('fallback'));
+      expect(result.matchedSignals, isNotEmpty);
     });
   });
 }
