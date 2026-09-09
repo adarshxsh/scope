@@ -14,7 +14,14 @@ class ExplanationGenerator {
     buffer.writeln('Priority resolved: **${priority.toUpperCase()}**');
     buffer.writeln('• Category: Inferred semantic category is **${fusedResult.category}**.');
     buffer.writeln('• Source: Handled by **${fusedResult.engineName}**.');
-    buffer.writeln('• Confidence: **${(fusedResult.score * 100).toStringAsFixed(0)}%**.');
+    if (fusedResult.isFallback) {
+      buffer.writeln('• Confidence: **Fallback Heuristic Active** (${(fusedResult.score * 100).toStringAsFixed(0)}% fallback score).');
+      if (fusedResult.fallbackReason != null) {
+        buffer.writeln('• Fallback Reason: ${fusedResult.fallbackReason}');
+      }
+    } else {
+      buffer.writeln('• Confidence: **${(fusedResult.score * 100).toStringAsFixed(0)}%**.');
+    }
 
     if (features.otp != null) {
       buffer.writeln('• OTP Code: Found verification code **${features.otp}**.');

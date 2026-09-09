@@ -23,11 +23,33 @@ class ScoreFusion {
           engineName: 'score_fusion (rule bypass: ${ruleResult.ruleId})',
           matchedSignals: [ruleResult.matchedSignal],
           latencyMs: 0,
+          isFallback: modelResult.isFallback,
+          fallbackReason: modelResult.fallbackReason,
         );
       }
     }
 
-    // 2. Normal score fusion
+    // 2. Fallback execution handling
+    // If the ML model is in fallback mode, skip mathematical confidence blending
+    if (modelResult.isFallback) {
+      if (ruleResult != null) {
+        return AnalysisResult(
+          category: ruleResult.category,
+          score: 0.85, // Pure rule confidence, no model score blending
+          engineName: 'score_fusion (rule fallback)',
+          matchedSignals: [
+            'Rule matched: ${ruleResult.ruleId} (${ruleResult.matchedSignal})',
+            'ML model in fallback mode: ${modelResult.fallbackReason ?? "Fallback active"}'
+          ],
+          latencyMs: 0,
+          isFallback: true,
+          fallbackReason: modelResult.fallbackReason,
+        );
+      }
+      return modelResult;
+    }
+
+    // 3. Normal score fusion when model is not in fallback mode
     // If no rule matches, rely on the model prediction
     if (ruleResult == null) {
       return modelResult;

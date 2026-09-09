@@ -294,6 +294,48 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
         ),
         const SizedBox(height: 12),
 
+        if (notif.isFallback) ...[
+          Container(
+            key: const Key('fallback_warning_badge'),
+            padding: const EdgeInsets.all(12.0),
+            decoration: BoxDecoration(
+              color: Colors.amber.shade100,
+              border: Border.all(color: Colors.amber.shade800),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: Colors.amber.shade900),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Model Inference Fallback Active',
+                        style: TextStyle(
+                          color: Colors.amber.shade900,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Reason: ${notif.fallbackReason ?? "Model asset uninitialized"}',
+                        style: TextStyle(
+                          color: Colors.amber.shade900,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+
         // Summary Card
         ScopeCard(
           borderColor: priorityColor.withValues(alpha: 0.4),
@@ -341,7 +383,9 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Confidence Score: ${(notif.priorityScore != null ? (notif.priorityScore! * 100).toStringAsFixed(0) : "0")}% · Latency: ${notif.latencyMs ?? 0} ms',
+                      notif.isFallback
+                          ? 'Confidence Score: Fallback Active (${(notif.priorityScore != null ? (notif.priorityScore! * 100).toStringAsFixed(0) : "0")}%) · Latency: ${notif.latencyMs ?? 0} ms'
+                          : 'Confidence Score: ${(notif.priorityScore != null ? (notif.priorityScore! * 100).toStringAsFixed(0) : "0")}% · Latency: ${notif.latencyMs ?? 0} ms',
                       style: theme.textTheme.bodySmall,
                     ),
                   ],

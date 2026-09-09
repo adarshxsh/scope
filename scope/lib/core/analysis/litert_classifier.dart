@@ -68,6 +68,8 @@ class LiteRtClassifier implements NotificationAnalyzer {
           'Tokenizer parsed ${tokenIds.take(5).toList()}...'
         ],
         latencyMs: stopwatch.elapsedMilliseconds,
+        isFallback: true,
+        fallbackReason: 'Model asset uninitialized',
       );
     }
 
@@ -102,6 +104,7 @@ class LiteRtClassifier implements NotificationAnalyzer {
         engineName: 'litert_model',
         matchedSignals: ['Softmax scores: $softmaxScores'],
         latencyMs: stopwatch.elapsedMilliseconds,
+        isFallback: false,
       );
     } catch (e) {
       // Fallback on inference error
@@ -112,6 +115,8 @@ class LiteRtClassifier implements NotificationAnalyzer {
         engineName: 'litert_model (fallback on error)',
         matchedSignals: ['Inference error: $e'],
         latencyMs: stopwatch.elapsedMilliseconds,
+        isFallback: true,
+        fallbackReason: 'Inference error: $e',
       );
     }
   }
