@@ -11,8 +11,8 @@ class MotionSurface extends StatefulWidget {
   final BorderRadius? borderRadius;
 
   const MotionSurface({
-    super.key, 
-    this.onTap, 
+    super.key,
+    this.onTap,
     required this.child,
     this.enabled = true,
     this.borderRadius,

@@ -13,10 +13,7 @@ import 'package:scope/widgets/scope_screen_body.dart';
 class DailyTimelineScreen extends StatefulWidget {
   final NotificationController controller;
 
-  const DailyTimelineScreen({
-    super.key,
-    required this.controller,
-  });
+  const DailyTimelineScreen({super.key, required this.controller});
 
   @override
   State<DailyTimelineScreen> createState() => _DailyTimelineScreenState();
@@ -26,21 +23,22 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     // Sort notifications by timestamp descending
-    final notifications = List<AppNotification>.from(widget.controller.notifications)
-      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    final notifications = List<AppNotification>.from(
+      widget.controller.notifications,
+    )..sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Daily Timeline'),
-      ),
+      appBar: AppBar(title: const Text('Daily Timeline')),
       body: ScopeScreenBody(
         child: CustomScrollView(
           slivers: [
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenPadding),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.screenPadding,
+                ),
                 child: Hero(
                   tag: 'daily_brief_hero',
                   child: ScopeSurface(
@@ -48,7 +46,10 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Your Day So Far', style: theme.textTheme.titleLarge),
+                        Text(
+                          'Your Day So Far',
+                          style: theme.textTheme.titleLarge,
+                        ),
                         const SizedBox(height: AppSpacing.md),
                         Text(
                           'You have ${notifications.length} notifications. '
@@ -65,24 +66,23 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> {
             ),
             const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xl)),
             SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final notification = notifications[index];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.screenPadding,
-                      vertical: AppSpacing.sm,
-                    ),
-                    child: _TimelineItem(
-                      notification: notification,
-                      controller: widget.controller,
-                    ),
-                  );
-                },
-                childCount: notifications.length,
-              ),
+              delegate: SliverChildBuilderDelegate((context, index) {
+                final notification = notifications[index];
+                return Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.screenPadding,
+                    vertical: AppSpacing.sm,
+                  ),
+                  child: _TimelineItem(
+                    notification: notification,
+                    controller: widget.controller,
+                  ),
+                );
+              }, childCount: notifications.length),
             ),
-            const SliverToBoxAdapter(child: SizedBox(height: 100)), // Bottom padding
+            const SliverToBoxAdapter(
+              child: SizedBox(height: 100),
+            ), // Bottom padding
           ],
         ),
       ),
@@ -94,10 +94,7 @@ class _TimelineItem extends StatelessWidget {
   final AppNotification notification;
   final NotificationController controller;
 
-  const _TimelineItem({
-    required this.notification,
-    required this.controller,
-  });
+  const _TimelineItem({required this.notification, required this.controller});
 
   @override
   Widget build(BuildContext context) {
@@ -126,13 +123,15 @@ class _TimelineItem extends StatelessWidget {
                 : AppColors.border,
             width: notification.priority == 'critical' ? 1.5 : 1.0,
           ),
-          boxShadow: notification.priority == 'critical' ? [
-            BoxShadow(
-              color: AppColors.critical.withValues(alpha: 0.15),
-              blurRadius: 16,
-              spreadRadius: -4,
-            )
-          ] : null,
+          boxShadow: notification.priority == 'critical'
+              ? [
+                  BoxShadow(
+                    color: AppColors.critical.withValues(alpha: 0.15),
+                    blurRadius: 16,
+                    spreadRadius: -4,
+                  ),
+                ]
+              : null,
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -141,10 +140,7 @@ class _TimelineItem extends StatelessWidget {
               width: 12,
               height: 12,
               margin: const EdgeInsets.only(top: 4, right: AppSpacing.md),
-              decoration: BoxDecoration(
-                color: accent,
-                shape: BoxShape.circle,
-              ),
+              decoration: BoxDecoration(color: accent, shape: BoxShape.circle),
             ),
             Expanded(
               child: Column(
@@ -155,16 +151,24 @@ class _TimelineItem extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          notification.title.isNotEmpty ? notification.title : notification.packageName,
+                          notification.title.isNotEmpty
+                              ? notification.title
+                              : notification.packageName,
                           style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: notification.priority == 'critical' ? FontWeight.bold : null,
+                            fontWeight: notification.priority == 'critical'
+                                ? FontWeight.bold
+                                : null,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       Text(
-                        _formatTime(DateTime.fromMillisecondsSinceEpoch(notification.timestamp)),
+                        _formatTime(
+                          DateTime.fromMillisecondsSinceEpoch(
+                            notification.timestamp,
+                          ),
+                        ),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: AppColors.muted(context),
                         ),

@@ -136,13 +136,27 @@ void main() {
 
       test('toMap produces correct keys', () {
         final map = createSample().toMap();
-        expect(map.keys, containsAll([
-          'id', 'packageName', 'title', 'content',
-          'timestamp', 'category', 'isOngoing', 'priority',
-          'priorityScore', 'classifiedCategory', 'explanation',
-          'latencyMs', 'ruleVersion', 'modelVersion', 'engineVersion',
-          'extractedFeatures',
-        ]));
+        expect(
+          map.keys,
+          containsAll([
+            'id',
+            'packageName',
+            'title',
+            'content',
+            'timestamp',
+            'category',
+            'isOngoing',
+            'priority',
+            'priorityScore',
+            'classifiedCategory',
+            'explanation',
+            'latencyMs',
+            'ruleVersion',
+            'modelVersion',
+            'engineVersion',
+            'extractedFeatures',
+          ]),
+        );
       });
     });
 
