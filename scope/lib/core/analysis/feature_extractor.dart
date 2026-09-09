@@ -172,23 +172,46 @@ class FeatureVector {
   final List<double> values;
 
   FeatureVector(Iterable<double> values) : values = List.unmodifiable(values) {
-    if (this.values.length != size) {
-      throw ArgumentError.value(
-        this.values.length,
-        'values.length',
-        'FeatureVector must contain exactly $size values.',
-      );
-    }
     if (this.values.any((value) => value.isNaN || value.isInfinite)) {
       throw ArgumentError('FeatureVector cannot contain NaN or infinity.');
     }
   }
 
+  int get length => values.length;
+
+  double operator [](int index) => values[index];
+
   List<double> toList() => List<double>.from(values, growable: false);
 
   Map<String, double> toNamedMap() => {
-    for (var i = 0; i < featureNames.length; i++) featureNames[i]: values[i],
+    for (var i = 0; i < math.min(featureNames.length, values.length); i++)
+      featureNames[i]: values[i],
   };
+
+  /// Returns the feature value corresponding to [featureName].
+  /// Defaults to [defaultValue] if the feature name is unknown or out of bounds.
+  double getValue(String featureName, {double defaultValue = 0.0}) {
+    final index = featureNames.indexOf(featureName);
+    if (index >= 0 && index < values.length) {
+      return values[index];
+    }
+    return defaultValue;
+  }
+
+  /// Returns the feature value corresponding to [featureName], or null if unavailable.
+  double? getByName(String featureName) {
+    final index = featureNames.indexOf(featureName);
+    if (index >= 0 && index < values.length) {
+      return values[index];
+    }
+    return null;
+  }
+
+  // Named property getters for downstream overrides
+  double get containsOtp => getValue('contains_otp');
+  double get containsDeadline => getValue('contains_deadline');
+  double get containsMoney => getValue('contains_money');
+  double get isPromotion => getValue('is_promotion');
 }
 
 /// Deterministic notification feature extraction for TFLite inference.
@@ -853,4 +876,26 @@ class FeatureExtractor {
   }
 
   static double _bool(bool value) => value ? 1.0 : 0.0;
+
+  /// Retrieves named property value from a FeatureVector for downstream overrides.
+  static double getNamedFeature(
+    FeatureVector vector,
+    String featureName, {
+    double defaultValue = 0.0,
+  }) {
+    return vector.getValue(featureName, defaultValue: defaultValue);
+  }
+
+  /// Retrieves named property value from a numerical feature list.
+  static double getNamedFeatureFromList(
+    List<double> values,
+    String featureName, {
+    double defaultValue = 0.0,
+  }) {
+    final index = FeatureVector.featureNames.indexOf(featureName);
+    if (index >= 0 && index < values.length) {
+      return values[index];
+    }
+    return defaultValue;
+  }
 }
