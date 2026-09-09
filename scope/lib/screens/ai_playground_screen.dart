@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/extracted_features.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/security/pii_redactor.dart';
 import 'package:scope/core/state/notification_controller.dart';
 import 'package:scope/theme/app_colors.dart';
 import 'package:scope/theme/app_spacing.dart';
 import 'package:scope/widgets/primitives/scope_surface.dart';
+import 'package:scope/widgets/redacted_view.dart';
 import 'package:scope/widgets/scope_screen_body.dart';
 import 'package:scope/widgets/section_header.dart';
 
@@ -314,7 +316,11 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
           ),
           const Divider(height: 24),
           Text('Input Target:', style: theme.textTheme.labelLarge?.copyWith(color: Colors.white54)),
-          Text('${n.title} - ${n.content}', style: const TextStyle(fontSize: 14)),
+          RedactedView(
+            value: '${n.title} - ${n.content}',
+            maskedValue: PiiRedactor.redactText('${n.title} - ${n.content}'),
+            style: const TextStyle(fontSize: 14),
+          ),
           const SizedBox(height: AppSpacing.md),
           
           Text('Most Defining Features / Tags:', style: theme.textTheme.labelLarge?.copyWith(color: Colors.white54)),
@@ -323,11 +329,34 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
             spacing: 6,
             children: definingWords.isEmpty
                 ? [const Chip(label: Text('General heuristic'), visualDensity: VisualDensity.compact)]
-                : definingWords.map((w) => Chip(
-                      label: Text(w, style: const TextStyle(fontSize: 11, color: Colors.white)),
-                      backgroundColor: AppColors.seed.withValues(alpha: 0.3),
-                      visualDensity: VisualDensity.compact,
-                    )).toList(),
+                : definingWords.map((w) {
+                    final maskedTag = w.startsWith('OTP:')
+                        ? 'OTP:${PiiRedactor.maskOtp(w.substring(4))}'
+                        : w.startsWith('Amount:Rs.')
+                            ? 'Amount:${PiiRedactor.maskAmount(w.substring(7))}'
+                            : w;
+
+                    return RedactedView(
+                      value: w,
+                      maskedValue: maskedTag,
+                      builder: (context, isRedacted, displayText) => Chip(
+                        label: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(displayText, style: const TextStyle(fontSize: 11, color: Colors.white)),
+                            const SizedBox(width: 4),
+                            Icon(
+                              isRedacted ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                              size: 12,
+                              color: Colors.white70,
+                            ),
+                          ],
+                        ),
+                        backgroundColor: AppColors.seed.withValues(alpha: 0.3),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    );
+                  }).toList(),
           ),
           const SizedBox(height: AppSpacing.md),
 
