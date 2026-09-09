@@ -1,5 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:drift/drift.dart' hide Column;
+import 'package:scope/database/attention_database.dart';
 import 'package:scope/core/analysis/extracted_features.dart';
+import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/state/notification_controller.dart';
@@ -92,9 +96,24 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     if (_selectedNotification == null) return;
 
     if (isReward) {
+      final n = _selectedNotification!;
+      final featureVector = FeatureExtractor.extractFromAppNotification(n);
+      final entry = MlFeedbackTableCompanion.insert(
+        notificationId: n.id,
+        packageName: n.packageName,
+        title: n.title,
+        content: n.content,
+        timestamp: n.timestamp,
+        featureVector: jsonEncode(featureVector),
+        rewardScore: 1.0,
+        targetCategory: n.classifiedCategory ?? _selectedCategory,
+        targetPriority: Value(n.priority ?? _selectedPriority),
+      );
+      widget.controller.db.mlFeedbackDao.insertFeedback(entry);
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Reward (+1) recorded! AI model confidence reinforced.'),
+          content: Text('Reward (+1) recorded! Feature vector and feedback persisted.'),
           backgroundColor: Colors.green,
         ),
       );
@@ -109,6 +128,20 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     if (_selectedNotification == null) return;
 
     final n = _selectedNotification!;
+    final featureVector = FeatureExtractor.extractFromAppNotification(n);
+    final entry = MlFeedbackTableCompanion.insert(
+      notificationId: n.id,
+      packageName: n.packageName,
+      title: n.title,
+      content: n.content,
+      timestamp: n.timestamp,
+      featureVector: jsonEncode(featureVector),
+      rewardScore: -1.0,
+      targetCategory: _selectedCategory,
+      targetPriority: Value(_selectedPriority),
+    );
+    widget.controller.db.mlFeedbackDao.insertFeedback(entry);
+
     // Extract defining keywords (e.g. words > 3 chars)
     final words = <String>[];
     for (final w in n.title.split(' ')) {
@@ -138,7 +171,7 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Reinforcement Rule Learned! Similar messages will now be classified as $_selectedPriority ($_selectedCategory).'),
+        content: Text('Reinforcement Rule Learned & Feedback Saved! Similar messages will now be classified as $_selectedPriority ($_selectedCategory).'),
         backgroundColor: AppColors.seed,
       ),
     );
