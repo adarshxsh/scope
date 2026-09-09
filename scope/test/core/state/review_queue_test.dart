@@ -1,8 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/state/providers.dart';
 import 'package:scope/core/state/notification_controller.dart';
+
+import 'package:scope/database/attention_database.dart';
+import 'package:scope/database/database_provider.dart';
+import 'package:scope/database/drift_notification_storage.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -300,15 +305,25 @@ void main() {
   group('NotificationController Integration Tests', () {
     late ProviderContainer container;
     late NotificationController controller;
+    late AttentionDatabase db;
 
     setUp(() {
-      container = ProviderContainer();
-      controller = NotificationController(container: container);
+      db = AttentionDatabase.inMemory();
+      container = ProviderContainer(
+        overrides: [
+          databaseProvider.overrideWithValue(db),
+        ],
+      );
+      controller = NotificationController(
+        container: container,
+        storage: DriftNotificationStorage(db),
+      );
     });
 
-    tearDown(() {
-      container.dispose();
+    tearDown(() async {
       controller.dispose();
+      container.dispose();
+      await db.close();
     });
 
     test('adds test data and synchronizes controller notifications with Riverpod providers', () async {
@@ -339,6 +354,45 @@ void main() {
       controller.complete('c1');
       expect(controller.isCompleted('c1'), isTrue);
       expect(container.read(reviewQueueProvider).first.state, equals(ReviewState.REVIEWED));
+    });
+
+    test('feedback submission records feedback and triggers immediate active queue rescore', () async {
+      final notif = AppNotification(
+        id: 'rescore-1',
+        packageName: 'com.example.news',
+        title: 'Daily Newsletter',
+        content: 'Check out today breaking stories',
+        priority: 'low',
+        priorityScore: 0.15,
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      container.read(reviewQueueProvider.notifier).add(notif);
+
+      // Record positive feedback
+      await controller.recordFeedback(
+        notificationId: 'rescore-1',
+        feedbackType: 'reward',
+        originalPriority: 'low',
+      );
+
+      // Add custom rule overriding priority to critical
+      final newRule = NotificationRule(
+        id: 'rlhf-${DateTime.now().millisecondsSinceEpoch}',
+        category: 'work',
+        priority: 'critical',
+        conditions: const RuleCondition(
+          packages: ['com.example.news'],
+          keywords: ['breaking'],
+        ),
+      );
+
+      controller.engine.ruleEngine.addReinforcementRule(newRule);
+      await controller.rescoreActiveQueue();
+
+      final queue = container.read(reviewQueueProvider);
+      expect(queue.first.priority, equals('critical'));
+      expect(queue.first.priorityScore, equals(1.0));
     });
   });
 }

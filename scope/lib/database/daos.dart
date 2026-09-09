@@ -154,3 +154,21 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
     await delete(dailyBriefTable).go();
   }
 }
+
+@DriftAccessor(tables: [FeedbackLogsTable])
+class FeedbackLogDao extends DatabaseAccessor<AttentionDatabase> with _$FeedbackLogDaoMixin {
+  FeedbackLogDao(super.db);
+
+  Future<void> insertFeedback(Insertable<FeedbackLogEntry> entry) async {
+    await into(feedbackLogsTable).insert(entry);
+  }
+
+  Future<List<FeedbackLogEntry>> getAll() {
+    return select(feedbackLogsTable).get();
+  }
+
+  Future<void> clearAll() async {
+    await delete(feedbackLogsTable).go();
+  }
+}
+

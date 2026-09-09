@@ -50,6 +50,9 @@ class GhostAI {
 
   static GhostAI get instance => _instance ??= GhostAI._();
 
+  /// Exposes the RuleEngine instance.
+  RuleEngine get ruleEngine => _ruleEngine;
+
   /// Exposes rule engine compilation version.
   String get ruleVersion => _ruleEngine.version;
 
@@ -71,11 +74,13 @@ class GhostAI {
       // 2. Load and compile rules database
       final jsonStr = await rootBundle.loadString('assets/rules.json');
       _ruleEngine.compile(jsonStr);
+      await _ruleEngine.loadCustomRules();
       debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
     } catch (e) {
       debugPrint('GhostAI: Failed to initialize rules database: $e');
     }
   }
+
 
   /// Public API: resolves look-again priority score for a notification.
   static Future<GhostAIResult> predict(AppNotification notification) async {
@@ -138,8 +143,8 @@ class GhostAI {
           ruleMatch.ruleId == 'finance_debit' ||
           ruleMatch.ruleId == 'scholarship_portal';
 
-      if (isCriticalBypass) {
-        finalScore = 1.0;
+      if (isCriticalBypass || ruleMatch.ruleId.startsWith('rlhf-')) {
+        finalScore = ruleScore;
       } else {
         // Average rule score and predicted score
         finalScore = (predictedScore + ruleScore) / 2.0;
