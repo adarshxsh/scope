@@ -65,3 +65,18 @@ class DailyBriefTable extends Table {
   IntColumn get remindersCreated => integer().withDefault(const Constant(0))();
   IntColumn get archivedCount => integer().withDefault(const Constant(0))();
 }
+
+@DataClassName('RlhfFeedbackEventEntry')
+class RlhfFeedbackEventsTable extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get notificationId => text()();
+  RealColumn get reward => real()(); // +1.0 for positive, -1.0 for negative
+  TextColumn get correctedCategory => text().nullable()();
+  TextColumn get correctedPriority => text().nullable()();
+  TextColumn get featureVector => text().map(const JsonListConverter())();
+  TextColumn get tokenIds => text().map(const JsonListConverter()).nullable()();
+  TextColumn get hashedTitle => text().nullable()();
+  TextColumn get hashedContent => text().nullable()();
+  IntColumn get timestamp => integer()();
+  TextColumn get modelVersion => text().nullable()();
+}

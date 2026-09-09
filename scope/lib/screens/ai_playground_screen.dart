@@ -88,10 +88,16 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     });
   }
 
-  void _submitFeedback(bool isReward) {
+  void _submitFeedback(bool isReward) async {
     if (_selectedNotification == null) return;
 
     if (isReward) {
+      await widget.controller.recordRlhfFeedback(
+        notification: _selectedNotification!,
+        reward: 1.0,
+      );
+
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Reward (+1) recorded! AI model confidence reinforced.'),
@@ -105,10 +111,18 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     }
   }
 
-  void _applyReinforcementRule() {
+  void _applyReinforcementRule() async {
     if (_selectedNotification == null) return;
 
     final n = _selectedNotification!;
+
+    await widget.controller.recordRlhfFeedback(
+      notification: n,
+      reward: -1.0,
+      correctedCategory: _selectedCategory,
+      correctedPriority: _selectedPriority,
+    );
+
     // Extract defining keywords (e.g. words > 3 chars)
     final words = <String>[];
     for (final w in n.title.split(' ')) {
@@ -136,6 +150,7 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
       _showCorrectionForm = false;
     });
 
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Reinforcement Rule Learned! Similar messages will now be classified as $_selectedPriority ($_selectedCategory).'),

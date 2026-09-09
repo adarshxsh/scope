@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
 import 'package:scope/core/models/notification_model.dart';
@@ -511,6 +514,45 @@ class NotificationController extends ChangeNotifier {
   void recordAction() {
     sessionStats.actionsCompleted++;
     notifyListeners();
+  }
+
+  String _hashText(String text) {
+    if (text.isEmpty) return '';
+    final bytes = utf8.encode(text);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
+  }
+
+  /// Persists user feedback reward (+1/-1), corrections, and feature vectors to SQLite telemetry.
+  Future<void> recordRlhfFeedback({
+    required AppNotification notification,
+    required double reward,
+    String? correctedCategory,
+    String? correctedPriority,
+    List<int>? tokenIds,
+    String? modelVersion,
+  }) async {
+    final db = _container.read(databaseProvider);
+    final extractedFeaturesList = FeatureExtractor.extractFromAppNotification(notification);
+
+    final hashedTitle = _hashText(notification.title);
+    final hashedContent = _hashText(notification.content);
+
+    final entry = RlhfFeedbackEventEntry(
+      id: 0,
+      notificationId: notification.id,
+      reward: reward,
+      correctedCategory: correctedCategory,
+      correctedPriority: correctedPriority,
+      featureVector: extractedFeaturesList,
+      tokenIds: tokenIds,
+      hashedTitle: hashedTitle,
+      hashedContent: hashedContent,
+      timestamp: DateTime.now().millisecondsSinceEpoch,
+      modelVersion: modelVersion,
+    );
+
+    await db.rlhfFeedbackDao.insertEvent(entry);
   }
 
   void resetSessionStats() {

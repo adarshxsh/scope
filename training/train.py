@@ -30,6 +30,7 @@ from training.evaluation.metrics import (
 )
 from training.evaluation.plots import plot_regression_results, plot_training_history
 from training.export.tflite_exporter import (
+    create_model_release_bundle,
     export_float32_tflite,
     export_saved_model,
 )
@@ -130,6 +131,14 @@ def main() -> None:
     tflite_path = export_float32_tflite(
         saved_model_dir,
         export_dir / "ghost_ai.tflite",
+    )
+    manifest_path = create_model_release_bundle(
+        tflite_path=tflite_path,
+        export_dir=export_dir,
+        model_name="ghost_ai",
+        version="1.0.0",
+        schema_version="1.0.0",
+        feature_vector_size=FEATURE_VECTOR_SIZE,
     )
 
     write_history_csv(history, output_dir / "history.csv")
