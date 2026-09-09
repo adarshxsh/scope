@@ -154,3 +154,32 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
     await delete(dailyBriefTable).go();
   }
 }
+
+@DriftAccessor(tables: [AppSettingsTable])
+class AppSettingsDao extends DatabaseAccessor<AttentionDatabase> with _$AppSettingsDaoMixin {
+  AppSettingsDao(super.db);
+
+  Future<AppSettingsEntry> getSettings() async {
+    final list = await select(appSettingsTable).get();
+    if (list.isNotEmpty) {
+      return list.first;
+    }
+    final defaultEntry = AppSettingsEntry(
+      id: 1,
+      telemetryEnabled: true,
+      retentionDays: 7,
+      maxNotificationQuota: 1000,
+      lastUpdated: DateTime.now(),
+    );
+    await into(appSettingsTable).insert(defaultEntry, mode: InsertMode.insertOrReplace);
+    return defaultEntry;
+  }
+
+  Future<void> updateSettings(AppSettingsTableCompanion companion) async {
+    final existing = await getSettings();
+    await (update(appSettingsTable)..where((t) => t.id.equals(existing.id))).write(
+      companion.copyWith(lastUpdated: Value(DateTime.now())),
+    );
+  }
+}
+
