@@ -19,9 +19,9 @@ void main() {
   void mockHandler(Future<dynamic> Function(MethodCall call) handler) {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
-      log.add(call);
-      return handler(call);
-    });
+          log.add(call);
+          return handler(call);
+        });
   }
 
   tearDown(() {

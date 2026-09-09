@@ -18,17 +18,22 @@ class AIReasonWidget extends StatelessWidget {
     final reasons = <String>[];
     final features = notification.extractedFeatures;
 
-    if (features?['hasDeadline'] == true) reasons.add("There's a deadline coming up.");
+    if (features?['hasDeadline'] == true)
+      reasons.add("There's a deadline coming up.");
     if (features?['amount'] != null) reasons.add('I noticed a payment amount.');
     if (features?['otp'] != null) reasons.add("Here's your security code.");
-    if (notification.priority == 'critical' || notification.priority == 'high') {
+    if (notification.priority == 'critical' ||
+        notification.priority == 'high') {
       reasons.add('This seems important right now.');
     }
-    if (notification.packageName.contains('gov')) reasons.add('This is from an official source.');
+    if (notification.packageName.contains('gov'))
+      reasons.add('This is from an official source.');
     final urls = features?['urls'];
-    if (urls is List && urls.isNotEmpty) reasons.add("There's an action you can take.");
+    if (urls is List && urls.isNotEmpty)
+      reasons.add("There's an action you can take.");
 
-    if (notification.explanation != null && notification.explanation!.isNotEmpty) {
+    if (notification.explanation != null &&
+        notification.explanation!.isNotEmpty) {
       final lines = notification.explanation!
           .split('\n')
           .map((l) => l.replaceAll(RegExp(r'^[-•*]\s*'), '').trim())
@@ -48,7 +53,9 @@ class AIReasonWidget extends StatelessWidget {
         ? theme.textTheme.titleSmall?.copyWith(color: Colors.white)
         : theme.textTheme.titleSmall;
     final bodyStyle = inverted
-        ? theme.textTheme.bodyMedium?.copyWith(color: Colors.white.withValues(alpha: 0.72))
+        ? theme.textTheme.bodyMedium?.copyWith(
+            color: Colors.white.withValues(alpha: 0.72),
+          )
         : theme.textTheme.bodyMedium;
     final iconColor = inverted ? Colors.white38 : AppColors.muted(context);
 

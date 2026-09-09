@@ -30,23 +30,26 @@ class _InsightsScreenState extends State<InsightsScreen> {
     final theme = Theme.of(context);
     final notifications = widget.controller.notifications;
     final priorities = {'critical': 0, 'high': 0, 'medium': 0, 'low': 0};
-    
+
     // Group by hour
     final hourlyVolume = List<int>.filled(24, 0);
 
     for (final n in notifications) {
       final p = n.priority ?? 'medium';
       priorities[p] = (priorities[p] ?? 0) + 1;
-      
+
       final hour = DateTime.fromMillisecondsSinceEpoch(n.timestamp).hour;
       hourlyVolume[hour]++;
     }
 
     final focusCounts = widget.controller.focusAreaCounts;
-    final withLatency = notifications.where((n) => n.latencyMs != null).toList();
+    final withLatency = notifications
+        .where((n) => n.latencyMs != null)
+        .toList();
     final avgLatency = withLatency.isEmpty
         ? 0
-        : withLatency.map((n) => n.latencyMs!).fold<int>(0, (a, b) => a + b) ~/ withLatency.length;
+        : withLatency.map((n) => n.latencyMs!).fold<int>(0, (a, b) => a + b) ~/
+              withLatency.length;
 
     return SafeArea(
       child: ScopeScreenBody(
@@ -57,14 +60,17 @@ class _InsightsScreenState extends State<InsightsScreen> {
               title: 'Insights',
               subtitle: 'How your attention is distributed.',
             ),
-            
+
             // Priority Pie Chart
             ScopeSurface(
               padding: const EdgeInsets.all(AppSpacing.lg),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Priority Distribution', style: theme.textTheme.titleMedium),
+                  Text(
+                    'Priority Distribution',
+                    style: theme.textTheme.titleMedium,
+                  ),
                   const SizedBox(height: AppSpacing.xl),
                   SizedBox(
                     height: 220,
@@ -74,22 +80,29 @@ class _InsightsScreenState extends State<InsightsScreen> {
                         PieChart(
                           PieChartData(
                             pieTouchData: PieTouchData(
-                              touchCallback: (FlTouchEvent event, pieTouchResponse) {
-                                setState(() {
-                                  if (!event.isInterestedForInteractions ||
-                                      pieTouchResponse == null ||
-                                      pieTouchResponse.touchedSection == null) {
-                                    _touchedPieIndex = -1;
-                                    return;
-                                  }
-                                  _touchedPieIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
-                                });
-                              },
+                              touchCallback:
+                                  (FlTouchEvent event, pieTouchResponse) {
+                                    setState(() {
+                                      if (!event.isInterestedForInteractions ||
+                                          pieTouchResponse == null ||
+                                          pieTouchResponse.touchedSection ==
+                                              null) {
+                                        _touchedPieIndex = -1;
+                                        return;
+                                      }
+                                      _touchedPieIndex = pieTouchResponse
+                                          .touchedSection!
+                                          .touchedSectionIndex;
+                                    });
+                                  },
                             ),
                             borderData: FlBorderData(show: false),
                             sectionsSpace: 4,
                             centerSpaceRadius: 60,
-                            sections: _buildPieSections(priorities, notifications.length),
+                            sections: _buildPieSections(
+                              priorities,
+                              notifications.length,
+                            ),
                           ),
                         ),
                         // Center text
@@ -98,11 +111,15 @@ class _InsightsScreenState extends State<InsightsScreen> {
                           children: [
                             Text(
                               '${notifications.length}',
-                              style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+                              style: theme.textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             Text(
                               'Total',
-                              style: theme.textTheme.bodySmall?.copyWith(color: Colors.white54),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: Colors.white54,
+                              ),
                             ),
                           ],
                         ),
@@ -114,9 +131,9 @@ class _InsightsScreenState extends State<InsightsScreen> {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: AppSpacing.md),
-            
+
             // Hourly Volume Bar Chart
             ScopeSurface(
               padding: const EdgeInsets.all(AppSpacing.lg),
@@ -125,7 +142,12 @@ class _InsightsScreenState extends State<InsightsScreen> {
                 children: [
                   Text('Hourly Volume', style: theme.textTheme.titleMedium),
                   const SizedBox(height: AppSpacing.md),
-                  Text('When you receive the most notifications', style: theme.textTheme.bodySmall?.copyWith(color: Colors.white54)),
+                  Text(
+                    'When you receive the most notifications',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: Colors.white54,
+                    ),
+                  ),
                   const SizedBox(height: AppSpacing.xl),
                   SizedBox(
                     height: 200,
@@ -137,27 +159,38 @@ class _InsightsScreenState extends State<InsightsScreen> {
                             getTooltipItem: (group, groupIndex, rod, rodIndex) {
                               return BarTooltipItem(
                                 '${rod.toY.round()} msgs\n',
-                                const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
                                 children: <TextSpan>[
                                   TextSpan(
-                                    text: '${group.x.toString().padLeft(2, '0')}:00',
-                                    style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.normal),
+                                    text:
+                                        '${group.x.toString().padLeft(2, '0')}:00',
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.normal,
+                                    ),
                                   ),
                                 ],
                               );
                             },
                           ),
-                          touchCallback: (FlTouchEvent event, barTouchResponse) {
-                            setState(() {
-                              if (!event.isInterestedForInteractions ||
-                                  barTouchResponse == null ||
-                                  barTouchResponse.spot == null) {
-                                _touchedBarIndex = -1;
-                                return;
-                              }
-                              _touchedBarIndex = barTouchResponse.spot!.touchedBarGroupIndex;
-                            });
-                          },
+                          touchCallback:
+                              (FlTouchEvent event, barTouchResponse) {
+                                setState(() {
+                                  if (!event.isInterestedForInteractions ||
+                                      barTouchResponse == null ||
+                                      barTouchResponse.spot == null) {
+                                    _touchedBarIndex = -1;
+                                    return;
+                                  }
+                                  _touchedBarIndex = barTouchResponse
+                                      .spot!
+                                      .touchedBarGroupIndex;
+                                });
+                              },
                         ),
                         titlesData: FlTitlesData(
                           show: true,
@@ -166,21 +199,31 @@ class _InsightsScreenState extends State<InsightsScreen> {
                               showTitles: true,
                               getTitlesWidget: (value, meta) {
                                 // Show title every 6 hours
-                                if (value % 6 != 0) return const SizedBox.shrink();
+                                if (value % 6 != 0)
+                                  return const SizedBox.shrink();
                                 return Padding(
                                   padding: const EdgeInsets.only(top: 8.0),
                                   child: Text(
                                     '${value.toInt().toString().padLeft(2, '0')}:00',
-                                    style: const TextStyle(color: Colors.white54, fontSize: 10),
+                                    style: const TextStyle(
+                                      color: Colors.white54,
+                                      fontSize: 10,
+                                    ),
                                   ),
                                 );
                               },
                               reservedSize: 28,
                             ),
                           ),
-                          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                          leftTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                          topTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                          rightTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
                         ),
                         gridData: const FlGridData(show: false),
                         borderData: FlBorderData(show: false),
@@ -191,9 +234,9 @@ class _InsightsScreenState extends State<InsightsScreen> {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: AppSpacing.md),
-            
+
             // Overview Analysis
             ScopeSurface(
               padding: const EdgeInsets.all(AppSpacing.lg),
@@ -202,16 +245,28 @@ class _InsightsScreenState extends State<InsightsScreen> {
                 children: [
                   Text('Analysis Overview', style: theme.textTheme.titleMedium),
                   const SizedBox(height: AppSpacing.md),
-                  ScopeRow.info(label: 'Total captured', value: '${notifications.length}'),
-                  ScopeRow.info(label: 'Needs action', value: '${widget.controller.needsAction.length}'),
-                  ScopeRow.info(label: 'Completed today', value: '${widget.controller.completedToday.length}'),
-                  ScopeRow.info(label: 'Avg AI latency (ms)', value: '$avgLatency'),
+                  ScopeRow.info(
+                    label: 'Total captured',
+                    value: '${notifications.length}',
+                  ),
+                  ScopeRow.info(
+                    label: 'Needs action',
+                    value: '${widget.controller.needsAction.length}',
+                  ),
+                  ScopeRow.info(
+                    label: 'Completed today',
+                    value: '${widget.controller.completedToday.length}',
+                  ),
+                  ScopeRow.info(
+                    label: 'Avg AI latency (ms)',
+                    value: '$avgLatency',
+                  ),
                 ],
               ),
             ),
-            
+
             const SizedBox(height: AppSpacing.md),
-            
+
             // Focus Areas
             ScopeSurface(
               padding: const EdgeInsets.all(AppSpacing.lg),
@@ -228,12 +283,21 @@ class _InsightsScreenState extends State<InsightsScreen> {
                         children: [
                           Row(
                             children: [
-                              ScopeIconBox(icon: area.icon, size: ScopeIconBoxSize.sm),
+                              ScopeIconBox(
+                                icon: area.icon,
+                                size: ScopeIconBoxSize.sm,
+                              ),
                               const SizedBox(width: AppSpacing.sm),
-                              Text(area.label, style: theme.textTheme.bodyMedium),
+                              Text(
+                                area.label,
+                                style: theme.textTheme.bodyMedium,
+                              ),
                             ],
                           ),
-                          Text('${focusCounts[area]}', style: theme.textTheme.titleSmall),
+                          Text(
+                            '${focusCounts[area]}',
+                            style: theme.textTheme.titleSmall,
+                          ),
                         ],
                       ),
                     ),
@@ -241,9 +305,9 @@ class _InsightsScreenState extends State<InsightsScreen> {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: AppSpacing.md),
-            
+
             // Ghost AI Insights
             ScopeSurface(
               padding: const EdgeInsets.all(AppSpacing.lg),
@@ -252,13 +316,25 @@ class _InsightsScreenState extends State<InsightsScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.auto_awesome, color: AppColors.medium, size: 20),
+                      const Icon(
+                        Icons.auto_awesome,
+                        color: AppColors.medium,
+                        size: 20,
+                      ),
                       const SizedBox(width: AppSpacing.sm),
-                      Text('Ghost AI Insights', style: theme.textTheme.titleMedium),
+                      Text(
+                        'Ghost AI Insights',
+                        style: theme.textTheme.titleMedium,
+                      ),
                     ],
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  ..._generateDynamicInsights(notifications, hourlyVolume, focusCounts, theme),
+                  ..._generateDynamicInsights(
+                    notifications,
+                    hourlyVolume,
+                    focusCounts,
+                    theme,
+                  ),
                 ],
               ),
             ),
@@ -275,15 +351,22 @@ class _InsightsScreenState extends State<InsightsScreen> {
     ThemeData theme,
   ) {
     if (notifications.isEmpty) {
-      return [Text('Not enough data to generate insights yet.', style: theme.textTheme.bodyMedium)];
+      return [
+        Text(
+          'Not enough data to generate insights yet.',
+          style: theme.textTheme.bodyMedium,
+        ),
+      ];
     }
 
     final insights = <String>[];
-    
+
     // Time saved insight
     final timeSaved = notifications.length * 2;
     if (timeSaved > 0) {
-      insights.add('You saved roughly $timeSaved minutes today by batching notifications.');
+      insights.add(
+        'You saved roughly $timeSaved minutes today by batching notifications.',
+      );
     }
 
     // Peak hour insight
@@ -296,8 +379,14 @@ class _InsightsScreenState extends State<InsightsScreen> {
       }
     }
     if (maxVol > 3) {
-      final hourStr = peakHour == 12 ? '12 PM' : peakHour > 12 ? '${peakHour - 12} PM' : '${peakHour == 0 ? 12 : peakHour} AM';
-      insights.add('Most of your interruptions happened around $hourStr ($maxVol notifications).');
+      final hourStr = peakHour == 12
+          ? '12 PM'
+          : peakHour > 12
+          ? '${peakHour - 12} PM'
+          : '${peakHour == 0 ? 12 : peakHour} AM';
+      insights.add(
+        'Most of your interruptions happened around $hourStr ($maxVol notifications).',
+      );
     }
 
     // Top category insight
@@ -310,27 +399,38 @@ class _InsightsScreenState extends State<InsightsScreen> {
       }
     }
     if (maxCount > 2) {
-      insights.add('You had a high volume of ${topArea.label} notifications today.');
+      insights.add(
+        'You had a high volume of ${topArea.label} notifications today.',
+      );
     }
 
     if (insights.isEmpty) {
       insights.add('Your notification volume is perfectly balanced today.');
     }
 
-    return insights.map((insight) => Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.circle, size: 6, color: AppColors.medium),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(child: Text(insight, style: theme.textTheme.bodyMedium)),
-        ],
-      ),
-    )).toList();
+    return insights
+        .map(
+          (insight) => Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.circle, size: 6, color: AppColors.medium),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Text(insight, style: theme.textTheme.bodyMedium),
+                ),
+              ],
+            ),
+          ),
+        )
+        .toList();
   }
 
-  List<PieChartSectionData> _buildPieSections(Map<String, int> priorities, int total) {
+  List<PieChartSectionData> _buildPieSections(
+    Map<String, int> priorities,
+    int total,
+  ) {
     if (total == 0) {
       return [
         PieChartSectionData(
@@ -338,7 +438,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
           value: 1,
           title: '',
           radius: 20,
-        )
+        ),
       ];
     }
 
@@ -348,7 +448,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
       final fontSize = isTouched ? 16.0 : 0.0;
       final radius = isTouched ? 35.0 : 25.0;
       final value = e.value.toDouble();
-      
+
       final data = PieChartSectionData(
         color: AppColors.urgency(e.key),
         value: value,
@@ -365,7 +465,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
       return data;
     }).toList();
   }
-  
+
   List<BarChartGroupData> _buildBarGroups(List<int> hourlyVolume) {
     return List.generate(24, (i) {
       final isTouched = i == _touchedBarIndex;
@@ -374,12 +474,15 @@ class _InsightsScreenState extends State<InsightsScreen> {
         barRods: [
           BarChartRodData(
             toY: hourlyVolume[i].toDouble(),
-            color: isTouched ? AppColors.seed : AppColors.seed.withValues(alpha: 0.5),
+            color: isTouched
+                ? AppColors.seed
+                : AppColors.seed.withValues(alpha: 0.5),
             width: 8,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
             backDrawRodData: BackgroundBarChartRodData(
               show: true,
-              toY: 0, // We could make this the max volume if we wanted a background track
+              toY:
+                  0, // We could make this the max volume if we wanted a background track
               color: Colors.transparent,
             ),
           ),
