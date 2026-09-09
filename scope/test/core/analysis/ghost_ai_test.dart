@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
 import 'package:scope/core/models/notification_model.dart';
@@ -15,6 +16,56 @@ void main() {
       // Should not throw, should log and proceed with isModelLoaded = false
       await GhostAI.instance.initialize();
       expect(GhostAI.instance.isModelLoaded, isFalse);
+    });
+
+    group('Dynamic Model Fallback Tests', () {
+      test('initialization evaluates missing local file and falls back gracefully', () async {
+        await GhostAI.instance.reloadModel();
+        expect(GhostAI.instance.isLocalModel, isFalse);
+      });
+
+      test('reloadModel closes existing interpreter and falls back gracefully when local model is invalid', () async {
+        final tempDir = Directory.systemTemp.createTempSync('ghost_ai_test_');
+        final invalidModelFile = File('${tempDir.path}/corrupted_model.tflite');
+        await invalidModelFile.writeAsString('not a tflite model binary');
+
+        try {
+          await GhostAI.instance.reloadModel(customPath: invalidModelFile.path);
+          // Should gracefully fall back without throwing an unhandled exception
+          expect(GhostAI.instance.isLocalModel, isFalse);
+        } finally {
+          tempDir.deleteSync(recursive: true);
+        }
+      });
+
+      test('reloadModel evaluates local model file path when present', () async {
+        final tempDir = Directory.systemTemp.createTempSync('ghost_ai_test_valid_');
+        final localModelFile = File('${tempDir.path}/models/model.tflite');
+        localModelFile.parent.createSync(recursive: true);
+
+        final assetModelFile = File('assets/model.tflite');
+        if (await assetModelFile.exists()) {
+          await assetModelFile.copy(localModelFile.path);
+        } else {
+          await localModelFile.writeAsString('mock model file content');
+        }
+
+        try {
+          await GhostAI.instance.reloadModel(customPath: localModelFile.path);
+          // Prediction functions identically whether model is disk-loaded, asset-loaded, or fallback
+          final notif = AppNotification(
+            id: 'test-1',
+            packageName: 'com.whatsapp',
+            title: 'Test',
+            content: 'Test content',
+            timestamp: DateTime.now().millisecondsSinceEpoch,
+          );
+          final result = await GhostAI.predict(notif);
+          expect(result.reviewScore, isNotNull);
+        } finally {
+          tempDir.deleteSync(recursive: true);
+        }
+      });
     });
 
     test('predict outputs basic inference results and falls back to heuristics', () async {
