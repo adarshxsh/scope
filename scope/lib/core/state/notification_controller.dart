@@ -93,6 +93,7 @@ class NotificationController extends ChangeNotifier {
   bool get isListenerEnabled => _isListenerEnabled;
   bool get isLoading => _isLoading;
   GhostAnalysisEngine get engine => _engine;
+  AttentionDatabase get db => _container.read(databaseProvider);
 
   bool get inFocusSession => _inFocusSession;
   List<String> get focusSessionQueueIds => List.unmodifiable(_focusSessionQueueIds);
