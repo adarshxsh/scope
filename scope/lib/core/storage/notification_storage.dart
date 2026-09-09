@@ -32,6 +32,9 @@ abstract class NotificationStorage {
 
   /// Returns the current count of stored notifications.
   Future<int> get count;
+
+  /// Returns total estimated disk storage usage in bytes.
+  Future<int> getStorageUsageBytes();
 }
 
 /// In-memory implementation of [NotificationStorage].
@@ -87,4 +90,16 @@ class InMemoryNotificationStorage implements NotificationStorage {
 
   @override
   Future<int> get count async => _store.length;
+
+  @override
+  Future<int> getStorageUsageBytes() async {
+    int size = 0;
+    for (final n in _store) {
+      size += n.id.length + n.packageName.length + n.title.length + n.content.length + 256;
+      if (n.extractedFeatures != null) {
+        size += n.extractedFeatures.toString().length;
+      }
+    }
+    return size;
+  }
 }
