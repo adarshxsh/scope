@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import 'package:scope/core/analysis/rule_crypto.dart';
 import 'package:scope/core/models/notification_model.dart';
 
 /// Condition definition for a notification classification rule.
@@ -91,54 +92,132 @@ class RuleEngine {
   String version = '0.0.0';
   List<NotificationRule> _rules = [];
 
-  /// Compiles a raw JSON rules database into compiled memory structures.
+  /// Compiles a signed rule asset envelope into compiled memory structures after verifying Ed25519 signature.
   void compile(String jsonStr) {
-    final parsed = json.decode(jsonStr) as Map<String, dynamic>;
-    version = parsed['version'] as String? ?? '0.0.0';
-    final rawRules = parsed['rules'] as List<dynamic>? ?? const [];
-    
+    Map<String, dynamic> envelope;
+    try {
+      final decoded = json.decode(jsonStr);
+      if (decoded is! Map<String, dynamic>) {
+        throw const RuleSecurityException(
+            'Invalid envelope format: payload is not a signed JSON envelope map.');
+      }
+      envelope = Map<String, dynamic>.from(decoded);
+    } catch (e) {
+      if (e is RuleSecurityException) rethrow;
+      throw RuleSecurityException('Failed to parse signed envelope JSON: $e');
+    }
+
+    final authorKeyId = envelope['author_key_id'] ?? envelope['author_id'];
+    final signature = envelope['signature'] as String?;
+    final rawPayload = envelope['payload'];
+
+    if (authorKeyId == null || signature == null || signature.isEmpty || rawPayload == null) {
+      throw const RuleSecurityException(
+          'Envelope is missing required author key ID, signature, or payload.');
+    }
+
+    final String payloadStr = rawPayload is String ? rawPayload : json.encode(rawPayload);
+
+    final isValid = RuleCrypto.verifyEd25519Signature(
+      payloadStr: payloadStr,
+      signatureHex: signature,
+    );
+
+    if (!isValid) {
+      throw const RuleSecurityException(
+          'Ed25519 cryptographic signature verification failed for rule asset payload.');
+    }
+
+    final Map<String, dynamic> parsedPayload = rawPayload is Map<String, dynamic>
+        ? rawPayload
+        : Map<String, dynamic>.from(json.decode(payloadStr) as Map);
+
+    version = parsedPayload['version'] as String? ?? '0.0.0';
+    final rawRules = parsedPayload['rules'] as List<dynamic>? ?? const [];
+
     _rules = rawRules
         .map((r) => NotificationRule.fromMap(Map<String, dynamic>.from(r as Map)))
         .toList();
   }
 
   /// Prepends a user-defined reinforcement learning rule to the top of the evaluation chain.
-  void addReinforcementRule(NotificationRule rule) {
+  Future<void> addReinforcementRule(NotificationRule rule) async {
     _rules.insert(0, rule);
-    _saveCustomRules();
+    await _saveCustomRules();
   }
 
-  /// Loads custom rules from local storage and prepends them.
+  /// Loads custom rules from local storage and prepends them after HMAC-SHA256 verification.
   Future<void> loadCustomRules() async {
     try {
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/rlhf_rules.json');
       if (await file.exists()) {
         final content = await file.readAsString();
-        final list = json.decode(content) as List<dynamic>;
-        final customRules = list.map((r) => NotificationRule.fromMap(Map<String, dynamic>.from(r))).toList();
+        final decoded = json.decode(content);
+        if (decoded is! Map<String, dynamic> ||
+            !decoded.containsKey('hmac') ||
+            !decoded.containsKey('payload')) {
+          throw const RuleSecurityException(
+              'Invalid local RLHF rules format or missing HMAC integrity tag.');
+        }
+
+        final hmacHex = decoded['hmac'] as String? ?? '';
+        final payload = decoded['payload'];
+        final payloadStr = json.encode(payload);
+
+        final deviceKey = RuleCrypto.deriveDeviceKey(dir.path);
+        final isValid = RuleCrypto.verifyHMAC(
+          payloadStr: payloadStr,
+          expectedHmacHex: hmacHex,
+          keyBytes: deviceKey,
+        );
+
+        if (!isValid) {
+          throw const RuleSecurityException(
+              'HMAC-SHA256 integrity verification failed for local custom RLHF rules.');
+        }
+
+        final list = payload as List<dynamic>? ?? const [];
+        final customRules = list
+            .map((r) => NotificationRule.fromMap(
+                Map<String, dynamic>.from(r as Map)))
+            .toList();
         // Insert custom rules at the top
         _rules.insertAll(0, customRules);
       }
     } catch (e) {
       // ignore: avoid_print
       print('Failed to load custom RLHF rules: $e');
+      rethrow;
     }
   }
 
-  /// Saves all custom RLHF rules to local storage.
+  /// Saves all custom RLHF rules to local storage with HMAC-SHA256 signature.
   Future<void> _saveCustomRules() async {
     try {
       // Filter out base rules (assuming base rules don't have 'rlhf-' prefix in id)
       final customRules = _rules.where((r) => r.id.startsWith('rlhf-')).toList();
       final list = customRules.map((r) => r.toMap()).toList();
-      
+      final payloadStr = json.encode(list);
+
       final dir = await getApplicationDocumentsDirectory();
+      final deviceKey = RuleCrypto.deriveDeviceKey(dir.path);
+      final hmacHex = RuleCrypto.computeHMAC(
+        payloadStr: payloadStr,
+        keyBytes: deviceKey,
+      );
+
+      final envelope = {
+        'hmac': hmacHex,
+        'payload': list,
+      };
+
       final file = File('${dir.path}/rlhf_rules.json');
-      await file.writeAsString(json.encode(list));
+      await file.writeAsString(json.encode(envelope));
     } catch (e) {
       // ignore: avoid_print
       print('Failed to save custom RLHF rules: $e');
+      rethrow;
     }
   }
 
