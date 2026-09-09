@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/privacy/privacy_engine.dart';
 import 'package:scope/core/storage/notification_storage.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/core/utils/focus_area_mapper.dart';
@@ -42,11 +43,13 @@ class NotificationController extends ChangeNotifier {
     NotificationBridge? bridge,
     NotificationStorage? storage,
     GhostAnalysisEngine? engine,
+    PrivacyEngine? privacyEngine,
     ProviderContainer? container,
   })  : _bridge = bridge ?? NotificationBridge(),
         _container = container ?? providerContainer,
         _storage = storage ?? DriftNotificationStorage(container?.read(databaseProvider) ?? providerContainer.read(databaseProvider)),
-        _engine = engine ?? GhostAnalysisEngine() {
+        _engine = engine ?? GhostAnalysisEngine(),
+        _privacyEngine = privacyEngine ?? PrivacyEngine() {
     _engine.initialize();
 
     // Listen to changes in Riverpod's reviewQueueProvider to keep legacy notifier list in sync
@@ -55,6 +58,9 @@ class NotificationController extends ChangeNotifier {
       notifyListeners();
     });
 
+    // Sync initial native privacy rules
+    _syncPrivacyRulesFromNative();
+
     // Populate initial notifications from storage, if any
     _loadInitialNotifications();
   }
@@ -62,6 +68,7 @@ class NotificationController extends ChangeNotifier {
   final NotificationBridge _bridge;
   final NotificationStorage _storage;
   final GhostAnalysisEngine _engine;
+  final PrivacyEngine _privacyEngine;
   final ProviderContainer _container;
 
   List<AppNotification> _notifications = [];
@@ -378,6 +385,97 @@ class NotificationController extends ChangeNotifier {
 
   Future<void> refresh() => _checkPermissionAndFetch();
 
+  Future<void> _syncPrivacyRulesFromNative() async {
+    try {
+      final blacklisted = await _bridge.getPackageExclusionList();
+      if (blacklisted.isNotEmpty) {
+        _privacyEngine.setBlacklistedPackages(blacklisted);
+      }
+      final categories = await _bridge.getCategoryExclusionRules();
+      if (categories.isNotEmpty) {
+        _privacyEngine.setExcludedCategories(categories);
+      }
+    } catch (_) {
+      // Ignore bridge errors on non-Android or uninitialized platforms
+    }
+  }
+
+  PrivacyEngine get privacyEngine => _privacyEngine;
+
+  bool isPackageBlacklisted(String packageName) =>
+      _privacyEngine.isPackageBlacklisted(packageName);
+
+  Future<void> togglePackageBlacklist(
+      String packageName, bool enableIngestion) async {
+    if (enableIngestion) {
+      _privacyEngine.removeBlacklistedPackage(packageName);
+    } else {
+      _privacyEngine.addBlacklistedPackage(packageName);
+    }
+    await _bridge
+        .setPackageExclusionList(_privacyEngine.blacklistedPackages.toList());
+    notifyListeners();
+  }
+
+  Future<void> setSensitiveCategoryExclusion({
+    bool? excludeOtpAndHealth,
+    bool? excludeFinance,
+  }) async {
+    _privacyEngine.setSensitiveCategoryRules(
+      excludeOtpAndHealth: excludeOtpAndHealth,
+      excludeFinance: excludeFinance,
+    );
+    await _bridge
+        .setCategoryExclusionRules(_privacyEngine.effectiveCategoryRules);
+    notifyListeners();
+  }
+
+  void toggleFieldSanitization(bool enabled) {
+    _privacyEngine.setFieldSanitization(enabled);
+    notifyListeners();
+  }
+
+  Future<List<Map<String, String>>> getInstalledApps() async {
+    final nativeApps = await _bridge.getInstalledApps();
+    if (nativeApps.isNotEmpty) {
+      return nativeApps;
+    }
+
+    // Fallback/Demo list of installed apps for testing/non-Android
+    final Map<String, String> knownMap = {
+      'com.google.android.calendar': 'Google Calendar',
+      'com.google.android.gm': 'Gmail',
+      'org.telegram.messenger': 'Telegram',
+      'com.whatsapp': 'WhatsApp',
+      'com.signal.app': 'Signal',
+      'com.phonepe.app': 'PhonePe',
+      'com.nextbillion.groww': 'Groww',
+      'com.myairtelapp': 'Airtel Thanks',
+      'net.one97.paytm': 'Paytm',
+      'in.amazon.mShop.android.shopping': 'Amazon',
+      'com.application.zomato': 'Zomato',
+      'com.spotify.music': 'Spotify',
+      'com.zerodha.kite3': 'Zerodha Kite',
+      'com.myntra.android': 'Myntra',
+      'com.jio.myjio': 'MyJio',
+      'com.atlassian.android.jira.core': 'Jira',
+      'com.google.android.apps.docs': 'Google Drive',
+    };
+
+    for (final n in _notifications) {
+      if (!knownMap.containsKey(n.packageName)) {
+        knownMap[n.packageName] = n.packageName.split('.').last;
+      }
+    }
+
+    final list = knownMap.entries
+        .map((e) => {'appName': e.value, 'packageName': e.key})
+        .toList();
+    list.sort((a, b) =>
+        a['appName']!.toLowerCase().compareTo(b['appName']!.toLowerCase()));
+    return list;
+  }
+
   Future<void> fetchNotifications() async {
     try {
       final newNotifications = await _bridge.getNotifications();
@@ -391,20 +489,28 @@ class NotificationController extends ChangeNotifier {
         // Ignore ongoing background/system notifications (e.g. charging, media playback)
         if (raw.isOngoing) continue;
 
+        // Dart Pre-Storage Privacy Gate: Drop blacklisted packages or excluded sensitive categories
+        if (_privacyEngine.shouldDrop(raw)) {
+          continue;
+        }
+
+        // Apply optional field sanitization prior to processing
+        final processedRaw = _privacyEngine.sanitize(raw);
+
         final isDuplicate = _notifications.any((n) =>
-            n.packageName == raw.packageName &&
-            n.timestamp == raw.timestamp &&
-            n.title == raw.title &&
-            n.content == raw.content);
+            n.packageName == processedRaw.packageName &&
+            n.timestamp == processedRaw.timestamp &&
+            n.title == processedRaw.title &&
+            n.content == processedRaw.content);
 
         if (!isDuplicate) {
           final inBatch = analyzed.any((n) =>
-              n.packageName == raw.packageName &&
-              n.timestamp == raw.timestamp &&
-              n.title == raw.title &&
-              n.content == raw.content);
+              n.packageName == processedRaw.packageName &&
+              n.timestamp == processedRaw.timestamp &&
+              n.title == processedRaw.title &&
+              n.content == processedRaw.content);
           if (!inBatch) {
-            analyzed.add(await _engine.analyze(raw));
+            analyzed.add(await _engine.analyze(processedRaw));
           }
         }
       }
@@ -433,20 +539,27 @@ class NotificationController extends ChangeNotifier {
     final analyzed = <AppNotification>[];
 
     for (final raw in testNotifs) {
+      // Dart Pre-Storage Privacy Gate
+      if (_privacyEngine.shouldDrop(raw)) {
+        continue;
+      }
+
+      final processedRaw = _privacyEngine.sanitize(raw);
+
       final isDuplicate = _notifications.any((n) =>
-          n.packageName == raw.packageName &&
-          n.timestamp == raw.timestamp &&
-          n.title == raw.title &&
-          n.content == raw.content);
+          n.packageName == processedRaw.packageName &&
+          n.timestamp == processedRaw.timestamp &&
+          n.title == processedRaw.title &&
+          n.content == processedRaw.content);
 
       if (!isDuplicate) {
         final inBatch = analyzed.any((n) =>
-            n.packageName == raw.packageName &&
-            n.timestamp == raw.timestamp &&
-            n.title == raw.title &&
-            n.content == raw.content);
+            n.packageName == processedRaw.packageName &&
+            n.timestamp == processedRaw.timestamp &&
+            n.title == processedRaw.title &&
+            n.content == processedRaw.content);
         if (!inBatch) {
-          analyzed.add(await _engine.analyze(raw));
+          analyzed.add(await _engine.analyze(processedRaw));
         }
       }
     }
