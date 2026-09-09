@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/security/pii_redactor.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
+import 'package:scope/widgets/redacted_view.dart';
 import 'package:scope/widgets/scope_card.dart';
 
 class DiagnosticScreen extends StatefulWidget {
@@ -391,12 +393,12 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
                 ],
               ),
               const Divider(height: 20),
-              _buildFeatureRow('OTP Code', otp),
-              _buildFeatureRow('Transaction Amount', amountStr),
-              _buildFeatureRow('Has Deadline Warning', hasDeadline),
-              _buildFeatureRow('Hyperlinks (URLs)', urlsStr),
-              _buildFeatureRow('Emails', emailsStr),
-              _buildFeatureRow('Phone Numbers', phoneNumbersStr),
+              _buildFeatureRow('OTP Code', otp, maskedValue: PiiRedactor.maskOtp(otp)),
+              _buildFeatureRow('Transaction Amount', amountStr, maskedValue: PiiRedactor.maskAmount(amountStr)),
+              _buildFeatureRow('Has Deadline Warning', hasDeadline, isPii: false),
+              _buildFeatureRow('Hyperlinks (URLs)', urlsStr, maskedValue: PiiRedactor.maskUrl(urlsStr)),
+              _buildFeatureRow('Emails', emailsStr, maskedValue: PiiRedactor.maskEmail(emailsStr)),
+              _buildFeatureRow('Phone Numbers', phoneNumbersStr, maskedValue: PiiRedactor.maskPhoneNumber(phoneNumbersStr)),
             ],
           ),
         ),
@@ -418,7 +420,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
     );
   }
 
-  Widget _buildFeatureRow(String label, String? value) {
+  Widget _buildFeatureRow(String label, String? value, {String? maskedValue, bool isPii = true}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
@@ -426,14 +428,22 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
         children: [
           Text('$label: ', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
           Expanded(
-            child: Text(
-              value ?? 'None',
-              style: TextStyle(
-                color: value != null ? Colors.blue.shade900 : Colors.grey,
-                fontWeight: value != null ? FontWeight.bold : FontWeight.normal,
-                fontSize: 13,
-              ),
-            ),
+            child: (isPii && value != null && value.isNotEmpty)
+                ? Align(
+                    alignment: Alignment.centerLeft,
+                    child: RedactedView(
+                      value: value,
+                      maskedValue: maskedValue,
+                    ),
+                  )
+                : Text(
+                    value ?? 'None',
+                    style: TextStyle(
+                      color: value != null ? Colors.blue.shade900 : Colors.grey,
+                      fontWeight: value != null ? FontWeight.bold : FontWeight.normal,
+                      fontSize: 13,
+                    ),
+                  ),
           ),
         ],
       ),
