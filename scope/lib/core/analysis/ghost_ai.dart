@@ -4,6 +4,7 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
+import 'package:scope/core/storage/model_storage_manager.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -57,24 +58,55 @@ class GhostAI {
   bool get isModelLoaded => _interpreter != null;
 
   /// Initializes the TFLite interpreter and rules database once on startup.
-  Future<void> initialize() async {
+  Future<void> initialize({ModelStorageManager? storageManager}) async {
     if (_interpreter != null) return;
+    final storage = storageManager ?? ModelStorageManager.instance;
+
     try {
-      // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      // 1. Try loading interpreter from local storage if dynamic model exists
+      if (await storage.hasLocalModel()) {
+        try {
+          final modelFile = await storage.getModelFile();
+          _interpreter = Interpreter.fromFile(modelFile);
+          debugPrint('GhostAI: Loaded TFLite interpreter from local storage file.');
+        } catch (e) {
+          debugPrint('GhostAI: Failed loading local TFLite model file ($e), attempting byte buffer...');
+          try {
+            final bytes = await storage.loadModelBytes();
+            _interpreter = Interpreter.fromBuffer(bytes);
+            debugPrint('GhostAI: Loaded TFLite interpreter from local byte buffer.');
+          } catch (e2) {
+            debugPrint('GhostAI: Corrupt local model detected ($e2). Deleting local asset and falling back to bundle.');
+            await storage.deleteLocalModel();
+            _interpreter = null;
+          }
+        }
+      }
+
+      // 2. Fallback to bundled asset if local loading failed or no local model exists
+      if (_interpreter == null) {
+        _interpreter = await Interpreter.fromAsset('assets/model.tflite');
+        debugPrint('GhostAI: TFLite interpreter loaded from bundled asset.');
+      }
     } catch (e) {
       debugPrint('GhostAI: Failed to load TFLite model: $e');
     }
 
     try {
-      // 2. Load and compile rules database
+      // 3. Load and compile rules database
       final jsonStr = await rootBundle.loadString('assets/rules.json');
       _ruleEngine.compile(jsonStr);
       debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
     } catch (e) {
       debugPrint('GhostAI: Failed to initialize rules database: $e');
     }
+  }
+
+  /// Resets interpreter and cache (useful for testing or reloading updated models).
+  void reset() {
+    _interpreter?.close();
+    _interpreter = null;
+    clearCache();
   }
 
   /// Public API: resolves look-again priority score for a notification.

@@ -5,33 +5,55 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/analysis_result.dart';
 import 'package:scope/core/analysis/notification_analyzer.dart';
 import 'package:scope/core/analysis/wordpiece_tokenizer.dart';
+import 'package:scope/core/storage/model_storage_manager.dart';
 
 /// Classifier using LiteRT (TensorFlow Lite) to classify text categories.
 class LiteRtClassifier implements NotificationAnalyzer {
   Interpreter? _interpreter;
   WordPieceTokenizer? _tokenizer;
   bool _isModelLoaded = false;
+  final ModelStorageManager _storageManager;
 
-  LiteRtClassifier() {
+  LiteRtClassifier({ModelStorageManager? storageManager})
+      : _storageManager = storageManager ?? ModelStorageManager.instance {
     _initialize();
   }
 
+  /// Returns the tokenizer instance (used for testing and diagnostics).
+  WordPieceTokenizer? get tokenizer => _tokenizer;
+
   Future<void> _initialize() async {
     try {
-      // 1. Load Vocab
-      final vocabStr = await rootBundle.loadString('assets/vocab.txt');
+      // 1. Load Vocab using ModelStorageManager (local storage with asset fallback)
+      final vocabStr = await _storageManager.loadVocabContent();
       final lines = vocabStr.split('\n');
       _tokenizer = WordPieceTokenizer.fromLines(lines);
 
-      // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
-      _isModelLoaded = false;
+      // 2. Load Interpreter if dynamic model is present
+      if (await _storageManager.hasLocalModel()) {
+        try {
+          final modelFile = await _storageManager.getModelFile();
+          _interpreter = Interpreter.fromFile(modelFile);
+          _isModelLoaded = true;
+        } catch (_) {
+          try {
+            final bytes = await _storageManager.loadModelBytes();
+            _interpreter = Interpreter.fromBuffer(bytes);
+            _isModelLoaded = true;
+          } catch (_) {
+            _isModelLoaded = false;
+          }
+        }
+      } else {
+        _isModelLoaded = false;
+      }
     } catch (e) {
       // Graceful degradation: Log and set flags so analyze runs in fallback mode
       // ignore: avoid_print
       print('LiteRtClassifier failed to initialize: $e');
       _isModelLoaded = false;
 
-      // Ensure tokenizer is loaded even if interpreter fails (so we can test tokenization in fallback)
+      // Ensure tokenizer is loaded even if interpreter fails
       if (_tokenizer == null) {
         try {
           final vocabStr = await rootBundle.loadString('assets/vocab.txt');
