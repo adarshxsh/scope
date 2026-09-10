@@ -46,6 +46,8 @@ void main() {
       expect(analyzed.latencyMs, isNotNull);
       expect(analyzed.extractedFeatures, isNotNull);
       expect(analyzed.extractedFeatures!['amount'], equals(5000.0));
+      expect(analyzed.modelVersion, contains('category_model:'));
+      expect(analyzed.modelVersion, contains('look_again_model:'));
     });
 
     test('orchestrates pipeline and classifies OTP messages as critical priority', () async {

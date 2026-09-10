@@ -30,6 +30,12 @@ class GhostAnalysisEngine {
       print('GhostAnalysisEngine failed to load rules asset: $e');
     }
     try {
+      await mlClassifier.initialize();
+    } catch (e) {
+      // ignore: avoid_print
+      print('GhostAnalysisEngine failed to initialize mlClassifier: $e');
+    }
+    try {
       await GhostAI.instance.initialize();
     } catch (e) {
       // ignore: avoid_print
@@ -91,6 +97,9 @@ class GhostAnalysisEngine {
       priority: priority,
     );
 
+    final catVersion = mlClassifier.isModelLoaded ? '1.0.0-tflite' : 'fallback-heuristics';
+    final lookAgainVersion = GhostAI.instance.isModelLoaded ? '1.0.0-tflite' : 'fallback-heuristics';
+
     stopwatch.stop();
 
     return notification.copyWith(
@@ -100,7 +109,7 @@ class GhostAnalysisEngine {
       explanation: explanation,
       latencyMs: stopwatch.elapsedMilliseconds,
       ruleVersion: ruleEngine.version,
-      modelVersion: GhostAI.instance.isModelLoaded ? '1.0.0-tflite' : 'fallback-heuristics',
+      modelVersion: 'category_model: $catVersion, look_again_model: $lookAgainVersion',
       engineVersion: '2.0.0-hybrid',
       extractedFeatures: features.toMap(),
     );
