@@ -10,7 +10,7 @@ class GhostAIResult {
   /// The final score (0.0 to 1.0) after combining rules and overrides.
   final double reviewScore;
 
-  /// Model prediction confidence (1.0 default for regression).
+  /// Model prediction confidence (1.0 default for regression when active, 0.0 or null in fallback).
   final double? confidence;
 
   /// TFLite model inference execution time in microseconds.
@@ -25,6 +25,9 @@ class GhostAIResult {
   /// Rule match score (0.0 to 1.0) output by the rule engine.
   final double? ruleScore;
 
+  /// Whether the prediction was generated using heuristic fallback.
+  final bool isFallback;
+
   const GhostAIResult({
     required this.reviewScore,
     this.confidence,
@@ -32,6 +35,7 @@ class GhostAIResult {
     required this.featureVector,
     required this.predictedScore,
     this.ruleScore,
+    this.isFallback = false,
   });
 }
 
@@ -91,21 +95,34 @@ class GhostAI {
     // 2. Model inference
     double predictedScore = 0.0;
     int inferenceTimeUs = 0;
+    bool isFallback = false;
+    double? confidence = 1.0;
 
     if (_interpreter != null) {
-      final input = [featureVector];
-      final output = List<double>.filled(1, 0.0).reshape([1, 1]);
+      try {
+        final input = [featureVector];
+        final output = List<double>.filled(1, 0.0).reshape([1, 1]);
 
-      final inferStopwatch = Stopwatch()..start();
-      _interpreter!.run(input, output);
-      inferStopwatch.stop();
+        final inferStopwatch = Stopwatch()..start();
+        _interpreter!.run(input, output);
+        inferStopwatch.stop();
 
-      inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
-      // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
-      predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+        inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
+        // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
+        predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+        isFallback = false;
+        confidence = 1.0;
+      } catch (e) {
+        debugPrint('GhostAI: Runtime interpreter exception during inference: $e');
+        predictedScore = _heuristicLookAgainScore(featureVector);
+        isFallback = true;
+        confidence = 0.0;
+      }
     } else {
       // Heuristic fallback if model not loaded
       predictedScore = _heuristicLookAgainScore(featureVector);
+      isFallback = true;
+      confidence = 0.0;
     }
 
     // 3. Rule matching
@@ -140,6 +157,9 @@ class GhostAI {
 
       if (isCriticalBypass) {
         finalScore = 1.0;
+      } else if (isFallback) {
+        // Bypass blending when model inference is fallback
+        finalScore = ruleScore;
       } else {
         // Average rule score and predicted score
         finalScore = (predictedScore + ruleScore) / 2.0;
@@ -167,11 +187,12 @@ class GhostAI {
 
     final result = GhostAIResult(
       reviewScore: finalScore,
-      confidence: 1.0,
+      confidence: confidence,
       inferenceTimeUs: inferenceTimeUs > 0 ? inferenceTimeUs : stopwatch.elapsedMicroseconds,
       featureVector: featureVector,
       predictedScore: predictedScore,
       ruleScore: ruleScore,
+      isFallback: isFallback,
     );
 
     // Structured logging in debug mode

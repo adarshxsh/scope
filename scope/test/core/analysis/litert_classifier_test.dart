@@ -21,7 +21,9 @@ void main() {
       
       expect(result.category, equals('msg'));
       expect(result.engineName, contains('fallback'));
-      expect(result.score, equals(0.50));
+      expect(result.isFallback, isTrue);
+      expect(result.confidence, equals(0.0));
+      expect(result.score, equals(0.0));
     });
 
     test('fallback correctly categorizes bank alerts', () async {
@@ -39,6 +41,9 @@ void main() {
       
       expect(result.category, equals('finance'));
       expect(result.engineName, contains('fallback'));
+      expect(result.isFallback, isTrue);
+      expect(result.confidence, equals(0.0));
+      expect(result.score, equals(0.0));
     });
   });
 }
