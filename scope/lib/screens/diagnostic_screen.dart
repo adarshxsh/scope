@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
+import 'package:scope/core/analysis/asset_integrity_verifier.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/widgets/scope_card.dart';
@@ -136,6 +137,8 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            _buildAssetIntegrityCard(),
+            const SizedBox(height: 16),
             _buildInputFormCard(),
             const SizedBox(height: 16),
             _buildActionSection(),
@@ -146,6 +149,118 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildAssetIntegrityCard() {
+    final verifier = AssetIntegrityVerifier.instance;
+    final modelStatus = verifier.getStatusFor('assets/model.tflite');
+    final vocabStatus = verifier.getStatusFor('assets/vocab.txt');
+    final rulesStatus = verifier.getStatusFor('assets/rules.json');
+    final manifestStatus = verifier.manifestStatus;
+
+    final theme = Theme.of(context);
+
+    return ScopeCard(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.verified_user, color: theme.colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                'Asset Integrity & Security Verification',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const Divider(height: 20),
+          _buildIntegrityRow('Asset Manifest', 'assets/asset_manifest.json', manifestStatus),
+          _buildIntegrityRow('Look-Again Model', 'assets/model.tflite', modelStatus),
+          _buildIntegrityRow('WordPiece Vocab', 'assets/vocab.txt', vocabStatus),
+          _buildIntegrityRow('Rule Engine DB', 'assets/rules.json', rulesStatus),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIntegrityRow(String label, String path, AssetIntegrityStatus status) {
+    Color color;
+    String statusText;
+    IconData icon;
+
+    switch (status) {
+      case AssetIntegrityStatus.verified:
+        color = Colors.green.shade700;
+        statusText = 'VERIFIED';
+        icon = Icons.check_circle;
+        break;
+      case AssetIntegrityStatus.corrupted:
+        color = Colors.red.shade700;
+        statusText = 'CORRUPTED (FALLBACK)';
+        icon = Icons.error;
+        break;
+      case AssetIntegrityStatus.manifestMissing:
+        color = Colors.orange.shade800;
+        statusText = 'MANIFEST MISSING';
+        icon = Icons.warning;
+        break;
+      case AssetIntegrityStatus.assetMissing:
+        color = Colors.red.shade800;
+        statusText = 'ASSET MISSING';
+        icon = Icons.cancel;
+        break;
+      case AssetIntegrityStatus.fallback:
+      default:
+        color = Colors.orange.shade700;
+        statusText = 'FALLBACK MODE';
+        icon = Icons.warning_amber;
+        break;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+                Text(
+                  path,
+                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: color.withValues(alpha: 0.3)),
+            ),
+            child: Text(
+              statusText,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.bold,
+                fontSize: 11,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
