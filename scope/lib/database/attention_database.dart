@@ -34,9 +34,13 @@ class AttentionDatabase extends _$AttentionDatabase {
   @override
   int get schemaVersion => 1;
 
-  /// Runs a single-step atomic transaction to clean up expired notifications
+  /// Runs a single-step atomic transaction to clean up expired notifications (older than 7 days),
+  /// historical focus sessions (older than 30 days), daily briefs (older than 30 days),
   /// and any orphaned review queue entries, avoiding main-thread loops.
-  Future<void> runSetBasedCleanup(int cutoffTimestamp) async {
+  Future<void> runSetBasedCleanup(
+    int cutoffTimestamp, {
+    int? retentionCutoffTimestamp,
+  }) async {
     await transaction(() async {
       // 1. Delete expired notifications based on cutoff timestamp
       await (delete(notificationsTable)..where((t) => t.timestamp.isSmallerThanValue(cutoffTimestamp))).go();
@@ -48,6 +52,20 @@ class AttentionDatabase extends _$AttentionDatabase {
         return t.notificationId.isNotInQuery(hasNotification);
       });
       await orphanedQuery.go();
+
+      // 3. Delete focus sessions older than 30 days
+      final cutoff30DaysMs = retentionCutoffTimestamp ??
+          DateTime.now().subtract(const Duration(days: 30)).millisecondsSinceEpoch;
+      final cutoff30DaysDateTime = DateTime.fromMillisecondsSinceEpoch(cutoff30DaysMs);
+
+      await (delete(focusSessionsTable)
+            ..where((t) => t.sessionStart.isSmallerThanValue(cutoff30DaysDateTime)))
+          .go();
+
+      // 4. Delete daily brief entries older than 30 days
+      final dateStr =
+          '${cutoff30DaysDateTime.year.toString().padLeft(4, '0')}-${cutoff30DaysDateTime.month.toString().padLeft(2, '0')}-${cutoff30DaysDateTime.day.toString().padLeft(2, '0')}';
+      await (delete(dailyBriefTable)..where((t) => t.date.isSmallerThanValue(dateStr))).go();
     });
   }
 }
