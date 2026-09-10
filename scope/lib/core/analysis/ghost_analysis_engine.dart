@@ -1,4 +1,3 @@
-import 'package:flutter/services.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/litert_classifier.dart';
 import 'package:scope/core/analysis/policy_engine.dart';
@@ -7,6 +6,7 @@ import 'package:scope/core/analysis/score_fusion.dart';
 import 'package:scope/core/analysis/explanation_generator.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
+import 'package:scope/core/models/model_manager.dart';
 
 /// The central hub of Ghost AI coordinating all classification stages.
 class GhostAnalysisEngine {
@@ -19,10 +19,11 @@ class GhostAnalysisEngine {
   })  : ruleEngine = ruleEngine ?? RuleEngine(),
         mlClassifier = mlClassifier ?? LiteRtClassifier();
 
-  /// Compiles rules loaded from assets on engine startup.
+  /// Compiles rules loaded from assets/dynamic storage on engine startup.
   Future<void> initialize() async {
     try {
-      final jsonStr = await rootBundle.loadString('assets/rules.json');
+      await ModelManager.instance.initialize();
+      final jsonStr = await ModelManager.instance.loadString('rules.json', defaultAssetPath: 'assets/rules.json');
       ruleEngine.compile(jsonStr);
       await ruleEngine.loadCustomRules();
     } catch (e) {
@@ -100,7 +101,7 @@ class GhostAnalysisEngine {
       explanation: explanation,
       latencyMs: stopwatch.elapsedMilliseconds,
       ruleVersion: ruleEngine.version,
-      modelVersion: GhostAI.instance.isModelLoaded ? '1.0.0-tflite' : 'fallback-heuristics',
+      modelVersion: GhostAI.instance.isModelLoaded ? GhostAI.instance.modelVersion : 'fallback-heuristics',
       engineVersion: '2.0.0-hybrid',
       extractedFeatures: features.toMap(),
     );

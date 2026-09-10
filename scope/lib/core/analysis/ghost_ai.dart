@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
+import 'package:scope/core/models/model_manager.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -53,23 +53,35 @@ class GhostAI {
   /// Exposes rule engine compilation version.
   String get ruleVersion => _ruleEngine.version;
 
+  /// Exposes active model version string from ModelManager.
+  String get modelVersion => ModelManager.instance.activeModelVersion;
+
   /// Returns whether the model is loaded.
   bool get isModelLoaded => _interpreter != null;
 
-  /// Initializes the TFLite interpreter and rules database once on startup.
-  Future<void> initialize() async {
-    if (_interpreter != null) return;
+  /// Initializes the TFLite interpreter and rules database once on startup or upon OTA update.
+  Future<void> initialize({bool forceReload = false}) async {
+    if (_interpreter != null && !forceReload) return;
+
+    if (forceReload && _interpreter != null) {
+      try {
+        _interpreter!.close();
+      } catch (_) {}
+      _interpreter = null;
+    }
+
     try {
-      // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      // 1. Load interpreter via ModelManager
+      _interpreter = await ModelManager.instance.loadInterpreter('look_again.tflite', 'assets/model.tflite');
+      _interpreter ??= await ModelManager.instance.loadInterpreter('model.tflite', 'assets/model.tflite');
+      debugPrint('GhostAI: TFLite interpreter loaded successfully (version: $modelVersion).');
     } catch (e) {
       debugPrint('GhostAI: Failed to load TFLite model: $e');
     }
 
     try {
-      // 2. Load and compile rules database
-      final jsonStr = await rootBundle.loadString('assets/rules.json');
+      // 2. Load and compile rules database via ModelManager
+      final jsonStr = await ModelManager.instance.loadString('rules.json', defaultAssetPath: 'assets/rules.json');
       _ruleEngine.compile(jsonStr);
       debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
     } catch (e) {

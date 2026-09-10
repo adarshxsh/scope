@@ -42,6 +42,8 @@ dependencies:
   path: ^1.8.3
   fl_chart: ^1.2.0
   google_fonts: ^8.1.0
+  crypto: ^3.0.3
+  http: ^1.1.0
 
 dev_dependencies:
   flutter_test:
@@ -78,6 +80,8 @@ flutter:
     - assets/rules.json
     - assets/model.tflite
     - assets/vocab.txt
+    - assets/text_classifier.tflite
+    - assets/look_again.tflite
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
