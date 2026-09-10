@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
+import 'package:scope/core/analysis/asset_integrity_verifier.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -56,24 +58,51 @@ class GhostAI {
   /// Returns whether the model is loaded.
   bool get isModelLoaded => _interpreter != null;
 
-  /// Initializes the TFLite interpreter and rules database once on startup.
-  Future<void> initialize() async {
+  /// Exposes asset integrity status for GhostAI model assets.
+  AssetIntegrityStatus get modelIntegrityStatus =>
+      AssetIntegrityVerifier.instance.getStatusFor('assets/model.tflite');
+
+  /// Exposes asset integrity status for GhostAI rules asset.
+  AssetIntegrityStatus get rulesIntegrityStatus =>
+      AssetIntegrityVerifier.instance.getStatusFor('assets/rules.json');
+
+  /// Initializes the TFLite interpreter and rules database once on startup with asset integrity verification.
+  Future<void> initialize({AssetBundle? bundle}) async {
     if (_interpreter != null) return;
+
+    // 1. Verify and load model.tflite
     try {
-      // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      final modelBytes = await AssetIntegrityVerifier.instance.loadAndVerifyAsset(
+        'assets/model.tflite',
+        bundle: bundle,
+      );
+      if (modelBytes != null) {
+        _interpreter = Interpreter.fromBuffer(modelBytes);
+        debugPrint('GhostAI: TFLite interpreter created from verified byte buffer successfully.');
+      } else {
+        debugPrint('GhostAI: Asset integrity verification failed for assets/model.tflite. Aborting interpreter creation and triggering fallback mode.');
+        _interpreter = null;
+      }
     } catch (e) {
-      debugPrint('GhostAI: Failed to load TFLite model: $e');
+      debugPrint('GhostAI: Failed to create TFLite interpreter from buffer: $e');
+      _interpreter = null;
     }
 
+    // 2. Verify and load rules.json
     try {
-      // 2. Load and compile rules database
-      final jsonStr = await rootBundle.loadString('assets/rules.json');
-      _ruleEngine.compile(jsonStr);
-      debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
+      final rulesBytes = await AssetIntegrityVerifier.instance.loadAndVerifyAsset(
+        'assets/rules.json',
+        bundle: bundle,
+      );
+      if (rulesBytes != null) {
+        final jsonStr = utf8.decode(rulesBytes);
+        _ruleEngine.compile(jsonStr);
+        debugPrint('GhostAI: Rule engine compiled from verified asset (version: ${_ruleEngine.version}).');
+      } else {
+        debugPrint('GhostAI: Asset integrity verification failed for assets/rules.json. Rule engine not compiled.');
+      }
     } catch (e) {
-      debugPrint('GhostAI: Failed to initialize rules database: $e');
+      debugPrint('GhostAI: Failed to compile rules database: $e');
     }
   }
 
