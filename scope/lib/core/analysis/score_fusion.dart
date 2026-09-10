@@ -27,13 +27,31 @@ class ScoreFusion {
       }
     }
 
-    // 2. Normal score fusion
+    // 2. Fallback check: If model inference is fallback, bypass hybrid blending
+    if (modelResult.isFallback) {
+      if (ruleResult == null) {
+        return modelResult;
+      }
+      return AnalysisResult(
+        category: ruleResult.category,
+        score: 0.85, // Rely strictly on rule result without fallback dilution
+        engineName: 'score_fusion (rule match, model fallback)',
+        matchedSignals: [
+          'Rule matched: ${ruleResult.ruleId} (${ruleResult.matchedSignal})',
+          'Model inference bypassed (fallback mode active)'
+        ],
+        latencyMs: 0,
+        isFallback: false,
+      );
+    }
+
+    // 3. Normal score fusion
     // If no rule matches, rely on the model prediction
     if (ruleResult == null) {
       return modelResult;
     }
 
-    // 3. Hybrid fusion: Both rule and model match
+    // 4. Hybrid fusion: Both rule and model match
     final category = ruleResult.category;
     double score = 0.85; // Base high confidence for custom rule matches
 

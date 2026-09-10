@@ -93,6 +93,8 @@ class GhostAnalysisEngine {
 
     stopwatch.stop();
 
+    final isFallback = mlResult.isFallback || ghostResult.isFallback;
+
     return notification.copyWith(
       priority: priority,
       priorityScore: ghostResult.reviewScore,
@@ -100,9 +102,10 @@ class GhostAnalysisEngine {
       explanation: explanation,
       latencyMs: stopwatch.elapsedMilliseconds,
       ruleVersion: ruleEngine.version,
-      modelVersion: GhostAI.instance.isModelLoaded ? '1.0.0-tflite' : 'fallback-heuristics',
+      modelVersion: (!isFallback && GhostAI.instance.isModelLoaded) ? '1.0.0-tflite' : 'fallback-heuristics',
       engineVersion: '2.0.0-hybrid',
       extractedFeatures: features.toMap(),
+      isFallback: isFallback,
     );
   }
 
