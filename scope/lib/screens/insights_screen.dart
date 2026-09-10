@@ -32,15 +32,17 @@ class _InsightsScreenState extends State<InsightsScreen> {
     final priorities = {'critical': 0, 'high': 0, 'medium': 0, 'low': 0};
     
     // Group by hour
-    final hourlyVolume = List<int>.filled(24, 0);
+    final rawHourlyVolume = List<int>.filled(24, 0);
 
     for (final n in notifications) {
       final p = n.priority ?? 'medium';
       priorities[p] = (priorities[p] ?? 0) + 1;
       
       final hour = DateTime.fromMillisecondsSinceEpoch(n.timestamp).hour;
-      hourlyVolume[hour]++;
+      rawHourlyVolume[hour]++;
     }
+
+    final hourlyVolume = widget.controller.getGovernedHourlyVolume(rawHourlyVolume);
 
     final focusCounts = widget.controller.focusAreaCounts;
     final withLatency = notifications.where((n) => n.latencyMs != null).toList();
