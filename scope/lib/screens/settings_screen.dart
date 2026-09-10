@@ -42,9 +42,26 @@ class SettingsScreen extends StatelessWidget {
                   const Divider(height: 1, indent: 56),
                   _SettingsTile(
                     icon: Icons.shield_outlined,
-                    title: 'Privacy',
-                    subtitle: 'All analysis runs on your device',
+                    title: 'Privacy Budget Manager',
+                    subtitle: 'Epsilon loss ledger: ${controller.privacyBudgetManager.getRemainingEpsilon().toStringAsFixed(2)} / ${controller.privacyBudgetManager.getMaxEpsilon().toStringAsFixed(2)} ε remaining',
                     onTap: null,
+                  ),
+                  const Divider(height: 1, indent: 56),
+                  _SettingsTile(
+                    icon: Icons.restore_outlined,
+                    title: 'Reset Privacy Budget',
+                    subtitle: 'Renew daily differential privacy budget',
+                    onTap: () async {
+                      await controller.privacyBudgetManager.resetDailyBudget();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Daily privacy budget reset to default'),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    },
                   ),
                   const Divider(height: 1, indent: 56),
                   _SettingsTile(

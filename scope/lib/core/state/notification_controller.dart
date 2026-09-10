@@ -5,7 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/privacy/privacy_budget_manager.dart';
+import 'package:scope/core/privacy/dp_telemetry_service.dart';
 import 'package:scope/core/storage/notification_storage.dart';
+
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/core/utils/focus_area_mapper.dart';
 import 'package:scope/core/utils/smart_actions.dart';
@@ -63,6 +66,10 @@ class NotificationController extends ChangeNotifier {
   final NotificationStorage _storage;
   final GhostAnalysisEngine _engine;
   final ProviderContainer _container;
+
+  PrivacyBudgetManager get privacyBudgetManager => _container.read(privacyBudgetManagerProvider);
+  DpTelemetryService get dpTelemetryService => _container.read(dpTelemetryServiceProvider);
+
 
   List<AppNotification> _notifications = [];
   bool _isListenerEnabled = false;

@@ -1,8 +1,11 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/privacy/dp_telemetry_service.dart';
 import 'package:scope/core/state/notification_controller.dart';
+import 'package:scope/core/state/providers.dart';
 import 'package:scope/core/utils/focus_area_mapper.dart';
+import 'package:scope/database/database_provider.dart';
 import 'package:scope/theme/app_colors.dart';
 import 'package:scope/theme/app_spacing.dart';
 import 'package:scope/widgets/primitives/scope_icon_box.dart';
@@ -11,7 +14,7 @@ import 'package:scope/widgets/primitives/scope_surface.dart';
 import 'package:scope/widgets/scope_screen_body.dart';
 import 'package:scope/widgets/section_header.dart';
 
-/// Analytics overview using beautiful fl_charts.
+/// Analytics overview using fl_charts with Differential Privacy noise injection & sensitivity clipping.
 class InsightsScreen extends StatefulWidget {
   final NotificationController controller;
 
@@ -25,28 +28,92 @@ class _InsightsScreenState extends State<InsightsScreen> {
   int _touchedPieIndex = -1;
   int _touchedBarIndex = -1;
 
+  bool _isLoadingDp = true;
+  DpQueryResult<Map<String, int>>? _priorityResult;
+  DpQueryResult<List<int>>? _hourlyVolumeResult;
+  DpQueryResult<Map<String, dynamic>>? _overviewStatsResult;
+  DpQueryResult<NoisyFocusSessionMetrics>? _focusSessionResult;
+
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+  void initState() {
+    super.initState();
+    _loadDpTelemetry();
+  }
+
+  @override
+  void didUpdateWidget(InsightsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _loadDpTelemetry();
+  }
+
+  Future<void> _loadDpTelemetry() async {
     final notifications = widget.controller.notifications;
-    final priorities = {'critical': 0, 'high': 0, 'medium': 0, 'low': 0};
-    
-    // Group by hour
-    final hourlyVolume = List<int>.filled(24, 0);
+    final dpService = widget.controller.dpTelemetryService;
+
+    // Group raw priorities
+    final rawPriorities = {'critical': 0, 'high': 0, 'medium': 0, 'low': 0};
+    final rawHourly = List<int>.filled(24, 0);
 
     for (final n in notifications) {
       final p = n.priority ?? 'medium';
-      priorities[p] = (priorities[p] ?? 0) + 1;
-      
+      rawPriorities[p] = (rawPriorities[p] ?? 0) + 1;
+
       final hour = DateTime.fromMillisecondsSinceEpoch(n.timestamp).hour;
-      hourlyVolume[hour]++;
+      rawHourly[hour]++;
     }
 
-    final focusCounts = widget.controller.focusAreaCounts;
     final withLatency = notifications.where((n) => n.latencyMs != null).toList();
     final avgLatency = withLatency.isEmpty
         ? 0
         : withLatency.map((n) => n.latencyMs!).fold<int>(0, (a, b) => a + b) ~/ withLatency.length;
+
+    final db = providerContainer.read(databaseProvider);
+    final focusSessions = await db.focusSessionDao.getAll();
+
+    final priorityRes = await dpService.queryPriorityDistribution(rawPriorities);
+    final hourlyRes = await dpService.queryHourlyVolume(rawHourly);
+    final overviewRes = await dpService.queryOverviewStats(
+      totalCaptured: notifications.length,
+      needsActionCount: widget.controller.needsAction.length,
+      completedTodayCount: widget.controller.completedToday.length,
+      avgLatencyMs: avgLatency,
+    );
+    final focusRes = await dpService.queryFocusSessionMetrics(focusSessions);
+
+    if (mounted) {
+      setState(() {
+        _priorityResult = priorityRes;
+        _hourlyVolumeResult = hourlyRes;
+        _overviewStatsResult = overviewRes;
+        _focusSessionResult = focusRes;
+        _isLoadingDp = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final notifications = widget.controller.notifications;
+    final focusCounts = widget.controller.focusAreaCounts;
+
+    if (_isLoadingDp || _priorityResult == null) {
+      return const SafeArea(
+        child: ScopeScreenBody(
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
+    final priorities = _priorityResult!.data;
+    final totalPrioritiesCount = priorities.values.fold<int>(0, (a, b) => a + b);
+    final hourlyVolume = _hourlyVolumeResult!.data;
+    final overview = _overviewStatsResult!.data;
+    final focusMetrics = _focusSessionResult!.data;
+    final isExhausted = _priorityResult!.isBudgetExhausted ||
+        _hourlyVolumeResult!.isBudgetExhausted ||
+        _overviewStatsResult!.isBudgetExhausted ||
+        widget.controller.privacyBudgetManager.isBudgetExhausted();
 
     return SafeArea(
       child: ScopeScreenBody(
@@ -57,14 +124,59 @@ class _InsightsScreenState extends State<InsightsScreen> {
               title: 'Insights',
               subtitle: 'How your attention is distributed.',
             ),
-            
+
+            // Privacy Budget Status Card
+            ScopeSurface(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Row(
+                children: [
+                  Icon(
+                    isExhausted ? Icons.lock_clock_outlined : Icons.shield_outlined,
+                    color: isExhausted ? Colors.amber : AppColors.medium,
+                    size: 24,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isExhausted
+                              ? 'Privacy Budget Limit Reached'
+                              : 'Differential Privacy Active',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: isExhausted ? Colors.amber : Colors.white,
+                          ),
+                        ),
+                        Text(
+                          isExhausted
+                              ? '0.00 / ${widget.controller.privacyBudgetManager.getMaxEpsilon().toStringAsFixed(2)} ε remaining — Presenting bounded DP approximations'
+                              : '${widget.controller.privacyBudgetManager.getRemainingEpsilon().toStringAsFixed(2)} / ${widget.controller.privacyBudgetManager.getMaxEpsilon().toStringAsFixed(2)} ε remaining — Noise injected',
+                          style: theme.textTheme.bodySmall?.copyWith(color: Colors.white70),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.md),
+
             // Priority Pie Chart
             ScopeSurface(
               padding: const EdgeInsets.all(AppSpacing.lg),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Priority Distribution', style: theme.textTheme.titleMedium),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Priority Distribution', style: theme.textTheme.titleMedium),
+                      Text('Differentially Private', style: theme.textTheme.labelSmall?.copyWith(color: AppColors.medium)),
+                    ],
+                  ),
                   const SizedBox(height: AppSpacing.xl),
                   SizedBox(
                     height: 220,
@@ -89,7 +201,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
                             borderData: FlBorderData(show: false),
                             sectionsSpace: 4,
                             centerSpaceRadius: 60,
-                            sections: _buildPieSections(priorities, notifications.length),
+                            sections: _buildPieSections(priorities, totalPrioritiesCount),
                           ),
                         ),
                         // Center text
@@ -97,7 +209,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              '${notifications.length}',
+                              '$totalPrioritiesCount',
                               style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
                             ),
                             Text(
@@ -114,9 +226,9 @@ class _InsightsScreenState extends State<InsightsScreen> {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: AppSpacing.md),
-            
+
             // Hourly Volume Bar Chart
             ScopeSurface(
               padding: const EdgeInsets.all(AppSpacing.lg),
@@ -125,7 +237,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
                 children: [
                   Text('Hourly Volume', style: theme.textTheme.titleMedium),
                   const SizedBox(height: AppSpacing.md),
-                  Text('When you receive the most notifications', style: theme.textTheme.bodySmall?.copyWith(color: Colors.white54)),
+                  Text('When you receive the most notifications (Laplace noised)', style: theme.textTheme.bodySmall?.copyWith(color: Colors.white54)),
                   const SizedBox(height: AppSpacing.xl),
                   SizedBox(
                     height: 200,
@@ -165,7 +277,6 @@ class _InsightsScreenState extends State<InsightsScreen> {
                             sideTitles: SideTitles(
                               showTitles: true,
                               getTitlesWidget: (value, meta) {
-                                // Show title every 6 hours
                                 if (value % 6 != 0) return const SizedBox.shrink();
                                 return Padding(
                                   padding: const EdgeInsets.only(top: 8.0),
@@ -191,9 +302,45 @@ class _InsightsScreenState extends State<InsightsScreen> {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: AppSpacing.md),
-            
+
+            // Focus Sessions Telemetry Card
+            ScopeSurface(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Focus Session Telemetry', style: theme.textTheme.titleMedium),
+                      const Icon(Icons.timer_outlined, color: AppColors.medium, size: 20),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  ScopeRow.info(
+                    label: 'Total session duration',
+                    value: isExhausted
+                        ? (_focusSessionResult?.bucketedRanges?['duration'] ?? '15 – 30 mins')
+                        : '${(focusMetrics.totalDurationSeconds / 60).round()} mins',
+                  ),
+                  ScopeRow.info(
+                    label: 'Interruption count',
+                    value: isExhausted
+                        ? (_focusSessionResult?.bucketedRanges?['interruptions'] ?? '1 – 2 interruptions')
+                        : '${focusMetrics.totalInterruptions}',
+                  ),
+                  ScopeRow.info(
+                    label: 'Sessions completed',
+                    value: '${focusMetrics.sessionCount}',
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.md),
+
             // Overview Analysis
             ScopeSurface(
               padding: const EdgeInsets.all(AppSpacing.lg),
@@ -202,16 +349,34 @@ class _InsightsScreenState extends State<InsightsScreen> {
                 children: [
                   Text('Analysis Overview', style: theme.textTheme.titleMedium),
                   const SizedBox(height: AppSpacing.md),
-                  ScopeRow.info(label: 'Total captured', value: '${notifications.length}'),
-                  ScopeRow.info(label: 'Needs action', value: '${widget.controller.needsAction.length}'),
-                  ScopeRow.info(label: 'Completed today', value: '${widget.controller.completedToday.length}'),
-                  ScopeRow.info(label: 'Avg AI latency (ms)', value: '$avgLatency'),
+                  ScopeRow.info(
+                    label: 'Total captured',
+                    value: isExhausted
+                        ? (_overviewStatsResult?.bucketedRanges?['totalCaptured'] ?? '${overview['totalCaptured']}')
+                        : '${overview['totalCaptured']}',
+                  ),
+                  ScopeRow.info(
+                    label: 'Needs action',
+                    value: isExhausted
+                        ? (_overviewStatsResult?.bucketedRanges?['needsActionCount'] ?? '${overview['needsActionCount']}')
+                        : '${overview['needsActionCount']}',
+                  ),
+                  ScopeRow.info(
+                    label: 'Completed today',
+                    value: isExhausted
+                        ? (_overviewStatsResult?.bucketedRanges?['completedTodayCount'] ?? '${overview['completedTodayCount']}')
+                        : '${overview['completedTodayCount']}',
+                  ),
+                  ScopeRow.info(
+                    label: 'Avg AI latency (ms)',
+                    value: '${overview['avgLatencyMs']}',
+                  ),
                 ],
               ),
             ),
-            
+
             const SizedBox(height: AppSpacing.md),
-            
+
             // Focus Areas
             ScopeSurface(
               padding: const EdgeInsets.all(AppSpacing.lg),
@@ -241,9 +406,9 @@ class _InsightsScreenState extends State<InsightsScreen> {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: AppSpacing.md),
-            
+
             // Ghost AI Insights
             ScopeSurface(
               padding: const EdgeInsets.all(AppSpacing.lg),
@@ -279,7 +444,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
     }
 
     final insights = <String>[];
-    
+
     // Time saved insight
     final timeSaved = notifications.length * 2;
     if (timeSaved > 0) {
@@ -348,7 +513,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
       final fontSize = isTouched ? 16.0 : 0.0;
       final radius = isTouched ? 35.0 : 25.0;
       final value = e.value.toDouble();
-      
+
       final data = PieChartSectionData(
         color: AppColors.urgency(e.key),
         value: value,
@@ -365,7 +530,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
       return data;
     }).toList();
   }
-  
+
   List<BarChartGroupData> _buildBarGroups(List<int> hourlyVolume) {
     return List.generate(24, (i) {
       final isTouched = i == _touchedBarIndex;
@@ -379,7 +544,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
             borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
             backDrawRodData: BackgroundBarChartRodData(
               show: true,
-              toY: 0, // We could make this the max volume if we wanted a background track
+              toY: 0,
               color: Colors.transparent,
             ),
           ),
