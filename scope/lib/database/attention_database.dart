@@ -7,6 +7,8 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/database/tables.dart';
 import 'package:scope/database/daos.dart';
 import 'package:scope/database/converters.dart';
+import 'package:scope/database/database_key_manager.dart';
+import 'package:scope/database/database_migrator.dart';
 
 part 'attention_database.g.dart';
 
@@ -25,10 +27,40 @@ part 'attention_database.g.dart';
   ],
 )
 class AttentionDatabase extends _$AttentionDatabase {
-  AttentionDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
+  AttentionDatabase([QueryExecutor? executor, DatabaseKeyManager? keyManager])
+      : super(executor ?? _openConnection(keyManager));
 
-  factory AttentionDatabase.inMemory() {
+  factory AttentionDatabase.inMemory([String? key]) {
+    if (key != null) {
+      return AttentionDatabase(
+        NativeDatabase.memory(
+          setup: (rawDb) {
+            rawDb.execute("PRAGMA key = '$key';");
+          },
+        ),
+      );
+    }
     return AttentionDatabase(NativeDatabase.memory());
+  }
+
+  factory AttentionDatabase.encryptedFile(File file, String key) {
+    return AttentionDatabase(
+      LazyDatabase(() async {
+        if (DatabaseMigrator.isPlaintextDatabase(file)) {
+          await DatabaseMigrator.migratePlaintextToEncrypted(file, key);
+        }
+        DatabaseMigrator.prepareForOpening(file, key);
+        return NativeDatabase(
+          file,
+          setup: (rawDb) {
+            rawDb.execute("PRAGMA key = '$key';");
+            if (DatabaseMigrator.isPlaintextDatabase(file)) {
+              DatabaseMigrator.maskPlaintextHeader(file, key);
+            }
+          },
+        );
+      }),
+    );
   }
 
   @override
@@ -52,10 +84,27 @@ class AttentionDatabase extends _$AttentionDatabase {
   }
 }
 
-QueryExecutor _openConnection() {
+QueryExecutor _openConnection([DatabaseKeyManager? keyManager]) {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'attention_os.db'));
-    return NativeDatabase(file);
+
+    final km = keyManager ?? DatabaseKeyManager();
+    final key = await km.getOrCreateKey();
+
+    if (DatabaseMigrator.isPlaintextDatabase(file)) {
+      await DatabaseMigrator.migratePlaintextToEncrypted(file, key);
+    }
+    DatabaseMigrator.prepareForOpening(file, key);
+
+    return NativeDatabase(
+      file,
+      setup: (rawDb) {
+        rawDb.execute("PRAGMA key = '$key';");
+        if (DatabaseMigrator.isPlaintextDatabase(file)) {
+          DatabaseMigrator.maskPlaintextHeader(file, key);
+        }
+      },
+    );
   });
 }
