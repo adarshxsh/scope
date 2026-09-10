@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
+import 'package:scope/core/utils/pii_redactor.dart';
 import 'package:scope/widgets/scope_card.dart';
 
 class DiagnosticScreen extends StatefulWidget {
@@ -28,6 +29,9 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
   AppNotification? _analyzedNotification;
   bool _isAnalyzing = false;
   bool _isEngineReady = false;
+
+  // Privacy Toggle State
+  bool _isPrivacyMode = true;
 
   @override
   void initState() {
@@ -118,6 +122,11 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       appBar: AppBar(
         title: const Text('Ghost AI Diagnostics'),
         actions: [
+          IconButton(
+            icon: Icon(_isPrivacyMode ? Icons.visibility_off : Icons.visibility),
+            tooltip: _isPrivacyMode ? 'Privacy Mode Enabled (Masked)' : 'Privacy Mode Disabled (Debug View)',
+            onPressed: () => setState(() => _isPrivacyMode = !_isPrivacyMode),
+          ),
           if (!_isEngineReady)
             const Center(
               child: Padding(
@@ -266,19 +275,29 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
 
     // Safely parse feature variables to prevent Dart compilation/ternary ambiguity
     final features = notif.extractedFeatures ?? {};
-    final otp = features['otp'] as String?;
-    final amount = features['amount'];
-    final amountStr = amount != null ? 'Rs. $amount' : null;
+    final rawOtp = features['otp'] as String?;
+    final rawAmount = features['amount'];
+    final rawAmountStr = rawAmount != null ? 'Rs. $rawAmount' : null;
     final hasDeadline = features['hasDeadline'] == true ? 'YES' : null;
 
     final urls = features['urls'] as List?;
-    final urlsStr = urls != null && urls.isNotEmpty ? urls.toString() : null;
+    final rawUrlsStr = urls != null && urls.isNotEmpty ? urls.toString() : null;
 
     final emails = features['emails'] as List?;
-    final emailsStr = emails != null && emails.isNotEmpty ? emails.toString() : null;
+    final rawEmailsStr = emails != null && emails.isNotEmpty ? emails.toString() : null;
 
     final phoneNumbers = features['phoneNumbers'] as List?;
-    final phoneNumbersStr = phoneNumbers != null && phoneNumbers.isNotEmpty ? phoneNumbers.toString() : null;
+    final rawPhoneNumbersStr = phoneNumbers != null && phoneNumbers.isNotEmpty ? phoneNumbers.toString() : null;
+
+    // Apply privacy masking when Privacy Mode is enabled
+    final otp = _isPrivacyMode && rawOtp != null ? PiiRedactor.maskOtp(rawOtp) : rawOtp;
+    final amountStr = _isPrivacyMode && rawAmount != null ? PiiRedactor.maskAmount(rawAmount) : rawAmountStr;
+    final urlsStr = _isPrivacyMode && rawUrlsStr != null ? PiiRedactor.maskUrl(rawUrlsStr) : rawUrlsStr;
+    final emailsStr = _isPrivacyMode && rawEmailsStr != null ? PiiRedactor.maskEmail(rawEmailsStr) : rawEmailsStr;
+    final phoneNumbersStr = _isPrivacyMode && rawPhoneNumbersStr != null ? PiiRedactor.maskPhoneNumber(rawPhoneNumbersStr) : rawPhoneNumbersStr;
+
+    final rawExplanation = notif.explanation ?? 'No explanation trace was generated.';
+    final explanation = _isPrivacyMode ? PiiRedactor.maskText(rawExplanation) : rawExplanation;
 
     final theme = Theme.of(context);
 
@@ -368,7 +387,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
               ),
               const Divider(height: 20),
               Text(
-                notif.explanation ?? 'No explanation trace was generated.',
+                explanation,
                 style: const TextStyle(height: 1.4),
               ),
             ],
