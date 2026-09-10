@@ -69,6 +69,13 @@ def main() -> None:
 
     input_index = input_details[0]["index"]
     output_index = output_details[0]["index"]
+    expected_dim = input_details[0]["shape"][1]
+
+    if x.shape[1] != expected_dim:
+        raise ValueError(
+            f"Dataset feature dimension ({x.shape[1]}) does not match "
+            f"TFLite model expected input dimension ({expected_dim})."
+        )
 
     print("Running inference and measuring latency...")
     latencies = []

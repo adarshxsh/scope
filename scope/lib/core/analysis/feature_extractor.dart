@@ -167,16 +167,17 @@ class FeatureVector {
     'category_id',
   ];
 
-  static const int size = 63;
+  static int get size => featureNames.length;
 
   final List<double> values;
 
-  FeatureVector(Iterable<double> values) : values = List.unmodifiable(values) {
-    if (this.values.length != size) {
+  FeatureVector(Iterable<double> values, {int? expectedSize})
+      : values = List.unmodifiable(values) {
+    if (expectedSize != null && this.values.length != expectedSize) {
       throw ArgumentError.value(
         this.values.length,
         'values.length',
-        'FeatureVector must contain exactly $size values.',
+        'FeatureVector must contain exactly $expectedSize values.',
       );
     }
     if (this.values.any((value) => value.isNaN || value.isInfinite)) {
@@ -187,7 +188,8 @@ class FeatureVector {
   List<double> toList() => List<double>.from(values, growable: false);
 
   Map<String, double> toNamedMap() => {
-    for (var i = 0; i < featureNames.length; i++) featureNames[i]: values[i],
+    for (var i = 0; i < values.length; i++)
+      (i < featureNames.length ? featureNames[i] : 'feature_$i'): values[i],
   };
 }
 

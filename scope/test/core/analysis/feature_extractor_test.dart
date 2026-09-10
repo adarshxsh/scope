@@ -100,6 +100,22 @@ void main() {
       expect(named['day_of_week'], equals(5.0));
     });
 
+    test('accepts dynamic feature vector lengths matching models or manifests', () {
+      final list68 = List<double>.filled(68, 1.0);
+      final vec68 = FeatureVector(list68);
+      expect(vec68.values.length, equals(68));
+      expect(vec68.toNamedMap()['feature_67'], equals(1.0));
+
+      final list128 = List<double>.filled(128, 0.5);
+      final vec128 = FeatureVector(list128, expectedSize: 128);
+      expect(vec128.values.length, equals(128));
+
+      expect(
+        () => FeatureVector(list68, expectedSize: 128),
+        throwsArgumentError,
+      );
+    });
+
     test('vector extraction is deterministic', () {
       final input = NotificationFeatureInput(
         appName: 'Calendar',
