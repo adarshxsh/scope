@@ -93,16 +93,33 @@ class GhostAI {
     int inferenceTimeUs = 0;
 
     if (_interpreter != null) {
-      final input = [featureVector];
-      final output = List<double>.filled(1, 0.0).reshape([1, 1]);
+      try {
+        final inputShape = _interpreter!.getInputTensor(0).shape;
+        final isShapeValid = inputShape.length == 2 &&
+            inputShape[0] == 1 &&
+            inputShape[1] == featureVector.length;
 
-      final inferStopwatch = Stopwatch()..start();
-      _interpreter!.run(input, output);
-      inferStopwatch.stop();
+        if (isShapeValid) {
+          final input = [featureVector];
+          final output = List<double>.filled(1, 0.0).reshape([1, 1]);
 
-      inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
-      // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
-      predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+          final inferStopwatch = Stopwatch()..start();
+          _interpreter!.run(input, output);
+          inferStopwatch.stop();
+
+          inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
+          // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
+          predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+        } else {
+          debugPrint(
+            'GhostAI: Tensor shape mismatch. Expected $inputShape, got [1, ${featureVector.length}]. Falling back to heuristic scoring.',
+          );
+          predictedScore = _heuristicLookAgainScore(featureVector);
+        }
+      } catch (e) {
+        debugPrint('GhostAI: Model inference error: $e. Falling back to heuristic scoring.');
+        predictedScore = _heuristicLookAgainScore(featureVector);
+      }
     } else {
       // Heuristic fallback if model not loaded
       predictedScore = _heuristicLookAgainScore(featureVector);
