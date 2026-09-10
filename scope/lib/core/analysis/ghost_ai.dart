@@ -4,6 +4,7 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
+import 'package:scope/core/analysis/wordpiece_tokenizer.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -60,15 +61,24 @@ class GhostAI {
   Future<void> initialize() async {
     if (_interpreter != null) return;
     try {
-      // 1. Load interpreter from assets
+      // 1. Verify vocabulary asset checksum & contract before loading TFLite interpreter
+      final vocabStr = await rootBundle.loadString('assets/vocab.txt');
+      final lines = vocabStr.split('\n');
+      WordPieceTokenizer.fromLines(
+        lines,
+        expectedDigest: kExpectedVocabSha256,
+      );
+
+      // 2. Load interpreter from assets
       _interpreter = await Interpreter.fromAsset('assets/model.tflite');
       debugPrint('GhostAI: TFLite interpreter loaded successfully.');
     } catch (e) {
-      debugPrint('GhostAI: Failed to load TFLite model: $e');
+      debugPrint('GhostAI: Failed to load TFLite model or validate assets: $e');
+      _interpreter = null;
     }
 
     try {
-      // 2. Load and compile rules database
+      // 3. Load and compile rules database
       final jsonStr = await rootBundle.loadString('assets/rules.json');
       _ruleEngine.compile(jsonStr);
       debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
