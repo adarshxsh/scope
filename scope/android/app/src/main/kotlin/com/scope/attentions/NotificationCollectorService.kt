@@ -78,7 +78,7 @@ class NotificationCollectorService : NotificationListenerService() {
             )
 
             queue.add(data)
-            Log.d(TAG, "Captured: ${data.packageName} - ${data.title}")
+            Log.d(TAG, "Captured [id=${data.id}]: ${data.packageName} - [REDACTED len=${data.title.length}]")
         } catch (e: Exception) {
             Log.e(TAG, "Error capturing/adding notification", e)
         }
@@ -92,7 +92,8 @@ class NotificationCollectorService : NotificationListenerService() {
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         if (sbn == null) return
         // Log for now; future phases may track dismissed notifications
-        Log.d(TAG, "Removed: ${sbn.packageName} - ${sbn.notification.extras?.getCharSequence("android.title")}")
+        val titleLength = sbn.notification.extras?.getCharSequence("android.title")?.length ?: 0
+        Log.d(TAG, "Removed [id=${sbn.id}]: ${sbn.packageName} - [REDACTED len=$titleLength]")
     }
 
     override fun onListenerConnected() {
