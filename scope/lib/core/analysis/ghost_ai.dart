@@ -16,7 +16,7 @@ class GhostAIResult {
   /// TFLite model inference execution time in microseconds.
   final int inferenceTimeUs;
 
-  /// The 63-dimensional feature vector extracted from the notification.
+  /// The numerical feature vector extracted from the notification.
   final List<double> featureVector;
 
   /// Raw prediction score (0.0 to 1.0) output by the TFLite model.
@@ -93,8 +93,23 @@ class GhostAI {
     int inferenceTimeUs = 0;
 
     if (_interpreter != null) {
+      final inputShape = _interpreter!.getInputTensor(0).shape;
+      final expectedFeatureCount =
+          inputShape.length > 1 ? inputShape[1] : inputShape[0];
+
+      if (featureVector.length != expectedFeatureCount) {
+        throw ArgumentError(
+          'Extracted feature vector dimension (${featureVector.length}) does not match '
+          'TFLite interpreter expected input dimension ($expectedFeatureCount).',
+        );
+      }
+
       final input = [featureVector];
-      final output = List<double>.filled(1, 0.0).reshape([1, 1]);
+      final outputShape = _interpreter!.getOutputTensor(0).shape;
+      final output = List<double>.filled(
+        outputShape.reduce((a, b) => a * b),
+        0.0,
+      ).reshape(outputShape);
 
       final inferStopwatch = Stopwatch()..start();
       _interpreter!.run(input, output);
@@ -102,7 +117,10 @@ class GhostAI {
 
       inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
       // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
-      predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+      final rawOutput = (output[0] is List)
+          ? (output[0][0] as num).toDouble()
+          : (output[0] as num).toDouble();
+      predictedScore = (rawOutput / 100.0).clamp(0.0, 1.0);
     } else {
       // Heuristic fallback if model not loaded
       predictedScore = _heuristicLookAgainScore(featureVector);

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import tensorflow as tf
 
-from training.config import FEATURE_VECTOR_SIZE
+from training.dataset.schema import FEATURE_NAMES
 
 
 @tf.keras.utils.register_keras_serializable(package="attentionos")
@@ -59,7 +59,7 @@ def build_baseline_mlp(
     stddev: list[float],
     learning_rate: float,
 ) -> tf.keras.Model:
-    inputs = tf.keras.Input(shape=(FEATURE_VECTOR_SIZE,), name="features")
+    inputs = tf.keras.Input(shape=(len(FEATURE_NAMES),), name="features")
     
     # In-graph feature normalization using constants
     mean_const = tf.constant(mean, dtype=tf.float32, name="normalization_mean")

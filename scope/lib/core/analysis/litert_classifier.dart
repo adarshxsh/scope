@@ -72,12 +72,42 @@ class LiteRtClassifier implements NotificationAnalyzer {
     }
 
     try {
-      // Run model inference
-      // Assume input shape: [1, 64]
-      final input = [tokenIds];
-      
-      // Output logit tensor shape: [1, 5] (Promo, Social, System, Message, Finance)
-      final output = List<double>.filled(5, 0.0).reshape([1, 5]);
+      // Dynamically inspect model input tensor shape
+      final inputShape = _interpreter!.getInputTensor(0).shape;
+      final expectedSeqLen =
+          inputShape.length > 1 ? inputShape[1] : inputShape[0];
+
+      List<int> adjustedTokenIds = tokenIds;
+      if (adjustedTokenIds.length != expectedSeqLen) {
+        if (_tokenizer != null) {
+          final tempTokenizer = WordPieceTokenizer(
+            _tokenizer!.vocab,
+            maxSeqLength: expectedSeqLen,
+          );
+          adjustedTokenIds = tempTokenizer.tokenize(combinedText);
+        } else {
+          throw ArgumentError(
+            'Token IDs length (${tokenIds.length}) does not match '
+            'TFLite interpreter expected sequence length ($expectedSeqLen).',
+          );
+        }
+      }
+
+      if (adjustedTokenIds.length != expectedSeqLen) {
+        throw ArgumentError(
+          'Token IDs length (${adjustedTokenIds.length}) does not match '
+          'TFLite interpreter expected sequence length ($expectedSeqLen).',
+        );
+      }
+
+      final input = [adjustedTokenIds];
+
+      // Dynamically inspect model output tensor shape
+      final outputShape = _interpreter!.getOutputTensor(0).shape;
+      final output = List<double>.filled(
+        outputShape.reduce((a, b) => a * b),
+        0.0,
+      ).reshape(outputShape);
 
       _interpreter!.run(input, output);
 
