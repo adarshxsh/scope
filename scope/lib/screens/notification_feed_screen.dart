@@ -20,7 +20,12 @@ class NotificationFeedScreen extends StatefulWidget {
   final NotificationStorage? storage;
   final GhostAnalysisEngine? engine;
 
-  const NotificationFeedScreen({super.key, this.bridge, this.storage, this.engine});
+  const NotificationFeedScreen({
+    super.key,
+    this.bridge,
+    this.storage,
+    this.engine,
+  });
 
   @override
   State<NotificationFeedScreen> createState() => _NotificationFeedScreenState();
@@ -117,7 +122,8 @@ class _NotificationFeedScreenState extends State<NotificationFeedScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => DiagnosticScreen(engine: _analysisEngine),
+                  builder: (context) =>
+                      DiagnosticScreen(engine: _analysisEngine),
                 ),
               );
             },
@@ -130,24 +136,26 @@ class _NotificationFeedScreenState extends State<NotificationFeedScreen> {
               // Generate mock notifications directly in Dart
               final generator = TestNotificationGenerator();
               final testNotifs = generator.generateAll();
-              
+
               // Run through analysis engine
               final analyzedNotifs = <AppNotification>[];
               for (final raw in testNotifs) {
                 final analyzed = await _analysisEngine.analyze(raw);
                 analyzedNotifs.add(analyzed);
               }
-              
+
               // Save them to local storage
               await _storage.saveAll(analyzedNotifs);
-              
+
               // Refresh the UI
               await _fetchNotifications();
-              
+
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('10 test notifications generated & analyzed locally!'),
+                    content: Text(
+                      '10 test notifications generated & analyzed locally!',
+                    ),
                     duration: Duration(seconds: 2),
                   ),
                 );
@@ -329,7 +337,10 @@ class _NotificationCard extends StatelessWidget {
       margin: const EdgeInsets.symmetric(vertical: 4),
       elevation: isLow ? 0.5 : 2,
       shape: RoundedRectangleBorder(
-        side: BorderSide(color: _getBorderColor(notification.priority), width: isLow ? 0.5 : 1.2),
+        side: BorderSide(
+          color: _getBorderColor(notification.priority),
+          width: isLow ? 0.5 : 1.2,
+        ),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Opacity(
@@ -343,23 +354,25 @@ class _NotificationCard extends StatelessWidget {
                 backgroundColor: notification.priority == 'critical'
                     ? Colors.red.shade100
                     : (notification.priority == 'high'
-                        ? Colors.orange.shade100
-                        : (notification.isOngoing
-                            ? Colors.blue.shade100
-                            : Colors.grey.shade200)),
+                          ? Colors.orange.shade100
+                          : (notification.isOngoing
+                                ? Colors.blue.shade100
+                                : Colors.grey.shade200)),
                 child: Icon(
                   notification.priority == 'critical'
                       ? Icons.gpp_bad
                       : (notification.priority == 'high'
-                          ? Icons.warning_amber_rounded
-                          : (notification.isOngoing
-                              ? Icons.notifications_active
-                              : Icons.notifications)),
+                            ? Icons.warning_amber_rounded
+                            : (notification.isOngoing
+                                  ? Icons.notifications_active
+                                  : Icons.notifications)),
                   color: notification.priority == 'critical'
                       ? Colors.red
                       : (notification.priority == 'high'
-                          ? Colors.orange.shade800
-                          : (notification.isOngoing ? Colors.blue : Colors.grey)),
+                            ? Colors.orange.shade800
+                            : (notification.isOngoing
+                                  ? Colors.blue
+                                  : Colors.grey)),
                   size: 20,
                 ),
               ),
@@ -376,8 +389,10 @@ class _NotificationCard extends StatelessWidget {
                             notification.title.isNotEmpty
                                 ? notification.title
                                 : '(No title)',
-                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                  fontWeight: notification.priority == 'critical' ||
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(
+                                  fontWeight:
+                                      notification.priority == 'critical' ||
                                           notification.priority == 'high'
                                       ? FontWeight.bold
                                       : FontWeight.normal,

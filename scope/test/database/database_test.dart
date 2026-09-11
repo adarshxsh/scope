@@ -161,7 +161,9 @@ void main() {
     });
 
     test('NotificationDao deleteOlderThan cleanup', () async {
-      final oldTime = DateTime.now().subtract(const Duration(days: 10)).millisecondsSinceEpoch;
+      final oldTime = DateTime.now()
+          .subtract(const Duration(days: 10))
+          .millisecondsSinceEpoch;
       final newTime = DateTime.now().millisecondsSinceEpoch;
 
       final nOld = NotificationEntry(
@@ -193,7 +195,9 @@ void main() {
       await db.notificationDao.insertNotification(nOld);
       await db.notificationDao.insertNotification(nNew);
 
-      final cutoff = DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch;
+      final cutoff = DateTime.now()
+          .subtract(const Duration(days: 7))
+          .millisecondsSinceEpoch;
       final deleted = await db.notificationDao.deleteOlderThan(cutoff);
       expect(deleted, equals(1));
 
@@ -202,76 +206,215 @@ void main() {
       expect(all.first.id, equals('n-new'));
     });
 
-    test('runSetBasedCleanup removes expired notifications and orphaned review queue items', () async {
-      final oldTime = DateTime.now().subtract(const Duration(days: 10)).millisecondsSinceEpoch;
-      final newTime = DateTime.now().millisecondsSinceEpoch;
+    test(
+      'runSetBasedCleanup removes expired notifications and orphaned review queue items',
+      () async {
+        final oldTime = DateTime.now()
+            .subtract(const Duration(days: 10))
+            .millisecondsSinceEpoch;
+        final newTime = DateTime.now().millisecondsSinceEpoch;
 
-      final nOld = NotificationEntry(
-        id: 'n-old',
-        packageName: 'whatsapp',
-        title: 'Old',
-        content: 'Body',
-        timestamp: oldTime,
-        state: ReviewState.ACTIVE,
-        reviewed: false,
-        dismissed: false,
-        isOngoing: false,
-        createdAt: DateTime.now(),
+        final nOld = NotificationEntry(
+          id: 'n-old',
+          packageName: 'whatsapp',
+          title: 'Old',
+          content: 'Body',
+          timestamp: oldTime,
+          state: ReviewState.ACTIVE,
+          reviewed: false,
+          dismissed: false,
+          isOngoing: false,
+          createdAt: DateTime.now(),
+        );
+
+        final nNew = NotificationEntry(
+          id: 'n-new',
+          packageName: 'whatsapp',
+          title: 'New',
+          content: 'Body',
+          timestamp: newTime,
+          state: ReviewState.ACTIVE,
+          reviewed: false,
+          dismissed: false,
+          isOngoing: false,
+          createdAt: DateTime.now(),
+        );
+
+        await db.notificationDao.insertNotification(nOld);
+        await db.notificationDao.insertNotification(nNew);
+
+        await db.reviewQueueDao.insertItem(
+          ReviewQueueEntry(
+            id: 1,
+            notificationId: 'n-old',
+            priority: 'high',
+            enqueueTime: DateTime.now(),
+            status: ReviewState.ACTIVE,
+          ),
+        );
+
+        await db.reviewQueueDao.insertItem(
+          ReviewQueueEntry(
+            id: 2,
+            notificationId: 'n-new',
+            priority: 'high',
+            enqueueTime: DateTime.now(),
+            status: ReviewState.ACTIVE,
+          ),
+        );
+
+        // This one is already orphaned before cleanup
+        await db.reviewQueueDao.insertItem(
+          ReviewQueueEntry(
+            id: 3,
+            notificationId: 'n-missing',
+            priority: 'low',
+            enqueueTime: DateTime.now(),
+            status: ReviewState.ACTIVE,
+          ),
+        );
+
+        final cutoff = DateTime.now()
+            .subtract(const Duration(days: 7))
+            .millisecondsSinceEpoch;
+        await db.runSetBasedCleanup(cutoff);
+
+        final notifications = await db.notificationDao.getAll();
+        expect(notifications.length, equals(1));
+        expect(notifications.first.id, equals('n-new'));
+
+        final queueItems = await db.reviewQueueDao.getAll();
+        expect(queueItems.length, equals(1));
+        // Only the new one should remain, old one deleted due to notification expiry
+        // Missing one deleted due to being orphaned
+        expect(queueItems.first.notificationId, equals('n-new'));
+      },
+    );
+
+    test('AppSettingsDao default values, update, and getSettings', () async {
+      var settings = await db.appSettingsDao.getSettings();
+      expect(settings.retentionDays, equals(7));
+      expect(settings.storageQuota, equals(-1));
+      expect(settings.telemetryEnabled, isTrue);
+
+      await db.appSettingsDao.updateSettings(
+        retentionDays: 1,
+        storageQuota: 500,
+        telemetryEnabled: false,
       );
 
-      final nNew = NotificationEntry(
-        id: 'n-new',
-        packageName: 'whatsapp',
-        title: 'New',
-        content: 'Body',
-        timestamp: newTime,
-        state: ReviewState.ACTIVE,
-        reviewed: false,
-        dismissed: false,
-        isOngoing: false,
-        createdAt: DateTime.now(),
-      );
-
-      await db.notificationDao.insertNotification(nOld);
-      await db.notificationDao.insertNotification(nNew);
-
-      await db.reviewQueueDao.insertItem(ReviewQueueEntry(
-        id: 1,
-        notificationId: 'n-old',
-        priority: 'high',
-        enqueueTime: DateTime.now(),
-        status: ReviewState.ACTIVE,
-      ));
-      
-      await db.reviewQueueDao.insertItem(ReviewQueueEntry(
-        id: 2,
-        notificationId: 'n-new',
-        priority: 'high',
-        enqueueTime: DateTime.now(),
-        status: ReviewState.ACTIVE,
-      ));
-
-      // This one is already orphaned before cleanup
-      await db.reviewQueueDao.insertItem(ReviewQueueEntry(
-        id: 3,
-        notificationId: 'n-missing',
-        priority: 'low',
-        enqueueTime: DateTime.now(),
-        status: ReviewState.ACTIVE,
-      ));
-
-      final cutoff = DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch;
-      await db.runSetBasedCleanup(cutoff);
-
-      final notifications = await db.notificationDao.getAll();
-      expect(notifications.length, equals(1));
-      expect(notifications.first.id, equals('n-new'));
-
-      final queueItems = await db.reviewQueueDao.getAll();
-      expect(queueItems.length, equals(1));
-      // Only the new one should remain, old one deleted due to notification expiry
-      // Missing one deleted due to being orphaned
-      expect(queueItems.first.notificationId, equals('n-new'));
+      settings = await db.appSettingsDao.getSettings();
+      expect(settings.retentionDays, equals(1));
+      expect(settings.storageQuota, equals(500));
+      expect(settings.telemetryEnabled, isFalse);
     });
+
+    test('enforceStorageQuota prunes oldest non-active items first', () async {
+      final now = DateTime.now();
+
+      // Insert 3 ACTIVE items and 2 ARCHIVED items
+      for (int i = 1; i <= 3; i++) {
+        await db.notificationDao.insertNotification(
+          NotificationEntry(
+            id: 'active-$i',
+            packageName: 'app',
+            title: 'Active $i',
+            content: 'Content',
+            timestamp: now.millisecondsSinceEpoch + i * 1000,
+            state: ReviewState.ACTIVE,
+            reviewed: false,
+            dismissed: false,
+            isOngoing: false,
+            createdAt: now,
+          ),
+        );
+      }
+
+      for (int i = 1; i <= 2; i++) {
+        await db.notificationDao.insertNotification(
+          NotificationEntry(
+            id: 'archived-$i',
+            packageName: 'app',
+            title: 'Archived $i',
+            content: 'Content',
+            timestamp: now.millisecondsSinceEpoch + i * 500,
+            state: ReviewState.ARCHIVED,
+            reviewed: true,
+            dismissed: false,
+            isOngoing: false,
+            createdAt: now,
+          ),
+        );
+      }
+
+      var total = await db.notificationDao.getCount();
+      expect(total, equals(5));
+
+      // Quota = 3 -> excess = 2. Should prune 2 archived items first!
+      final pruned = await db.notificationDao.enforceStorageQuota(3);
+      expect(pruned, equals(2));
+
+      total = await db.notificationDao.getCount();
+      expect(total, equals(3));
+
+      final remaining = await db.notificationDao.getAll();
+      final remainingIds = remaining.map((e) => e.id).toList();
+      expect(remainingIds, containsAll(['active-1', 'active-2', 'active-3']));
+    });
+
+    test(
+      'runSetBasedCleanup with cutoffTimestamp and maxCount quota limit',
+      () async {
+        final oldTime = DateTime.now()
+            .subtract(const Duration(days: 10))
+            .millisecondsSinceEpoch;
+        final recentTime = DateTime.now().millisecondsSinceEpoch;
+
+        await db.notificationDao.insertNotification(
+          NotificationEntry(
+            id: 'n-old',
+            packageName: 'app',
+            title: 'Old',
+            content: 'Content',
+            timestamp: oldTime,
+            state: ReviewState.ARCHIVED,
+            reviewed: true,
+            dismissed: false,
+            isOngoing: false,
+            createdAt: DateTime.now(),
+          ),
+        );
+
+        for (int i = 1; i <= 3; i++) {
+          await db.notificationDao.insertNotification(
+            NotificationEntry(
+              id: 'n-recent-$i',
+              packageName: 'app',
+              title: 'Recent $i',
+              content: 'Content',
+              timestamp: recentTime + i * 100,
+              state: ReviewState.ACTIVE,
+              reviewed: false,
+              dismissed: false,
+              isOngoing: false,
+              createdAt: DateTime.now(),
+            ),
+          );
+        }
+
+        // Cutoff 1 day (removes n-old) and maxCount 2 (prunes oldest recent item n-recent-1)
+        final cutoff = DateTime.now()
+            .subtract(const Duration(days: 1))
+            .millisecondsSinceEpoch;
+        await db.runSetBasedCleanup(cutoff, maxCount: 2);
+
+        final total = await db.notificationDao.getCount();
+        expect(total, equals(2));
+
+        final remaining = await db.notificationDao.getAll();
+        final remainingIds = remaining.map((e) => e.id).toList();
+        expect(remainingIds, containsAll(['n-recent-2', 'n-recent-3']));
+      },
+    );
   });
 }

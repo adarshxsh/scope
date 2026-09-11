@@ -14,24 +14,24 @@ enum FocusArea {
 
 extension FocusAreaX on FocusArea {
   String get label => switch (this) {
-        FocusArea.education => 'Education',
-        FocusArea.finance => 'Finance',
-        FocusArea.government => 'Government',
-        FocusArea.health => 'Health',
-        FocusArea.meetings => 'Meetings',
-        FocusArea.payments => 'Payments',
-        FocusArea.deliveries => 'Deliveries',
-      };
+    FocusArea.education => 'Education',
+    FocusArea.finance => 'Finance',
+    FocusArea.government => 'Government',
+    FocusArea.health => 'Health',
+    FocusArea.meetings => 'Meetings',
+    FocusArea.payments => 'Payments',
+    FocusArea.deliveries => 'Deliveries',
+  };
 
   IconData get icon => switch (this) {
-        FocusArea.education => Icons.school_outlined,
-        FocusArea.finance => Icons.account_balance_outlined,
-        FocusArea.government => Icons.account_balance_wallet_outlined,
-        FocusArea.health => Icons.health_and_safety_outlined,
-        FocusArea.meetings => Icons.groups_outlined,
-        FocusArea.payments => Icons.payments_outlined,
-        FocusArea.deliveries => Icons.local_shipping_outlined,
-      };
+    FocusArea.education => Icons.school_outlined,
+    FocusArea.finance => Icons.account_balance_outlined,
+    FocusArea.government => Icons.account_balance_wallet_outlined,
+    FocusArea.health => Icons.health_and_safety_outlined,
+    FocusArea.meetings => Icons.groups_outlined,
+    FocusArea.payments => Icons.payments_outlined,
+    FocusArea.deliveries => Icons.local_shipping_outlined,
+  };
 
   /// Short contextual description for dashboard cards.
   String descriptionFor(int count, List<AppNotification> items) {
@@ -40,7 +40,8 @@ extension FocusAreaX on FocusArea {
     return switch (this) {
       FocusArea.education => _deadlineLabel(count, items, 'deadline'),
       FocusArea.finance => '$count update${count == 1 ? '' : 's'}',
-      FocusArea.government => count == 1 ? '1 verification' : '$count verifications',
+      FocusArea.government =>
+        count == 1 ? '1 verification' : '$count verifications',
       FocusArea.health => count == 1 ? '1 appointment' : '$count appointments',
       FocusArea.meetings => count == 1 ? '1 meeting' : '$count meetings',
       FocusArea.payments => count == 1 ? '1 payment' : '$count payments',
@@ -48,8 +49,14 @@ extension FocusAreaX on FocusArea {
     };
   }
 
-  String _deadlineLabel(int count, List<AppNotification> items, String keyword) {
-    final withDeadline = items.where((n) => n.extractedFeatures?['hasDeadline'] == true).length;
+  String _deadlineLabel(
+    int count,
+    List<AppNotification> items,
+    String keyword,
+  ) {
+    final withDeadline = items
+        .where((n) => n.extractedFeatures?['hasDeadline'] == true)
+        .length;
     if (withDeadline > 0) {
       return withDeadline == 1 ? '1 deadline' : '$withDeadline deadlines';
     }
@@ -62,11 +69,18 @@ abstract final class FocusAreaMapper {
   static FocusArea? areaFor(AppNotification notification) {
     final pkg = notification.packageName.toLowerCase();
     final category =
-        (notification.classifiedCategory ?? notification.category ?? '').toLowerCase();
+        (notification.classifiedCategory ?? notification.category ?? '')
+            .toLowerCase();
     final text = '${notification.title} ${notification.content}'.toLowerCase();
 
     if (_matchesAny(pkg, ['scholarship', 'edu', 'classroom', 'coursera']) ||
-        _matchesAny(text, ['scholarship', 'gsoc', 'application', 'exam', 'course'])) {
+        _matchesAny(text, [
+          'scholarship',
+          'gsoc',
+          'application',
+          'exam',
+          'course',
+        ])) {
       return FocusArea.education;
     }
     if (_matchesAny(pkg, ['gov', 'uidai', 'income tax', 'passport'])) {
@@ -81,8 +95,21 @@ abstract final class FocusAreaMapper {
         _matchesAny(text, ['meeting', 'standup', 'join', 'call'])) {
       return FocusArea.meetings;
     }
-    if (_matchesAny(pkg, ['amazon', 'flipkart', 'myntra', 'delivery', 'swiggy', 'zomato']) ||
-        _matchesAny(text, ['delivery', 'shipped', 'track', 'package', 'order'])) {
+    if (_matchesAny(pkg, [
+          'amazon',
+          'flipkart',
+          'myntra',
+          'delivery',
+          'swiggy',
+          'zomato',
+        ]) ||
+        _matchesAny(text, [
+          'delivery',
+          'shipped',
+          'track',
+          'package',
+          'order',
+        ])) {
       return FocusArea.deliveries;
     }
 
@@ -101,7 +128,9 @@ abstract final class FocusAreaMapper {
     return null;
   }
 
-  static Map<FocusArea, int> countsFor(Iterable<AppNotification> notifications) {
+  static Map<FocusArea, int> countsFor(
+    Iterable<AppNotification> notifications,
+  ) {
     final counts = {for (final area in FocusArea.values) area: 0};
     for (final n in notifications) {
       final area = areaFor(n);

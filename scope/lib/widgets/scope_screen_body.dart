@@ -6,11 +6,7 @@ class ScopeScreenBody extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
 
-  const ScopeScreenBody({
-    super.key,
-    required this.child,
-    this.padding,
-  });
+  const ScopeScreenBody({super.key, required this.child, this.padding});
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +15,8 @@ class ScopeScreenBody extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: AppSpacing.maxContentWidth),
         child: Padding(
-          padding: padding ??
+          padding:
+              padding ??
               const EdgeInsets.fromLTRB(
                 AppSpacing.screenPadding,
                 AppSpacing.screenPadding,

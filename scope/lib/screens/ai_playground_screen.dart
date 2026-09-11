@@ -66,7 +66,9 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
   void _analyzeCustom() async {
     final raw = AppNotification(
       id: 'custom-${DateTime.now().millisecondsSinceEpoch}',
-      packageName: _packageController.text.trim().isEmpty ? 'com.custom.app' : _packageController.text.trim(),
+      packageName: _packageController.text.trim().isEmpty
+          ? 'com.custom.app'
+          : _packageController.text.trim(),
       title: _titleController.text.trim(),
       content: _contentController.text.trim(),
       timestamp: DateTime.now().millisecondsSinceEpoch,
@@ -94,7 +96,9 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     if (isReward) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Reward (+1) recorded! AI model confidence reinforced.'),
+          content: Text(
+            'Reward (+1) recorded! AI model confidence reinforced.',
+          ),
           backgroundColor: Colors.green,
         ),
       );
@@ -138,7 +142,9 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Reinforcement Rule Learned! Similar messages will now be classified as $_selectedPriority ($_selectedCategory).'),
+        content: Text(
+          'Reinforcement Rule Learned! Similar messages will now be classified as $_selectedPriority ($_selectedCategory).',
+        ),
         backgroundColor: AppColors.seed,
       ),
     );
@@ -158,7 +164,8 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
             children: [
               const SectionHeader(
                 title: 'Model Post-Mortem',
-                subtitle: 'Inspect classification decisions and reinforce AI behavior.',
+                subtitle:
+                    'Inspect classification decisions and reinforce AI behavior.',
               ),
               Row(
                 children: [
@@ -180,9 +187,13 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
                 ],
               ),
               const SizedBox(height: AppSpacing.md),
-              if (_isCustomMode) _buildSimulatorForm() else _buildRecentList(notifications),
+              if (_isCustomMode)
+                _buildSimulatorForm()
+              else
+                _buildRecentList(notifications),
               const SizedBox(height: AppSpacing.lg),
-              if (_selectedNotification != null) _buildPostMortemPanel(_selectedNotification!, theme),
+              if (_selectedNotification != null)
+                _buildPostMortemPanel(_selectedNotification!, theme),
             ],
           ),
         ),
@@ -198,17 +209,23 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
         children: [
           TextField(
             controller: _packageController,
-            decoration: const InputDecoration(labelText: 'Package Name (e.g., com.sbi.upi)'),
+            decoration: const InputDecoration(
+              labelText: 'Package Name (e.g., com.sbi.upi)',
+            ),
           ),
           const SizedBox(height: AppSpacing.sm),
           TextField(
             controller: _titleController,
-            decoration: const InputDecoration(labelText: 'Notification Title (e.g., SBI Alert)'),
+            decoration: const InputDecoration(
+              labelText: 'Notification Title (e.g., SBI Alert)',
+            ),
           ),
           const SizedBox(height: AppSpacing.sm),
           TextField(
             controller: _contentController,
-            decoration: const InputDecoration(labelText: 'Content (e.g., Rs.500 debited from a/c 1234)'),
+            decoration: const InputDecoration(
+              labelText: 'Content (e.g., Rs.500 debited from a/c 1234)',
+            ),
             maxLines: 2,
           ),
           const SizedBox(height: AppSpacing.md),
@@ -238,7 +255,8 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: notifications.length,
-        separatorBuilder: (context, index) => const SizedBox(width: AppSpacing.sm),
+        separatorBuilder: (context, index) =>
+            const SizedBox(width: AppSpacing.sm),
         itemBuilder: (context, index) {
           final n = notifications[index];
           final isSelected = _selectedNotification?.id == n.id;
@@ -248,9 +266,13 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
               width: 180,
               padding: const EdgeInsets.all(AppSpacing.sm),
               decoration: BoxDecoration(
-                color: isSelected ? AppColors.seed.withValues(alpha: 0.2) : const Color(0xFF161A23),
+                color: isSelected
+                    ? AppColors.seed.withValues(alpha: 0.2)
+                    : const Color(0xFF161A23),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: isSelected ? AppColors.seed : const Color(0xFF262A36)),
+                border: Border.all(
+                  color: isSelected ? AppColors.seed : const Color(0xFF262A36),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -259,23 +281,56 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(
-                        child: Text(n.packageName, style: const TextStyle(fontSize: 10, color: Colors.white54), maxLines: 1),
+                        child: Text(
+                          n.packageName,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.white54,
+                          ),
+                          maxLines: 1,
+                        ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
-                          color: AppColors.urgency(n.priority).withValues(alpha: 0.2),
+                          color: AppColors.urgency(
+                            n.priority,
+                          ).withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: Text(n.priority?.toUpperCase() ?? 'MED', style: TextStyle(fontSize: 8, color: AppColors.urgency(n.priority))),
+                        child: Text(
+                          n.priority?.toUpperCase() ?? 'MED',
+                          style: TextStyle(
+                            fontSize: 8,
+                            color: AppColors.urgency(n.priority),
+                          ),
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(n.title.isEmpty ? '(No title)' : n.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12), maxLines: 1),
+                  Text(
+                    n.title.isEmpty ? '(No title)' : n.title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                    maxLines: 1,
+                  ),
                   const SizedBox(height: 2),
                   Expanded(
-                    child: Text(n.content, style: const TextStyle(fontSize: 11, color: Colors.white70), maxLines: 3, overflow: TextOverflow.ellipsis),
+                    child: Text(
+                      n.content,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.white70,
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),
@@ -292,13 +347,24 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
 
     // Identify defining features (e.g. keywords)
     final definingWords = <String>[];
-    if (n.title.toLowerCase().contains('sbi') || n.content.toLowerCase().contains('sbi')) definingWords.add('sbi');
-    if (n.title.toLowerCase().contains('debited') || n.content.toLowerCase().contains('debited')) definingWords.add('debited');
-    if (n.title.toLowerCase().contains('credited') || n.content.toLowerCase().contains('credited')) definingWords.add('credited');
-    if (n.title.toLowerCase().contains('offer') || n.content.toLowerCase().contains('offer')) definingWords.add('offer');
-    if (n.title.toLowerCase().contains('sale') || n.content.toLowerCase().contains('sale')) definingWords.add('sale');
+    if (n.title.toLowerCase().contains('sbi') ||
+        n.content.toLowerCase().contains('sbi'))
+      definingWords.add('sbi');
+    if (n.title.toLowerCase().contains('debited') ||
+        n.content.toLowerCase().contains('debited'))
+      definingWords.add('debited');
+    if (n.title.toLowerCase().contains('credited') ||
+        n.content.toLowerCase().contains('credited'))
+      definingWords.add('credited');
+    if (n.title.toLowerCase().contains('offer') ||
+        n.content.toLowerCase().contains('offer'))
+      definingWords.add('offer');
+    if (n.title.toLowerCase().contains('sale') ||
+        n.content.toLowerCase().contains('sale'))
+      definingWords.add('sale');
     if (features.otp != null) definingWords.add('OTP:${features.otp}');
-    if (features.amount != null) definingWords.add('Amount:Rs.${features.amount}');
+    if (features.amount != null)
+      definingWords.add('Amount:Rs.${features.amount}');
 
     return ScopeSurface(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -309,25 +375,54 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Post-Mortem Trace', style: theme.textTheme.titleMedium),
-              Text('${n.latencyMs ?? 0} ms', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+              Text(
+                '${n.latencyMs ?? 0} ms',
+                style: const TextStyle(color: Colors.white54, fontSize: 12),
+              ),
             ],
           ),
           const Divider(height: 24),
-          Text('Input Target:', style: theme.textTheme.labelLarge?.copyWith(color: Colors.white54)),
-          Text('${n.title} - ${n.content}', style: const TextStyle(fontSize: 14)),
+          Text(
+            'Input Target:',
+            style: theme.textTheme.labelLarge?.copyWith(color: Colors.white54),
+          ),
+          Text(
+            '${n.title} - ${n.content}',
+            style: const TextStyle(fontSize: 14),
+          ),
           const SizedBox(height: AppSpacing.md),
-          
-          Text('Most Defining Features / Tags:', style: theme.textTheme.labelLarge?.copyWith(color: Colors.white54)),
+
+          Text(
+            'Most Defining Features / Tags:',
+            style: theme.textTheme.labelLarge?.copyWith(color: Colors.white54),
+          ),
           const SizedBox(height: 4),
           Wrap(
             spacing: 6,
             children: definingWords.isEmpty
-                ? [const Chip(label: Text('General heuristic'), visualDensity: VisualDensity.compact)]
-                : definingWords.map((w) => Chip(
-                      label: Text(w, style: const TextStyle(fontSize: 11, color: Colors.white)),
-                      backgroundColor: AppColors.seed.withValues(alpha: 0.3),
+                ? [
+                    const Chip(
+                      label: Text('General heuristic'),
                       visualDensity: VisualDensity.compact,
-                    )).toList(),
+                    ),
+                  ]
+                : definingWords
+                      .map(
+                        (w) => Chip(
+                          label: Text(
+                            w,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.white,
+                            ),
+                          ),
+                          backgroundColor: AppColors.seed.withValues(
+                            alpha: 0.3,
+                          ),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      )
+                      .toList(),
           ),
           const SizedBox(height: AppSpacing.md),
 
@@ -337,46 +432,98 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Inferred Category:', style: theme.textTheme.labelLarge?.copyWith(color: Colors.white54)),
-                  Text(n.classifiedCategory?.toUpperCase() ?? 'UNKNOWN', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  Text(
+                    'Inferred Category:',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: Colors.white54,
+                    ),
+                  ),
+                  Text(
+                    n.classifiedCategory?.toUpperCase() ?? 'UNKNOWN',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ],
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('Assigned Priority:', style: theme.textTheme.labelLarge?.copyWith(color: Colors.white54)),
-                  Text(n.priority?.toUpperCase() ?? 'MEDIUM', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.urgency(n.priority))),
+                  Text(
+                    'Assigned Priority:',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: Colors.white54,
+                    ),
+                  ),
+                  Text(
+                    n.priority?.toUpperCase() ?? 'MEDIUM',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.urgency(n.priority),
+                    ),
+                  ),
                 ],
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          Text('AI Explanation:', style: theme.textTheme.labelLarge?.copyWith(color: Colors.white54)),
-          Text(n.explanation ?? 'Classified via heuristic rule matching.', style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.white70)),
+          Text(
+            'AI Explanation:',
+            style: theme.textTheme.labelLarge?.copyWith(color: Colors.white54),
+          ),
+          Text(
+            n.explanation ?? 'Classified via heuristic rule matching.',
+            style: const TextStyle(
+              fontStyle: FontStyle.italic,
+              color: Colors.white70,
+            ),
+          ),
           const Divider(height: 32),
 
-          Text('Reinforcement Feedback Loop (RLHF)', style: theme.textTheme.titleSmall),
+          Text(
+            'Reinforcement Feedback Loop (RLHF)',
+            style: theme.textTheme.titleSmall,
+          ),
           const SizedBox(height: 4),
-          const Text('Is the given tag/category and importance correct?', style: TextStyle(color: Colors.white54, fontSize: 12)),
+          const Text(
+            'Is the given tag/category and importance correct?',
+            style: TextStyle(color: Colors.white54, fontSize: 12),
+          ),
           const SizedBox(height: AppSpacing.md),
 
           Row(
             children: [
               Expanded(
                 child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green.shade800),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green.shade800,
+                  ),
                   onPressed: () => _submitFeedback(true),
-                  icon: const Icon(Icons.thumb_up, size: 18, color: Colors.white),
-                  label: const Text('Reward (+1)', style: TextStyle(color: Colors.white)),
+                  icon: const Icon(
+                    Icons.thumb_up,
+                    size: 18,
+                    color: Colors.white,
+                  ),
+                  label: const Text(
+                    'Reward (+1)',
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade800),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red.shade800,
+                  ),
                   onPressed: () => _submitFeedback(false),
-                  icon: const Icon(Icons.thumb_down, size: 18, color: Colors.white),
-                  label: const Text('Penalty (-1)', style: TextStyle(color: Colors.white)),
+                  icon: const Icon(
+                    Icons.thumb_down,
+                    size: 18,
+                    color: Colors.white,
+                  ),
+                  label: const Text(
+                    'Penalty (-1)',
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ),
             ],
@@ -394,28 +541,61 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Teach AI the correct classification:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Teach AI the correct classification:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: AppSpacing.sm),
                   DropdownButtonFormField<String>(
                     initialValue: _selectedCategory,
-                    decoration: const InputDecoration(labelText: 'Correct Category'),
-                    items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c.toUpperCase()))).toList(),
-                    onChanged: (val) => setState(() => _selectedCategory = val ?? _selectedCategory),
+                    decoration: const InputDecoration(
+                      labelText: 'Correct Category',
+                    ),
+                    items: _categories
+                        .map(
+                          (c) => DropdownMenuItem(
+                            value: c,
+                            child: Text(c.toUpperCase()),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (val) => setState(
+                      () => _selectedCategory = val ?? _selectedCategory,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   DropdownButtonFormField<String>(
                     initialValue: _selectedPriority,
-                    decoration: const InputDecoration(labelText: 'Correct Importance (Priority)'),
-                    items: _priorities.map((p) => DropdownMenuItem(value: p, child: Text(p.toUpperCase()))).toList(),
-                    onChanged: (val) => setState(() => _selectedPriority = val ?? _selectedPriority),
+                    decoration: const InputDecoration(
+                      labelText: 'Correct Importance (Priority)',
+                    ),
+                    items: _priorities
+                        .map(
+                          (p) => DropdownMenuItem(
+                            value: p,
+                            child: Text(p.toUpperCase()),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (val) => setState(
+                      () => _selectedPriority = val ?? _selectedPriority,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.seed),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.seed,
+                      ),
                       onPressed: _applyReinforcementRule,
-                      child: const Text('Submit & Reinforce Rule', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        'Submit & Reinforce Rule',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
                 ],

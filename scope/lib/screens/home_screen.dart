@@ -79,12 +79,16 @@ class HomeScreen extends StatelessWidget {
                           financialUpdateCount: controller.financialUpdateCount,
                           estimatedMinutes: controller.estimatedReviewMinutes,
                           canStartFocus: controller.reviewQueue.isNotEmpty,
-                          onStartFocus: () => onStartFocus(controller.filterType, selectedFilter),
+                          onStartFocus: () => onStartFocus(
+                            controller.filterType,
+                            selectedFilter,
+                          ),
                           onTapCard: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => DailyTimelineScreen(controller: controller),
+                                builder: (_) =>
+                                    DailyTimelineScreen(controller: controller),
                               ),
                             );
                           },
@@ -98,7 +102,9 @@ class HomeScreen extends StatelessWidget {
                             offset: const Offset(-AppSpacing.screenPadding, 0),
                             child: SizedBox(
                               width: MediaQuery.sizeOf(context).width,
-                              child: SavedActionItemsWidget(controller: controller),
+                              child: SavedActionItemsWidget(
+                                controller: controller,
+                              ),
                             ),
                           ),
                         ],
@@ -161,7 +167,8 @@ class HomeScreen extends StatelessWidget {
                     child: EmptyState(
                       icon: Icons.notifications_none_outlined,
                       title: "You're all caught up.",
-                      message: 'Enable notification access or load test data from Settings.',
+                      message:
+                          'Enable notification access or load test data from Settings.',
                     ),
                   )
                 else
@@ -189,7 +196,10 @@ class HomeScreen extends StatelessWidget {
                           return FocusAreaCard(
                             area: area,
                             count: count,
-                            description: area.descriptionFor(count, controller.notificationsForArea(area)),
+                            description: area.descriptionFor(
+                              count,
+                              controller.notificationsForArea(area),
+                            ),
                             selected: selectedFilter == area,
                             onTap: () => controller.setFocusAreaFilter(
                               selectedFilter == area ? null : area,

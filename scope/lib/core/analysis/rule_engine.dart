@@ -19,7 +19,9 @@ class RuleCondition {
     return RuleCondition(
       packages: List<String>.from(map['packages'] as Iterable? ?? const []),
       keywords: List<String>.from(map['keywords'] as Iterable? ?? const []),
-      titleKeywords: List<String>.from(map['title_keywords'] as Iterable? ?? const []),
+      titleKeywords: List<String>.from(
+        map['title_keywords'] as Iterable? ?? const [],
+      ),
     );
   }
 
@@ -82,7 +84,8 @@ class MatchedRuleResult {
   });
 
   @override
-  String toString() => 'MatchedRuleResult(ruleId: $ruleId, category: $category, '
+  String toString() =>
+      'MatchedRuleResult(ruleId: $ruleId, category: $category, '
       'priority: $priority, matchedSignal: $matchedSignal)';
 }
 
@@ -96,9 +99,11 @@ class RuleEngine {
     final parsed = json.decode(jsonStr) as Map<String, dynamic>;
     version = parsed['version'] as String? ?? '0.0.0';
     final rawRules = parsed['rules'] as List<dynamic>? ?? const [];
-    
+
     _rules = rawRules
-        .map((r) => NotificationRule.fromMap(Map<String, dynamic>.from(r as Map)))
+        .map(
+          (r) => NotificationRule.fromMap(Map<String, dynamic>.from(r as Map)),
+        )
         .toList();
   }
 
@@ -116,7 +121,9 @@ class RuleEngine {
       if (await file.exists()) {
         final content = await file.readAsString();
         final list = json.decode(content) as List<dynamic>;
-        final customRules = list.map((r) => NotificationRule.fromMap(Map<String, dynamic>.from(r))).toList();
+        final customRules = list
+            .map((r) => NotificationRule.fromMap(Map<String, dynamic>.from(r)))
+            .toList();
         // Insert custom rules at the top
         _rules.insertAll(0, customRules);
       }
@@ -130,9 +137,11 @@ class RuleEngine {
   Future<void> _saveCustomRules() async {
     try {
       // Filter out base rules (assuming base rules don't have 'rlhf-' prefix in id)
-      final customRules = _rules.where((r) => r.id.startsWith('rlhf-')).toList();
+      final customRules = _rules
+          .where((r) => r.id.startsWith('rlhf-'))
+          .toList();
       final list = customRules.map((r) => r.toMap()).toList();
-      
+
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/rlhf_rules.json');
       await file.writeAsString(json.encode(list));
@@ -152,7 +161,8 @@ class RuleEngine {
     for (final rule in _rules) {
       // 1. Package match constraint
       final packageConditionMatches =
-          rule.conditions.packages.isEmpty || rule.conditions.packages.contains(package);
+          rule.conditions.packages.isEmpty ||
+          rule.conditions.packages.contains(package);
 
       if (!packageConditionMatches) continue;
 
@@ -194,7 +204,9 @@ class RuleEngine {
 
       // Check if at least one condition was configured
       final hasAnyCondition =
-          rule.conditions.packages.isNotEmpty || hasTitleCondition || hasContentCondition;
+          rule.conditions.packages.isNotEmpty ||
+          hasTitleCondition ||
+          hasContentCondition;
 
       if (hasAnyCondition && titleMatches && contentMatches) {
         final signals = <String>[];

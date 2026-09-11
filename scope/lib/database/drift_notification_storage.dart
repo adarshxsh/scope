@@ -67,7 +67,8 @@ class DriftNotificationStorage implements NotificationStorage {
       snoozedUntil: n.snoozedUntil,
       lastUpdated: n.lastUpdated,
       reviewed: n.state == ReviewState.REVIEWED,
-      dismissed: n.state == ReviewState.ARCHIVED || n.state == ReviewState.EXPIRED,
+      dismissed:
+          n.state == ReviewState.ARCHIVED || n.state == ReviewState.EXPIRED,
       createdAt: DateTime.now(),
     );
   }
