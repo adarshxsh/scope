@@ -280,6 +280,9 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
     final phoneNumbers = features['phoneNumbers'] as List?;
     final phoneNumbersStr = phoneNumbers != null && phoneNumbers.isNotEmpty ? phoneNumbers.toString() : null;
 
+    final isFallback = notif.modelVersion == 'fallback-heuristics' ||
+        (notif.explanation?.contains('[Fallback Execution]') ?? false);
+
     final theme = Theme.of(context);
 
     return Column(
@@ -310,7 +313,10 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 4,
                       children: [
                         Text(
                           (notif.priority ?? 'UNKNOWN').toUpperCase(),
@@ -321,7 +327,6 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
                             letterSpacing: 0.5,
                           ),
                         ),
-                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
@@ -337,11 +342,30 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
                             ),
                           ),
                         ),
+                        if (isFallback)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.orange.shade800),
+                            ),
+                            child: Text(
+                              'Fallback Heuristic (Model Offline)',
+                              style: TextStyle(
+                                color: Colors.orange.shade900,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Confidence Score: ${(notif.priorityScore != null ? (notif.priorityScore! * 100).toStringAsFixed(0) : "0")}% · Latency: ${notif.latencyMs ?? 0} ms',
+                      isFallback
+                          ? 'Fallback Heuristic (Model Offline) · Latency: ${notif.latencyMs ?? 0} ms'
+                          : 'Confidence Score: ${(notif.priorityScore != null ? (notif.priorityScore! * 100).toStringAsFixed(0) : "0")}% · Latency: ${notif.latencyMs ?? 0} ms',
                       style: theme.textTheme.bodySmall,
                     ),
                   ],
