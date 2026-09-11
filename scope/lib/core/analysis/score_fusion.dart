@@ -23,6 +23,7 @@ class ScoreFusion {
           engineName: 'score_fusion (rule bypass: ${ruleResult.ruleId})',
           matchedSignals: [ruleResult.matchedSignal],
           latencyMs: 0,
+          isFallback: modelResult.isFallback,
         );
       }
     }
@@ -36,6 +37,21 @@ class ScoreFusion {
     // 3. Hybrid fusion: Both rule and model match
     final category = ruleResult.category;
     double score = 0.85; // Base high confidence for custom rule matches
+
+    if (modelResult.isFallback) {
+      // Bypass model score blending when model executed fallback heuristic
+      return AnalysisResult(
+        category: category,
+        score: score, // Preserves uncorrupted rule confidence (0.85)
+        engineName: 'score_fusion (rule only - model fallback)',
+        matchedSignals: [
+          'Rule matched: ${ruleResult.ruleId} (${ruleResult.matchedSignal})',
+          'Model score blending bypassed: fallback mode',
+        ],
+        latencyMs: 0,
+        isFallback: true,
+      );
+    }
 
     final modelAgrees = modelResult.category == ruleResult.category;
     if (modelAgrees) {
