@@ -167,28 +167,43 @@ class FeatureVector {
     'category_id',
   ];
 
-  static const int size = 63;
+  static int get size => featureNames.length;
 
   final List<double> values;
 
   FeatureVector(Iterable<double> values) : values = List.unmodifiable(values) {
-    if (this.values.length != size) {
-      throw ArgumentError.value(
-        this.values.length,
-        'values.length',
-        'FeatureVector must contain exactly $size values.',
-      );
-    }
     if (this.values.any((value) => value.isNaN || value.isInfinite)) {
       throw ArgumentError('FeatureVector cannot contain NaN or infinity.');
     }
   }
 
+  int get length => values.length;
+
+  FeatureVector adapt(int targetSize) {
+    if (values.length == targetSize) return this;
+    if (values.length > targetSize) {
+      return FeatureVector(values.sublist(0, targetSize));
+    }
+    final padded = List<double>.filled(targetSize, 0.0);
+    for (var i = 0; i < values.length; i++) {
+      padded[i] = values[i];
+    }
+    return FeatureVector(padded);
+  }
+
   List<double> toList() => List<double>.from(values, growable: false);
 
-  Map<String, double> toNamedMap() => {
-    for (var i = 0; i < featureNames.length; i++) featureNames[i]: values[i],
-  };
+  Map<String, double> toNamedMap() {
+    final map = <String, double>{};
+    final count = math.min(featureNames.length, values.length);
+    for (var i = 0; i < count; i++) {
+      map[featureNames[i]] = values[i];
+    }
+    for (var i = featureNames.length; i < values.length; i++) {
+      map['feature_$i'] = values[i];
+    }
+    return map;
+  }
 }
 
 /// Deterministic notification feature extraction for TFLite inference.
