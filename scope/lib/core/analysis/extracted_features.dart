@@ -37,7 +37,9 @@ class ExtractedFeatures {
       hasDeadline: map['hasDeadline'] as bool? ?? false,
       urls: List<String>.from(map['urls'] as Iterable? ?? const []),
       emails: List<String>.from(map['emails'] as Iterable? ?? const []),
-      phoneNumbers: List<String>.from(map['phoneNumbers'] as Iterable? ?? const []),
+      phoneNumbers: List<String>.from(
+        map['phoneNumbers'] as Iterable? ?? const [],
+      ),
     );
   }
 
@@ -75,13 +77,13 @@ class ExtractedFeatures {
 
   @override
   int get hashCode => Object.hash(
-        otp,
-        amount,
-        hasDeadline,
-        Object.hashAll(urls),
-        Object.hashAll(emails),
-        Object.hashAll(phoneNumbers),
-      );
+    otp,
+    amount,
+    hasDeadline,
+    Object.hashAll(urls),
+    Object.hashAll(emails),
+    Object.hashAll(phoneNumbers),
+  );
 
   @override
   String toString() {

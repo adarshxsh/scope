@@ -11,7 +11,8 @@ class ScoreFusion {
   }) {
     // 1. Check for deterministic critical bypass rules
     if (ruleResult != null) {
-      final isBypass = ruleResult.priority == 'critical' ||
+      final isBypass =
+          ruleResult.priority == 'critical' ||
           ruleResult.ruleId == 'otp_security' ||
           ruleResult.ruleId == 'finance_debit' ||
           ruleResult.ruleId == 'scholarship_portal';
@@ -54,7 +55,7 @@ class ScoreFusion {
       engineName: 'score_fusion (hybrid)',
       matchedSignals: [
         'Rule matched: ${ruleResult.ruleId} (${ruleResult.matchedSignal})',
-        'Model predicted: ${modelResult.category} (${(modelResult.score * 100).toStringAsFixed(1)}% confidence)'
+        'Model predicted: ${modelResult.category} (${(modelResult.score * 100).toStringAsFixed(1)}% confidence)',
       ],
       latencyMs: 0,
     );

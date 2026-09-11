@@ -24,6 +24,7 @@ class AnalysisResult {
   });
 
   @override
-  String toString() => 'AnalysisResult(category: $category, score: $score, '
+  String toString() =>
+      'AnalysisResult(category: $category, score: $score, '
       'engineName: $engineName, matchedSignals: $matchedSignals, latencyMs: ${latencyMs}ms)';
 }

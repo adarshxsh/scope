@@ -6,27 +6,30 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('LiteRtClassifier', () {
-    test('initializes and falls back gracefully to heuristic classifier when asset loading fails', () async {
-      final classifier = LiteRtClassifier();
-      
-      final notif = AppNotification(
-        id: '1',
-        packageName: 'com.whatsapp',
-        title: 'Mom',
-        content: 'Hello, how are you?',
-        timestamp: DateTime.now().millisecondsSinceEpoch,
-      );
+    test(
+      'initializes and falls back gracefully to heuristic classifier when asset loading fails',
+      () async {
+        final classifier = LiteRtClassifier();
 
-      final result = await classifier.analyze(notif);
-      
-      expect(result.category, equals('msg'));
-      expect(result.engineName, contains('fallback'));
-      expect(result.score, equals(0.50));
-    });
+        final notif = AppNotification(
+          id: '1',
+          packageName: 'com.whatsapp',
+          title: 'Mom',
+          content: 'Hello, how are you?',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        final result = await classifier.analyze(notif);
+
+        expect(result.category, equals('msg'));
+        expect(result.engineName, contains('fallback'));
+        expect(result.score, equals(0.50));
+      },
+    );
 
     test('fallback correctly categorizes bank alerts', () async {
       final classifier = LiteRtClassifier();
-      
+
       final notif = AppNotification(
         id: '2',
         packageName: 'com.example.bank',
@@ -36,7 +39,7 @@ void main() {
       );
 
       final result = await classifier.analyze(notif);
-      
+
       expect(result.category, equals('finance'));
       expect(result.engineName, contains('fallback'));
     });
