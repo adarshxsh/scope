@@ -151,6 +151,50 @@ void main() {
       );
       expect(values[FeatureVector.featureNames.indexOf('person_present')], 1.0);
     });
+
+    test('FeatureVector supports dynamic variable lengths', () {
+      final shortVector = FeatureVector(List.filled(10, 1.0));
+      expect(shortVector.length, equals(10));
+      expect(shortVector.values, hasLength(10));
+
+      final longVector = FeatureVector(List.filled(80, 2.0));
+      expect(longVector.length, equals(80));
+      expect(longVector.values, hasLength(80));
+    });
+
+    test('FeatureVector enforces finite checks for NaN and Infinity', () {
+      expect(
+        () => FeatureVector([1.0, double.nan, 3.0]),
+        throwsArgumentError,
+      );
+      expect(
+        () => FeatureVector([1.0, double.infinity, 3.0]),
+        throwsArgumentError,
+      );
+      expect(
+        () => FeatureVector([1.0, double.negativeInfinity, 3.0]),
+        throwsArgumentError,
+      );
+    });
+
+    test('FeatureVector adapt pads short vectors and truncates long vectors', () {
+      final original = FeatureVector([1.0, 2.0, 3.0]);
+
+      // Pad from 3 to 5
+      final padded = original.adapt(5);
+      expect(padded.length, equals(5));
+      expect(padded.values, equals([1.0, 2.0, 3.0, 0.0, 0.0]));
+
+      // Truncate from 3 to 2
+      final truncated = original.adapt(2);
+      expect(truncated.length, equals(2));
+      expect(truncated.values, equals([1.0, 2.0]));
+
+      // Same size returns self
+      final same = original.adapt(3);
+      expect(same.length, equals(3));
+      expect(identical(same, original), isTrue);
+    });
   });
 
   group('MetadataAnalyzer', () {

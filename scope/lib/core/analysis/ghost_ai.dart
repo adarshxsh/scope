@@ -39,6 +39,7 @@ class GhostAIResult {
 class GhostAI {
   static GhostAI? _instance;
   Interpreter? _interpreter;
+  int? _inputTensorSize;
   final RuleEngine _ruleEngine = RuleEngine();
 
   // Slide-cache for duplicate detection
@@ -56,13 +57,51 @@ class GhostAI {
   /// Returns whether the model is loaded.
   bool get isModelLoaded => _interpreter != null;
 
+  /// Exposes the expected model input feature vector size (dynamically queried from TFLite interpreter).
+  int get expectedInputSize => _inputTensorSize ?? FeatureVector.featureNames.length;
+
+  /// Inspects TFLite interpreter input tensor shape at runtime.
+  void _inspectInputTensorShape() {
+    if (_interpreter != null) {
+      final shape = _interpreter!.getInputTensor(0).shape;
+      if (shape.isNotEmpty && shape.last > 0) {
+        _inputTensorSize = shape.last;
+      }
+    }
+  }
+
+  /// Sets or clears the TFLite interpreter for testing purposes.
+  @visibleForTesting
+  void setInterpreter(Interpreter? interpreter) {
+    _interpreter = interpreter;
+    if (interpreter == null) {
+      _inputTensorSize = null;
+    } else {
+      _inspectInputTensorShape();
+    }
+  }
+
+  /// Adapts a feature vector to target size via zero-padding or truncation.
+  static List<double> adaptVector(List<double> vector, int targetSize) {
+    if (vector.length == targetSize) return vector;
+    if (vector.length > targetSize) {
+      return vector.sublist(0, targetSize);
+    }
+    final adapted = List<double>.filled(targetSize, 0.0);
+    for (var i = 0; i < vector.length; i++) {
+      adapted[i] = vector[i];
+    }
+    return adapted;
+  }
+
   /// Initializes the TFLite interpreter and rules database once on startup.
   Future<void> initialize() async {
     if (_interpreter != null) return;
     try {
       // 1. Load interpreter from assets
       _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      _inspectInputTensorShape();
+      debugPrint('GhostAI: TFLite interpreter loaded successfully (expected input size: $expectedInputSize).');
     } catch (e) {
       debugPrint('GhostAI: Failed to load TFLite model: $e');
     }
@@ -86,11 +125,12 @@ class GhostAI {
     final stopwatch = Stopwatch()..start();
 
     // 1. Feature extraction using the existing FeatureExtractor
-    final featureVector = FeatureExtractor.extractFromAppNotification(notification);
+    final rawFeatureVector = FeatureExtractor.extractFromAppNotification(notification);
 
-    // 2. Model inference
+    // 2. Model inference & dynamic tensor adaptation
     double predictedScore = 0.0;
     int inferenceTimeUs = 0;
+    final featureVector = adaptVector(rawFeatureVector, expectedInputSize);
 
     if (_interpreter != null) {
       final input = [featureVector];
@@ -105,7 +145,7 @@ class GhostAI {
       predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
     } else {
       // Heuristic fallback if model not loaded
-      predictedScore = _heuristicLookAgainScore(featureVector);
+      predictedScore = _heuristicLookAgainScore(rawFeatureVector);
     }
 
     // 3. Rule matching
@@ -147,8 +187,8 @@ class GhostAI {
     }
 
     // 5. Apply deterministic overrides (expired OTP, expired reminders, duplicates, completed tasks)
-    final hasOtp = featureVector[11] == 1.0; // contains_otp
-    final hasDeadline = featureVector[27] == 1.0; // contains_deadline
+    final hasOtp = rawFeatureVector.length > 11 && rawFeatureVector[11] == 1.0; // contains_otp
+    final hasDeadline = rawFeatureVector.length > 27 && rawFeatureVector[27] == 1.0; // contains_deadline
 
     if (hasOtp && _isOtpExpired(notification)) {
       finalScore = 0.0;
@@ -184,10 +224,10 @@ class GhostAI {
 
   /// Helper to compute heuristic score if model is not loaded.
   double _heuristicLookAgainScore(List<double> featureVector) {
-    if (featureVector[11] == 1.0) return 1.0; // OTP
-    if (featureVector[20] == 1.0) return 0.05; // Promo
-    if (featureVector[10] == 1.0) return 0.85; // Money/finance
-    if (featureVector[27] == 1.0) return 0.80; // Deadline
+    if (featureVector.length > 11 && featureVector[11] == 1.0) return 1.0; // OTP
+    if (featureVector.length > 20 && featureVector[20] == 1.0) return 0.05; // Promo
+    if (featureVector.length > 10 && featureVector[10] == 1.0) return 0.85; // Money/finance
+    if (featureVector.length > 27 && featureVector[27] == 1.0) return 0.80; // Deadline
     return 0.35; // Default medium-low fallback
   }
 
