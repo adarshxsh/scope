@@ -72,3 +72,19 @@ class DailyBriefDaoManager {
         _db.dailyBriefTable,
       );
 }
+
+mixin _$PrivacyLedgerDaoMixin on DatabaseAccessor<AttentionDatabase> {
+  $PrivacyLedgerTableTable get privacyLedgerTable =>
+      attachedDatabase.privacyLedgerTable;
+  PrivacyLedgerDaoManager get managers => PrivacyLedgerDaoManager(this);
+}
+
+class PrivacyLedgerDaoManager {
+  final _$PrivacyLedgerDaoMixin _db;
+  PrivacyLedgerDaoManager(this._db);
+  $$PrivacyLedgerTableTableTableManager get privacyLedgerTable =>
+      $$PrivacyLedgerTableTableTableManager(
+        _db.attachedDatabase,
+        _db.privacyLedgerTable,
+      );
+}
