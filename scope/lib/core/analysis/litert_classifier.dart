@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/models/model_manager.dart';
 import 'package:scope/core/analysis/analysis_result.dart';
 import 'package:scope/core/analysis/notification_analyzer.dart';
 import 'package:scope/core/analysis/wordpiece_tokenizer.dart';
@@ -23,8 +25,24 @@ class LiteRtClassifier implements NotificationAnalyzer {
       final lines = vocabStr.split('\n');
       _tokenizer = WordPieceTokenizer.fromLines(lines);
 
-      // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
-      _isModelLoaded = false;
+      // 2. Load Interpreter (Dynamic model or asset category model)
+      final dynamicModelFile = await ModelManager.instance.getCategoryModelFile();
+      if (dynamicModelFile != null) {
+        _interpreter = Interpreter.fromFile(dynamicModelFile);
+        _isModelLoaded = true;
+      } else {
+        try {
+          _interpreter = await Interpreter.fromAsset('assets/category_model.tflite');
+          _isModelLoaded = true;
+        } catch (_) {
+          try {
+            _interpreter = await Interpreter.fromAsset('assets/text_classifier.tflite');
+            _isModelLoaded = true;
+          } catch (_) {
+            _isModelLoaded = false;
+          }
+        }
+      }
     } catch (e) {
       // Graceful degradation: Log and set flags so analyze runs in fallback mode
       // ignore: avoid_print

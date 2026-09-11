@@ -154,3 +154,51 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
     await delete(dailyBriefTable).go();
   }
 }
+
+@DriftAccessor(tables: [RlhfFeedbackTable])
+class RlhfFeedbackDao extends DatabaseAccessor<AttentionDatabase> with _$RlhfFeedbackDaoMixin {
+  static const int maxFeedbackEntries = 5000;
+
+  RlhfFeedbackDao(super.db);
+
+  Future<int> insertFeedback(RlhfFeedbackTableCompanion entry) async {
+    final id = await into(rlhfFeedbackTable).insert(entry);
+    await pruneExcessEntries();
+    return id;
+  }
+
+  Future<void> pruneExcessEntries([int maxAllowed = maxFeedbackEntries]) async {
+    final count = await getCount();
+    if (count > maxAllowed) {
+      final excess = count - maxAllowed;
+      final oldestQuery = select(rlhfFeedbackTable)
+        ..orderBy([(t) => OrderingTerm(expression: t.id, mode: OrderingMode.asc)])
+        ..limit(excess);
+      final oldestEntries = await oldestQuery.get();
+      final idsToDelete = oldestEntries.map((e) => e.id).toList();
+      if (idsToDelete.isNotEmpty) {
+        await (delete(rlhfFeedbackTable)..where((t) => t.id.isIn(idsToDelete))).go();
+      }
+    }
+  }
+
+  Future<List<RlhfFeedbackEntry>> getAll() {
+    return (select(rlhfFeedbackTable)
+          ..orderBy([
+            (t) => OrderingTerm(expression: t.timestamp, mode: OrderingMode.desc),
+            (t) => OrderingTerm(expression: t.id, mode: OrderingMode.desc),
+          ]))
+        .get();
+  }
+
+  Future<int> getCount() async {
+    final countExpr = rlhfFeedbackTable.id.count();
+    final query = selectOnly(rlhfFeedbackTable)..addColumns([countExpr]);
+    final row = await query.getSingle();
+    return row.read(countExpr) ?? 0;
+  }
+
+  Future<void> clearAll() async {
+    await delete(rlhfFeedbackTable).go();
+  }
+}
