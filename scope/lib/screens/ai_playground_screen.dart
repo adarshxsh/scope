@@ -3,6 +3,7 @@ import 'package:scope/core/analysis/extracted_features.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/state/notification_controller.dart';
+import 'package:scope/core/utils/pii_redactor.dart';
 import 'package:scope/theme/app_colors.dart';
 import 'package:scope/theme/app_spacing.dart';
 import 'package:scope/widgets/primitives/scope_surface.dart';
@@ -22,6 +23,7 @@ class AiPlaygroundScreen extends StatefulWidget {
 class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
   AppNotification? _selectedNotification;
   bool _isCustomMode = false;
+  bool _showSensitiveData = false;
 
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
@@ -150,7 +152,17 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     final notifications = widget.controller.notifications.take(15).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('AI Playground (RLHF)')),
+      appBar: AppBar(
+        title: const Text('AI Playground (RLHF)'),
+        actions: [
+          IconButton(
+            key: const Key('ai_playground_privacy_toggle'),
+            tooltip: _showSensitiveData ? 'Hide Sensitive Data' : 'Show Sensitive Data',
+            icon: Icon(_showSensitiveData ? Icons.visibility : Icons.visibility_off),
+            onPressed: () => setState(() => _showSensitiveData = !_showSensitiveData),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: ScopeScreenBody(
           child: ListView(
@@ -298,7 +310,10 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     if (n.title.toLowerCase().contains('offer') || n.content.toLowerCase().contains('offer')) definingWords.add('offer');
     if (n.title.toLowerCase().contains('sale') || n.content.toLowerCase().contains('sale')) definingWords.add('sale');
     if (features.otp != null) definingWords.add('OTP:${features.otp}');
-    if (features.amount != null) definingWords.add('Amount:Rs.${features.amount}');
+    if (features.amount != null) {
+      final amtStr = features.amount! % 1 == 0 ? features.amount!.toInt().toString() : features.amount.toString();
+      definingWords.add('Amount:Rs.$amtStr');
+    }
 
     return ScopeSurface(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -317,17 +332,35 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
           Text('${n.title} - ${n.content}', style: const TextStyle(fontSize: 14)),
           const SizedBox(height: AppSpacing.md),
           
-          Text('Most Defining Features / Tags:', style: theme.textTheme.labelLarge?.copyWith(color: Colors.white54)),
+          Row(
+            children: [
+              Expanded(
+                child: Text('Most Defining Features / Tags:', style: theme.textTheme.labelLarge?.copyWith(color: Colors.white54)),
+              ),
+              Text(
+                _showSensitiveData ? 'Show Data' : 'Mask Data',
+                style: const TextStyle(fontSize: 11, color: Colors.white54),
+              ),
+              Switch(
+                key: const Key('ai_playground_privacy_switch'),
+                value: _showSensitiveData,
+                onChanged: (val) => setState(() => _showSensitiveData = val),
+              ),
+            ],
+          ),
           const SizedBox(height: 4),
           Wrap(
             spacing: 6,
             children: definingWords.isEmpty
                 ? [const Chip(label: Text('General heuristic'), visualDensity: VisualDensity.compact)]
-                : definingWords.map((w) => Chip(
-                      label: Text(w, style: const TextStyle(fontSize: 11, color: Colors.white)),
+                : definingWords.map((w) {
+                    final display = _showSensitiveData ? w : PiiRedactor.redactDefiningWord(w);
+                    return Chip(
+                      label: Text(display, style: const TextStyle(fontSize: 11, color: Colors.white)),
                       backgroundColor: AppColors.seed.withValues(alpha: 0.3),
                       visualDensity: VisualDensity.compact,
-                    )).toList(),
+                    );
+                  }).toList(),
           ),
           const SizedBox(height: AppSpacing.md),
 
