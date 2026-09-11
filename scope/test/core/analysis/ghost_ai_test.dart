@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
 import 'package:scope/core/models/notification_model.dart';
 
@@ -233,5 +234,56 @@ void main() {
         expect(result.reviewScore, isPositive); // Not overridden
       });
     });
+
+    group('Interpreter Exception Fallback', () {
+      tearDown(() {
+        GhostAI.instance.setInterpreterForTesting(null);
+      });
+
+      test('catches native exception during interpreter.run and falls back to heuristic score', () async {
+        GhostAI.instance.setInterpreterForTesting(ExceptionThrowingInterpreter());
+
+        final notif = AppNotification(
+          id: 'finance-notif',
+          packageName: 'com.phonepe.app',
+          title: 'Money Received',
+          content: 'You received Rs. 500 from Alice',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        // Predict should not throw uncaught exception
+        final result = await GhostAI.predict(notif);
+
+        // Expected heuristic look-again score for money/finance is 0.85
+        expect(result.predictedScore, equals(0.85));
+        expect(result.reviewScore, equals(0.85));
+        expect(result.inferenceTimeUs, isNonNegative);
+      });
+
+      test('executes rule fusion and deterministic overrides on fallback score when interpreter fails', () async {
+        GhostAI.instance.setInterpreterForTesting(ExceptionThrowingInterpreter());
+
+        final expiredOtp = AppNotification(
+          id: 'otp-expired-err',
+          packageName: 'com.whatsapp',
+          title: 'WhatsApp Code',
+          content: 'Your verification code is 123456. Valid for 5 minutes.',
+          timestamp: DateTime.now().millisecondsSinceEpoch - 10 * 60 * 1000, // 10 mins ago
+        );
+
+        final result = await GhostAI.predict(expiredOtp);
+
+        // Heuristic fallback for OTP is 1.0, but expired OTP override reduces final reviewScore to 0.0
+        expect(result.predictedScore, equals(1.0));
+        expect(result.reviewScore, equals(0.0));
+      });
+    });
   });
+}
+
+class ExceptionThrowingInterpreter extends Fake implements Interpreter {
+  @override
+  void run(Object input, Object output) {
+    throw Exception('Simulated native TFLite inference exception');
+  }
 }
