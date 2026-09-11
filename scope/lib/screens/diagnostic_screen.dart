@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/state/notification_controller.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/widgets/scope_card.dart';
 
 class DiagnosticScreen extends StatefulWidget {
   final GhostAnalysisEngine? engine;
+  final NotificationController? controller;
 
-  const DiagnosticScreen({super.key, this.engine});
+  const DiagnosticScreen({super.key, this.engine, this.controller});
 
   @override
   State<DiagnosticScreen> createState() => _DiagnosticScreenState();
@@ -136,6 +138,8 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            _buildGuardrailsCard(),
+            const SizedBox(height: 16),
             _buildInputFormCard(),
             const SizedBox(height: 16),
             _buildActionSection(),
@@ -146,6 +150,70 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildGuardrailsCard() {
+    final guardrails = widget.controller?.guardrails;
+    final droppedCount = guardrails?.droppedCount ?? 0;
+
+    return ScopeCard(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.shield, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                'Native Ingestion Guardrails',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+            ],
+          ),
+          const Divider(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Total Dropped Notifications:', style: TextStyle(fontWeight: FontWeight.w600)),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '$droppedCount dropped',
+                  style: TextStyle(
+                    color: Colors.red.shade900,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (guardrails != null) ...[
+            Text(
+              'Filtering Mode: ${guardrails.isWhitelistMode ? "Whitelist Mode (${guardrails.allowedPackages.length} allowed)" : "Blacklist Mode (${guardrails.blockedPackages.length} blocked)"}',
+              style: const TextStyle(fontSize: 13),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Active Categories: OTP (${guardrails.excludeOtp ? "Blocked" : "Allowed"}), Finance (${guardrails.excludeFinance ? "Blocked" : "Allowed"}), Health (${guardrails.excludeHealth ? "Blocked" : "Allowed"}), System Services (${guardrails.excludeSystemServices ? "Blocked" : "Allowed"})',
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 10),
+          ],
+          const Text(
+            'Zero-Trust Privacy Guarantee: Excluded notification payloads are dropped directly inside the native OS listener before crossing MethodChannel IPC or entering database storage. Sensitive content is never logged.',
+            style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: Colors.grey),
+          ),
+        ],
       ),
     );
   }
