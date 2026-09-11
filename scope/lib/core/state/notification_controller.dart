@@ -65,6 +65,7 @@ class NotificationController extends ChangeNotifier {
   final ProviderContainer _container;
 
   List<AppNotification> _notifications = [];
+  IngestionGuardrails _guardrails = const IngestionGuardrails();
   bool _isListenerEnabled = false;
   bool _isLoading = true;
   Timer? _pollTimer;
@@ -82,8 +83,10 @@ class NotificationController extends ChangeNotifier {
   List<String> _focusSessionQueueIds = [];
   DateTime? _focusSessionStart;
   int _focusSessionInterruptions = 0;
+  bool _isDisposed = false;
 
   List<AppNotification> get notifications => List.unmodifiable(_notifications);
+  IngestionGuardrails get guardrails => _guardrails;
 
   /// Notifications excluding app promotional cards (used for stats/counts only).
   List<AppNotification> _countable(List<AppNotification> list) =>
@@ -301,8 +304,6 @@ class NotificationController extends ChangeNotifier {
     _pollTimer = null;
   }
 
-  bool _isDisposed = false;
-
   @override
   void dispose() {
     _isDisposed = true;
@@ -319,14 +320,19 @@ class NotificationController extends ChangeNotifier {
   }
 
   Future<void> _loadInitialNotifications() async {
-    if (_initialLoadCompleted) return;
+    if (_initialLoadCompleted || _isDisposed) return;
+    final initialGuardrails = await _bridge.getIngestionGuardrails();
+    if (_isDisposed) return;
+    if (_guardrails == const IngestionGuardrails()) {
+      _guardrails = initialGuardrails;
+    }
     final loaded = await _storage.getAll();
-    if (_initialLoadCompleted) return;
+    if (_initialLoadCompleted || _isDisposed) return;
 
     if (_notifications.isEmpty) {
       _notifications = loaded;
     }
-    if (_notifications.isNotEmpty) {
+    if (_notifications.isNotEmpty && !_isDisposed) {
       final notifier = _container.read(reviewQueueProvider.notifier);
       notifier.load(_notifications);
       await notifier.rescore();
@@ -336,13 +342,155 @@ class NotificationController extends ChangeNotifier {
     notifyListeners();
 
     // Trigger initial cleanup once on startup
-    runBackgroundCleanup();
+    if (!_isDisposed) {
+      runBackgroundCleanup();
+    }
     
     // Set up daily cleanup timer
     _cleanupTimer?.cancel();
     _cleanupTimer = Timer.periodic(const Duration(hours: 24), (_) {
-      runBackgroundCleanup();
+      if (!_isDisposed) {
+        runBackgroundCleanup();
+      }
     });
+  }
+
+  static final RegExp _otpRegex = RegExp(
+    r'\b(otp|2fa|verification code|passcode|one-time password|auth code|security code|login code)\b|\b\d{4,8}\b.*(?:code|verify|verification|otp|pin)',
+    caseSensitive: false,
+  );
+  static final RegExp _financeRegex = RegExp(
+    r'\b(bank|debit|credit|account debited|account credited|upi|transaction|withdrawal|deposit|atm|card ending|balance|payment|invoice|bill due|spend|spent|transfer)\b',
+    caseSensitive: false,
+  );
+  static final RegExp _healthRegex = RegExp(
+    r'\b(doctor|medical|appointment|hospital|prescription|patient|clinic|pharmacy|health|diagnostic|vaccination|lab report)\b',
+    caseSensitive: false,
+  );
+
+  bool _matchesPattern(String text, String pattern) {
+    if (text == pattern) return true;
+    if (!pattern.contains('*') && !pattern.contains('?')) return false;
+    final regexStr = '^${RegExp.escape(pattern).replaceAll(r'\*', '.*').replaceAll(r'\?', '.')}\$';
+    return RegExp(regexStr, caseSensitive: false).hasMatch(text);
+  }
+
+  bool shouldDropNotificationInDart(AppNotification raw) {
+    final pkg = raw.packageName;
+
+    // 1. Blacklist
+    if (_guardrails.blockedPackages.isNotEmpty) {
+      if (_guardrails.blockedPackages.any((p) => _matchesPattern(pkg, p))) {
+        return true;
+      }
+    }
+
+    // 2. Whitelist Mode
+    if (_guardrails.isWhitelistMode) {
+      if (!_guardrails.allowedPackages.any((p) => _matchesPattern(pkg, p))) {
+        return true;
+      }
+    }
+
+    final category = raw.category ?? '';
+    final fullText = '${raw.title} ${raw.content}';
+
+    // 3. System services / ongoing
+    if (_guardrails.excludeSystemServices) {
+      if (raw.isOngoing) return true;
+      if (['sys', 'system', 'service', 'progress', 'transport', 'navigation', 'status'].contains(category.toLowerCase())) {
+        return true;
+      }
+      if (pkg.startsWith('android') || pkg == 'com.android.systemui' || pkg == 'com.google.android.gms') {
+        return true;
+      }
+    }
+
+    // 4. OTP / 2FA
+    if (_guardrails.excludeOtp) {
+      if (category.toLowerCase() == 'otp' || category.toLowerCase() == '2fa') {
+        return true;
+      }
+      if (_otpRegex.hasMatch(fullText)) return true;
+    }
+
+    // 5. Finance
+    if (_guardrails.excludeFinance) {
+      if (category.toLowerCase() == 'finance' || category.toLowerCase() == 'banking') {
+        return true;
+      }
+      final isFinanceApp = pkg.toLowerCase().contains('bank') ||
+          pkg.toLowerCase().contains('paytm') ||
+          pkg.toLowerCase().contains('phonepe') ||
+          pkg.toLowerCase().contains('gpay') ||
+          pkg.toLowerCase().contains('finance') ||
+          pkg.toLowerCase().contains('wallet');
+      if (isFinanceApp || _financeRegex.hasMatch(fullText)) return true;
+    }
+
+    // 6. Health
+    if (_guardrails.excludeHealth) {
+      if (category.toLowerCase() == 'health' || category.toLowerCase() == 'medical' || category.toLowerCase() == 'workout') {
+        return true;
+      }
+      if (_healthRegex.hasMatch(fullText)) return true;
+    }
+
+    return false;
+  }
+
+  Future<void> updateGuardrails(IngestionGuardrails newGuardrails) async {
+    _guardrails = newGuardrails;
+    await _bridge.updateIngestionGuardrails(_guardrails);
+    notifyListeners();
+  }
+
+  Future<void> refreshGuardrails() async {
+    _guardrails = await _bridge.getIngestionGuardrails();
+    notifyListeners();
+  }
+
+  Future<void> setExcludeOtp(bool value) =>
+      updateGuardrails(_guardrails.copyWith(excludeOtp: value));
+
+  Future<void> setExcludeFinance(bool value) =>
+      updateGuardrails(_guardrails.copyWith(excludeFinance: value));
+
+  Future<void> setExcludeHealth(bool value) =>
+      updateGuardrails(_guardrails.copyWith(excludeHealth: value));
+
+  Future<void> setExcludeSystemServices(bool value) =>
+      updateGuardrails(_guardrails.copyWith(excludeSystemServices: value));
+
+  Future<void> setWhitelistMode(bool enabled) =>
+      updateGuardrails(_guardrails.copyWith(isWhitelistMode: enabled));
+
+  Future<void> addBlockedPackage(String packageName) {
+    final pkg = packageName.trim();
+    if (pkg.isEmpty || _guardrails.blockedPackages.contains(pkg)) {
+      return Future.value();
+    }
+    final updated = List<String>.from(_guardrails.blockedPackages)..add(pkg);
+    return updateGuardrails(_guardrails.copyWith(blockedPackages: updated));
+  }
+
+  Future<void> removeBlockedPackage(String packageName) {
+    final updated = List<String>.from(_guardrails.blockedPackages)..remove(packageName);
+    return updateGuardrails(_guardrails.copyWith(blockedPackages: updated));
+  }
+
+  Future<void> addAllowedPackage(String packageName) {
+    final pkg = packageName.trim();
+    if (pkg.isEmpty || _guardrails.allowedPackages.contains(pkg)) {
+      return Future.value();
+    }
+    final updated = List<String>.from(_guardrails.allowedPackages)..add(pkg);
+    return updateGuardrails(_guardrails.copyWith(allowedPackages: updated));
+  }
+
+  Future<void> removeAllowedPackage(String packageName) {
+    final updated = List<String>.from(_guardrails.allowedPackages)..remove(packageName);
+    return updateGuardrails(_guardrails.copyWith(allowedPackages: updated));
   }
 
   /// Cleans up old notifications (older than 7 days) and orphaned review queue items.
@@ -380,6 +528,11 @@ class NotificationController extends ChangeNotifier {
 
   Future<void> fetchNotifications() async {
     try {
+      final latestGuardrails = await _bridge.getIngestionGuardrails();
+      if (latestGuardrails != _guardrails) {
+        _guardrails = latestGuardrails;
+      }
+
       final newNotifications = await _bridge.getNotifications();
       final analyzed = <AppNotification>[];
 
@@ -388,8 +541,7 @@ class NotificationController extends ChangeNotifier {
       }
 
       for (final raw in newNotifications) {
-        // Ignore ongoing background/system notifications (e.g. charging, media playback)
-        if (raw.isOngoing) continue;
+        if (shouldDropNotificationInDart(raw)) continue;
 
         final isDuplicate = _notifications.any((n) =>
             n.packageName == raw.packageName &&
