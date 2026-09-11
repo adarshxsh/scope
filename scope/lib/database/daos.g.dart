@@ -72,3 +72,19 @@ class DailyBriefDaoManager {
         _db.dailyBriefTable,
       );
 }
+
+mixin _$RlhfFeedbackDaoMixin on DatabaseAccessor<AttentionDatabase> {
+  $RlhfFeedbackTableTable get rlhfFeedbackTable =>
+      attachedDatabase.rlhfFeedbackTable;
+  RlhfFeedbackDaoManager get managers => RlhfFeedbackDaoManager(this);
+}
+
+class RlhfFeedbackDaoManager {
+  final _$RlhfFeedbackDaoMixin _db;
+  RlhfFeedbackDaoManager(this._db);
+  $$RlhfFeedbackTableTableTableManager get rlhfFeedbackTable =>
+      $$RlhfFeedbackTableTableTableManager(
+        _db.attachedDatabase,
+        _db.rlhfFeedbackTable,
+      );
+}

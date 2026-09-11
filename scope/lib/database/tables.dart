@@ -65,3 +65,15 @@ class DailyBriefTable extends Table {
   IntColumn get remindersCreated => integer().withDefault(const Constant(0))();
   IntColumn get archivedCount => integer().withDefault(const Constant(0))();
 }
+
+@DataClassName('RlhfFeedbackEntry')
+class RlhfFeedbackTable extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get notificationId => text()();
+  TextColumn get featureVector => text()();
+  RealColumn get predictedScore => real().nullable()();
+  RealColumn get rewardScore => real()();
+  TextColumn get updatedCategory => text().nullable()();
+  TextColumn get updatedPriority => text().nullable()();
+  DateTimeColumn get timestamp => dateTime().withDefault(currentDateAndTime)();
+}
