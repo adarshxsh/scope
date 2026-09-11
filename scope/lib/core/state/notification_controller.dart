@@ -14,6 +14,7 @@ import 'package:drift/drift.dart';
 import 'package:scope/database/attention_database.dart';
 import 'package:scope/database/database_provider.dart';
 import 'package:scope/database/drift_notification_storage.dart';
+import 'package:scope/database/telemetry_privacy_wrapper.dart';
 
 /// Session stats collected during a Focus review.
 class ReviewSessionStats {
@@ -43,10 +44,12 @@ class NotificationController extends ChangeNotifier {
     NotificationStorage? storage,
     GhostAnalysisEngine? engine,
     ProviderContainer? container,
+    TelemetryPrivacyWrapper? privacyWrapper,
   })  : _bridge = bridge ?? NotificationBridge(),
         _container = container ?? providerContainer,
         _storage = storage ?? DriftNotificationStorage(container?.read(databaseProvider) ?? providerContainer.read(databaseProvider)),
-        _engine = engine ?? GhostAnalysisEngine() {
+        _engine = engine ?? GhostAnalysisEngine(),
+        _privacyWrapper = privacyWrapper ?? TelemetryPrivacyWrapper(container?.read(databaseProvider) ?? providerContainer.read(databaseProvider)) {
     _engine.initialize();
 
     // Listen to changes in Riverpod's reviewQueueProvider to keep legacy notifier list in sync
@@ -63,6 +66,11 @@ class NotificationController extends ChangeNotifier {
   final NotificationStorage _storage;
   final GhostAnalysisEngine _engine;
   final ProviderContainer _container;
+  final TelemetryPrivacyWrapper _privacyWrapper;
+
+  TelemetryPrivacyWrapper get privacyWrapper => _privacyWrapper;
+
+  String _todayDateString() => DateTime.now().toIso8601String().split('T').first;
 
   List<AppNotification> _notifications = [];
   bool _isListenerEnabled = false;
@@ -192,15 +200,14 @@ class NotificationController extends ChangeNotifier {
 
   void clearFocusAreaFilter() => clearFilter();
 
-  void startFocusSession() {
+  Future<void> startFocusSession() async {
     _inFocusSession = true;
     _focusSessionQueueIds = reviewQueue.map((n) => n.id).toList();
     _focusSessionStart = DateTime.now();
     _focusSessionInterruptions = 0;
     resetSessionStats();
 
-    final db = _container.read(databaseProvider);
-    db.focusSessionDao.insertSession(FocusSessionEntry(
+    await _privacyWrapper.insertFocusSession(FocusSessionEntry(
       id: 0,
       sessionStart: _focusSessionStart!,
       interruptions: 0,
@@ -219,24 +226,31 @@ class NotificationController extends ChangeNotifier {
     }
   }
 
-  void finishFocusSession() {
+  Future<void> finishFocusSession() async {
     _inFocusSession = false;
     final now = DateTime.now();
     final durationSeconds = _focusSessionStart != null
         ? now.difference(_focusSessionStart!).inSeconds
         : 0;
 
-    final db = _container.read(databaseProvider);
-    db.focusSessionDao.getActiveSession().then((active) {
-      if (active != null) {
-        db.focusSessionDao.updateSession(active.copyWith(
-          sessionEnd: Value(now),
-          completion: true,
-          duration: durationSeconds,
-          interruptions: _focusSessionInterruptions,
-        ));
-      }
-    });
+    final active = await _privacyWrapper.getActiveFocusSession();
+    if (active != null) {
+      await _privacyWrapper.updateFocusSession(active.copyWith(
+        sessionEnd: Value(now),
+        completion: true,
+        duration: durationSeconds,
+        interruptions: _focusSessionInterruptions,
+      ));
+    }
+
+    await _privacyWrapper.incrementDailyStats(
+      _todayDateString(),
+      reviewed: sessionStats.notificationsReviewed,
+      completed: sessionStats.actionsCompleted,
+      calendar: sessionStats.calendarEventsCreated,
+      reminders: sessionStats.remindersCreated,
+      archived: sessionStats.archived,
+    );
 
     _focusSessionQueueIds.clear();
     clearFilter();
@@ -478,6 +492,7 @@ class NotificationController extends ChangeNotifier {
     _container.read(reviewQueueProvider.notifier).archive(id);
     _savedActionItems.removeWhere((item) => item.notification.id == id);
     sessionStats.archived++;
+    _privacyWrapper.incrementDailyStats(_todayDateString(), archived: 1);
     notifyListeners();
   }
 
@@ -485,6 +500,7 @@ class NotificationController extends ChangeNotifier {
     _container.read(reviewQueueProvider.notifier).reviewed(id);
     _savedActionItems.removeWhere((item) => item.notification.id == id);
     sessionStats.actionsCompleted++;
+    _privacyWrapper.incrementDailyStats(_todayDateString(), completed: 1);
     notifyListeners();
   }
 
@@ -495,21 +511,25 @@ class NotificationController extends ChangeNotifier {
 
   void recordCalendarEvent() {
     sessionStats.calendarEventsCreated++;
+    _privacyWrapper.incrementDailyStats(_todayDateString(), calendar: 1);
     notifyListeners();
   }
 
   void recordReminder() {
     sessionStats.remindersCreated++;
+    _privacyWrapper.incrementDailyStats(_todayDateString(), reminders: 1);
     notifyListeners();
   }
 
   void recordReviewed() {
     sessionStats.notificationsReviewed++;
+    _privacyWrapper.incrementDailyStats(_todayDateString(), reviewed: 1);
     notifyListeners();
   }
 
   void recordAction() {
     sessionStats.actionsCompleted++;
+    _privacyWrapper.incrementDailyStats(_todayDateString(), completed: 1);
     notifyListeners();
   }
 
