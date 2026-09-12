@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
+import 'package:scope/core/analysis/metadata_analyzer.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
@@ -149,6 +150,7 @@ class GhostAI {
     // 5. Apply deterministic overrides (expired OTP, expired reminders, duplicates, completed tasks)
     final hasOtp = featureVector[11] == 1.0; // contains_otp
     final hasDeadline = featureVector[27] == 1.0; // contains_deadline
+    final isFinancial = _isFinancialNotification(notification, featureVector, ruleMatch);
 
     if (hasOtp && _isOtpExpired(notification)) {
       finalScore = 0.0;
@@ -156,7 +158,7 @@ class GhostAI {
       finalScore = 0.0;
     } else if (_isDuplicate(notification)) {
       finalScore = 0.0;
-    } else if (_isCompletedTask(notification)) {
+    } else if (!isFinancial && _isCompletedTask(notification, isFinancial: isFinancial)) {
       finalScore = 0.0;
     }
 
@@ -290,7 +292,10 @@ class GhostAI {
   }
 
   /// Returns whether a notification indicates that a task/action is completed.
-  bool _isCompletedTask(AppNotification notification) {
+  /// Financial notifications are decoupled and never treated as standard completed tasks.
+  bool _isCompletedTask(AppNotification notification, {bool isFinancial = false}) {
+    if (isFinancial) return false;
+
     final lowerContent = notification.content.toLowerCase();
     final lowerTitle = notification.title.toLowerCase();
 
@@ -308,12 +313,72 @@ class GhostAI {
     final hasTaskKeywords = lowerTitle.contains('task') ||
         lowerTitle.contains('todo') ||
         lowerTitle.contains('reminder') ||
-        lowerTitle.contains('payment') ||
-        lowerTitle.contains('recharge') ||
         lowerTitle.contains('order');
 
     if (isTaskApp || hasTaskKeywords) {
       return completedRegex.hasMatch(lowerTitle) || completedRegex.hasMatch(lowerContent);
+    }
+
+    return false;
+  }
+
+  /// Returns whether a notification is a critical financial notification that should
+  /// never be suppressed by standard task completion override logic.
+  bool _isFinancialNotification(
+    AppNotification notification,
+    List<double> featureVector,
+    MatchedRuleResult? ruleMatch,
+  ) {
+    // 1. Rule or category match
+    if (ruleMatch?.category == 'finance' ||
+        ruleMatch?.ruleId == 'finance_debit' ||
+        (notification.classifiedCategory ?? '').toLowerCase() == 'finance' ||
+        (notification.category ?? '').toLowerCase() == 'finance' ||
+        MetadataAnalyzer.getCategoryHint(notification) == 'finance') {
+      return true;
+    }
+
+    // 2. Numerical feature vector signals
+    // featureVector indices:
+    // 10: contains_money, 29: contains_payment_keywords, 9: contains_currency_symbol,
+    // 50: amount, 22: contains_transaction_id
+    if (featureVector.length >= 51 &&
+        (featureVector[10] == 1.0 ||
+            featureVector[29] == 1.0 ||
+            featureVector[9] == 1.0 ||
+            featureVector[50] > 0.0 ||
+            featureVector[22] == 1.0)) {
+      return true;
+    }
+
+    // 3. Keyword and package signals
+    final lowerTitle = notification.title.toLowerCase();
+    final lowerContent = notification.content.toLowerCase();
+    final combined = '$lowerTitle $lowerContent';
+
+    final financialKeywords = [
+      'recharge',
+      'payment',
+      'debited',
+      'credited',
+      'debit',
+      'credit',
+      'balance',
+      'bank',
+      'upi',
+      'wallet',
+      'transfer',
+      'salary',
+      'cashback',
+      'refund',
+      'invoice',
+      'transaction',
+    ];
+
+    for (final kw in financialKeywords) {
+      if (combined.contains(kw)) {
+        return true;
+      }
     }
 
     return false;

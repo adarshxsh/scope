@@ -232,6 +232,40 @@ void main() {
         final result = await GhostAI.predict(activeTask);
         expect(result.reviewScore, isPositive); // Not overridden
       });
+
+      test('does not override critical financial notifications even with completion keywords', () async {
+        final rechargeNotification = AppNotification(
+          id: 'fin-recharge-done',
+          packageName: 'com.jio.myjio',
+          title: 'Recharge successful',
+          content: '₹15499 recharge is active. Valid until 12 May.',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        final paymentNotification = AppNotification(
+          id: 'fin-payment-done',
+          packageName: 'com.phonepe.app',
+          title: 'Payment successful',
+          content: '₹500 paid to Merchant successfully.',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        final debitNotification = AppNotification(
+          id: 'fin-debit-done',
+          packageName: 'com.hdfc.mobilebanking',
+          title: 'Transfer completed',
+          content: 'Your account has been debited Rs. 2,000 for rent payment.',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        final resultRecharge = await GhostAI.predict(rechargeNotification);
+        final resultPayment = await GhostAI.predict(paymentNotification);
+        final resultDebit = await GhostAI.predict(debitNotification);
+
+        expect(resultRecharge.reviewScore, greaterThan(0.0));
+        expect(resultPayment.reviewScore, greaterThan(0.0));
+        expect(resultDebit.reviewScore, greaterThan(0.0));
+      });
     });
   });
 }
