@@ -4,6 +4,7 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
+import 'package:scope/core/analysis/model_verifier.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -41,6 +42,10 @@ class GhostAI {
   Interpreter? _interpreter;
   final RuleEngine _ruleEngine = RuleEngine();
 
+  bool _isModelVerified = false;
+  String? _modelChecksum;
+  String _verificationStatus = 'unverified';
+
   // Slide-cache for duplicate detection
   final List<AppNotification> _processedNotifications = [];
   static const int _maxCacheSize = 100;
@@ -56,15 +61,49 @@ class GhostAI {
   /// Returns whether the model is loaded.
   bool get isModelLoaded => _interpreter != null;
 
-  /// Initializes the TFLite interpreter and rules database once on startup.
+  /// Returns whether the loaded model passed SHA-256 and signature verification.
+  bool get isModelVerified => _isModelVerified;
+
+  /// Returns the calculated SHA-256 checksum of the loaded model.
+  String? get modelChecksum => _modelChecksum;
+
+  /// Returns the current verification status string.
+  String get verificationStatus => _verificationStatus;
+
+  /// Initializes the TFLite interpreter with checksum verification and rules database once on startup.
   Future<void> initialize() async {
     if (_interpreter != null) return;
+
+    _isModelVerified = false;
+    _modelChecksum = null;
+    _verificationStatus = 'unverified';
+
+    // 1. Load model bytes & verify checksum / header signature
     try {
-      // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      final ByteData byteData = await rootBundle.load('assets/model.tflite');
+      final Uint8List modelBytes = byteData.buffer.asUint8List(
+        byteData.offsetInBytes,
+        byteData.lengthInBytes,
+      );
+
+      String? expectedChecksum;
+      try {
+        final checksumStr = await rootBundle.loadString('assets/model.tflite.sha256');
+        expectedChecksum = checksumStr.trim();
+      } catch (_) {
+        // Asset not present
+      }
+
+      await initializeWithBytes(
+        modelBytes,
+        expectedChecksum: expectedChecksum,
+        skipRulesInit: true,
+      );
     } catch (e) {
-      debugPrint('GhostAI: Failed to load TFLite model: $e');
+      _verificationStatus = 'load_error';
+      _isModelVerified = false;
+      _interpreter = null;
+      debugPrint('GhostAI: Failed to load TFLite model asset: $e');
     }
 
     try {
@@ -74,6 +113,49 @@ class GhostAI {
       debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
     } catch (e) {
       debugPrint('GhostAI: Failed to initialize rules database: $e');
+    }
+  }
+
+  /// Initializes the model interpreter using raw byte buffer after signature and checksum verification.
+  Future<void> initializeWithBytes(
+    Uint8List modelBytes, {
+    String? expectedChecksum,
+    Uint8List? signature,
+    bool skipRulesInit = false,
+  }) async {
+    _isModelVerified = false;
+    _modelChecksum = null;
+    _verificationStatus = 'unverified';
+
+    final verificationResult = ModelVerifier.verifyModelBytes(
+      modelBytes,
+      expectedChecksum: expectedChecksum,
+      signature: signature,
+    );
+
+    _modelChecksum = verificationResult.checksum;
+    _verificationStatus = verificationResult.status;
+
+    if (!verificationResult.isValid) {
+      debugPrint('GhostAI: Model verification failed: ${verificationResult.errorMessage}');
+      _interpreter = null;
+      _isModelVerified = false;
+    } else {
+      _isModelVerified = true;
+      try {
+        _interpreter = Interpreter.fromBuffer(modelBytes);
+        debugPrint('GhostAI: TFLite interpreter loaded & verified successfully. SHA-256: $_modelChecksum');
+      } catch (e) {
+        debugPrint('GhostAI: Interpreter creation failed despite valid checksum: $e');
+        _interpreter = null;
+      }
+    }
+
+    if (!skipRulesInit) {
+      try {
+        final jsonStr = await rootBundle.loadString('assets/rules.json');
+        _ruleEngine.compile(jsonStr);
+      } catch (_) {}
     }
   }
 
