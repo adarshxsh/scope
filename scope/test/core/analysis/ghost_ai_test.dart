@@ -17,6 +17,23 @@ void main() {
       expect(GhostAI.instance.isModelLoaded, isFalse);
     });
 
+    test('validates input tensor shape and handles uninitialized or mismatched interpreter gracefully', () async {
+      final notif = AppNotification(
+        id: 'promo-notif',
+        packageName: 'com.amazon.shopping',
+        title: 'Flash Sale',
+        content: 'Get 50% off on electronics today!',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final result = await GhostAI.predict(notif);
+
+      expect(result.featureVector.length, equals(63));
+      // Should calculate heuristic score gracefully for promo
+      expect(result.predictedScore, equals(0.05));
+      expect(result.reviewScore, equals(0.10)); // (0.05 predicted + 0.15 rule) / 2
+    });
+
     test('predict outputs basic inference results and falls back to heuristics', () async {
       final notif = AppNotification(
         id: 'otp-notif',
