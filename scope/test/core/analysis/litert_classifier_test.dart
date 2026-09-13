@@ -40,5 +40,12 @@ void main() {
       expect(result.category, equals('finance'));
       expect(result.engineName, contains('fallback'));
     });
+
+    test('initialize() completes without throwing and sets isModelLoaded status', () async {
+      final classifier = LiteRtClassifier();
+      await classifier.initialize();
+      // On desktop/headless test runners without native C library, isModelLoaded is false
+      expect(classifier.isModelLoaded, isFalse);
+    });
   });
 }
