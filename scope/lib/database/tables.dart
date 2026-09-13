@@ -65,3 +65,14 @@ class DailyBriefTable extends Table {
   IntColumn get remindersCreated => integer().withDefault(const Constant(0))();
   IntColumn get archivedCount => integer().withDefault(const Constant(0))();
 }
+
+@DataClassName('PrivacyBudgetEntry')
+class PrivacyBudgetTable extends Table {
+  TextColumn get date => text()(); // YYYY-MM-DD
+  RealColumn get usedEpsilon => real().withDefault(const Constant(0.0))();
+  RealColumn get maxEpsilon => real().withDefault(const Constant(1.0))();
+  DateTimeColumn get lastUpdated => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {date};
+}
