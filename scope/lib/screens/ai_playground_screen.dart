@@ -40,7 +40,7 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     'personal',
   ];
 
-  final List<String> _priorities = ['critical', 'high', 'medium', 'low'];
+  final List<String> _priorities = ['high', 'medium', 'low'];
 
   @override
   void dispose() {
@@ -52,12 +52,12 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
 
   void _updateSelectedFields(String? category, String? priority) {
     final cat = category?.toLowerCase() ?? 'financial';
-    final pri = priority?.toLowerCase() ?? 'medium';
+    var pri = priority?.toLowerCase() ?? 'medium';
+    if (pri == 'critical') {
+      pri = 'high';
+    }
     if (!_categories.contains(cat)) {
       _categories.add(cat);
-    }
-    if (!_priorities.contains(pri)) {
-      _priorities.add(pri);
     }
     _selectedCategory = cat;
     _selectedPriority = pri;
@@ -120,28 +120,41 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
       if (clean.length > 4 && words.length < 3) words.add(clean);
     }
 
+    // Cap custom rule priority at high
+    final targetPriority = _selectedPriority == 'critical' ? 'high' : _selectedPriority;
+
     final newRule = NotificationRule(
       id: 'rlhf-${DateTime.now().millisecondsSinceEpoch}',
       category: _selectedCategory,
-      priority: _selectedPriority,
+      priority: targetPriority,
       conditions: RuleCondition(
         packages: [n.packageName],
         titleKeywords: words.take(2).toList(),
       ),
+      isSystemRule: false,
     );
 
-    widget.controller.engine.ruleEngine.addReinforcementRule(newRule);
+    try {
+      widget.controller.engine.ruleEngine.addReinforcementRule(newRule);
 
-    setState(() {
-      _showCorrectionForm = false;
-    });
+      setState(() {
+        _showCorrectionForm = false;
+      });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Reinforcement Rule Learned! Similar messages will now be classified as $_selectedPriority ($_selectedCategory).'),
-        backgroundColor: AppColors.seed,
-      ),
-    );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Reinforcement Rule Learned! Similar messages will now be classified as $targetPriority ($_selectedCategory).'),
+          backgroundColor: AppColors.seed,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to learn rule: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
