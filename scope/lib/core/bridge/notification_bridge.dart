@@ -75,4 +75,36 @@ class NotificationBridge {
       // Not on Android — nothing to do
     }
   }
+
+  /// Queries system power state (isPowerSaveMode, batteryLevel, isCharging, isLowPowerMode).
+  Future<Map<String, dynamic>> getPowerState() async {
+    try {
+      final result = await _channel.invokeMethod<Map>('getPowerState');
+      if (result == null) {
+        return {
+          'isPowerSaveMode': false,
+          'batteryLevel': 100,
+          'isCharging': false,
+          'isLowPowerMode': false,
+        };
+      }
+      return Map<String, dynamic>.from(result);
+    } on PlatformException catch (e) {
+      // ignore: avoid_print
+      print('NotificationBridge.getPowerState failed: ${e.message}');
+      return {
+        'isPowerSaveMode': false,
+        'batteryLevel': 100,
+        'isCharging': false,
+        'isLowPowerMode': false,
+      };
+    } on MissingPluginException {
+      return {
+        'isPowerSaveMode': false,
+        'batteryLevel': 100,
+        'isCharging': false,
+        'isLowPowerMode': false,
+      };
+    }
+  }
 }
