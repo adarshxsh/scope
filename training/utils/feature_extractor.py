@@ -542,7 +542,7 @@ def as_bool(value: Any) -> bool:
     return normalized in ('true', '1', 'yes')
 
 
-def extract_features(record: dict[str, Any]) -> list[float]:
+def extract_features(record: dict[str, Any], target_dimension: int | None = None) -> list[float]:
     # Extract fields from record
     title = record.get("title") or ""
     body = record.get("body") or ""
@@ -681,4 +681,8 @@ def extract_features(record: dict[str, Any]) -> list[float]:
         float(notification_type_id),
         float(category_id),
     ]
+    if target_dimension is not None and target_dimension > len(values):
+        values = values + [0.0] * (target_dimension - len(values))
+    elif target_dimension is not None and target_dimension < len(values):
+        values = values[:target_dimension]
     return values
