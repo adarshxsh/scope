@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/native.dart';
-import 'package:drift/drift.dart' show Value;
+import 'package:drift/drift.dart' show Value, Variable;
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/database/attention_database.dart';
 
@@ -30,6 +30,7 @@ void main() {
         dismissed: false,
         isOngoing: false,
         createdAt: now,
+        extractedFeatures: const {'otp': '987654', 'amount': 1250.0},
       );
 
       await db.notificationDao.insertNotification(entry);
@@ -39,6 +40,13 @@ void main() {
       expect(fetched!.title, equals('Alice'));
       expect(fetched.content, equals('Hello'));
       expect(fetched.state, equals(ReviewState.ACTIVE));
+      expect(fetched.extractedFeatures, equals({'otp': '987654', 'amount': 1250.0}));
+
+      // Direct SQL check to verify encrypted text in SQLite database
+      final rawRow = await db.customSelect('SELECT extracted_features FROM notifications_table WHERE id = ?', variables: [Variable.withString('n1')]).getSingle();
+      final rawText = rawRow.read<String>('extracted_features');
+      expect(rawText.startsWith('ENC:'), isTrue);
+      expect(rawText.contains('987654'), isFalse);
     });
 
     test('NotificationDao upsert behavior', () async {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
+import 'package:scope/core/utils/privacy_redactor.dart';
 import 'package:scope/widgets/scope_card.dart';
 
 class DiagnosticScreen extends StatefulWidget {
@@ -28,6 +29,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
   AppNotification? _analyzedNotification;
   bool _isAnalyzing = false;
   bool _isEngineReady = false;
+  bool _showSensitiveData = false;
 
   @override
   void initState() {
@@ -263,22 +265,40 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
   Widget _buildResultsDashboard() {
     final notif = _analyzedNotification!;
     final priorityColor = _getPriorityColor(notif.priority);
+    final redactor = const PrivacyRedactor();
 
     // Safely parse feature variables to prevent Dart compilation/ternary ambiguity
     final features = notif.extractedFeatures ?? {};
-    final otp = features['otp'] as String?;
-    final amount = features['amount'];
-    final amountStr = amount != null ? 'Rs. $amount' : null;
+    final otpRaw = features['otp'] as String?;
+    final otp = _showSensitiveData ? otpRaw : redactor.maskOtp(otpRaw);
+
+    final amountRaw = features['amount'];
+    final amountStr = amountRaw != null
+        ? (_showSensitiveData ? 'Rs. $amountRaw' : 'Rs. ${redactor.maskAmount(amountRaw)}')
+        : null;
+
     final hasDeadline = features['hasDeadline'] == true ? 'YES' : null;
 
-    final urls = features['urls'] as List?;
-    final urlsStr = urls != null && urls.isNotEmpty ? urls.toString() : null;
+    final urlsRaw = features['urls'] as List?;
+    final urlsStr = urlsRaw != null && urlsRaw.isNotEmpty
+        ? (_showSensitiveData
+            ? urlsRaw.toString()
+            : urlsRaw.map((u) => redactor.maskUrl(u.toString())).toList().toString())
+        : null;
 
-    final emails = features['emails'] as List?;
-    final emailsStr = emails != null && emails.isNotEmpty ? emails.toString() : null;
+    final emailsRaw = features['emails'] as List?;
+    final emailsStr = emailsRaw != null && emailsRaw.isNotEmpty
+        ? (_showSensitiveData
+            ? emailsRaw.toString()
+            : emailsRaw.map((e) => redactor.maskEmail(e.toString())).toList().toString())
+        : null;
 
-    final phoneNumbers = features['phoneNumbers'] as List?;
-    final phoneNumbersStr = phoneNumbers != null && phoneNumbers.isNotEmpty ? phoneNumbers.toString() : null;
+    final phoneNumbersRaw = features['phoneNumbers'] as List?;
+    final phoneNumbersStr = phoneNumbersRaw != null && phoneNumbersRaw.isNotEmpty
+        ? (_showSensitiveData
+            ? phoneNumbersRaw.toString()
+            : phoneNumbersRaw.map((p) => redactor.maskPhoneNumber(p.toString())).toList().toString())
+        : null;
 
     final theme = Theme.of(context);
 
@@ -383,11 +403,33 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Icon(Icons.filter_list_alt, color: theme.colorScheme.secondary),
-                  const SizedBox(width: 8),
-                  const Text('Extracted Text Features',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  Row(
+                    children: [
+                      Icon(Icons.filter_list_alt, color: theme.colorScheme.secondary),
+                      const SizedBox(width: 8),
+                      const Text('Extracted Text Features',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Text(
+                        _showSensitiveData ? 'Unmasked' : 'Masked',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: _showSensitiveData ? Colors.orange : Colors.green,
+                        ),
+                      ),
+                      Switch(
+                        key: const Key('unmask_toggle'),
+                        value: _showSensitiveData,
+                        onChanged: (val) => setState(() => _showSensitiveData = val),
+                      ),
+                    ],
+                  ),
                 ],
               ),
               const Divider(height: 20),
