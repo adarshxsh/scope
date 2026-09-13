@@ -1,4 +1,3 @@
-import 'package:flutter/services.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/litert_classifier.dart';
 import 'package:scope/core/analysis/policy_engine.dart';
@@ -6,6 +5,7 @@ import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/analysis/score_fusion.dart';
 import 'package:scope/core/analysis/explanation_generator.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/models/model_manager.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
 
 /// The central hub of Ghost AI coordinating all classification stages.
@@ -19,10 +19,11 @@ class GhostAnalysisEngine {
   })  : ruleEngine = ruleEngine ?? RuleEngine(),
         mlClassifier = mlClassifier ?? LiteRtClassifier();
 
-  /// Compiles rules loaded from assets on engine startup.
+  /// Compiles rules loaded from ModelManager/assets on engine startup.
   Future<void> initialize() async {
     try {
-      final jsonStr = await rootBundle.loadString('assets/rules.json');
+      await ModelManager.instance.initialize();
+      final jsonStr = await ModelManager.instance.getRulesJson();
       ruleEngine.compile(jsonStr);
       await ruleEngine.loadCustomRules();
     } catch (e) {
@@ -34,6 +35,12 @@ class GhostAnalysisEngine {
     } catch (e) {
       // ignore: avoid_print
       print('GhostAnalysisEngine failed to initialize GhostAI: $e');
+    }
+    try {
+      await mlClassifier.initialize();
+    } catch (e) {
+      // ignore: avoid_print
+      print('GhostAnalysisEngine failed to initialize LiteRtClassifier: $e');
     }
   }
 
@@ -100,7 +107,9 @@ class GhostAnalysisEngine {
       explanation: explanation,
       latencyMs: stopwatch.elapsedMilliseconds,
       ruleVersion: ruleEngine.version,
-      modelVersion: GhostAI.instance.isModelLoaded ? '1.0.0-tflite' : 'fallback-heuristics',
+      modelVersion: GhostAI.instance.isModelLoaded
+          ? ModelManager.instance.activeModelVersion
+          : 'fallback-heuristics',
       engineVersion: '2.0.0-hybrid',
       extractedFeatures: features.toMap(),
     );
