@@ -4,6 +4,7 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
+import 'package:scope/core/analysis/asset_verifier_service.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -59,21 +60,34 @@ class GhostAI {
   /// Initializes the TFLite interpreter and rules database once on startup.
   Future<void> initialize() async {
     if (_interpreter != null) return;
-    try {
-      // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
-    } catch (e) {
-      debugPrint('GhostAI: Failed to load TFLite model: $e');
+
+    // 1. Verify model asset with AssetVerifierService
+    final isModelVerified = await AssetVerifierService.instance.verifyAsset('assets/model.tflite');
+    if (isModelVerified) {
+      try {
+        _interpreter = await Interpreter.fromAsset('assets/model.tflite');
+        debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      } catch (e) {
+        debugPrint('GhostAI: Failed to load TFLite model: $e');
+        _interpreter = null;
+      }
+    } else {
+      debugPrint('GhostAI: Asset verification failed for assets/model.tflite. Aborting interpreter initialization.');
+      _interpreter = null;
     }
 
-    try {
-      // 2. Load and compile rules database
-      final jsonStr = await rootBundle.loadString('assets/rules.json');
-      _ruleEngine.compile(jsonStr);
-      debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
-    } catch (e) {
-      debugPrint('GhostAI: Failed to initialize rules database: $e');
+    // 2. Verify rules asset with AssetVerifierService
+    final isRulesVerified = await AssetVerifierService.instance.verifyAsset('assets/rules.json');
+    if (isRulesVerified) {
+      try {
+        final jsonStr = await rootBundle.loadString('assets/rules.json');
+        _ruleEngine.compile(jsonStr);
+        debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
+      } catch (e) {
+        debugPrint('GhostAI: Failed to initialize rules database: $e');
+      }
+    } else {
+      debugPrint('GhostAI: Asset verification failed for assets/rules.json. Skipping rule compilation.');
     }
   }
 
