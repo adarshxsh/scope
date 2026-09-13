@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
 import 'package:scope/core/models/notification_model.dart';
 
@@ -32,8 +33,40 @@ void main() {
       expect(result.confidence, equals(1.0));
       expect(result.inferenceTimeUs, isPositive);
       expect(result.featureVector, isNotEmpty);
-      expect(result.featureVector.length, equals(63));
+      expect(result.featureVector.length, equals(FeatureVector.size));
       expect(result.predictedScore, equals(1.0)); // Heuristic fallback score for OTP
+    });
+
+    test('named feature lookups evaluate score overrides correctly', () async {
+      final promoNotif = AppNotification(
+        id: 'promo-1',
+        packageName: 'com.swiggy',
+        title: '50% OFF',
+        content: 'Use code SWIGGYIT to get discount on lunch!',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+      final promoResult = await GhostAI.predict(promoNotif);
+      expect(promoResult.featureVector.getFeature('contains_discount'), equals(1.0));
+
+      final moneyNotif = AppNotification(
+        id: 'money-1',
+        packageName: 'com.bank.app',
+        title: 'Account Debited',
+        content: 'Your account XX1234 was debited Rs. 500.',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+      final moneyResult = await GhostAI.predict(moneyNotif);
+      expect(moneyResult.featureVector.getFeature('contains_money'), equals(1.0));
+
+      final deadlineNotif = AppNotification(
+        id: 'deadline-1',
+        packageName: 'com.calendar.app',
+        title: 'Payment Due',
+        content: 'Bill payment is due tomorrow.',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+      final deadlineResult = await GhostAI.predict(deadlineNotif);
+      expect(deadlineResult.featureVector.getFeature('contains_deadline'), equals(1.0));
     });
 
     group('Expired OTP Overrides', () {
