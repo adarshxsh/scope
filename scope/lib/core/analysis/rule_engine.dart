@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:scope/core/analysis/crypto_verifier.dart';
 import 'package:scope/core/models/notification_model.dart';
 
 /// Condition definition for a notification classification rule.
@@ -91,54 +93,183 @@ class RuleEngine {
   String version = '0.0.0';
   List<NotificationRule> _rules = [];
 
-  /// Compiles a raw JSON rules database into compiled memory structures.
-  void compile(String jsonStr) {
-    final parsed = json.decode(jsonStr) as Map<String, dynamic>;
-    version = parsed['version'] as String? ?? '0.0.0';
-    final rawRules = parsed['rules'] as List<dynamic>? ?? const [];
-    
-    _rules = rawRules
-        .map((r) => NotificationRule.fromMap(Map<String, dynamic>.from(r as Map)))
-        .toList();
+  List<NotificationRule> get rules => List.unmodifiable(_rules);
+
+  /// Hardcoded safe default rules applied as fallback if verification fails.
+  static final List<NotificationRule> safeDefaultRules = [
+    NotificationRule(
+      id: 'default_otp_security',
+      category: 'sys',
+      priority: 'critical',
+      conditions: const RuleCondition(
+        keywords: ['otp', 'verification code', 'one-time password', 'security code'],
+      ),
+    ),
+    NotificationRule(
+      id: 'default_finance_debit',
+      category: 'finance',
+      priority: 'critical',
+      conditions: const RuleCondition(
+        keywords: ['debited', 'withdrawn', 'spent', 'deducted', 'sent rs', 'sent inr', 'charge'],
+        titleKeywords: ['alert', 'bank', 'charge', 'card'],
+      ),
+    ),
+    NotificationRule(
+      id: 'default_promo_deals',
+      category: 'promo',
+      priority: 'low',
+      conditions: const RuleCondition(
+        keywords: ['sale', '50% off', 'discount', 'deal', 'coupon', 'promo', 'free delivery', 'shop now', 'cashback', 'limited time'],
+      ),
+    ),
+  ];
+
+  /// Compiles a raw JSON rules database envelope into compiled memory structures.
+  /// Validates Ed25519 signature before parsing payload objects.
+  Future<void> compile(String jsonStr) async {
+    try {
+      final parsed = json.decode(jsonStr);
+      if (parsed is! Map<String, dynamic>) {
+        _applySafeFallback('Rule manifest is not a valid JSON map object.');
+        throw RuleVerificationException('Malformed rule manifest JSON structure.');
+      }
+
+      final hasSignature = parsed.containsKey('signature') && parsed['signature'] is String;
+      final hasKeyId = parsed.containsKey('key_id') && parsed['key_id'] is String;
+      final hasPayload = parsed.containsKey('payload') && parsed['payload'] is Map<String, dynamic>;
+
+      if (!hasSignature || !hasKeyId || !hasPayload) {
+        _applySafeFallback('Rule database manifest missing mandatory cryptographic signature envelope.');
+        throw RuleVerificationException(
+          'Rule database manifest missing mandatory cryptographic signature envelope (signature, key_id, payload).',
+        );
+      }
+
+      final sigAlg = parsed['signature_algorithm'] as String? ?? '';
+      if (sigAlg != 'Ed25519') {
+        _applySafeFallback('Unsupported signature algorithm "$sigAlg".');
+        throw RuleVerificationException('Unsupported signature algorithm: $sigAlg.');
+      }
+
+      final keyId = parsed['key_id'] as String;
+      final signatureBase64 = parsed['signature'] as String;
+      final payloadMap = parsed['payload'] as Map<String, dynamic>;
+
+      final payloadBytes = utf8.encode(jsonEncode(payloadMap));
+
+      final isValid = await CryptoVerifier.verifyEd25519Signature(
+        payloadBytes: payloadBytes,
+        signatureBase64: signatureBase64,
+        keyId: keyId,
+      );
+
+      if (!isValid) {
+        _applySafeFallback('Ed25519 signature verification failed or payload tampered for key_id "$keyId".');
+        throw RuleVerificationException(
+          'Ed25519 signature verification failed for rule manifest (key_id: $keyId).',
+        );
+      }
+
+      version = payloadMap['version'] as String? ?? '0.0.0';
+      final rawRules = payloadMap['rules'] as List<dynamic>? ?? const [];
+      _rules = rawRules
+          .map((r) => NotificationRule.fromMap(Map<String, dynamic>.from(r as Map)))
+          .toList();
+    } catch (e) {
+      if (e is RuleVerificationException) {
+        rethrow;
+      }
+      _applySafeFallback('Unhandled rule compilation error: $e');
+      throw RuleVerificationException('Failed to compile rule manifest: $e');
+    }
+  }
+
+  /// Compiles signed rule specifications, pinned with an optional trusted public key.
+  Future<void> compileSigned(String jsonStr, {String? publicKeyBase64}) async {
+    if (publicKeyBase64 != null) {
+      try {
+        final parsed = json.decode(jsonStr) as Map<String, dynamic>;
+        final keyId = parsed['key_id'] as String? ?? 'scope-prod-key-1';
+        CryptoVerifier.addTrustedPublicKey(keyId, publicKeyBase64);
+      } catch (_) {}
+    }
+    return compile(jsonStr);
+  }
+
+  void _applySafeFallback(String reason) {
+    debugPrint('[SECURITY AUDIT] $reason Falling back to safe default rules.');
+    _rules = List<NotificationRule>.from(safeDefaultRules);
+    version = '0.0.0-safe-fallback';
   }
 
   /// Prepends a user-defined reinforcement learning rule to the top of the evaluation chain.
-  void addReinforcementRule(NotificationRule rule) {
+  Future<void> addReinforcementRule(NotificationRule rule) async {
     _rules.insert(0, rule);
-    _saveCustomRules();
+    await _saveCustomRules();
   }
 
-  /// Loads custom rules from local storage and prepends them.
+  /// Loads custom rules from local storage and prepends them after validating HMAC-SHA256 signature.
   Future<void> loadCustomRules() async {
     try {
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/rlhf_rules.json');
       if (await file.exists()) {
         final content = await file.readAsString();
-        final list = json.decode(content) as List<dynamic>;
-        final customRules = list.map((r) => NotificationRule.fromMap(Map<String, dynamic>.from(r))).toList();
-        // Insert custom rules at the top
-        _rules.insertAll(0, customRules);
+        final map = json.decode(content);
+
+        if (map is Map<String, dynamic> &&
+            map['signature_algorithm'] == 'HMAC-SHA256' &&
+            map.containsKey('signature') &&
+            map.containsKey('payload')) {
+          final signatureBase64 = map['signature'] as String;
+          final payload = map['payload'] as List<dynamic>;
+          final payloadBytes = utf8.encode(jsonEncode(payload));
+          final deviceKey = CryptoVerifier.deriveDeviceKey();
+
+          final isValid = CryptoVerifier.verifyHmac(payloadBytes, signatureBase64, deviceKey);
+          if (isValid) {
+            final customRules = payload
+                .map((r) => NotificationRule.fromMap(Map<String, dynamic>.from(r as Map)))
+                .toList();
+            _rules.insertAll(0, customRules);
+            debugPrint('Successfully loaded ${customRules.length} device-signed RLHF custom rules.');
+          } else {
+            debugPrint(
+              '[SECURITY AUDIT] Local RLHF rules HMAC-SHA256 signature mismatch (file tampered). Ignoring custom rules.',
+            );
+          }
+        } else {
+          debugPrint(
+            '[SECURITY AUDIT] Local RLHF rules file missing HMAC signature envelope. Ignoring custom rules.',
+          );
+        }
       }
     } catch (e) {
-      // ignore: avoid_print
-      print('Failed to load custom RLHF rules: $e');
+      debugPrint('Failed to load custom RLHF rules: $e');
     }
   }
 
-  /// Saves all custom RLHF rules to local storage.
+  /// Saves all custom RLHF rules to local storage using device-bound HMAC-SHA256 signature envelope.
   Future<void> _saveCustomRules() async {
     try {
-      // Filter out base rules (assuming base rules don't have 'rlhf-' prefix in id)
       final customRules = _rules.where((r) => r.id.startsWith('rlhf-')).toList();
-      final list = customRules.map((r) => r.toMap()).toList();
-      
+      final payload = customRules.map((r) => r.toMap()).toList();
+      final payloadBytes = utf8.encode(jsonEncode(payload));
+      final deviceKey = CryptoVerifier.deriveDeviceKey();
+      final signatureBase64 = CryptoVerifier.signHmac(payloadBytes, deviceKey);
+
+      final enveloped = {
+        'version': '1.0.0',
+        'signature_algorithm': 'HMAC-SHA256',
+        'signature': signatureBase64,
+        'payload': payload,
+      };
+
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/rlhf_rules.json');
-      await file.writeAsString(json.encode(list));
+      await file.writeAsString(json.encode(enveloped));
     } catch (e) {
-      // ignore: avoid_print
-      print('Failed to save custom RLHF rules: $e');
+      debugPrint('Failed to save custom RLHF rules: $e');
     }
   }
 
