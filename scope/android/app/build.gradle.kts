@@ -11,12 +11,12 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
+        jvmTarget = JavaVersion.VERSION_11.toString()
     }
 
     defaultConfig {
@@ -30,11 +30,68 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            val storeFileEnv = System.getenv("RELEASE_STORE_FILE")
+            val storePasswordEnv = System.getenv("RELEASE_STORE_PASSWORD")
+            val keyAliasEnv = System.getenv("RELEASE_KEY_ALIAS")
+            val keyPasswordEnv = System.getenv("RELEASE_KEY_PASSWORD")
+
+            if (!storeFileEnv.isNullOrBlank()) {
+                storeFile = file(storeFileEnv)
+            }
+            if (!storePasswordEnv.isNullOrBlank()) {
+                storePassword = storePasswordEnv
+            }
+            if (!keyAliasEnv.isNullOrBlank()) {
+                keyAlias = keyAliasEnv
+            }
+            if (!keyPasswordEnv.isNullOrBlank()) {
+                keyPassword = keyPasswordEnv
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
+        }
+    }
+}
+
+gradle.taskGraph.whenReady {
+    val isReleaseRequested = allTasks.any { task ->
+        task.name.contains("Release", ignoreCase = true)
+    }
+    if (isReleaseRequested) {
+        val storeFileEnv = System.getenv("RELEASE_STORE_FILE")
+        val storePasswordEnv = System.getenv("RELEASE_STORE_PASSWORD")
+        val keyAliasEnv = System.getenv("RELEASE_KEY_ALIAS")
+        val keyPasswordEnv = System.getenv("RELEASE_KEY_PASSWORD")
+
+        val missingVars = mutableListOf<String>()
+        if (storeFileEnv.isNullOrBlank()) missingVars.add("RELEASE_STORE_FILE")
+        if (storePasswordEnv.isNullOrBlank()) missingVars.add("RELEASE_STORE_PASSWORD")
+        if (keyAliasEnv.isNullOrBlank()) missingVars.add("RELEASE_KEY_ALIAS")
+        if (keyPasswordEnv.isNullOrBlank()) missingVars.add("RELEASE_KEY_PASSWORD")
+
+        if (missingVars.isNotEmpty()) {
+            throw GradleException(
+                "Release build failed: missing required release keystore environment variable(s): ${missingVars.joinToString(", ")}. " +
+                "Please configure these environment variables for release builds."
+            )
+        }
+
+        val keystoreFile = file(storeFileEnv!!)
+        if (!keystoreFile.exists()) {
+            throw GradleException(
+                "Release build failed: specified RELEASE_STORE_FILE does not exist at '${keystoreFile.absolutePath}'."
+            )
+        }
+        if (!keystoreFile.isFile || !keystoreFile.canRead()) {
+            throw GradleException(
+                "Release build failed: specified RELEASE_STORE_FILE at '${keystoreFile.absolutePath}' is not a readable file."
+            )
         }
     }
 }
