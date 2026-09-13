@@ -5,6 +5,8 @@
 /// used in tests without any Android dependency.
 library;
 
+import 'package:scope/core/privacy/redactor.dart';
+
 /// The review state of a notification in the Review Queue.
 enum ReviewState {
   // ignore: constant_identifier_names
@@ -258,7 +260,7 @@ class AppNotification {
   @override
   String toString() {
     return 'AppNotification(id: $id, package: $packageName, '
-        'title: $title, content: $content, '
+        'title: ${Redactor.redact(title)}, content: ${Redactor.redact(content)}, '
         'timestamp: $timestamp, category: $category, '
         'isOngoing: $isOngoing, priority: $priority, '
         'priorityScore: $priorityScore, classifiedCategory: $classifiedCategory, '
