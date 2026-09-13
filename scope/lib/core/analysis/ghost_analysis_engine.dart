@@ -1,4 +1,5 @@
 import 'package:flutter/services.dart';
+import 'package:scope/core/analysis/analysis_result.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/litert_classifier.dart';
 import 'package:scope/core/analysis/policy_engine.dart';
@@ -39,7 +40,10 @@ class GhostAnalysisEngine {
 
   /// Executes the hybrid intelligence pipeline end-to-end.
   /// Intercepts raw notification data and resolves it into a fully decorated priority model.
-  Future<AppNotification> analyze(AppNotification notification) async {
+  Future<AppNotification> analyze(
+    AppNotification notification, {
+    bool? isLowPowerMode,
+  }) async {
     final stopwatch = Stopwatch()..start();
 
     // 0. Filter out progress/download/sync status notifications to prevent unnecessary analysis
@@ -55,6 +59,8 @@ class GhostAnalysisEngine {
       );
     }
 
+    final activeLowPowerMode = isLowPowerMode ?? notification.isLowPowerMode;
+
     // 1. Structured Feature Extraction
     final features = FeatureExtractor.extract(
       title: notification.title,
@@ -64,7 +70,86 @@ class GhostAnalysisEngine {
     // 2. Rule Engine matching
     final ruleMatch = ruleEngine.match(notification);
 
-    // 3. LiteRT Classification Category Inference
+    if (activeLowPowerMode) {
+      // LOW POWER MODE FALLBACK:
+      // Bypass LiteRtClassifier and GhostAI.predict() TFLite model inference
+      // to reduce CPU energy consumption and prevent process eviction.
+
+      final category = ruleMatch?.category ??
+          _heuristicCategory(notification.title, notification.content, notification.category);
+
+      final double lookAgainScore;
+      if (ruleMatch != null) {
+        switch (ruleMatch.priority) {
+          case 'critical':
+            lookAgainScore = 1.0;
+            break;
+          case 'high':
+            lookAgainScore = 0.85;
+            break;
+          case 'medium':
+            lookAgainScore = 0.50;
+            break;
+          case 'low':
+          default:
+            lookAgainScore = 0.15;
+            break;
+        }
+      } else {
+        if (features.otp != null) {
+          lookAgainScore = 1.0;
+        } else if (features.amount != null) {
+          lookAgainScore = 0.85;
+        } else if (features.hasDeadline) {
+          lookAgainScore = 0.80;
+        } else {
+          lookAgainScore = 0.35;
+        }
+      }
+
+      final fusedResult = AnalysisResult(
+        category: category,
+        score: ruleMatch != null ? 0.85 : 0.50,
+        engineName: ruleMatch != null
+            ? 'rule_engine (power-save)'
+            : 'rule_fallback (power-save)',
+        matchedSignals: [
+          'Low-power mode active: TFLite bypassed',
+          if (ruleMatch != null) 'Rule matched: ${ruleMatch.ruleId}'
+        ],
+        latencyMs: stopwatch.elapsedMilliseconds,
+      );
+
+      final priority = PolicyEngine.resolvePriority(
+        fusedResult: fusedResult,
+        features: features,
+        notification: notification,
+        lookAgainScore: lookAgainScore,
+      );
+
+      final explanation = ExplanationGenerator.generate(
+        fusedResult: fusedResult,
+        features: features,
+        priority: priority,
+      );
+
+      stopwatch.stop();
+
+      return notification.copyWith(
+        priority: priority,
+        priorityScore: lookAgainScore,
+        classifiedCategory: fusedResult.category,
+        explanation: explanation,
+        latencyMs: stopwatch.elapsedMilliseconds,
+        ruleVersion: ruleEngine.version,
+        modelVersion: 'power-save-heuristic-fallback',
+        engineVersion: '2.0.0-hybrid',
+        extractedFeatures: features.toMap(),
+        isLowPowerMode: true,
+      );
+    }
+
+    // 3. LiteRT Classification Category Inference (Normal Mode)
     final mlResult = await mlClassifier.analyze(notification);
 
     // 4. Score Fusion (hybrid conflict resolution or critical bypass triggers)
@@ -103,7 +188,28 @@ class GhostAnalysisEngine {
       modelVersion: GhostAI.instance.isModelLoaded ? '1.0.0-tflite' : 'fallback-heuristics',
       engineVersion: '2.0.0-hybrid',
       extractedFeatures: features.toMap(),
+      isLowPowerMode: false,
     );
+  }
+
+  String _heuristicCategory(String title, String content, String? rawCategory) {
+    if (rawCategory != null && rawCategory.isNotEmpty) {
+      return rawCategory;
+    }
+    final text = '$title $content'.toLowerCase();
+    if (text.contains('otp') || text.contains('verification') || text.contains('code')) {
+      return 'sys';
+    }
+    if (text.contains('debited') || text.contains('spent') || text.contains('bank') || text.contains('rs.') || text.contains('inr')) {
+      return 'finance';
+    }
+    if (text.contains('sale') || text.contains('discount') || text.contains('promo') || text.contains('off')) {
+      return 'promo';
+    }
+    if (text.contains('liked') || text.contains('followed') || text.contains('commented')) {
+      return 'social';
+    }
+    return 'msg';
   }
 
   bool _isStatusOrProgressNotification(AppNotification notification) {
