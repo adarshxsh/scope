@@ -25,6 +25,9 @@ class NotificationCollectorService : NotificationListenerService() {
     companion object {
         private const val TAG = "NotifCollector"
 
+        /** Maximum allowed capacity for the in-memory notification queue to prevent memory leaks. */
+        const val MAX_QUEUE_SIZE = 500
+
         /** Thread-safe queue of captured notifications. */
         private val queue = ConcurrentLinkedQueue<NotificationData>()
 
@@ -49,6 +52,18 @@ class NotificationCollectorService : NotificationListenerService() {
          * Returns the current queue size (for diagnostics).
          */
         fun queueSize(): Int = queue.size
+
+        /**
+         * Returns the maximum queue size (for diagnostics).
+         */
+        fun getMaxQueueSize(): Int = MAX_QUEUE_SIZE
+
+        /**
+         * Clears the in-memory queue (for diagnostics and testing).
+         */
+        fun clearQueue() {
+            queue.clear()
+        }
     }
 
     private fun addSbnToQueue(sbn: StatusBarNotification) {
@@ -65,6 +80,16 @@ class NotificationCollectorService : NotificationListenerService() {
             }
             if (isDuplicate) {
                 return
+            }
+
+            // Enforce bounded queue capacity guardrail via FIFO eviction
+            while (queue.size >= MAX_QUEUE_SIZE) {
+                val evicted = queue.poll()
+                if (evicted != null) {
+                    Log.w(TAG, "Notification queue capacity ($MAX_QUEUE_SIZE) reached. Evicted oldest item: ${evicted.id}")
+                } else {
+                    break
+                }
             }
 
             val data = NotificationData(
