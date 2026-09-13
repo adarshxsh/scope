@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
@@ -5,6 +7,7 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/utils/pii_redactor.dart';
+import 'package:scope/core/federated/federated_learning_client.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -40,6 +43,7 @@ class GhostAIResult {
 class GhostAI {
   static GhostAI? _instance;
   Interpreter? _interpreter;
+  String? _modelChecksum;
   final RuleEngine _ruleEngine = RuleEngine();
 
   // Slide-cache for duplicate detection
@@ -56,6 +60,62 @@ class GhostAI {
 
   /// Returns whether the model is loaded.
   bool get isModelLoaded => _interpreter != null;
+
+  /// Returns active model SHA-256 checksum if available.
+  String? get currentModelChecksum => _modelChecksum;
+
+  /// Exposes client-side federated learning engine.
+  FederatedLearningClient get federatedClient => FederatedLearningClient.instance;
+
+  /// Dynamically reloads active TFLite interpreter from raw byte buffer after verifying SHA-256 checksum.
+  Future<bool> hotReloadModelFromBytes(
+    Uint8List modelBytes, {
+    String? expectedSha256,
+  }) async {
+    final actualDigest = sha256.convert(modelBytes).toString().toLowerCase();
+
+    if (expectedSha256 != null &&
+        expectedSha256.trim().isNotEmpty &&
+        actualDigest != expectedSha256.trim().toLowerCase()) {
+      debugPrint(
+        'GhostAI: Dynamic hot-reload rejected due to SHA-256 checksum mismatch. '
+        'Expected: $expectedSha256, Actual: $actualDigest',
+      );
+      return false;
+    }
+
+    try {
+      final newInterpreter = Interpreter.fromBuffer(modelBytes);
+      _interpreter?.close();
+      _interpreter = newInterpreter;
+      _modelChecksum = actualDigest;
+      debugPrint(
+        'GhostAI: Global TFLite model successfully hot-reloaded into active interpreter (SHA-256: $actualDigest).',
+      );
+      return true;
+    } catch (e) {
+      debugPrint('GhostAI: Failed to hot-reload TFLite model from bytes: $e');
+      return false;
+    }
+  }
+
+  /// Dynamically reloads active TFLite interpreter from local file path after verifying SHA-256 checksum.
+  Future<bool> hotReloadModelFromFile(
+    File modelFile, {
+    String? expectedSha256,
+  }) async {
+    if (!await modelFile.exists()) {
+      debugPrint('GhostAI: Model file does not exist at ${modelFile.path}');
+      return false;
+    }
+    try {
+      final bytes = await modelFile.readAsBytes();
+      return hotReloadModelFromBytes(bytes, expectedSha256: expectedSha256);
+    } catch (e) {
+      debugPrint('GhostAI: Failed to read model file for hot-reload: $e');
+      return false;
+    }
+  }
 
   /// Initializes the TFLite interpreter and rules database once on startup.
   Future<void> initialize() async {
