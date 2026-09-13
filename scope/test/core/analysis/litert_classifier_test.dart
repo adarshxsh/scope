@@ -40,5 +40,28 @@ void main() {
       expect(result.category, equals('finance'));
       expect(result.engineName, contains('fallback'));
     });
+
+    test('queries inputVectorDimension from metadata headers dynamically', () {
+      final classifier128 = LiteRtClassifier(
+        metadata: {
+          'feature_vector_size': 128,
+          'flutter': {'input_shape': [1, 128]}
+        },
+      );
+      expect(classifier128.inputVectorDimension, equals(128));
+
+      final classifier256 = LiteRtClassifier(
+        metadata: {
+          'feature_vector_size': 256,
+          'flutter': {'input_shape': [1, 256]}
+        },
+      );
+      expect(classifier256.inputVectorDimension, equals(256));
+    });
+
+    test('defaults to 128 for backwards compatibility when no metadata present', () {
+      final classifier = LiteRtClassifier();
+      expect(classifier.inputVectorDimension, equals(128));
+    });
   });
 }
