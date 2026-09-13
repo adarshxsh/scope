@@ -18,6 +18,7 @@ tf.config.set_visible_devices([], 'GPU')
 
 from training.config import (
     CATEGORICAL_LABELS,
+    CONTINUOUS_FEATURE_INDICES,
     FEATURE_VECTOR_SIZE,
     RANDOM_SEED,
     SplitConfig,
@@ -80,9 +81,14 @@ def main() -> None:
     dataset = build_dataset(records)
     splits = split_dataset(dataset.features, dataset.target, SplitConfig(), args.seed)
 
+    # Preprocessing: transform raw continuous metric features using np.log1p before computing mean & stddev
+    log1p_x_train = np.copy(splits.x_train)
+    for idx in CONTINUOUS_FEATURE_INDICES:
+        log1p_x_train[:, idx] = np.log1p(np.maximum(0.0, log1p_x_train[:, idx]))
+
     # Calculate mean and variance using numpy to perform direct graph-level normalization
-    mean_val = np.mean(splits.x_train, axis=0)
-    variance_val = np.var(splits.x_train, axis=0)
+    mean_val = np.mean(log1p_x_train, axis=0)
+    variance_val = np.var(log1p_x_train, axis=0)
     # Avoid division-by-zero overflow in constant folding
     safe_variance = np.where(variance_val < 1e-5, 1.0, variance_val)
     stddev_val = np.sqrt(safe_variance)
