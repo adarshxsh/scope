@@ -23,6 +23,7 @@ class ScoreFusion {
           engineName: 'score_fusion (rule bypass: ${ruleResult.ruleId})',
           matchedSignals: [ruleResult.matchedSignal],
           latencyMs: 0,
+          isFallback: modelResult.isFallback,
         );
       }
     }
@@ -33,7 +34,22 @@ class ScoreFusion {
       return modelResult;
     }
 
-    // 3. Hybrid fusion: Both rule and model match
+    // 3. Fallback check: If modelResult is a fallback, bypass score blending
+    if (modelResult.isFallback) {
+      return AnalysisResult(
+        category: ruleResult.category,
+        score: 0.85, // Authentic rule confidence without blending fallback model score
+        engineName: 'score_fusion (rule only, model fallback)',
+        matchedSignals: [
+          'Rule matched: ${ruleResult.ruleId} (${ruleResult.matchedSignal})',
+          'Model score bypassed (fallback execution)'
+        ],
+        latencyMs: 0,
+        isFallback: true,
+      );
+    }
+
+    // 4. Hybrid fusion: Both rule and model match
     final category = ruleResult.category;
     double score = 0.85; // Base high confidence for custom rule matches
 
@@ -57,6 +73,7 @@ class ScoreFusion {
         'Model predicted: ${modelResult.category} (${(modelResult.score * 100).toStringAsFixed(1)}% confidence)'
       ],
       latencyMs: 0,
+      isFallback: false,
     );
   }
 }
