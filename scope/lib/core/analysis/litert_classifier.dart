@@ -5,33 +5,50 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/analysis_result.dart';
 import 'package:scope/core/analysis/notification_analyzer.dart';
 import 'package:scope/core/analysis/wordpiece_tokenizer.dart';
+import 'package:scope/core/analysis/model_lifecycle_manager.dart';
 
 /// Classifier using LiteRT (TensorFlow Lite) to classify text categories.
 class LiteRtClassifier implements NotificationAnalyzer {
   Interpreter? _interpreter;
   WordPieceTokenizer? _tokenizer;
   bool _isModelLoaded = false;
+  ModelSource _modelSource = ModelSource.fallbackHeuristics;
+  String _modelVersion = 'fallback-heuristics';
 
-  LiteRtClassifier() {
-    _initialize();
+  LiteRtClassifier({String? customDirectoryPath}) {
+    _initialize(customDirectoryPath: customDirectoryPath);
   }
 
-  Future<void> _initialize() async {
+  Future<void> _initialize({String? customDirectoryPath}) async {
     try {
       // 1. Load Vocab
       final vocabStr = await rootBundle.loadString('assets/vocab.txt');
       final lines = vocabStr.split('\n');
       _tokenizer = WordPieceTokenizer.fromLines(lines);
 
-      // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
-      _isModelLoaded = false;
+      // 2. Load dynamic category classification model if available
+      final loadResult = await ModelLifecycleManager.loadCategoryClassifierModel(
+        customDirectoryPath: customDirectoryPath,
+      );
+      if (loadResult.isLoaded) {
+        _interpreter = loadResult.interpreter;
+        _isModelLoaded = true;
+        _modelSource = loadResult.source;
+        _modelVersion = loadResult.version;
+      } else {
+        _isModelLoaded = false;
+        _modelSource = ModelSource.fallbackHeuristics;
+        _modelVersion = 'fallback-heuristics';
+      }
     } catch (e) {
       // Graceful degradation: Log and set flags so analyze runs in fallback mode
       // ignore: avoid_print
       print('LiteRtClassifier failed to initialize: $e');
       _isModelLoaded = false;
+      _modelSource = ModelSource.fallbackHeuristics;
+      _modelVersion = 'fallback-heuristics';
 
-      // Ensure tokenizer is loaded even if interpreter fails (so we can test tokenization in fallback)
+      // Ensure tokenizer is loaded even if interpreter fails
       if (_tokenizer == null) {
         try {
           final vocabStr = await rootBundle.loadString('assets/vocab.txt');
@@ -43,6 +60,8 @@ class LiteRtClassifier implements NotificationAnalyzer {
 
   /// Expose model loading status for diagnostics screen.
   bool get isModelLoaded => _isModelLoaded;
+  ModelSource get modelSource => _modelSource;
+  String get modelVersion => _modelVersion;
 
   @override
   Future<AnalysisResult> analyze(AppNotification notification) async {

@@ -7,6 +7,7 @@ import 'package:scope/core/analysis/score_fusion.dart';
 import 'package:scope/core/analysis/explanation_generator.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
+import 'package:scope/core/analysis/model_lifecycle_manager.dart';
 
 /// The central hub of Ghost AI coordinating all classification stages.
 class GhostAnalysisEngine {
@@ -18,6 +19,12 @@ class GhostAnalysisEngine {
     LiteRtClassifier? mlClassifier,
   })  : ruleEngine = ruleEngine ?? RuleEngine(),
         mlClassifier = mlClassifier ?? LiteRtClassifier();
+
+  /// Exposes current active model origin (dynamic_file, bundled_asset, fallback_heuristics).
+  ModelSource get activeModelSource => GhostAI.instance.modelSource;
+
+  /// Exposes active model version string.
+  String get activeModelVersion => GhostAI.instance.modelVersion;
 
   /// Compiles rules loaded from assets on engine startup.
   Future<void> initialize() async {
@@ -93,6 +100,10 @@ class GhostAnalysisEngine {
 
     stopwatch.stop();
 
+    final modelOriginStr = GhostAI.instance.modelSource == ModelSource.dynamicFile
+        ? 'dynamic_file'
+        : (GhostAI.instance.modelSource == ModelSource.bundledAsset ? 'bundled_asset' : 'fallback_heuristics');
+
     return notification.copyWith(
       priority: priority,
       priorityScore: ghostResult.reviewScore,
@@ -100,7 +111,7 @@ class GhostAnalysisEngine {
       explanation: explanation,
       latencyMs: stopwatch.elapsedMilliseconds,
       ruleVersion: ruleEngine.version,
-      modelVersion: GhostAI.instance.isModelLoaded ? '1.0.0-tflite' : 'fallback-heuristics',
+      modelVersion: '$modelOriginStr (${GhostAI.instance.modelVersion})',
       engineVersion: '2.0.0-hybrid',
       extractedFeatures: features.toMap(),
     );
