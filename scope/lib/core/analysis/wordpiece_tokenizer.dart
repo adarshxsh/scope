@@ -1,14 +1,22 @@
 /// WordPiece tokenizer implementation in pure Dart for BERT models.
 library;
 
+import 'package:scope/core/analysis/vocab_validator.dart';
+
 class WordPieceTokenizer {
   final Map<String, int> vocab;
   final int maxSeqLength;
 
-  WordPieceTokenizer(this.vocab, {this.maxSeqLength = 64});
+  WordPieceTokenizer(this.vocab, {this.maxSeqLength = 64}) {
+    VocabValidator.validateSpecialTokens(vocab);
+  }
 
   /// Loads vocabulary from a list of lines (e.g. from vocab.txt).
-  factory WordPieceTokenizer.fromLines(List<String> lines, {int maxSeqLength = 64}) {
+  factory WordPieceTokenizer.fromLines(
+    List<String> lines, {
+    int maxSeqLength = 64,
+  }) {
+    VocabValidator.validateLines(lines);
     final vocabMap = <String, int>{};
     for (int i = 0; i < lines.length; i++) {
       final line = lines[i].trim();
@@ -16,6 +24,7 @@ class WordPieceTokenizer {
         vocabMap[line] = i;
       }
     }
+    VocabValidator.validateSpecialTokens(vocabMap);
     return WordPieceTokenizer(vocabMap, maxSeqLength: maxSeqLength);
   }
 
@@ -25,10 +34,16 @@ class WordPieceTokenizer {
     final tokens = _basicTokenize(text);
     final List<int> ids = [];
 
-    final clsId = vocab['[CLS]'] ?? 101;
-    final sepId = vocab['[SEP]'] ?? 102;
-    final padId = vocab['[PAD]'] ?? 0;
-    final unkId = vocab['[UNK]'] ?? 100;
+    final clsId = vocab['[CLS]'];
+    final sepId = vocab['[SEP]'];
+    final padId = vocab['[PAD]'];
+    final unkId = vocab['[UNK]'];
+
+    if (clsId == null || sepId == null || padId == null || unkId == null) {
+      throw const VocabularyValidationException(
+        'Mandatory special token missing from vocabulary',
+      );
+    }
 
     ids.add(clsId);
 
