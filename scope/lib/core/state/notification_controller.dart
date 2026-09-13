@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
+import 'package:scope/core/models/app_info.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/storage/notification_storage.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
@@ -57,6 +58,7 @@ class NotificationController extends ChangeNotifier {
 
     // Populate initial notifications from storage, if any
     _loadInitialNotifications();
+    loadExclusionSettings();
   }
 
   final NotificationBridge _bridge;
@@ -71,6 +73,11 @@ class NotificationController extends ChangeNotifier {
   Timer? _cleanupTimer;
   bool _isCleaningUp = false;
 
+  // App Exclusion and Category Filtering State
+  List<String> _excludedPackages = [];
+  bool _excludeSystemCategories = false;
+  List<AppInfo> _installedApps = [];
+
   ReviewSessionStats sessionStats = ReviewSessionStats();
 
   FocusFilterType _filterType = FocusFilterType.none;
@@ -84,6 +91,43 @@ class NotificationController extends ChangeNotifier {
   int _focusSessionInterruptions = 0;
 
   List<AppNotification> get notifications => List.unmodifiable(_notifications);
+
+  List<String> get excludedPackages => List.unmodifiable(_excludedPackages);
+  bool get excludeSystemCategories => _excludeSystemCategories;
+  List<AppInfo> get installedApps => List.unmodifiable(_installedApps);
+
+  bool isPackageExcluded(String packageName) => _excludedPackages.contains(packageName);
+
+  Future<void> loadExclusionSettings() async {
+    try {
+      _excludedPackages = await _bridge.getExcludedPackages();
+      _excludeSystemCategories = await _bridge.getExcludeSystemCategories();
+      _installedApps = await _bridge.getInstalledApps();
+      notifyListeners();
+    } catch (_) {
+      // Handle missing bridge safely
+    }
+  }
+
+  Future<void> setPackageExcluded(String packageName, bool exclude) async {
+    final updated = List<String>.from(_excludedPackages);
+    if (exclude) {
+      if (!updated.contains(packageName)) {
+        updated.add(packageName);
+      }
+    } else {
+      updated.remove(packageName);
+    }
+    _excludedPackages = updated;
+    notifyListeners();
+    await _bridge.setExcludedPackages(updated);
+  }
+
+  Future<void> setExcludeSystemCategories(bool exclude) async {
+    _excludeSystemCategories = exclude;
+    notifyListeners();
+    await _bridge.setExcludeSystemCategories(exclude);
+  }
 
   /// Notifications excluding app promotional cards (used for stats/counts only).
   List<AppNotification> _countable(List<AppNotification> list) =>
