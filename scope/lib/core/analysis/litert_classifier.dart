@@ -5,6 +5,7 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/analysis_result.dart';
 import 'package:scope/core/analysis/notification_analyzer.dart';
 import 'package:scope/core/analysis/wordpiece_tokenizer.dart';
+import 'package:scope/core/analysis/vocab_validator.dart';
 
 /// Classifier using LiteRT (TensorFlow Lite) to classify text categories.
 class LiteRtClassifier implements NotificationAnalyzer {
@@ -18,12 +19,18 @@ class LiteRtClassifier implements NotificationAnalyzer {
 
   Future<void> _initialize() async {
     try {
-      // 1. Load Vocab
+      // 1. Load & validate Vocab asset with SHA-256 checksum and special token checks
       final vocabStr = await rootBundle.loadString('assets/vocab.txt');
+      VocabValidator.validate(vocabStr);
       final lines = vocabStr.split('\n');
       _tokenizer = WordPieceTokenizer.fromLines(lines);
 
       // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
+      _isModelLoaded = false;
+    } on VocabularyValidationException catch (e) {
+      // ignore: avoid_print
+      print('Vocabulary validation error in LiteRtClassifier: $e');
+      _tokenizer = null;
       _isModelLoaded = false;
     } catch (e) {
       // Graceful degradation: Log and set flags so analyze runs in fallback mode
@@ -31,12 +38,15 @@ class LiteRtClassifier implements NotificationAnalyzer {
       print('LiteRtClassifier failed to initialize: $e');
       _isModelLoaded = false;
 
-      // Ensure tokenizer is loaded even if interpreter fails (so we can test tokenization in fallback)
+      // Ensure tokenizer is loaded if asset loading didn't fail validation
       if (_tokenizer == null) {
         try {
           final vocabStr = await rootBundle.loadString('assets/vocab.txt');
+          VocabValidator.validate(vocabStr);
           _tokenizer = WordPieceTokenizer.fromLines(vocabStr.split('\n'));
-        } catch (_) {}
+        } catch (_) {
+          _tokenizer = null;
+        }
       }
     }
   }
@@ -49,12 +59,26 @@ class LiteRtClassifier implements NotificationAnalyzer {
     final stopwatch = Stopwatch()..start();
     final combinedText = '${notification.title} ${notification.content}';
 
-    // Ensure initialization finished
-    if (_tokenizer == null) {
+    // Ensure initialization finished if not loaded
+    if (_tokenizer == null && !_isModelLoaded) {
       await _initialize();
     }
 
-    final tokenIds = _tokenizer?.tokenize(combinedText) ?? List<int>.filled(64, 0);
+    List<int> tokenIds = List<int>.filled(64, 0);
+    if (_tokenizer != null) {
+      try {
+        tokenIds = _tokenizer!.tokenize(combinedText);
+      } catch (e) {
+        final category = _runFallbackHeuristic(combinedText);
+        return AnalysisResult(
+          category: category,
+          score: 0.50,
+          engineName: 'litert_model (fallback on error)',
+          matchedSignals: ['Tokenization error: $e'],
+          latencyMs: stopwatch.elapsedMilliseconds,
+        );
+      }
+    }
 
     if (!_isModelLoaded || _interpreter == null) {
       // Graceful fallback heuristic classifier
@@ -75,7 +99,7 @@ class LiteRtClassifier implements NotificationAnalyzer {
       // Run model inference
       // Assume input shape: [1, 64]
       final input = [tokenIds];
-      
+
       // Output logit tensor shape: [1, 5] (Promo, Social, System, Message, Finance)
       final output = List<double>.filled(5, 0.0).reshape([1, 5]);
 
@@ -118,19 +142,32 @@ class LiteRtClassifier implements NotificationAnalyzer {
 
   String _runFallbackHeuristic(String text) {
     final lower = text.toLowerCase();
-    if (lower.contains('otp') || lower.contains('verification') || lower.contains('code')) {
+    if (lower.contains('otp') ||
+        lower.contains('verification') ||
+        lower.contains('code')) {
       return 'sys';
     }
-    if (lower.contains('debited') || lower.contains('spent') || lower.contains('withdraw') || lower.contains('rs.') || lower.contains('inr')) {
+    if (lower.contains('debited') ||
+        lower.contains('spent') ||
+        lower.contains('withdraw') ||
+        lower.contains('rs.') ||
+        lower.contains('inr')) {
       return 'finance';
     }
-    if (lower.contains('appointment') || lower.contains('doctor') || lower.contains('medicine')) {
+    if (lower.contains('appointment') ||
+        lower.contains('doctor') ||
+        lower.contains('medicine')) {
       return 'health';
     }
-    if (lower.contains('sale') || lower.contains('discount') || lower.contains('promo') || lower.contains('off')) {
+    if (lower.contains('sale') ||
+        lower.contains('discount') ||
+        lower.contains('promo') ||
+        lower.contains('off')) {
       return 'promo';
     }
-    if (lower.contains('liked') || lower.contains('followed') || lower.contains('commented')) {
+    if (lower.contains('liked') ||
+        lower.contains('followed') ||
+        lower.contains('commented')) {
       return 'social';
     }
     if (lower.contains('deadline') || lower.contains('scholarship')) {
@@ -143,7 +180,9 @@ class LiteRtClassifier implements NotificationAnalyzer {
     double max = logits.reduce((curr, next) => curr > next ? curr : next);
     List<double> exps = logits.map((x) => math.exp(x - max)).toList();
     final sum = exps.reduce((curr, next) => curr + next);
-    if (sum == 0.0) return List<double>.filled(logits.length, 1.0 / logits.length);
+    if (sum == 0.0) {
+      return List<double>.filled(logits.length, 1.0 / logits.length);
+    }
     return exps.map((x) => x / sum).toList();
   }
 }
