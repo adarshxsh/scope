@@ -61,7 +61,12 @@ def main() -> None:
     y_true = dataset.target.flatten()
 
     print(f"Loading TFLite model: {args.model}")
-    interpreter = tf.lite.Interpreter(model_path=str(args.model))
+    model_bytes = args.model.read_bytes()
+    import hashlib
+    model_sha256 = hashlib.sha256(model_bytes).hexdigest()
+    print(f"Model SHA-256 Checksum: {model_sha256}")
+
+    interpreter = tf.lite.Interpreter(model_content=model_bytes)
     interpreter.allocate_tensors()
 
     input_details = interpreter.get_input_details()
