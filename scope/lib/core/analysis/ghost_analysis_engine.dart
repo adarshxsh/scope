@@ -12,10 +12,12 @@ import 'package:scope/core/analysis/ghost_ai.dart';
 class GhostAnalysisEngine {
   final RuleEngine ruleEngine;
   final LiteRtClassifier mlClassifier;
+  bool telemetryEnabled;
 
   GhostAnalysisEngine({
     RuleEngine? ruleEngine,
     LiteRtClassifier? mlClassifier,
+    this.telemetryEnabled = true,
   })  : ruleEngine = ruleEngine ?? RuleEngine(),
         mlClassifier = mlClassifier ?? LiteRtClassifier();
 
@@ -49,7 +51,7 @@ class GhostAnalysisEngine {
         priority: 'low',
         priorityScore: 0.0,
         classifiedCategory: 'system_status',
-        explanation: 'Status or progress notification ignored by AI.',
+        explanation: telemetryEnabled ? 'Status or progress notification ignored by AI.' : null,
         latencyMs: stopwatch.elapsedMilliseconds,
         engineVersion: '2.0.0-hybrid',
       );
@@ -85,11 +87,13 @@ class GhostAnalysisEngine {
     );
 
     // 6. Natural language explainability trace
-    final explanation = ExplanationGenerator.generate(
-      fusedResult: fusedResult,
-      features: features,
-      priority: priority,
-    );
+    final explanation = telemetryEnabled
+        ? ExplanationGenerator.generate(
+            fusedResult: fusedResult,
+            features: features,
+            priority: priority,
+          )
+        : null;
 
     stopwatch.stop();
 
