@@ -4,6 +4,7 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
+import 'package:scope/core/analysis/model_lifecycle_manager.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -25,6 +26,15 @@ class GhostAIResult {
   /// Rule match score (0.0 to 1.0) output by the rule engine.
   final double? ruleScore;
 
+  /// Active model origin source.
+  final ModelSource modelSource;
+
+  /// Active model version string.
+  final String modelVersion;
+
+  /// Whether the model was verified against contract specifications.
+  final bool isModelValidated;
+
   const GhostAIResult({
     required this.reviewScore,
     this.confidence,
@@ -32,6 +42,9 @@ class GhostAIResult {
     required this.featureVector,
     required this.predictedScore,
     this.ruleScore,
+    this.modelSource = ModelSource.fallbackHeuristics,
+    this.modelVersion = '1.0.0',
+    this.isModelValidated = false,
   });
 }
 
@@ -39,6 +52,7 @@ class GhostAIResult {
 class GhostAI {
   static GhostAI? _instance;
   Interpreter? _interpreter;
+  ModelLoadResult? _modelLoadResult;
   final RuleEngine _ruleEngine = RuleEngine();
 
   // Slide-cache for duplicate detection
@@ -56,24 +70,45 @@ class GhostAI {
   /// Returns whether the model is loaded.
   bool get isModelLoaded => _interpreter != null;
 
-  /// Initializes the TFLite interpreter and rules database once on startup.
-  Future<void> initialize() async {
-    if (_interpreter != null) return;
+  /// Exposes current active model source.
+  ModelSource get activeModelSource => _modelLoadResult?.source ?? ModelSource.fallbackHeuristics;
+
+  /// Exposes current active model version string.
+  String get activeModelVersion => _modelLoadResult?.version ?? 'fallback-heuristics';
+
+  /// Exposes model contract validation state.
+  bool get isModelValidated => _modelLoadResult?.isValidated ?? false;
+
+  /// Initializes the TFLite interpreter using ModelLifecycleManager and rules database once on startup.
+  Future<void> initialize({String? customDirectoryPath}) async {
     try {
-      // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      _modelLoadResult = await ModelLifecycleManager.instance.loadGhostAiModel(
+        customDirectoryPath: customDirectoryPath,
+      );
+      _interpreter = _modelLoadResult?.interpreter;
+      debugPrint('GhostAI: Model initialized via ModelLifecycleManager (source: ${_modelLoadResult?.source}, version: ${_modelLoadResult?.version}).');
     } catch (e) {
-      debugPrint('GhostAI: Failed to load TFLite model: $e');
+      debugPrint('GhostAI: Isolated exception during model lifecycle init: $e');
     }
 
     try {
-      // 2. Load and compile rules database
       final jsonStr = await rootBundle.loadString('assets/rules.json');
       _ruleEngine.compile(jsonStr);
       debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
     } catch (e) {
       debugPrint('GhostAI: Failed to initialize rules database: $e');
+    }
+  }
+
+  /// Reloads active model from dynamic storage or asset fallback.
+  Future<void> reloadModel({String? customDirectoryPath}) async {
+    try {
+      _modelLoadResult = await ModelLifecycleManager.instance.loadGhostAiModel(
+        customDirectoryPath: customDirectoryPath,
+      );
+      _interpreter = _modelLoadResult?.interpreter;
+    } catch (e) {
+      debugPrint('GhostAI: Reload model error: $e');
     }
   }
 
@@ -88,21 +123,26 @@ class GhostAI {
     // 1. Feature extraction using the existing FeatureExtractor
     final featureVector = FeatureExtractor.extractFromAppNotification(notification);
 
-    // 2. Model inference
+    // 2. Model inference with isolated exception handling
     double predictedScore = 0.0;
     int inferenceTimeUs = 0;
 
     if (_interpreter != null) {
-      final input = [featureVector];
-      final output = List<double>.filled(1, 0.0).reshape([1, 1]);
+      try {
+        final input = [featureVector];
+        final output = List<double>.filled(1, 0.0).reshape([1, 1]);
 
-      final inferStopwatch = Stopwatch()..start();
-      _interpreter!.run(input, output);
-      inferStopwatch.stop();
+        final inferStopwatch = Stopwatch()..start();
+        _interpreter!.run(input, output);
+        inferStopwatch.stop();
 
-      inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
-      // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
-      predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+        inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
+        // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
+        predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+      } catch (e) {
+        debugPrint('GhostAI: Inference runtime exception: $e. Falling back to heuristic engine.');
+        predictedScore = _heuristicLookAgainScore(featureVector);
+      }
     } else {
       // Heuristic fallback if model not loaded
       predictedScore = _heuristicLookAgainScore(featureVector);
@@ -172,6 +212,9 @@ class GhostAI {
       featureVector: featureVector,
       predictedScore: predictedScore,
       ruleScore: ruleScore,
+      modelSource: activeModelSource,
+      modelVersion: activeModelVersion,
+      isModelValidated: isModelValidated,
     );
 
     // Structured logging in debug mode
