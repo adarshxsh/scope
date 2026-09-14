@@ -132,11 +132,12 @@ class GhostAI {
     // 4. Score Fusion (rules + predictions)
     double finalScore = predictedScore;
     if (ruleScore != null && ruleMatch != null) {
-      // Immediate critical bypass triggers
-      final isCriticalBypass = ruleMatch.priority == 'critical' ||
+      // Immediate critical bypass triggers (System Tier only)
+      final isCriticalBypass = (ruleMatch.tier == RuleTier.system) &&
+          (ruleMatch.priority == 'critical' ||
           ruleMatch.ruleId == 'otp_security' ||
           ruleMatch.ruleId == 'finance_debit' ||
-          ruleMatch.ruleId == 'scholarship_portal';
+          ruleMatch.ruleId == 'scholarship_portal');
 
       if (isCriticalBypass) {
         finalScore = 1.0;
