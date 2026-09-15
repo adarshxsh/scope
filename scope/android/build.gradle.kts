@@ -19,6 +19,16 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
+subprojects {
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+        compilerOptions {
+            val targetCompat = project.extensions.findByType(com.android.build.gradle.BaseExtension::class.java)
+                ?.compileOptions?.targetCompatibility?.toString() ?: "17"
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.fromTarget(targetCompat))
+        }
+    }
+}
+
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
