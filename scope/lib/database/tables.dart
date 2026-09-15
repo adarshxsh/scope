@@ -65,3 +65,18 @@ class DailyBriefTable extends Table {
   IntColumn get remindersCreated => integer().withDefault(const Constant(0))();
   IntColumn get archivedCount => integer().withDefault(const Constant(0))();
 }
+
+@DataClassName('InferenceTelemetryEntry')
+class InferenceTelemetryTable extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get periodStartMs => integer()();
+  IntColumn get periodEndMs => integer()();
+  IntColumn get totalInferences => integer()();
+  IntColumn get errorCount => integer().withDefault(const Constant(0))();
+  IntColumn get fallbackCount => integer().withDefault(const Constant(0))();
+  IntColumn get p50LatencyUs => integer()();
+  IntColumn get p90LatencyUs => integer()();
+  IntColumn get p95LatencyUs => integer()();
+  TextColumn get modelVersion => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
