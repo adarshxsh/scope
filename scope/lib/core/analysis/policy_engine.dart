@@ -2,6 +2,17 @@ import 'package:scope/core/analysis/analysis_result.dart';
 import 'package:scope/core/analysis/extracted_features.dart';
 import 'package:scope/core/models/notification_model.dart';
 
+/// Encapsulates priority resolution result and active policy override triggers.
+class PolicyResult {
+  final String priority;
+  final List<String> overrideTriggers;
+
+  const PolicyResult({
+    required this.priority,
+    required this.overrideTriggers,
+  });
+}
+
 /// Resolves business priority level from semantic classification and features.
 ///
 /// The policy engine acts as the final authority after ML inference and score
@@ -238,53 +249,90 @@ class PolicyEngine {
     required AppNotification notification,
     double? lookAgainScore,
   }) {
+    return resolvePriorityDetails(
+      fusedResult: fusedResult,
+      features: features,
+      notification: notification,
+      lookAgainScore: lookAgainScore,
+    ).priority;
+  }
+
+  static PolicyResult resolvePriorityDetails({
+    required AnalysisResult fusedResult,
+    required ExtractedFeatures features,
+    required AppNotification notification,
+    double? lookAgainScore,
+  }) {
+    final triggers = <String>[];
+
     // Step 1: Start from the score-based priority (tightened thresholds)
     String priority = _fromLookAgainScore(lookAgainScore);
 
     // Step 2: Apply category-based adjustments.
-    // Demotion: Categories with strong evidence of low importance (promo, social)
-    // force the priority down.
-    // Promotion: Categories with strong deterministic evidence (OTP, amount,
-    // deadline) can promote the priority upward — the Critical/High gates in
-    // steps 4-5 will still validate the final result.
     final categoryPriority = _fromCategory(
       fusedResult: fusedResult,
       features: features,
       notification: notification,
     );
     if (categoryPriority == 'low') {
+      if (priority != 'low') {
+        triggers.add('category_demotion:${fusedResult.category}');
+      }
       priority = 'low';
     } else if (categoryPriority == 'critical' && _isHigherThan('critical', priority)) {
-      // Feature evidence (OTP, amount, deadline) warrants critical — promote.
-      // The Critical gate in step 4 will validate this.
       priority = 'critical';
     } else if (categoryPriority == 'high' && _isHigherThan('high', priority)) {
-      // Category evidence (finance, health, msg, email) warrants high — promote.
-      // The High gate in step 5 will validate this.
       priority = 'high';
     }
 
     // Step 3: Apply deterministic ceiling overrides (package + content)
+    final p1 = priority;
     priority = _applyPackageCeiling(notification, priority, _mediaPackages);
+    if (priority != p1) triggers.add('package_ceiling:media');
+
+    final p2 = priority;
     priority = _applySocialCeiling(notification, priority);
+    if (priority != p2) triggers.add('package_ceiling:social');
+
+    final p3 = priority;
     priority = _applyPackageCeiling(notification, priority, _entertainmentPackages);
+    if (priority != p3) triggers.add('package_ceiling:entertainment');
+
+    final p4 = priority;
     priority = _applyPackageCeiling(notification, priority, _promoPackages);
+    if (priority != p4) triggers.add('package_ceiling:promo');
+
+    final p5 = priority;
     priority = _applyContentCeiling(notification, priority, _mediaPlaybackKeywords, 'low');
+    if (priority != p5) triggers.add('content_demotion:media_playback');
+
+    final p6 = priority;
     priority = _applyContentCeiling(notification, priority, _entertainmentRecoKeywords, 'low');
+    if (priority != p6) triggers.add('content_demotion:entertainment_reco');
+
+    final p7 = priority;
     priority = _applyContentCeiling(notification, priority, _promoContentKeywords, 'low');
+    if (priority != p7) triggers.add('content_demotion:promo');
 
     // Step 4: Critical whitelist gate
+    final p8 = priority;
     priority = _applyCriticalGate(priority, features, notification);
+    if (priority != p8) triggers.add('critical_gate_downgrade');
 
     // Step 5: High whitelist gate
+    final p9 = priority;
     priority = _applyHighGate(
       priority,
       features: features,
       notification: notification,
       fusedResult: fusedResult,
     );
+    if (priority != p9) triggers.add('high_gate_downgrade');
 
-    return priority;
+    return PolicyResult(
+      priority: priority,
+      overrideTriggers: triggers,
+    );
   }
 
   // ---------------------------------------------------------------------------
