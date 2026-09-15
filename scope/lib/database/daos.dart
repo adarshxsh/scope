@@ -99,6 +99,10 @@ class FocusSessionDao extends DatabaseAccessor<AttentionDatabase> with _$FocusSe
     return select(focusSessionsTable).get();
   }
 
+  Future<int> deleteOlderThan(DateTime cutoff) {
+    return (delete(focusSessionsTable)..where((t) => t.sessionStart.isSmallerThanValue(cutoff))).go();
+  }
+
   Future<void> clearAll() async {
     await delete(focusSessionsTable).go();
   }
@@ -124,33 +128,72 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
     int reminders = 0,
     int archived = 0,
   }) async {
-    final existing = await getBriefForDate(date);
-    if (existing != null) {
-      await update(dailyBriefTable).replace(existing.copyWith(
-        notificationsReviewed: existing.notificationsReviewed + reviewed,
-        actionsCompleted: existing.actionsCompleted + completed,
-        calendarEventsCreated: existing.calendarEventsCreated + calendar,
-        remindersCreated: existing.remindersCreated + reminders,
-        archivedCount: existing.archivedCount + archived,
-      ));
-    } else {
-      await into(dailyBriefTable).insert(DailyBriefEntry(
-        id: 0,
-        date: date,
-        notificationsReviewed: reviewed,
-        actionsCompleted: completed,
-        calendarEventsCreated: calendar,
-        remindersCreated: reminders,
-        archivedCount: archived,
-      ));
-    }
+    await customStatement(
+      '''
+      INSERT INTO daily_brief_table (date, notifications_reviewed, actions_completed, calendar_events_created, reminders_created, archived_count)
+      VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(date) DO UPDATE SET
+        notifications_reviewed = notifications_reviewed + excluded.notifications_reviewed,
+        actions_completed = actions_completed + excluded.actions_completed,
+        calendar_events_created = calendar_events_created + excluded.calendar_events_created,
+        reminders_created = reminders_created + excluded.reminders_created,
+        archived_count = archived_count + excluded.archived_count
+      ''',
+      [date, reviewed, completed, calendar, reminders, archived],
+    );
   }
 
   Future<List<DailyBriefEntry>> getAll() {
     return select(dailyBriefTable).get();
   }
 
+  Future<int> deleteOlderThan(DateTime cutoff) {
+    final dateStr = '${cutoff.year.toString().padLeft(4, '0')}-${cutoff.month.toString().padLeft(2, '0')}-${cutoff.day.toString().padLeft(2, '0')}';
+    return (delete(dailyBriefTable)..where((t) => t.date.isSmallerThanValue(dateStr))).go();
+  }
+
   Future<void> clearAll() async {
     await delete(dailyBriefTable).go();
+  }
+}
+
+@DriftAccessor(tables: [UserSettingsTable])
+class UserSettingsDao extends DatabaseAccessor<AttentionDatabase> with _$UserSettingsDaoMixin {
+  UserSettingsDao(super.db);
+
+  Future<void> setSetting(String key, String value) async {
+    await into(userSettingsTable).insert(
+      UserSettingsEntry(key: key, value: value),
+      mode: InsertMode.insertOrReplace,
+    );
+  }
+
+  Future<String?> getSetting(String key) async {
+    final entry = await (select(userSettingsTable)..where((t) => t.key.equals(key))).getSingleOrNull();
+    return entry?.value;
+  }
+
+  Future<int> getRetentionDays({int defaultValue = 7}) async {
+    final val = await getSetting('retention_days');
+    if (val != null) {
+      return int.tryParse(val) ?? defaultValue;
+    }
+    return defaultValue;
+  }
+
+  Future<void> setRetentionDays(int days) async {
+    await setSetting('retention_days', days.toString());
+  }
+
+  Future<bool> getTelemetryEnabled({bool defaultValue = true}) async {
+    final val = await getSetting('telemetry_enabled');
+    if (val != null) {
+      return val.toLowerCase() == 'true';
+    }
+    return defaultValue;
+  }
+
+  Future<void> setTelemetryEnabled(bool enabled) async {
+    await setSetting('telemetry_enabled', enabled.toString());
   }
 }

@@ -16,12 +16,14 @@ part 'attention_database.g.dart';
     ReviewQueueTable,
     FocusSessionsTable,
     DailyBriefTable,
+    UserSettingsTable,
   ],
   daos: [
     NotificationDao,
     ReviewQueueDao,
     FocusSessionDao,
     DailyBriefDao,
+    UserSettingsDao,
   ],
 )
 class AttentionDatabase extends _$AttentionDatabase {
@@ -34,12 +36,13 @@ class AttentionDatabase extends _$AttentionDatabase {
   @override
   int get schemaVersion => 1;
 
-  /// Runs a single-step atomic transaction to clean up expired notifications
-  /// and any orphaned review queue entries, avoiding main-thread loops.
+  /// Runs a single-step atomic transaction to clean up expired notifications,
+  /// focus sessions, daily briefs, and any orphaned review queue entries.
   Future<void> runSetBasedCleanup(int cutoffTimestamp) async {
+    final cutoffDateTime = DateTime.fromMillisecondsSinceEpoch(cutoffTimestamp);
     await transaction(() async {
       // 1. Delete expired notifications based on cutoff timestamp
-      await (delete(notificationsTable)..where((t) => t.timestamp.isSmallerThanValue(cutoffTimestamp))).go();
+      await notificationDao.deleteOlderThan(cutoffTimestamp);
 
       // 2. Delete orphaned review queue entries in a set-based query
       final orphanedQuery = delete(reviewQueueTable)..where((t) {
@@ -48,6 +51,12 @@ class AttentionDatabase extends _$AttentionDatabase {
         return t.notificationId.isNotInQuery(hasNotification);
       });
       await orphanedQuery.go();
+
+      // 3. Delete expired focus sessions based on cutoff DateTime
+      await focusSessionDao.deleteOlderThan(cutoffDateTime);
+
+      // 4. Delete expired daily briefs based on cutoff DateTime
+      await dailyBriefDao.deleteOlderThan(cutoffDateTime);
     });
   }
 }
