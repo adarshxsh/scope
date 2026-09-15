@@ -4,6 +4,7 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
+import 'package:scope/core/telemetry/inference_telemetry_buffer.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -91,22 +92,46 @@ class GhostAI {
     // 2. Model inference
     double predictedScore = 0.0;
     int inferenceTimeUs = 0;
+    bool isFallback = false;
+    bool isError = false;
 
     if (_interpreter != null) {
       final input = [featureVector];
       final output = List<double>.filled(1, 0.0).reshape([1, 1]);
 
       final inferStopwatch = Stopwatch()..start();
-      _interpreter!.run(input, output);
-      inferStopwatch.stop();
-
-      inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
-      // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
-      predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+      try {
+        _interpreter!.run(input, output);
+        inferStopwatch.stop();
+        inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
+        // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
+        predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+      } catch (e) {
+        inferStopwatch.stop();
+        inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
+        isFallback = true;
+        isError = true;
+        predictedScore = _heuristicLookAgainScore(featureVector);
+      }
     } else {
       // Heuristic fallback if model not loaded
+      final inferStopwatch = Stopwatch()..start();
       predictedScore = _heuristicLookAgainScore(featureVector);
+      inferStopwatch.stop();
+      inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
+      isFallback = true;
     }
+
+    final modelVersionStr = _interpreter != null && !isError ? '1.0.0-tflite' : 'fallback-heuristics';
+    final elapsedUs = inferenceTimeUs > 0 ? inferenceTimeUs : stopwatch.elapsedMicroseconds;
+
+    // Record non-blocking telemetry event in the in-memory ring buffer
+    InferenceTelemetryBuffer.instance.record(
+      inferenceTimeUs: elapsedUs,
+      isFallback: isFallback,
+      isError: isError,
+      modelVersion: modelVersionStr,
+    );
 
     // 3. Rule matching
     final ruleMatch = _ruleEngine.match(notification);
