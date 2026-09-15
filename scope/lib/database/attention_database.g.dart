@@ -281,6 +281,40 @@ class $NotificationsTableTable extends NotificationsTable
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _vectorClockMeta = const VerificationMeta(
+    'vectorClock',
+  );
+  @override
+  late final GeneratedColumn<String> vectorClock = GeneratedColumn<String>(
+    'vector_clock',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _originDeviceIdMeta = const VerificationMeta(
+    'originDeviceId',
+  );
+  @override
+  late final GeneratedColumn<String> originDeviceId = GeneratedColumn<String>(
+    'origin_device_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _syncTimestampMeta = const VerificationMeta(
+    'syncTimestamp',
+  );
+  @override
+  late final GeneratedColumn<DateTime> syncTimestamp =
+      GeneratedColumn<DateTime>(
+        'sync_timestamp',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -307,6 +341,9 @@ class $NotificationsTableTable extends NotificationsTable
     reviewed,
     dismissed,
     createdAt,
+    vectorClock,
+    originDeviceId,
+    syncTimestamp,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -489,6 +526,33 @@ class $NotificationsTableTable extends NotificationsTable
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
       );
     }
+    if (data.containsKey('vector_clock')) {
+      context.handle(
+        _vectorClockMeta,
+        vectorClock.isAcceptableOrUnknown(
+          data['vector_clock']!,
+          _vectorClockMeta,
+        ),
+      );
+    }
+    if (data.containsKey('origin_device_id')) {
+      context.handle(
+        _originDeviceIdMeta,
+        originDeviceId.isAcceptableOrUnknown(
+          data['origin_device_id']!,
+          _originDeviceIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('sync_timestamp')) {
+      context.handle(
+        _syncTimestampMeta,
+        syncTimestamp.isAcceptableOrUnknown(
+          data['sync_timestamp']!,
+          _syncTimestampMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -599,6 +663,18 @@ class $NotificationsTableTable extends NotificationsTable
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      vectorClock: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}vector_clock'],
+      ),
+      originDeviceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}origin_device_id'],
+      ),
+      syncTimestamp: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}sync_timestamp'],
+      ),
     );
   }
 
@@ -643,6 +719,9 @@ class NotificationEntry extends DataClass
   final bool reviewed;
   final bool dismissed;
   final DateTime createdAt;
+  final String? vectorClock;
+  final String? originDeviceId;
+  final DateTime? syncTimestamp;
   const NotificationEntry({
     required this.id,
     required this.packageName,
@@ -668,6 +747,9 @@ class NotificationEntry extends DataClass
     required this.reviewed,
     required this.dismissed,
     required this.createdAt,
+    this.vectorClock,
+    this.originDeviceId,
+    this.syncTimestamp,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -732,6 +814,15 @@ class NotificationEntry extends DataClass
     map['reviewed'] = Variable<bool>(reviewed);
     map['dismissed'] = Variable<bool>(dismissed);
     map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || vectorClock != null) {
+      map['vector_clock'] = Variable<String>(vectorClock);
+    }
+    if (!nullToAbsent || originDeviceId != null) {
+      map['origin_device_id'] = Variable<String>(originDeviceId);
+    }
+    if (!nullToAbsent || syncTimestamp != null) {
+      map['sync_timestamp'] = Variable<DateTime>(syncTimestamp);
+    }
     return map;
   }
 
@@ -789,6 +880,15 @@ class NotificationEntry extends DataClass
       reviewed: Value(reviewed),
       dismissed: Value(dismissed),
       createdAt: Value(createdAt),
+      vectorClock: vectorClock == null && nullToAbsent
+          ? const Value.absent()
+          : Value(vectorClock),
+      originDeviceId: originDeviceId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(originDeviceId),
+      syncTimestamp: syncTimestamp == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncTimestamp),
     );
   }
 
@@ -828,6 +928,9 @@ class NotificationEntry extends DataClass
       reviewed: serializer.fromJson<bool>(json['reviewed']),
       dismissed: serializer.fromJson<bool>(json['dismissed']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      vectorClock: serializer.fromJson<String?>(json['vectorClock']),
+      originDeviceId: serializer.fromJson<String?>(json['originDeviceId']),
+      syncTimestamp: serializer.fromJson<DateTime?>(json['syncTimestamp']),
     );
   }
   @override
@@ -862,6 +965,9 @@ class NotificationEntry extends DataClass
       'reviewed': serializer.toJson<bool>(reviewed),
       'dismissed': serializer.toJson<bool>(dismissed),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'vectorClock': serializer.toJson<String?>(vectorClock),
+      'originDeviceId': serializer.toJson<String?>(originDeviceId),
+      'syncTimestamp': serializer.toJson<DateTime?>(syncTimestamp),
     };
   }
 
@@ -890,6 +996,9 @@ class NotificationEntry extends DataClass
     bool? reviewed,
     bool? dismissed,
     DateTime? createdAt,
+    Value<String?> vectorClock = const Value.absent(),
+    Value<String?> originDeviceId = const Value.absent(),
+    Value<DateTime?> syncTimestamp = const Value.absent(),
   }) => NotificationEntry(
     id: id ?? this.id,
     packageName: packageName ?? this.packageName,
@@ -923,6 +1032,13 @@ class NotificationEntry extends DataClass
     reviewed: reviewed ?? this.reviewed,
     dismissed: dismissed ?? this.dismissed,
     createdAt: createdAt ?? this.createdAt,
+    vectorClock: vectorClock.present ? vectorClock.value : this.vectorClock,
+    originDeviceId: originDeviceId.present
+        ? originDeviceId.value
+        : this.originDeviceId,
+    syncTimestamp: syncTimestamp.present
+        ? syncTimestamp.value
+        : this.syncTimestamp,
   );
   NotificationEntry copyWithCompanion(NotificationsTableCompanion data) {
     return NotificationEntry(
@@ -974,6 +1090,15 @@ class NotificationEntry extends DataClass
       reviewed: data.reviewed.present ? data.reviewed.value : this.reviewed,
       dismissed: data.dismissed.present ? data.dismissed.value : this.dismissed,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      vectorClock: data.vectorClock.present
+          ? data.vectorClock.value
+          : this.vectorClock,
+      originDeviceId: data.originDeviceId.present
+          ? data.originDeviceId.value
+          : this.originDeviceId,
+      syncTimestamp: data.syncTimestamp.present
+          ? data.syncTimestamp.value
+          : this.syncTimestamp,
     );
   }
 
@@ -1003,7 +1128,10 @@ class NotificationEntry extends DataClass
           ..write('finalScore: $finalScore, ')
           ..write('reviewed: $reviewed, ')
           ..write('dismissed: $dismissed, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('vectorClock: $vectorClock, ')
+          ..write('originDeviceId: $originDeviceId, ')
+          ..write('syncTimestamp: $syncTimestamp')
           ..write(')'))
         .toString();
   }
@@ -1034,6 +1162,9 @@ class NotificationEntry extends DataClass
     reviewed,
     dismissed,
     createdAt,
+    vectorClock,
+    originDeviceId,
+    syncTimestamp,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -1062,7 +1193,10 @@ class NotificationEntry extends DataClass
           other.finalScore == this.finalScore &&
           other.reviewed == this.reviewed &&
           other.dismissed == this.dismissed &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.vectorClock == this.vectorClock &&
+          other.originDeviceId == this.originDeviceId &&
+          other.syncTimestamp == this.syncTimestamp);
 }
 
 class NotificationsTableCompanion extends UpdateCompanion<NotificationEntry> {
@@ -1090,6 +1224,9 @@ class NotificationsTableCompanion extends UpdateCompanion<NotificationEntry> {
   final Value<bool> reviewed;
   final Value<bool> dismissed;
   final Value<DateTime> createdAt;
+  final Value<String?> vectorClock;
+  final Value<String?> originDeviceId;
+  final Value<DateTime?> syncTimestamp;
   final Value<int> rowid;
   const NotificationsTableCompanion({
     this.id = const Value.absent(),
@@ -1116,6 +1253,9 @@ class NotificationsTableCompanion extends UpdateCompanion<NotificationEntry> {
     this.reviewed = const Value.absent(),
     this.dismissed = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.vectorClock = const Value.absent(),
+    this.originDeviceId = const Value.absent(),
+    this.syncTimestamp = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   NotificationsTableCompanion.insert({
@@ -1143,6 +1283,9 @@ class NotificationsTableCompanion extends UpdateCompanion<NotificationEntry> {
     this.reviewed = const Value.absent(),
     this.dismissed = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.vectorClock = const Value.absent(),
+    this.originDeviceId = const Value.absent(),
+    this.syncTimestamp = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        packageName = Value(packageName),
@@ -1175,6 +1318,9 @@ class NotificationsTableCompanion extends UpdateCompanion<NotificationEntry> {
     Expression<bool>? reviewed,
     Expression<bool>? dismissed,
     Expression<DateTime>? createdAt,
+    Expression<String>? vectorClock,
+    Expression<String>? originDeviceId,
+    Expression<DateTime>? syncTimestamp,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1202,6 +1348,9 @@ class NotificationsTableCompanion extends UpdateCompanion<NotificationEntry> {
       if (reviewed != null) 'reviewed': reviewed,
       if (dismissed != null) 'dismissed': dismissed,
       if (createdAt != null) 'created_at': createdAt,
+      if (vectorClock != null) 'vector_clock': vectorClock,
+      if (originDeviceId != null) 'origin_device_id': originDeviceId,
+      if (syncTimestamp != null) 'sync_timestamp': syncTimestamp,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1231,6 +1380,9 @@ class NotificationsTableCompanion extends UpdateCompanion<NotificationEntry> {
     Value<bool>? reviewed,
     Value<bool>? dismissed,
     Value<DateTime>? createdAt,
+    Value<String?>? vectorClock,
+    Value<String?>? originDeviceId,
+    Value<DateTime?>? syncTimestamp,
     Value<int>? rowid,
   }) {
     return NotificationsTableCompanion(
@@ -1258,6 +1410,9 @@ class NotificationsTableCompanion extends UpdateCompanion<NotificationEntry> {
       reviewed: reviewed ?? this.reviewed,
       dismissed: dismissed ?? this.dismissed,
       createdAt: createdAt ?? this.createdAt,
+      vectorClock: vectorClock ?? this.vectorClock,
+      originDeviceId: originDeviceId ?? this.originDeviceId,
+      syncTimestamp: syncTimestamp ?? this.syncTimestamp,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1343,6 +1498,15 @@ class NotificationsTableCompanion extends UpdateCompanion<NotificationEntry> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (vectorClock.present) {
+      map['vector_clock'] = Variable<String>(vectorClock.value);
+    }
+    if (originDeviceId.present) {
+      map['origin_device_id'] = Variable<String>(originDeviceId.value);
+    }
+    if (syncTimestamp.present) {
+      map['sync_timestamp'] = Variable<DateTime>(syncTimestamp.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1376,6 +1540,9 @@ class NotificationsTableCompanion extends UpdateCompanion<NotificationEntry> {
           ..write('reviewed: $reviewed, ')
           ..write('dismissed: $dismissed, ')
           ..write('createdAt: $createdAt, ')
+          ..write('vectorClock: $vectorClock, ')
+          ..write('originDeviceId: $originDeviceId, ')
+          ..write('syncTimestamp: $syncTimestamp, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1457,6 +1624,40 @@ class $ReviewQueueTableTable extends ReviewQueueTable
         type: DriftSqlType.string,
         requiredDuringInsert: true,
       ).withConverter<ReviewState>($ReviewQueueTableTable.$converterstatus);
+  static const VerificationMeta _vectorClockMeta = const VerificationMeta(
+    'vectorClock',
+  );
+  @override
+  late final GeneratedColumn<String> vectorClock = GeneratedColumn<String>(
+    'vector_clock',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _originDeviceIdMeta = const VerificationMeta(
+    'originDeviceId',
+  );
+  @override
+  late final GeneratedColumn<String> originDeviceId = GeneratedColumn<String>(
+    'origin_device_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _syncTimestampMeta = const VerificationMeta(
+    'syncTimestamp',
+  );
+  @override
+  late final GeneratedColumn<DateTime> syncTimestamp =
+      GeneratedColumn<DateTime>(
+        'sync_timestamp',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1465,6 +1666,9 @@ class $ReviewQueueTableTable extends ReviewQueueTable
     enqueueTime,
     expiryTime,
     status,
+    vectorClock,
+    originDeviceId,
+    syncTimestamp,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1517,6 +1721,33 @@ class $ReviewQueueTableTable extends ReviewQueueTable
         expiryTime.isAcceptableOrUnknown(data['expiry_time']!, _expiryTimeMeta),
       );
     }
+    if (data.containsKey('vector_clock')) {
+      context.handle(
+        _vectorClockMeta,
+        vectorClock.isAcceptableOrUnknown(
+          data['vector_clock']!,
+          _vectorClockMeta,
+        ),
+      );
+    }
+    if (data.containsKey('origin_device_id')) {
+      context.handle(
+        _originDeviceIdMeta,
+        originDeviceId.isAcceptableOrUnknown(
+          data['origin_device_id']!,
+          _originDeviceIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('sync_timestamp')) {
+      context.handle(
+        _syncTimestampMeta,
+        syncTimestamp.isAcceptableOrUnknown(
+          data['sync_timestamp']!,
+          _syncTimestampMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1552,6 +1783,18 @@ class $ReviewQueueTableTable extends ReviewQueueTable
           data['${effectivePrefix}status'],
         )!,
       ),
+      vectorClock: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}vector_clock'],
+      ),
+      originDeviceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}origin_device_id'],
+      ),
+      syncTimestamp: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}sync_timestamp'],
+      ),
     );
   }
 
@@ -1572,6 +1815,9 @@ class ReviewQueueEntry extends DataClass
   final DateTime enqueueTime;
   final DateTime? expiryTime;
   final ReviewState status;
+  final String? vectorClock;
+  final String? originDeviceId;
+  final DateTime? syncTimestamp;
   const ReviewQueueEntry({
     required this.id,
     required this.notificationId,
@@ -1579,6 +1825,9 @@ class ReviewQueueEntry extends DataClass
     required this.enqueueTime,
     this.expiryTime,
     required this.status,
+    this.vectorClock,
+    this.originDeviceId,
+    this.syncTimestamp,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1595,6 +1844,15 @@ class ReviewQueueEntry extends DataClass
         $ReviewQueueTableTable.$converterstatus.toSql(status),
       );
     }
+    if (!nullToAbsent || vectorClock != null) {
+      map['vector_clock'] = Variable<String>(vectorClock);
+    }
+    if (!nullToAbsent || originDeviceId != null) {
+      map['origin_device_id'] = Variable<String>(originDeviceId);
+    }
+    if (!nullToAbsent || syncTimestamp != null) {
+      map['sync_timestamp'] = Variable<DateTime>(syncTimestamp);
+    }
     return map;
   }
 
@@ -1608,6 +1866,15 @@ class ReviewQueueEntry extends DataClass
           ? const Value.absent()
           : Value(expiryTime),
       status: Value(status),
+      vectorClock: vectorClock == null && nullToAbsent
+          ? const Value.absent()
+          : Value(vectorClock),
+      originDeviceId: originDeviceId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(originDeviceId),
+      syncTimestamp: syncTimestamp == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncTimestamp),
     );
   }
 
@@ -1625,6 +1892,9 @@ class ReviewQueueEntry extends DataClass
       status: $ReviewQueueTableTable.$converterstatus.fromJson(
         serializer.fromJson<String>(json['status']),
       ),
+      vectorClock: serializer.fromJson<String?>(json['vectorClock']),
+      originDeviceId: serializer.fromJson<String?>(json['originDeviceId']),
+      syncTimestamp: serializer.fromJson<DateTime?>(json['syncTimestamp']),
     );
   }
   @override
@@ -1639,6 +1909,9 @@ class ReviewQueueEntry extends DataClass
       'status': serializer.toJson<String>(
         $ReviewQueueTableTable.$converterstatus.toJson(status),
       ),
+      'vectorClock': serializer.toJson<String?>(vectorClock),
+      'originDeviceId': serializer.toJson<String?>(originDeviceId),
+      'syncTimestamp': serializer.toJson<DateTime?>(syncTimestamp),
     };
   }
 
@@ -1649,6 +1922,9 @@ class ReviewQueueEntry extends DataClass
     DateTime? enqueueTime,
     Value<DateTime?> expiryTime = const Value.absent(),
     ReviewState? status,
+    Value<String?> vectorClock = const Value.absent(),
+    Value<String?> originDeviceId = const Value.absent(),
+    Value<DateTime?> syncTimestamp = const Value.absent(),
   }) => ReviewQueueEntry(
     id: id ?? this.id,
     notificationId: notificationId ?? this.notificationId,
@@ -1656,6 +1932,13 @@ class ReviewQueueEntry extends DataClass
     enqueueTime: enqueueTime ?? this.enqueueTime,
     expiryTime: expiryTime.present ? expiryTime.value : this.expiryTime,
     status: status ?? this.status,
+    vectorClock: vectorClock.present ? vectorClock.value : this.vectorClock,
+    originDeviceId: originDeviceId.present
+        ? originDeviceId.value
+        : this.originDeviceId,
+    syncTimestamp: syncTimestamp.present
+        ? syncTimestamp.value
+        : this.syncTimestamp,
   );
   ReviewQueueEntry copyWithCompanion(ReviewQueueTableCompanion data) {
     return ReviewQueueEntry(
@@ -1671,6 +1954,15 @@ class ReviewQueueEntry extends DataClass
           ? data.expiryTime.value
           : this.expiryTime,
       status: data.status.present ? data.status.value : this.status,
+      vectorClock: data.vectorClock.present
+          ? data.vectorClock.value
+          : this.vectorClock,
+      originDeviceId: data.originDeviceId.present
+          ? data.originDeviceId.value
+          : this.originDeviceId,
+      syncTimestamp: data.syncTimestamp.present
+          ? data.syncTimestamp.value
+          : this.syncTimestamp,
     );
   }
 
@@ -1682,7 +1974,10 @@ class ReviewQueueEntry extends DataClass
           ..write('priority: $priority, ')
           ..write('enqueueTime: $enqueueTime, ')
           ..write('expiryTime: $expiryTime, ')
-          ..write('status: $status')
+          ..write('status: $status, ')
+          ..write('vectorClock: $vectorClock, ')
+          ..write('originDeviceId: $originDeviceId, ')
+          ..write('syncTimestamp: $syncTimestamp')
           ..write(')'))
         .toString();
   }
@@ -1695,6 +1990,9 @@ class ReviewQueueEntry extends DataClass
     enqueueTime,
     expiryTime,
     status,
+    vectorClock,
+    originDeviceId,
+    syncTimestamp,
   );
   @override
   bool operator ==(Object other) =>
@@ -1705,7 +2003,10 @@ class ReviewQueueEntry extends DataClass
           other.priority == this.priority &&
           other.enqueueTime == this.enqueueTime &&
           other.expiryTime == this.expiryTime &&
-          other.status == this.status);
+          other.status == this.status &&
+          other.vectorClock == this.vectorClock &&
+          other.originDeviceId == this.originDeviceId &&
+          other.syncTimestamp == this.syncTimestamp);
 }
 
 class ReviewQueueTableCompanion extends UpdateCompanion<ReviewQueueEntry> {
@@ -1715,6 +2016,9 @@ class ReviewQueueTableCompanion extends UpdateCompanion<ReviewQueueEntry> {
   final Value<DateTime> enqueueTime;
   final Value<DateTime?> expiryTime;
   final Value<ReviewState> status;
+  final Value<String?> vectorClock;
+  final Value<String?> originDeviceId;
+  final Value<DateTime?> syncTimestamp;
   const ReviewQueueTableCompanion({
     this.id = const Value.absent(),
     this.notificationId = const Value.absent(),
@@ -1722,6 +2026,9 @@ class ReviewQueueTableCompanion extends UpdateCompanion<ReviewQueueEntry> {
     this.enqueueTime = const Value.absent(),
     this.expiryTime = const Value.absent(),
     this.status = const Value.absent(),
+    this.vectorClock = const Value.absent(),
+    this.originDeviceId = const Value.absent(),
+    this.syncTimestamp = const Value.absent(),
   });
   ReviewQueueTableCompanion.insert({
     this.id = const Value.absent(),
@@ -1730,6 +2037,9 @@ class ReviewQueueTableCompanion extends UpdateCompanion<ReviewQueueEntry> {
     required DateTime enqueueTime,
     this.expiryTime = const Value.absent(),
     required ReviewState status,
+    this.vectorClock = const Value.absent(),
+    this.originDeviceId = const Value.absent(),
+    this.syncTimestamp = const Value.absent(),
   }) : notificationId = Value(notificationId),
        priority = Value(priority),
        enqueueTime = Value(enqueueTime),
@@ -1741,6 +2051,9 @@ class ReviewQueueTableCompanion extends UpdateCompanion<ReviewQueueEntry> {
     Expression<DateTime>? enqueueTime,
     Expression<DateTime>? expiryTime,
     Expression<String>? status,
+    Expression<String>? vectorClock,
+    Expression<String>? originDeviceId,
+    Expression<DateTime>? syncTimestamp,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1749,6 +2062,9 @@ class ReviewQueueTableCompanion extends UpdateCompanion<ReviewQueueEntry> {
       if (enqueueTime != null) 'enqueue_time': enqueueTime,
       if (expiryTime != null) 'expiry_time': expiryTime,
       if (status != null) 'status': status,
+      if (vectorClock != null) 'vector_clock': vectorClock,
+      if (originDeviceId != null) 'origin_device_id': originDeviceId,
+      if (syncTimestamp != null) 'sync_timestamp': syncTimestamp,
     });
   }
 
@@ -1759,6 +2075,9 @@ class ReviewQueueTableCompanion extends UpdateCompanion<ReviewQueueEntry> {
     Value<DateTime>? enqueueTime,
     Value<DateTime?>? expiryTime,
     Value<ReviewState>? status,
+    Value<String?>? vectorClock,
+    Value<String?>? originDeviceId,
+    Value<DateTime?>? syncTimestamp,
   }) {
     return ReviewQueueTableCompanion(
       id: id ?? this.id,
@@ -1767,6 +2086,9 @@ class ReviewQueueTableCompanion extends UpdateCompanion<ReviewQueueEntry> {
       enqueueTime: enqueueTime ?? this.enqueueTime,
       expiryTime: expiryTime ?? this.expiryTime,
       status: status ?? this.status,
+      vectorClock: vectorClock ?? this.vectorClock,
+      originDeviceId: originDeviceId ?? this.originDeviceId,
+      syncTimestamp: syncTimestamp ?? this.syncTimestamp,
     );
   }
 
@@ -1793,6 +2115,15 @@ class ReviewQueueTableCompanion extends UpdateCompanion<ReviewQueueEntry> {
         $ReviewQueueTableTable.$converterstatus.toSql(status.value),
       );
     }
+    if (vectorClock.present) {
+      map['vector_clock'] = Variable<String>(vectorClock.value);
+    }
+    if (originDeviceId.present) {
+      map['origin_device_id'] = Variable<String>(originDeviceId.value);
+    }
+    if (syncTimestamp.present) {
+      map['sync_timestamp'] = Variable<DateTime>(syncTimestamp.value);
+    }
     return map;
   }
 
@@ -1804,7 +2135,10 @@ class ReviewQueueTableCompanion extends UpdateCompanion<ReviewQueueEntry> {
           ..write('priority: $priority, ')
           ..write('enqueueTime: $enqueueTime, ')
           ..write('expiryTime: $expiryTime, ')
-          ..write('status: $status')
+          ..write('status: $status, ')
+          ..write('vectorClock: $vectorClock, ')
+          ..write('originDeviceId: $originDeviceId, ')
+          ..write('syncTimestamp: $syncTimestamp')
           ..write(')'))
         .toString();
   }
@@ -2709,6 +3043,1015 @@ class DailyBriefTableCompanion extends UpdateCompanion<DailyBriefEntry> {
   }
 }
 
+class $RlhfRulesTableTable extends RlhfRulesTable
+    with TableInfo<$RlhfRulesTableTable, RlhfRuleEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RlhfRulesTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _categoryMeta = const VerificationMeta(
+    'category',
+  );
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+    'category',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _priorityMeta = const VerificationMeta(
+    'priority',
+  );
+  @override
+  late final GeneratedColumn<String> priority = GeneratedColumn<String>(
+    'priority',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _conditionsJsonMeta = const VerificationMeta(
+    'conditionsJson',
+  );
+  @override
+  late final GeneratedColumn<String> conditionsJson = GeneratedColumn<String>(
+    'conditions_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isDeletedMeta = const VerificationMeta(
+    'isDeleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+    'is_deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _originDeviceIdMeta = const VerificationMeta(
+    'originDeviceId',
+  );
+  @override
+  late final GeneratedColumn<String> originDeviceId = GeneratedColumn<String>(
+    'origin_device_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _vectorClockMeta = const VerificationMeta(
+    'vectorClock',
+  );
+  @override
+  late final GeneratedColumn<String> vectorClock = GeneratedColumn<String>(
+    'vector_clock',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _syncTimestampMeta = const VerificationMeta(
+    'syncTimestamp',
+  );
+  @override
+  late final GeneratedColumn<DateTime> syncTimestamp =
+      GeneratedColumn<DateTime>(
+        'sync_timestamp',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    category,
+    priority,
+    conditionsJson,
+    isDeleted,
+    originDeviceId,
+    vectorClock,
+    syncTimestamp,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'rlhf_rules_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RlhfRuleEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('category')) {
+      context.handle(
+        _categoryMeta,
+        category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_categoryMeta);
+    }
+    if (data.containsKey('priority')) {
+      context.handle(
+        _priorityMeta,
+        priority.isAcceptableOrUnknown(data['priority']!, _priorityMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_priorityMeta);
+    }
+    if (data.containsKey('conditions_json')) {
+      context.handle(
+        _conditionsJsonMeta,
+        conditionsJson.isAcceptableOrUnknown(
+          data['conditions_json']!,
+          _conditionsJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_conditionsJsonMeta);
+    }
+    if (data.containsKey('is_deleted')) {
+      context.handle(
+        _isDeletedMeta,
+        isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
+      );
+    }
+    if (data.containsKey('origin_device_id')) {
+      context.handle(
+        _originDeviceIdMeta,
+        originDeviceId.isAcceptableOrUnknown(
+          data['origin_device_id']!,
+          _originDeviceIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('vector_clock')) {
+      context.handle(
+        _vectorClockMeta,
+        vectorClock.isAcceptableOrUnknown(
+          data['vector_clock']!,
+          _vectorClockMeta,
+        ),
+      );
+    }
+    if (data.containsKey('sync_timestamp')) {
+      context.handle(
+        _syncTimestampMeta,
+        syncTimestamp.isAcceptableOrUnknown(
+          data['sync_timestamp']!,
+          _syncTimestampMeta,
+        ),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  RlhfRuleEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RlhfRuleEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      category: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category'],
+      )!,
+      priority: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}priority'],
+      )!,
+      conditionsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}conditions_json'],
+      )!,
+      isDeleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_deleted'],
+      )!,
+      originDeviceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}origin_device_id'],
+      ),
+      vectorClock: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}vector_clock'],
+      ),
+      syncTimestamp: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}sync_timestamp'],
+      ),
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $RlhfRulesTableTable createAlias(String alias) {
+    return $RlhfRulesTableTable(attachedDatabase, alias);
+  }
+}
+
+class RlhfRuleEntry extends DataClass implements Insertable<RlhfRuleEntry> {
+  final String id;
+  final String category;
+  final String priority;
+  final String conditionsJson;
+  final bool isDeleted;
+  final String? originDeviceId;
+  final String? vectorClock;
+  final DateTime? syncTimestamp;
+  final DateTime updatedAt;
+  const RlhfRuleEntry({
+    required this.id,
+    required this.category,
+    required this.priority,
+    required this.conditionsJson,
+    required this.isDeleted,
+    this.originDeviceId,
+    this.vectorClock,
+    this.syncTimestamp,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['category'] = Variable<String>(category);
+    map['priority'] = Variable<String>(priority);
+    map['conditions_json'] = Variable<String>(conditionsJson);
+    map['is_deleted'] = Variable<bool>(isDeleted);
+    if (!nullToAbsent || originDeviceId != null) {
+      map['origin_device_id'] = Variable<String>(originDeviceId);
+    }
+    if (!nullToAbsent || vectorClock != null) {
+      map['vector_clock'] = Variable<String>(vectorClock);
+    }
+    if (!nullToAbsent || syncTimestamp != null) {
+      map['sync_timestamp'] = Variable<DateTime>(syncTimestamp);
+    }
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  RlhfRulesTableCompanion toCompanion(bool nullToAbsent) {
+    return RlhfRulesTableCompanion(
+      id: Value(id),
+      category: Value(category),
+      priority: Value(priority),
+      conditionsJson: Value(conditionsJson),
+      isDeleted: Value(isDeleted),
+      originDeviceId: originDeviceId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(originDeviceId),
+      vectorClock: vectorClock == null && nullToAbsent
+          ? const Value.absent()
+          : Value(vectorClock),
+      syncTimestamp: syncTimestamp == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncTimestamp),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory RlhfRuleEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RlhfRuleEntry(
+      id: serializer.fromJson<String>(json['id']),
+      category: serializer.fromJson<String>(json['category']),
+      priority: serializer.fromJson<String>(json['priority']),
+      conditionsJson: serializer.fromJson<String>(json['conditionsJson']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+      originDeviceId: serializer.fromJson<String?>(json['originDeviceId']),
+      vectorClock: serializer.fromJson<String?>(json['vectorClock']),
+      syncTimestamp: serializer.fromJson<DateTime?>(json['syncTimestamp']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'category': serializer.toJson<String>(category),
+      'priority': serializer.toJson<String>(priority),
+      'conditionsJson': serializer.toJson<String>(conditionsJson),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
+      'originDeviceId': serializer.toJson<String?>(originDeviceId),
+      'vectorClock': serializer.toJson<String?>(vectorClock),
+      'syncTimestamp': serializer.toJson<DateTime?>(syncTimestamp),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  RlhfRuleEntry copyWith({
+    String? id,
+    String? category,
+    String? priority,
+    String? conditionsJson,
+    bool? isDeleted,
+    Value<String?> originDeviceId = const Value.absent(),
+    Value<String?> vectorClock = const Value.absent(),
+    Value<DateTime?> syncTimestamp = const Value.absent(),
+    DateTime? updatedAt,
+  }) => RlhfRuleEntry(
+    id: id ?? this.id,
+    category: category ?? this.category,
+    priority: priority ?? this.priority,
+    conditionsJson: conditionsJson ?? this.conditionsJson,
+    isDeleted: isDeleted ?? this.isDeleted,
+    originDeviceId: originDeviceId.present
+        ? originDeviceId.value
+        : this.originDeviceId,
+    vectorClock: vectorClock.present ? vectorClock.value : this.vectorClock,
+    syncTimestamp: syncTimestamp.present
+        ? syncTimestamp.value
+        : this.syncTimestamp,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  RlhfRuleEntry copyWithCompanion(RlhfRulesTableCompanion data) {
+    return RlhfRuleEntry(
+      id: data.id.present ? data.id.value : this.id,
+      category: data.category.present ? data.category.value : this.category,
+      priority: data.priority.present ? data.priority.value : this.priority,
+      conditionsJson: data.conditionsJson.present
+          ? data.conditionsJson.value
+          : this.conditionsJson,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+      originDeviceId: data.originDeviceId.present
+          ? data.originDeviceId.value
+          : this.originDeviceId,
+      vectorClock: data.vectorClock.present
+          ? data.vectorClock.value
+          : this.vectorClock,
+      syncTimestamp: data.syncTimestamp.present
+          ? data.syncTimestamp.value
+          : this.syncTimestamp,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RlhfRuleEntry(')
+          ..write('id: $id, ')
+          ..write('category: $category, ')
+          ..write('priority: $priority, ')
+          ..write('conditionsJson: $conditionsJson, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('originDeviceId: $originDeviceId, ')
+          ..write('vectorClock: $vectorClock, ')
+          ..write('syncTimestamp: $syncTimestamp, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    category,
+    priority,
+    conditionsJson,
+    isDeleted,
+    originDeviceId,
+    vectorClock,
+    syncTimestamp,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RlhfRuleEntry &&
+          other.id == this.id &&
+          other.category == this.category &&
+          other.priority == this.priority &&
+          other.conditionsJson == this.conditionsJson &&
+          other.isDeleted == this.isDeleted &&
+          other.originDeviceId == this.originDeviceId &&
+          other.vectorClock == this.vectorClock &&
+          other.syncTimestamp == this.syncTimestamp &&
+          other.updatedAt == this.updatedAt);
+}
+
+class RlhfRulesTableCompanion extends UpdateCompanion<RlhfRuleEntry> {
+  final Value<String> id;
+  final Value<String> category;
+  final Value<String> priority;
+  final Value<String> conditionsJson;
+  final Value<bool> isDeleted;
+  final Value<String?> originDeviceId;
+  final Value<String?> vectorClock;
+  final Value<DateTime?> syncTimestamp;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const RlhfRulesTableCompanion({
+    this.id = const Value.absent(),
+    this.category = const Value.absent(),
+    this.priority = const Value.absent(),
+    this.conditionsJson = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.originDeviceId = const Value.absent(),
+    this.vectorClock = const Value.absent(),
+    this.syncTimestamp = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  RlhfRulesTableCompanion.insert({
+    required String id,
+    required String category,
+    required String priority,
+    required String conditionsJson,
+    this.isDeleted = const Value.absent(),
+    this.originDeviceId = const Value.absent(),
+    this.vectorClock = const Value.absent(),
+    this.syncTimestamp = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       category = Value(category),
+       priority = Value(priority),
+       conditionsJson = Value(conditionsJson);
+  static Insertable<RlhfRuleEntry> custom({
+    Expression<String>? id,
+    Expression<String>? category,
+    Expression<String>? priority,
+    Expression<String>? conditionsJson,
+    Expression<bool>? isDeleted,
+    Expression<String>? originDeviceId,
+    Expression<String>? vectorClock,
+    Expression<DateTime>? syncTimestamp,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (category != null) 'category': category,
+      if (priority != null) 'priority': priority,
+      if (conditionsJson != null) 'conditions_json': conditionsJson,
+      if (isDeleted != null) 'is_deleted': isDeleted,
+      if (originDeviceId != null) 'origin_device_id': originDeviceId,
+      if (vectorClock != null) 'vector_clock': vectorClock,
+      if (syncTimestamp != null) 'sync_timestamp': syncTimestamp,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  RlhfRulesTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? category,
+    Value<String>? priority,
+    Value<String>? conditionsJson,
+    Value<bool>? isDeleted,
+    Value<String?>? originDeviceId,
+    Value<String?>? vectorClock,
+    Value<DateTime?>? syncTimestamp,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return RlhfRulesTableCompanion(
+      id: id ?? this.id,
+      category: category ?? this.category,
+      priority: priority ?? this.priority,
+      conditionsJson: conditionsJson ?? this.conditionsJson,
+      isDeleted: isDeleted ?? this.isDeleted,
+      originDeviceId: originDeviceId ?? this.originDeviceId,
+      vectorClock: vectorClock ?? this.vectorClock,
+      syncTimestamp: syncTimestamp ?? this.syncTimestamp,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (priority.present) {
+      map['priority'] = Variable<String>(priority.value);
+    }
+    if (conditionsJson.present) {
+      map['conditions_json'] = Variable<String>(conditionsJson.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
+    if (originDeviceId.present) {
+      map['origin_device_id'] = Variable<String>(originDeviceId.value);
+    }
+    if (vectorClock.present) {
+      map['vector_clock'] = Variable<String>(vectorClock.value);
+    }
+    if (syncTimestamp.present) {
+      map['sync_timestamp'] = Variable<DateTime>(syncTimestamp.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RlhfRulesTableCompanion(')
+          ..write('id: $id, ')
+          ..write('category: $category, ')
+          ..write('priority: $priority, ')
+          ..write('conditionsJson: $conditionsJson, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('originDeviceId: $originDeviceId, ')
+          ..write('vectorClock: $vectorClock, ')
+          ..write('syncTimestamp: $syncTimestamp, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $OfflineSyncQueueTableTable extends OfflineSyncQueueTable
+    with TableInfo<$OfflineSyncQueueTableTable, OfflineSyncQueueEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $OfflineSyncQueueTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _payloadTypeMeta = const VerificationMeta(
+    'payloadType',
+  );
+  @override
+  late final GeneratedColumn<String> payloadType = GeneratedColumn<String>(
+    'payload_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _entityIdMeta = const VerificationMeta(
+    'entityId',
+  );
+  @override
+  late final GeneratedColumn<String> entityId = GeneratedColumn<String>(
+    'entity_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _encryptedPayloadJsonMeta =
+      const VerificationMeta('encryptedPayloadJson');
+  @override
+  late final GeneratedColumn<String> encryptedPayloadJson =
+      GeneratedColumn<String>(
+        'encrypted_payload_json',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _isSyncedMeta = const VerificationMeta(
+    'isSynced',
+  );
+  @override
+  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
+    'is_synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_synced" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    payloadType,
+    entityId,
+    encryptedPayloadJson,
+    createdAt,
+    isSynced,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'offline_sync_queue_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<OfflineSyncQueueEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('payload_type')) {
+      context.handle(
+        _payloadTypeMeta,
+        payloadType.isAcceptableOrUnknown(
+          data['payload_type']!,
+          _payloadTypeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_payloadTypeMeta);
+    }
+    if (data.containsKey('entity_id')) {
+      context.handle(
+        _entityIdMeta,
+        entityId.isAcceptableOrUnknown(data['entity_id']!, _entityIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_entityIdMeta);
+    }
+    if (data.containsKey('encrypted_payload_json')) {
+      context.handle(
+        _encryptedPayloadJsonMeta,
+        encryptedPayloadJson.isAcceptableOrUnknown(
+          data['encrypted_payload_json']!,
+          _encryptedPayloadJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_encryptedPayloadJsonMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('is_synced')) {
+      context.handle(
+        _isSyncedMeta,
+        isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  OfflineSyncQueueEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return OfflineSyncQueueEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      payloadType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payload_type'],
+      )!,
+      entityId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity_id'],
+      )!,
+      encryptedPayloadJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}encrypted_payload_json'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      isSynced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_synced'],
+      )!,
+    );
+  }
+
+  @override
+  $OfflineSyncQueueTableTable createAlias(String alias) {
+    return $OfflineSyncQueueTableTable(attachedDatabase, alias);
+  }
+}
+
+class OfflineSyncQueueEntry extends DataClass
+    implements Insertable<OfflineSyncQueueEntry> {
+  final int id;
+  final String payloadType;
+  final String entityId;
+  final String encryptedPayloadJson;
+  final DateTime createdAt;
+  final bool isSynced;
+  const OfflineSyncQueueEntry({
+    required this.id,
+    required this.payloadType,
+    required this.entityId,
+    required this.encryptedPayloadJson,
+    required this.createdAt,
+    required this.isSynced,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['payload_type'] = Variable<String>(payloadType);
+    map['entity_id'] = Variable<String>(entityId);
+    map['encrypted_payload_json'] = Variable<String>(encryptedPayloadJson);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['is_synced'] = Variable<bool>(isSynced);
+    return map;
+  }
+
+  OfflineSyncQueueTableCompanion toCompanion(bool nullToAbsent) {
+    return OfflineSyncQueueTableCompanion(
+      id: Value(id),
+      payloadType: Value(payloadType),
+      entityId: Value(entityId),
+      encryptedPayloadJson: Value(encryptedPayloadJson),
+      createdAt: Value(createdAt),
+      isSynced: Value(isSynced),
+    );
+  }
+
+  factory OfflineSyncQueueEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return OfflineSyncQueueEntry(
+      id: serializer.fromJson<int>(json['id']),
+      payloadType: serializer.fromJson<String>(json['payloadType']),
+      entityId: serializer.fromJson<String>(json['entityId']),
+      encryptedPayloadJson: serializer.fromJson<String>(
+        json['encryptedPayloadJson'],
+      ),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      isSynced: serializer.fromJson<bool>(json['isSynced']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'payloadType': serializer.toJson<String>(payloadType),
+      'entityId': serializer.toJson<String>(entityId),
+      'encryptedPayloadJson': serializer.toJson<String>(encryptedPayloadJson),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'isSynced': serializer.toJson<bool>(isSynced),
+    };
+  }
+
+  OfflineSyncQueueEntry copyWith({
+    int? id,
+    String? payloadType,
+    String? entityId,
+    String? encryptedPayloadJson,
+    DateTime? createdAt,
+    bool? isSynced,
+  }) => OfflineSyncQueueEntry(
+    id: id ?? this.id,
+    payloadType: payloadType ?? this.payloadType,
+    entityId: entityId ?? this.entityId,
+    encryptedPayloadJson: encryptedPayloadJson ?? this.encryptedPayloadJson,
+    createdAt: createdAt ?? this.createdAt,
+    isSynced: isSynced ?? this.isSynced,
+  );
+  OfflineSyncQueueEntry copyWithCompanion(OfflineSyncQueueTableCompanion data) {
+    return OfflineSyncQueueEntry(
+      id: data.id.present ? data.id.value : this.id,
+      payloadType: data.payloadType.present
+          ? data.payloadType.value
+          : this.payloadType,
+      entityId: data.entityId.present ? data.entityId.value : this.entityId,
+      encryptedPayloadJson: data.encryptedPayloadJson.present
+          ? data.encryptedPayloadJson.value
+          : this.encryptedPayloadJson,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OfflineSyncQueueEntry(')
+          ..write('id: $id, ')
+          ..write('payloadType: $payloadType, ')
+          ..write('entityId: $entityId, ')
+          ..write('encryptedPayloadJson: $encryptedPayloadJson, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('isSynced: $isSynced')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    payloadType,
+    entityId,
+    encryptedPayloadJson,
+    createdAt,
+    isSynced,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is OfflineSyncQueueEntry &&
+          other.id == this.id &&
+          other.payloadType == this.payloadType &&
+          other.entityId == this.entityId &&
+          other.encryptedPayloadJson == this.encryptedPayloadJson &&
+          other.createdAt == this.createdAt &&
+          other.isSynced == this.isSynced);
+}
+
+class OfflineSyncQueueTableCompanion
+    extends UpdateCompanion<OfflineSyncQueueEntry> {
+  final Value<int> id;
+  final Value<String> payloadType;
+  final Value<String> entityId;
+  final Value<String> encryptedPayloadJson;
+  final Value<DateTime> createdAt;
+  final Value<bool> isSynced;
+  const OfflineSyncQueueTableCompanion({
+    this.id = const Value.absent(),
+    this.payloadType = const Value.absent(),
+    this.entityId = const Value.absent(),
+    this.encryptedPayloadJson = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.isSynced = const Value.absent(),
+  });
+  OfflineSyncQueueTableCompanion.insert({
+    this.id = const Value.absent(),
+    required String payloadType,
+    required String entityId,
+    required String encryptedPayloadJson,
+    this.createdAt = const Value.absent(),
+    this.isSynced = const Value.absent(),
+  }) : payloadType = Value(payloadType),
+       entityId = Value(entityId),
+       encryptedPayloadJson = Value(encryptedPayloadJson);
+  static Insertable<OfflineSyncQueueEntry> custom({
+    Expression<int>? id,
+    Expression<String>? payloadType,
+    Expression<String>? entityId,
+    Expression<String>? encryptedPayloadJson,
+    Expression<DateTime>? createdAt,
+    Expression<bool>? isSynced,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (payloadType != null) 'payload_type': payloadType,
+      if (entityId != null) 'entity_id': entityId,
+      if (encryptedPayloadJson != null)
+        'encrypted_payload_json': encryptedPayloadJson,
+      if (createdAt != null) 'created_at': createdAt,
+      if (isSynced != null) 'is_synced': isSynced,
+    });
+  }
+
+  OfflineSyncQueueTableCompanion copyWith({
+    Value<int>? id,
+    Value<String>? payloadType,
+    Value<String>? entityId,
+    Value<String>? encryptedPayloadJson,
+    Value<DateTime>? createdAt,
+    Value<bool>? isSynced,
+  }) {
+    return OfflineSyncQueueTableCompanion(
+      id: id ?? this.id,
+      payloadType: payloadType ?? this.payloadType,
+      entityId: entityId ?? this.entityId,
+      encryptedPayloadJson: encryptedPayloadJson ?? this.encryptedPayloadJson,
+      createdAt: createdAt ?? this.createdAt,
+      isSynced: isSynced ?? this.isSynced,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (payloadType.present) {
+      map['payload_type'] = Variable<String>(payloadType.value);
+    }
+    if (entityId.present) {
+      map['entity_id'] = Variable<String>(entityId.value);
+    }
+    if (encryptedPayloadJson.present) {
+      map['encrypted_payload_json'] = Variable<String>(
+        encryptedPayloadJson.value,
+      );
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (isSynced.present) {
+      map['is_synced'] = Variable<bool>(isSynced.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OfflineSyncQueueTableCompanion(')
+          ..write('id: $id, ')
+          ..write('payloadType: $payloadType, ')
+          ..write('entityId: $entityId, ')
+          ..write('encryptedPayloadJson: $encryptedPayloadJson, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('isSynced: $isSynced')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AttentionDatabase extends GeneratedDatabase {
   _$AttentionDatabase(QueryExecutor e) : super(e);
   $AttentionDatabaseManager get managers => $AttentionDatabaseManager(this);
@@ -2722,6 +4065,9 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final $DailyBriefTableTable dailyBriefTable = $DailyBriefTableTable(
     this,
   );
+  late final $RlhfRulesTableTable rlhfRulesTable = $RlhfRulesTableTable(this);
+  late final $OfflineSyncQueueTableTable offlineSyncQueueTable =
+      $OfflineSyncQueueTableTable(this);
   late final NotificationDao notificationDao = NotificationDao(
     this as AttentionDatabase,
   );
@@ -2734,6 +4080,12 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final DailyBriefDao dailyBriefDao = DailyBriefDao(
     this as AttentionDatabase,
   );
+  late final RlhfRulesDao rlhfRulesDao = RlhfRulesDao(
+    this as AttentionDatabase,
+  );
+  late final OfflineSyncQueueDao offlineSyncQueueDao = OfflineSyncQueueDao(
+    this as AttentionDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2743,6 +4095,8 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
     reviewQueueTable,
     focusSessionsTable,
     dailyBriefTable,
+    rlhfRulesTable,
+    offlineSyncQueueTable,
   ];
 }
 
@@ -2772,6 +4126,9 @@ typedef $$NotificationsTableTableCreateCompanionBuilder =
       Value<bool> reviewed,
       Value<bool> dismissed,
       Value<DateTime> createdAt,
+      Value<String?> vectorClock,
+      Value<String?> originDeviceId,
+      Value<DateTime?> syncTimestamp,
       Value<int> rowid,
     });
 typedef $$NotificationsTableTableUpdateCompanionBuilder =
@@ -2800,6 +4157,9 @@ typedef $$NotificationsTableTableUpdateCompanionBuilder =
       Value<bool> reviewed,
       Value<bool> dismissed,
       Value<DateTime> createdAt,
+      Value<String?> vectorClock,
+      Value<String?> originDeviceId,
+      Value<DateTime?> syncTimestamp,
       Value<int> rowid,
     });
 
@@ -2974,6 +4334,21 @@ class $$NotificationsTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get vectorClock => $composableBuilder(
+    column: $table.vectorClock,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get originDeviceId => $composableBuilder(
+    column: $table.originDeviceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get syncTimestamp => $composableBuilder(
+    column: $table.syncTimestamp,
+    builder: (column) => ColumnFilters(column),
+  );
+
   Expression<bool> reviewQueueTableRefs(
     Expression<bool> Function($$ReviewQueueTableTableFilterComposer f) f,
   ) {
@@ -3128,6 +4503,21 @@ class $$NotificationsTableTableOrderingComposer
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get vectorClock => $composableBuilder(
+    column: $table.vectorClock,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get originDeviceId => $composableBuilder(
+    column: $table.originDeviceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get syncTimestamp => $composableBuilder(
+    column: $table.syncTimestamp,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$NotificationsTableTableAnnotationComposer
@@ -3236,6 +4626,21 @@ class $$NotificationsTableTableAnnotationComposer
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
+  GeneratedColumn<String> get vectorClock => $composableBuilder(
+    column: $table.vectorClock,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get originDeviceId => $composableBuilder(
+    column: $table.originDeviceId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get syncTimestamp => $composableBuilder(
+    column: $table.syncTimestamp,
+    builder: (column) => column,
+  );
+
   Expression<T> reviewQueueTableRefs<T extends Object>(
     Expression<T> Function($$ReviewQueueTableTableAnnotationComposer a) f,
   ) {
@@ -3320,6 +4725,9 @@ class $$NotificationsTableTableTableManager
                 Value<bool> reviewed = const Value.absent(),
                 Value<bool> dismissed = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> vectorClock = const Value.absent(),
+                Value<String?> originDeviceId = const Value.absent(),
+                Value<DateTime?> syncTimestamp = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => NotificationsTableCompanion(
                 id: id,
@@ -3346,6 +4754,9 @@ class $$NotificationsTableTableTableManager
                 reviewed: reviewed,
                 dismissed: dismissed,
                 createdAt: createdAt,
+                vectorClock: vectorClock,
+                originDeviceId: originDeviceId,
+                syncTimestamp: syncTimestamp,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -3375,6 +4786,9 @@ class $$NotificationsTableTableTableManager
                 Value<bool> reviewed = const Value.absent(),
                 Value<bool> dismissed = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> vectorClock = const Value.absent(),
+                Value<String?> originDeviceId = const Value.absent(),
+                Value<DateTime?> syncTimestamp = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => NotificationsTableCompanion.insert(
                 id: id,
@@ -3401,12 +4815,17 @@ class $$NotificationsTableTableTableManager
                 reviewed: reviewed,
                 dismissed: dismissed,
                 createdAt: createdAt,
+                vectorClock: vectorClock,
+                originDeviceId: originDeviceId,
+                syncTimestamp: syncTimestamp,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$NotificationsTableTable, NotificationEntry>(
+                    table,
+                  ),
                   $$NotificationsTableTableReferences(db, table, e),
                 ),
               )
@@ -3471,6 +4890,9 @@ typedef $$ReviewQueueTableTableCreateCompanionBuilder =
       required DateTime enqueueTime,
       Value<DateTime?> expiryTime,
       required ReviewState status,
+      Value<String?> vectorClock,
+      Value<String?> originDeviceId,
+      Value<DateTime?> syncTimestamp,
     });
 typedef $$ReviewQueueTableTableUpdateCompanionBuilder =
     ReviewQueueTableCompanion Function({
@@ -3480,6 +4902,9 @@ typedef $$ReviewQueueTableTableUpdateCompanionBuilder =
       Value<DateTime> enqueueTime,
       Value<DateTime?> expiryTime,
       Value<ReviewState> status,
+      Value<String?> vectorClock,
+      Value<String?> originDeviceId,
+      Value<DateTime?> syncTimestamp,
     });
 
 final class $$ReviewQueueTableTableReferences
@@ -3551,6 +4976,21 @@ class $$ReviewQueueTableTableFilterComposer
         builder: (column) => ColumnWithTypeConverterFilters(column),
       );
 
+  ColumnFilters<String> get vectorClock => $composableBuilder(
+    column: $table.vectorClock,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get originDeviceId => $composableBuilder(
+    column: $table.originDeviceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get syncTimestamp => $composableBuilder(
+    column: $table.syncTimestamp,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$NotificationsTableTableFilterComposer get notificationId {
     final $$NotificationsTableTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -3609,6 +5049,21 @@ class $$ReviewQueueTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get vectorClock => $composableBuilder(
+    column: $table.vectorClock,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get originDeviceId => $composableBuilder(
+    column: $table.originDeviceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get syncTimestamp => $composableBuilder(
+    column: $table.syncTimestamp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$NotificationsTableTableOrderingComposer get notificationId {
     final $$NotificationsTableTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -3660,6 +5115,21 @@ class $$ReviewQueueTableTableAnnotationComposer
 
   GeneratedColumnWithTypeConverter<ReviewState, String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get vectorClock => $composableBuilder(
+    column: $table.vectorClock,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get originDeviceId => $composableBuilder(
+    column: $table.originDeviceId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get syncTimestamp => $composableBuilder(
+    column: $table.syncTimestamp,
+    builder: (column) => column,
+  );
 
   $$NotificationsTableTableAnnotationComposer get notificationId {
     final $$NotificationsTableTableAnnotationComposer composer =
@@ -3722,6 +5192,9 @@ class $$ReviewQueueTableTableTableManager
                 Value<DateTime> enqueueTime = const Value.absent(),
                 Value<DateTime?> expiryTime = const Value.absent(),
                 Value<ReviewState> status = const Value.absent(),
+                Value<String?> vectorClock = const Value.absent(),
+                Value<String?> originDeviceId = const Value.absent(),
+                Value<DateTime?> syncTimestamp = const Value.absent(),
               }) => ReviewQueueTableCompanion(
                 id: id,
                 notificationId: notificationId,
@@ -3729,6 +5202,9 @@ class $$ReviewQueueTableTableTableManager
                 enqueueTime: enqueueTime,
                 expiryTime: expiryTime,
                 status: status,
+                vectorClock: vectorClock,
+                originDeviceId: originDeviceId,
+                syncTimestamp: syncTimestamp,
               ),
           createCompanionCallback:
               ({
@@ -3738,6 +5214,9 @@ class $$ReviewQueueTableTableTableManager
                 required DateTime enqueueTime,
                 Value<DateTime?> expiryTime = const Value.absent(),
                 required ReviewState status,
+                Value<String?> vectorClock = const Value.absent(),
+                Value<String?> originDeviceId = const Value.absent(),
+                Value<DateTime?> syncTimestamp = const Value.absent(),
               }) => ReviewQueueTableCompanion.insert(
                 id: id,
                 notificationId: notificationId,
@@ -3745,11 +5224,14 @@ class $$ReviewQueueTableTableTableManager
                 enqueueTime: enqueueTime,
                 expiryTime: expiryTime,
                 status: status,
+                vectorClock: vectorClock,
+                originDeviceId: originDeviceId,
+                syncTimestamp: syncTimestamp,
               ),
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$ReviewQueueTableTable, ReviewQueueEntry>(table),
                   $$ReviewQueueTableTableReferences(db, table, e),
                 ),
               )
@@ -4021,7 +5503,18 @@ class $$FocusSessionsTableTableTableManager
                 duration: duration,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$FocusSessionsTableTable, FocusSessionEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $FocusSessionsTableTable,
+                    FocusSessionEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4273,7 +5766,16 @@ class $$DailyBriefTableTableTableManager
                 archivedCount: archivedCount,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$DailyBriefTableTable, DailyBriefEntry>(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $DailyBriefTableTable,
+                    DailyBriefEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4301,6 +5803,557 @@ typedef $$DailyBriefTableTableProcessedTableManager =
       DailyBriefEntry,
       PrefetchHooks Function()
     >;
+typedef $$RlhfRulesTableTableCreateCompanionBuilder =
+    RlhfRulesTableCompanion Function({
+      required String id,
+      required String category,
+      required String priority,
+      required String conditionsJson,
+      Value<bool> isDeleted,
+      Value<String?> originDeviceId,
+      Value<String?> vectorClock,
+      Value<DateTime?> syncTimestamp,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$RlhfRulesTableTableUpdateCompanionBuilder =
+    RlhfRulesTableCompanion Function({
+      Value<String> id,
+      Value<String> category,
+      Value<String> priority,
+      Value<String> conditionsJson,
+      Value<bool> isDeleted,
+      Value<String?> originDeviceId,
+      Value<String?> vectorClock,
+      Value<DateTime?> syncTimestamp,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$RlhfRulesTableTableFilterComposer
+    extends Composer<_$AttentionDatabase, $RlhfRulesTableTable> {
+  $$RlhfRulesTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get priority => $composableBuilder(
+    column: $table.priority,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get conditionsJson => $composableBuilder(
+    column: $table.conditionsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get originDeviceId => $composableBuilder(
+    column: $table.originDeviceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get vectorClock => $composableBuilder(
+    column: $table.vectorClock,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get syncTimestamp => $composableBuilder(
+    column: $table.syncTimestamp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RlhfRulesTableTableOrderingComposer
+    extends Composer<_$AttentionDatabase, $RlhfRulesTableTable> {
+  $$RlhfRulesTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get priority => $composableBuilder(
+    column: $table.priority,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get conditionsJson => $composableBuilder(
+    column: $table.conditionsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+    column: $table.isDeleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get originDeviceId => $composableBuilder(
+    column: $table.originDeviceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get vectorClock => $composableBuilder(
+    column: $table.vectorClock,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get syncTimestamp => $composableBuilder(
+    column: $table.syncTimestamp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RlhfRulesTableTableAnnotationComposer
+    extends Composer<_$AttentionDatabase, $RlhfRulesTableTable> {
+  $$RlhfRulesTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumn<String> get priority =>
+      $composableBuilder(column: $table.priority, builder: (column) => column);
+
+  GeneratedColumn<String> get conditionsJson => $composableBuilder(
+    column: $table.conditionsJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  GeneratedColumn<String> get originDeviceId => $composableBuilder(
+    column: $table.originDeviceId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get vectorClock => $composableBuilder(
+    column: $table.vectorClock,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get syncTimestamp => $composableBuilder(
+    column: $table.syncTimestamp,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$RlhfRulesTableTableTableManager
+    extends
+        RootTableManager<
+          _$AttentionDatabase,
+          $RlhfRulesTableTable,
+          RlhfRuleEntry,
+          $$RlhfRulesTableTableFilterComposer,
+          $$RlhfRulesTableTableOrderingComposer,
+          $$RlhfRulesTableTableAnnotationComposer,
+          $$RlhfRulesTableTableCreateCompanionBuilder,
+          $$RlhfRulesTableTableUpdateCompanionBuilder,
+          (
+            RlhfRuleEntry,
+            BaseReferences<
+              _$AttentionDatabase,
+              $RlhfRulesTableTable,
+              RlhfRuleEntry
+            >,
+          ),
+          RlhfRuleEntry,
+          PrefetchHooks Function()
+        > {
+  $$RlhfRulesTableTableTableManager(
+    _$AttentionDatabase db,
+    $RlhfRulesTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RlhfRulesTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RlhfRulesTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RlhfRulesTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> category = const Value.absent(),
+                Value<String> priority = const Value.absent(),
+                Value<String> conditionsJson = const Value.absent(),
+                Value<bool> isDeleted = const Value.absent(),
+                Value<String?> originDeviceId = const Value.absent(),
+                Value<String?> vectorClock = const Value.absent(),
+                Value<DateTime?> syncTimestamp = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RlhfRulesTableCompanion(
+                id: id,
+                category: category,
+                priority: priority,
+                conditionsJson: conditionsJson,
+                isDeleted: isDeleted,
+                originDeviceId: originDeviceId,
+                vectorClock: vectorClock,
+                syncTimestamp: syncTimestamp,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String category,
+                required String priority,
+                required String conditionsJson,
+                Value<bool> isDeleted = const Value.absent(),
+                Value<String?> originDeviceId = const Value.absent(),
+                Value<String?> vectorClock = const Value.absent(),
+                Value<DateTime?> syncTimestamp = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RlhfRulesTableCompanion.insert(
+                id: id,
+                category: category,
+                priority: priority,
+                conditionsJson: conditionsJson,
+                isDeleted: isDeleted,
+                originDeviceId: originDeviceId,
+                vectorClock: vectorClock,
+                syncTimestamp: syncTimestamp,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$RlhfRulesTableTable, RlhfRuleEntry>(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $RlhfRulesTableTable,
+                    RlhfRuleEntry
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RlhfRulesTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AttentionDatabase,
+      $RlhfRulesTableTable,
+      RlhfRuleEntry,
+      $$RlhfRulesTableTableFilterComposer,
+      $$RlhfRulesTableTableOrderingComposer,
+      $$RlhfRulesTableTableAnnotationComposer,
+      $$RlhfRulesTableTableCreateCompanionBuilder,
+      $$RlhfRulesTableTableUpdateCompanionBuilder,
+      (
+        RlhfRuleEntry,
+        BaseReferences<
+          _$AttentionDatabase,
+          $RlhfRulesTableTable,
+          RlhfRuleEntry
+        >,
+      ),
+      RlhfRuleEntry,
+      PrefetchHooks Function()
+    >;
+typedef $$OfflineSyncQueueTableTableCreateCompanionBuilder =
+    OfflineSyncQueueTableCompanion Function({
+      Value<int> id,
+      required String payloadType,
+      required String entityId,
+      required String encryptedPayloadJson,
+      Value<DateTime> createdAt,
+      Value<bool> isSynced,
+    });
+typedef $$OfflineSyncQueueTableTableUpdateCompanionBuilder =
+    OfflineSyncQueueTableCompanion Function({
+      Value<int> id,
+      Value<String> payloadType,
+      Value<String> entityId,
+      Value<String> encryptedPayloadJson,
+      Value<DateTime> createdAt,
+      Value<bool> isSynced,
+    });
+
+class $$OfflineSyncQueueTableTableFilterComposer
+    extends Composer<_$AttentionDatabase, $OfflineSyncQueueTableTable> {
+  $$OfflineSyncQueueTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payloadType => $composableBuilder(
+    column: $table.payloadType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entityId => $composableBuilder(
+    column: $table.entityId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get encryptedPayloadJson => $composableBuilder(
+    column: $table.encryptedPayloadJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$OfflineSyncQueueTableTableOrderingComposer
+    extends Composer<_$AttentionDatabase, $OfflineSyncQueueTableTable> {
+  $$OfflineSyncQueueTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payloadType => $composableBuilder(
+    column: $table.payloadType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entityId => $composableBuilder(
+    column: $table.entityId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get encryptedPayloadJson => $composableBuilder(
+    column: $table.encryptedPayloadJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$OfflineSyncQueueTableTableAnnotationComposer
+    extends Composer<_$AttentionDatabase, $OfflineSyncQueueTableTable> {
+  $$OfflineSyncQueueTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get payloadType => $composableBuilder(
+    column: $table.payloadType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get entityId =>
+      $composableBuilder(column: $table.entityId, builder: (column) => column);
+
+  GeneratedColumn<String> get encryptedPayloadJson => $composableBuilder(
+    column: $table.encryptedPayloadJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isSynced =>
+      $composableBuilder(column: $table.isSynced, builder: (column) => column);
+}
+
+class $$OfflineSyncQueueTableTableTableManager
+    extends
+        RootTableManager<
+          _$AttentionDatabase,
+          $OfflineSyncQueueTableTable,
+          OfflineSyncQueueEntry,
+          $$OfflineSyncQueueTableTableFilterComposer,
+          $$OfflineSyncQueueTableTableOrderingComposer,
+          $$OfflineSyncQueueTableTableAnnotationComposer,
+          $$OfflineSyncQueueTableTableCreateCompanionBuilder,
+          $$OfflineSyncQueueTableTableUpdateCompanionBuilder,
+          (
+            OfflineSyncQueueEntry,
+            BaseReferences<
+              _$AttentionDatabase,
+              $OfflineSyncQueueTableTable,
+              OfflineSyncQueueEntry
+            >,
+          ),
+          OfflineSyncQueueEntry,
+          PrefetchHooks Function()
+        > {
+  $$OfflineSyncQueueTableTableTableManager(
+    _$AttentionDatabase db,
+    $OfflineSyncQueueTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$OfflineSyncQueueTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$OfflineSyncQueueTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$OfflineSyncQueueTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> payloadType = const Value.absent(),
+                Value<String> entityId = const Value.absent(),
+                Value<String> encryptedPayloadJson = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+              }) => OfflineSyncQueueTableCompanion(
+                id: id,
+                payloadType: payloadType,
+                entityId: entityId,
+                encryptedPayloadJson: encryptedPayloadJson,
+                createdAt: createdAt,
+                isSynced: isSynced,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String payloadType,
+                required String entityId,
+                required String encryptedPayloadJson,
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+              }) => OfflineSyncQueueTableCompanion.insert(
+                id: id,
+                payloadType: payloadType,
+                entityId: entityId,
+                encryptedPayloadJson: encryptedPayloadJson,
+                createdAt: createdAt,
+                isSynced: isSynced,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $OfflineSyncQueueTableTable,
+                    OfflineSyncQueueEntry
+                  >(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $OfflineSyncQueueTableTable,
+                    OfflineSyncQueueEntry
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$OfflineSyncQueueTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AttentionDatabase,
+      $OfflineSyncQueueTableTable,
+      OfflineSyncQueueEntry,
+      $$OfflineSyncQueueTableTableFilterComposer,
+      $$OfflineSyncQueueTableTableOrderingComposer,
+      $$OfflineSyncQueueTableTableAnnotationComposer,
+      $$OfflineSyncQueueTableTableCreateCompanionBuilder,
+      $$OfflineSyncQueueTableTableUpdateCompanionBuilder,
+      (
+        OfflineSyncQueueEntry,
+        BaseReferences<
+          _$AttentionDatabase,
+          $OfflineSyncQueueTableTable,
+          OfflineSyncQueueEntry
+        >,
+      ),
+      OfflineSyncQueueEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AttentionDatabaseManager {
   final _$AttentionDatabase _db;
@@ -4313,4 +6366,8 @@ class $AttentionDatabaseManager {
       $$FocusSessionsTableTableTableManager(_db, _db.focusSessionsTable);
   $$DailyBriefTableTableTableManager get dailyBriefTable =>
       $$DailyBriefTableTableTableManager(_db, _db.dailyBriefTable);
+  $$RlhfRulesTableTableTableManager get rlhfRulesTable =>
+      $$RlhfRulesTableTableTableManager(_db, _db.rlhfRulesTable);
+  $$OfflineSyncQueueTableTableTableManager get offlineSyncQueueTable =>
+      $$OfflineSyncQueueTableTableTableManager(_db, _db.offlineSyncQueueTable);
 }
