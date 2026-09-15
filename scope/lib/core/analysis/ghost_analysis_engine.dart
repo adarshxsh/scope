@@ -7,6 +7,7 @@ import 'package:scope/core/analysis/score_fusion.dart';
 import 'package:scope/core/analysis/explanation_generator.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
+import 'package:scope/core/analysis/model_verifier.dart';
 
 /// The central hub of Ghost AI coordinating all classification stages.
 class GhostAnalysisEngine {
@@ -22,8 +23,10 @@ class GhostAnalysisEngine {
   /// Compiles rules loaded from assets on engine startup.
   Future<void> initialize() async {
     try {
-      final jsonStr = await rootBundle.loadString('assets/rules.json');
-      ruleEngine.compile(jsonStr);
+      final jsonStr = await ModelVerifier.instance.verifyAndLoadString('assets/rules.json');
+      if (jsonStr != null) {
+        ruleEngine.compile(jsonStr);
+      }
       await ruleEngine.loadCustomRules();
     } catch (e) {
       // ignore: avoid_print
