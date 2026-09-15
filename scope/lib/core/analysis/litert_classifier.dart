@@ -5,6 +5,7 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/analysis_result.dart';
 import 'package:scope/core/analysis/notification_analyzer.dart';
 import 'package:scope/core/analysis/wordpiece_tokenizer.dart';
+import 'package:scope/core/analysis/model_verifier.dart';
 
 /// Classifier using LiteRT (TensorFlow Lite) to classify text categories.
 class LiteRtClassifier implements NotificationAnalyzer {
@@ -18,10 +19,15 @@ class LiteRtClassifier implements NotificationAnalyzer {
 
   Future<void> _initialize() async {
     try {
-      // 1. Load Vocab
-      final vocabStr = await rootBundle.loadString('assets/vocab.txt');
-      final lines = vocabStr.split('\n');
-      _tokenizer = WordPieceTokenizer.fromLines(lines);
+      // 1. Load and verify Vocab asset
+      final vocabStr = await ModelVerifier.instance.verifyAndLoadString('assets/vocab.txt');
+      if (vocabStr != null) {
+        final lines = vocabStr.split('\n');
+        _tokenizer = WordPieceTokenizer.fromLines(lines);
+      } else {
+        // ignore: avoid_print
+        print('LiteRtClassifier failed asset verification for assets/vocab.txt');
+      }
 
       // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
       _isModelLoaded = false;
@@ -31,11 +37,13 @@ class LiteRtClassifier implements NotificationAnalyzer {
       print('LiteRtClassifier failed to initialize: $e');
       _isModelLoaded = false;
 
-      // Ensure tokenizer is loaded even if interpreter fails (so we can test tokenization in fallback)
+      // Ensure tokenizer is loaded if possible
       if (_tokenizer == null) {
         try {
-          final vocabStr = await rootBundle.loadString('assets/vocab.txt');
-          _tokenizer = WordPieceTokenizer.fromLines(vocabStr.split('\n'));
+          final vocabStr = await ModelVerifier.instance.verifyAndLoadString('assets/vocab.txt');
+          if (vocabStr != null) {
+            _tokenizer = WordPieceTokenizer.fromLines(vocabStr.split('\n'));
+          }
         } catch (_) {}
       }
     }
