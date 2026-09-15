@@ -72,3 +72,19 @@ class DailyBriefDaoManager {
         _db.dailyBriefTable,
       );
 }
+
+mixin _$InferenceAuditLogDaoMixin on DatabaseAccessor<AttentionDatabase> {
+  $InferenceAuditLogsTableTable get inferenceAuditLogsTable =>
+      attachedDatabase.inferenceAuditLogsTable;
+  InferenceAuditLogDaoManager get managers => InferenceAuditLogDaoManager(this);
+}
+
+class InferenceAuditLogDaoManager {
+  final _$InferenceAuditLogDaoMixin _db;
+  InferenceAuditLogDaoManager(this._db);
+  $$InferenceAuditLogsTableTableTableManager get inferenceAuditLogsTable =>
+      $$InferenceAuditLogsTableTableTableManager(
+        _db.attachedDatabase,
+        _db.inferenceAuditLogsTable,
+      );
+}

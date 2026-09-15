@@ -6,6 +6,7 @@ import 'package:scope/core/utils/smart_actions.dart';
 import 'package:scope/theme/app_colors.dart';
 import 'package:scope/theme/app_spacing.dart';
 import 'package:scope/widgets/ai_reason_widget.dart';
+import 'package:scope/widgets/model_explainability_widget.dart';
 import 'package:scope/widgets/primitives/scope_row.dart';
 import 'package:scope/widgets/primitives/scope_surface.dart';
 import 'package:scope/widgets/scope_screen_body.dart';
@@ -107,6 +108,8 @@ class NotificationDetailScreen extends StatelessWidget {
                 ],
               ),
             ),
+            const SizedBox(height: AppSpacing.xl),
+            ModelExplainabilityWidget(notification: notification),
             const SizedBox(height: AppSpacing.xl),
             Text('Suggested Actions', style: theme.textTheme.titleMedium),
             const SizedBox(height: AppSpacing.md),
