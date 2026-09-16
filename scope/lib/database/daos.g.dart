@@ -72,3 +72,19 @@ class DailyBriefDaoManager {
         _db.dailyBriefTable,
       );
 }
+
+mixin _$TrainingSampleDaoMixin on DatabaseAccessor<AttentionDatabase> {
+  $TrainingSamplesTableTable get trainingSamplesTable =>
+      attachedDatabase.trainingSamplesTable;
+  TrainingSampleDaoManager get managers => TrainingSampleDaoManager(this);
+}
+
+class TrainingSampleDaoManager {
+  final _$TrainingSampleDaoMixin _db;
+  TrainingSampleDaoManager(this._db);
+  $$TrainingSamplesTableTableTableManager get trainingSamplesTable =>
+      $$TrainingSamplesTableTableTableManager(
+        _db.attachedDatabase,
+        _db.trainingSamplesTable,
+      );
+}
