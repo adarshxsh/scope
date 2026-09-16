@@ -167,27 +167,51 @@ class FeatureVector {
     'category_id',
   ];
 
-  static const int size = 63;
+  static int get size => featureNames.length;
+  static int get defaultSize => featureNames.length;
 
   final List<double> values;
 
-  FeatureVector(Iterable<double> values) : values = List.unmodifiable(values) {
-    if (this.values.length != size) {
-      throw ArgumentError.value(
-        this.values.length,
-        'values.length',
-        'FeatureVector must contain exactly $size values.',
-      );
-    }
+  FeatureVector(Iterable<double> values, {int? expectedSize})
+      : values = List.unmodifiable(_validateAndAdapt(values, expectedSize)) {
     if (this.values.any((value) => value.isNaN || value.isInfinite)) {
       throw ArgumentError('FeatureVector cannot contain NaN or infinity.');
+    }
+  }
+
+  static List<double> _validateAndAdapt(Iterable<double> values, int? expectedSize) {
+    final list = values.toList();
+    if (expectedSize != null && expectedSize > 0 && list.length != expectedSize) {
+      if (list.length < expectedSize) {
+        return List<double>.from(list)..addAll(List<double>.filled(expectedSize - list.length, 0.0));
+      } else {
+        return list.sublist(0, expectedSize);
+      }
+    }
+    return list;
+  }
+
+  int get length => values.length;
+
+  /// Adapts this feature vector to match a target dimension by padding with zeros or truncating.
+  FeatureVector padOrTruncate(int targetDimension) {
+    if (targetDimension <= 0 || values.length == targetDimension) {
+      return this;
+    }
+    if (values.length < targetDimension) {
+      final padded = List<double>.from(values)
+        ..addAll(List<double>.filled(targetDimension - values.length, 0.0));
+      return FeatureVector(padded);
+    } else {
+      return FeatureVector(values.sublist(0, targetDimension));
     }
   }
 
   List<double> toList() => List<double>.from(values, growable: false);
 
   Map<String, double> toNamedMap() => {
-    for (var i = 0; i < featureNames.length; i++) featureNames[i]: values[i],
+    for (var i = 0; i < math.min(featureNames.length, values.length); i++)
+      featureNames[i]: values[i],
   };
 }
 
