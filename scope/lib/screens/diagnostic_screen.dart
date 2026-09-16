@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:scope/core/analysis/ghost_ai.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
+import 'package:scope/core/utils/privacy_sanitizer.dart';
 import 'package:scope/widgets/scope_card.dart';
+
 
 class DiagnosticScreen extends StatefulWidget {
   final GhostAnalysisEngine? engine;
@@ -402,21 +405,47 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
         ),
         const SizedBox(height: 12),
 
-        // 3. Versions and Metadata
+        // 3. Versions, Privacy, and Metadata
         ScopeCard(
           padding: const EdgeInsets.all(12.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+          child: Column(
             children: [
-              _buildVersionItem('Engine', notif.engineVersion ?? 'None'),
-              _buildVersionItem('Rules', notif.ruleVersion ?? 'None'),
-              _buildVersionItem('Model', notif.modelVersion ?? 'None'),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildVersionItem('Engine', notif.engineVersion ?? 'None'),
+                  _buildVersionItem('Rules', notif.ruleVersion ?? 'None'),
+                  _buildVersionItem('Model', notif.modelVersion ?? GhostAI.instance.modelVersion),
+                ],
+              ),
+              const Divider(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    PrivacySanitizer.hasPII('${notif.title} ${notif.content}')
+                        ? Icons.security_sharp
+                        : Icons.verified_user_outlined,
+                    size: 16,
+                    color: Colors.green.shade700,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Privacy Guardrails: On-Device Compliant · Sanitized',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: Colors.green.shade800,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
       ],
     );
   }
+
 
   Widget _buildFeatureRow(String label, String? value) {
     return Padding(

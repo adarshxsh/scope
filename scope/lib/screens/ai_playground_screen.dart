@@ -92,9 +92,13 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     if (_selectedNotification == null) return;
 
     if (isReward) {
+      widget.controller.recordFeedback(
+        notification: _selectedNotification!,
+        rewardSignal: 1.0,
+      );
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Reward (+1) recorded! AI model confidence reinforced.'),
+          content: Text('Reward (+1) logged to on-device training dataset! AI model confidence reinforced.'),
           backgroundColor: Colors.green,
         ),
       );
@@ -109,6 +113,15 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     if (_selectedNotification == null) return;
 
     final n = _selectedNotification!;
+
+    // Record negative penalty with corrected category/priority in training sample persistence
+    widget.controller.recordFeedback(
+      notification: n,
+      rewardSignal: -1.0,
+      correctedCategory: _selectedCategory,
+      correctedPriority: _selectedPriority,
+    );
+
     // Extract defining keywords (e.g. words > 3 chars)
     final words = <String>[];
     for (final w in n.title.split(' ')) {
@@ -138,11 +151,12 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Reinforcement Rule Learned! Similar messages will now be classified as $_selectedPriority ($_selectedCategory).'),
+        content: Text('Reinforcement Rule Learned & Sample Logged! Similar messages will now be classified as $_selectedPriority ($_selectedCategory).'),
         backgroundColor: AppColors.seed,
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {

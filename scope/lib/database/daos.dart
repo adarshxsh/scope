@@ -154,3 +154,30 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
     await delete(dailyBriefTable).go();
   }
 }
+
+@DriftAccessor(tables: [TrainingSamplesTable])
+class TrainingSampleDao extends DatabaseAccessor<AttentionDatabase> with _$TrainingSampleDaoMixin {
+  TrainingSampleDao(super.db);
+
+  Future<void> insertSample(TrainingSampleEntry entry) async {
+    await into(trainingSamplesTable).insert(entry, mode: InsertMode.insertOrReplace);
+  }
+
+  Future<List<TrainingSampleEntry>> getAll() {
+    return (select(trainingSamplesTable)
+          ..orderBy([(t) => OrderingTerm(expression: t.timestamp, mode: OrderingMode.desc)]))
+        .get();
+  }
+
+  Future<int> getCount() async {
+    final countExpr = trainingSamplesTable.id.count();
+    final query = selectOnly(trainingSamplesTable)..addColumns([countExpr]);
+    final row = await query.getSingle();
+    return row.read(countExpr) ?? 0;
+  }
+
+  Future<void> clearAll() async {
+    await delete(trainingSamplesTable).go();
+  }
+}
+
