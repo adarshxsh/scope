@@ -44,6 +44,16 @@ class MainActivity : FlutterActivity() {
                         result.success(true)
                     }
 
+                    "getQueueStats" -> {
+                        val stats = NotificationCollectorService.getQueueStats()
+                        result.success(stats)
+                    }
+
+                    "clearQueue" -> {
+                        NotificationCollectorService.clearQueue()
+                        result.success(true)
+                    }
+
                     else -> result.notImplemented()
                 }
             }
