@@ -3,6 +3,7 @@ import 'package:drift/native.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/database/attention_database.dart';
+import 'package:scope/database/database_provider.dart';
 
 void main() {
   late AttentionDatabase db;
@@ -272,6 +273,44 @@ void main() {
       // Only the new one should remain, old one deleted due to notification expiry
       // Missing one deleted due to being orphaned
       expect(queueItems.first.notificationId, equals('n-new'));
+    });
+
+    test('getDatabasePassphrase returns mock passphrase in FLUTTER_TEST environment', () async {
+      final passphrase = await getDatabasePassphrase();
+      expect(passphrase, isNotEmpty);
+      expect(passphrase, equals('mock_test_passphrase_32bytes_long!'));
+    });
+
+    test('AttentionDatabase with custom passphrase setup callback executes queries successfully', () async {
+      bool pragmaKeyExecuted = false;
+      final encDb = AttentionDatabase(NativeDatabase.memory(
+        setup: (rawDb) {
+          pragmaKeyExecuted = true;
+          rawDb.execute("PRAGMA key = 'test_passphrase_123';");
+        },
+      ));
+
+      final now = DateTime.now();
+      final entry = NotificationEntry(
+        id: 'n_enc1',
+        packageName: 'com.whatsapp',
+        title: 'Encrypted Test',
+        content: 'Content',
+        timestamp: now.millisecondsSinceEpoch,
+        state: ReviewState.ACTIVE,
+        reviewed: false,
+        dismissed: false,
+        isOngoing: false,
+        createdAt: now,
+      );
+
+      await encDb.notificationDao.insertNotification(entry);
+      final fetched = await encDb.notificationDao.getById('n_enc1');
+      expect(fetched, isNotNull);
+      expect(fetched!.title, equals('Encrypted Test'));
+      expect(pragmaKeyExecuted, isTrue);
+
+      await encDb.close();
     });
   });
 }
