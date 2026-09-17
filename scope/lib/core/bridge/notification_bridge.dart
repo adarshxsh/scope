@@ -18,18 +18,34 @@ import 'package:scope/core/models/notification_model.dart';
 class NotificationBridge {
   /// The MethodChannel name must match the one registered in MainActivity.kt
   final MethodChannel _channel;
+  String? _sessionToken;
 
   NotificationBridge({MethodChannel? channel})
     : _channel = channel ?? const MethodChannel('com.scope.notifications');
 
-  /// Drains the notification queue from the Android side.
+  /// Fetches the active dynamic session token from the native side.
+  Future<String?> getSessionToken() async {
+    if (_sessionToken != null) return _sessionToken;
+    try {
+      _sessionToken = await _channel.invokeMethod<String>('getSessionToken');
+      return _sessionToken;
+    } on PlatformException catch (e) {
+      // ignore: avoid_print
+      print('NotificationBridge.getSessionToken failed: ${e.message}');
+      return null;
+    } on MissingPluginException {
+      return null;
+    }
+  }
+
+  /// Non-destructively inspects the pending notification queue on the Android side.
   ///
-  /// Returns a list of [AppNotification] objects captured since the last call.
-  /// Returns an empty list if the service isn't running or no new notifications.
-  Future<List<AppNotification>> getNotifications() async {
+  /// Returns a list of [AppNotification] objects currently in the native queue.
+  /// Does NOT modify or remove items from the native queue.
+  Future<List<AppNotification>> peekNotifications() async {
     try {
       final result = await _channel.invokeMethod<List<dynamic>>(
-        'getNotifications',
+        'peekNotifications',
       );
       if (result == null) return [];
 
@@ -40,12 +56,43 @@ class NotificationBridge {
     } on PlatformException catch (e) {
       // Log but don't crash — the service might not be connected yet
       // ignore: avoid_print
-      print('NotificationBridge.getNotifications failed: ${e.message}');
+      print('NotificationBridge.peekNotifications failed: ${e.message}');
       return [];
     } on MissingPluginException {
       // Happens when running on non-Android platforms or in tests without mock
       return [];
     }
+  }
+
+  /// Explicitly acknowledges receipt of notifications by ID and clears them from the native queue.
+  ///
+  /// Requires a valid session token to perform queue mutations on the native side.
+  Future<bool> acknowledgeNotifications(List<String> ids) async {
+    if (ids.isEmpty) return true;
+    final token = await getSessionToken();
+    try {
+      final result = await _channel.invokeMethod<bool>(
+        'acknowledgeNotifications',
+        {
+          'token': token,
+          'ids': ids,
+        },
+      );
+      return result ?? false;
+    } on PlatformException catch (e) {
+      // ignore: avoid_print
+      print('NotificationBridge.acknowledgeNotifications failed: ${e.message}');
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
+
+  /// Returns a list of [AppNotification] objects captured on the Android side.
+  ///
+  /// Backwards-compatible wrapper that delegates to [peekNotifications].
+  Future<List<AppNotification>> getNotifications() async {
+    return peekNotifications();
   }
 
   /// Checks if the notification listener service has been granted access.

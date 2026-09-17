@@ -22,16 +22,40 @@ class MainActivity : FlutterActivity() {
         private const val CHANNEL = "com.scope.notifications"
     }
 
+    private var sessionToken: String = java.util.UUID.randomUUID().toString()
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
-                    "getNotifications" -> {
-                        val notifications = NotificationCollectorService.drainQueue()
+                    "getSessionToken" -> {
+                        result.success(sessionToken)
+                    }
+
+                    "peekNotifications", "getNotifications" -> {
+                        val notifications = NotificationCollectorService.peekQueue()
                         val mapList = notifications.map { it.toMap() }
                         result.success(mapList)
+                    }
+
+                    "acknowledgeNotifications" -> {
+                        val token = call.argument<String>("token")
+                        val ids = call.argument<List<String>>("ids")
+
+                        if (token == null || token != sessionToken) {
+                            result.error("UNAUTHORIZED", "Invalid or missing session token", null)
+                            return@setMethodCallHandler
+                        }
+
+                        if (ids == null) {
+                            result.error("INVALID_ARGUMENT", "Notification IDs list cannot be null", null)
+                            return@setMethodCallHandler
+                        }
+
+                        val removedCount = NotificationCollectorService.acknowledge(ids)
+                        result.success(true)
                     }
 
                     "isListenerEnabled" -> {
