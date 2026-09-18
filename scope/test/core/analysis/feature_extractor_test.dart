@@ -151,6 +151,32 @@ void main() {
       );
       expect(values[FeatureVector.featureNames.indexOf('person_present')], 1.0);
     });
+
+    test('FeatureVector validates length dynamically against featureNames', () {
+      final originalNames = List<String>.from(FeatureVector.featureNames);
+
+      try {
+        // Default size matches featureNames
+        final defaultVec = FeatureVector(List.filled(FeatureVector.size, 0.5));
+        expect(defaultVec.values, hasLength(originalNames.length));
+
+        // Dynamically update featureNames list to non-63 length (e.g. 68)
+        FeatureVector.featureNames = List.generate(68, (i) => 'feature_$i');
+        expect(FeatureVector.size, equals(68));
+
+        // Constructor accepts 68-element vector without error
+        final customVec = FeatureVector(List.filled(68, 1.0));
+        expect(customVec.values, hasLength(68));
+
+        // Passing 63 elements when expected is 68 throws ArgumentError
+        expect(() => FeatureVector(List.filled(63, 1.0)), throwsArgumentError);
+
+        // Passing empty list throws ArgumentError
+        expect(() => FeatureVector([]), throwsArgumentError);
+      } finally {
+        FeatureVector.featureNames = originalNames;
+      }
+    });
   });
 
   group('MetadataAnalyzer', () {

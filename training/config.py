@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from training.dataset.schema import FEATURE_NAMES
 
-FEATURE_VECTOR_SIZE = 63
+FEATURE_VECTOR_SIZE = len(FEATURE_NAMES)
 RANDOM_SEED = 42
 
 CATEGORICAL_LABELS = ("category", "intent", "urgency")
