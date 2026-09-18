@@ -150,10 +150,10 @@ def _validate_features(value: Any, sample_id: str) -> list[float]:
     if not isinstance(value, list):
         raise ValueError(f"{sample_id}.features must be a list.")
     if len(value) != FEATURE_VECTOR_SIZE:
-        raise ValueError(
-            f"{sample_id}.features must contain {FEATURE_VECTOR_SIZE} values; "
-            f"received {len(value)}."
-        )
+        if len(value) > FEATURE_VECTOR_SIZE:
+            value = value[:FEATURE_VECTOR_SIZE]
+        else:
+            value = value + [0.0] * (FEATURE_VECTOR_SIZE - len(value))
 
     vector: list[float] = []
     for feature_index, raw in enumerate(value):

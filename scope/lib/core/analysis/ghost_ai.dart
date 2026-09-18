@@ -4,6 +4,7 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
+import 'package:scope/core/analysis/tensor_shape_adapter.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -16,7 +17,7 @@ class GhostAIResult {
   /// TFLite model inference execution time in microseconds.
   final int inferenceTimeUs;
 
-  /// The 63-dimensional feature vector extracted from the notification.
+  /// The feature vector extracted from the notification.
   final List<double> featureVector;
 
   /// Raw prediction score (0.0 to 1.0) output by the TFLite model.
@@ -39,6 +40,7 @@ class GhostAIResult {
 class GhostAI {
   static GhostAI? _instance;
   Interpreter? _interpreter;
+  int? _inputTensorSize;
   final RuleEngine _ruleEngine = RuleEngine();
 
   // Slide-cache for duplicate detection
@@ -56,13 +58,52 @@ class GhostAI {
   /// Returns whether the model is loaded.
   bool get isModelLoaded => _interpreter != null;
 
+  /// Returns the required input tensor feature size for the active interpreter.
+  int get inputTensorSize {
+    if (_inputTensorSize != null && _inputTensorSize! > 0) {
+      return _inputTensorSize!;
+    }
+    if (_interpreter != null) {
+      _queryInputTensorShape();
+      if (_inputTensorSize != null && _inputTensorSize! > 0) {
+        return _inputTensorSize!;
+      }
+    }
+    return FeatureVector.featureNames.length;
+  }
+
+  /// Explicitly sets an interpreter instance for testing dynamic shapes.
+  @visibleForTesting
+  void setInterpreterForTesting(Interpreter? interpreter) {
+    _interpreter = interpreter;
+    _inputTensorSize = null;
+    if (_interpreter != null) {
+      _queryInputTensorShape();
+    }
+  }
+
+  /// Queries the TFLite model input tensor shape dynamically.
+  void _queryInputTensorShape() {
+    if (_interpreter == null) return;
+    try {
+      final tensor = _interpreter!.getInputTensor(0);
+      final shape = tensor.shape;
+      if (shape.isNotEmpty && shape.last > 0) {
+        _inputTensorSize = shape.last;
+      }
+    } catch (e) {
+      debugPrint('GhostAI: Failed to query input tensor shape: $e');
+    }
+  }
+
   /// Initializes the TFLite interpreter and rules database once on startup.
   Future<void> initialize() async {
     if (_interpreter != null) return;
     try {
       // 1. Load interpreter from assets
       _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      _queryInputTensorShape();
+      debugPrint('GhostAI: TFLite interpreter loaded successfully (input size: $inputTensorSize).');
     } catch (e) {
       debugPrint('GhostAI: Failed to load TFLite model: $e');
     }
@@ -85,27 +126,36 @@ class GhostAI {
   Future<GhostAIResult> _predict(AppNotification notification) async {
     final stopwatch = Stopwatch()..start();
 
-    // 1. Feature extraction using the existing FeatureExtractor
-    final featureVector = FeatureExtractor.extractFromAppNotification(notification);
+    // 1. Feature extraction using FeatureExtractor
+    final featureInput = NotificationFeatureInput.fromAppNotification(notification);
+    final featureVectorObj = FeatureExtractor.extractVector(featureInput);
+    final featureVector = featureVectorObj.toList();
 
-    // 2. Model inference
+    // 2. Model inference with dynamic tensor shape adaptation
     double predictedScore = 0.0;
     int inferenceTimeUs = 0;
 
     if (_interpreter != null) {
-      final input = [featureVector];
-      final output = List<double>.filled(1, 0.0).reshape([1, 1]);
+      try {
+        final targetSize = inputTensorSize;
+        final adaptedVector = TensorShapeAdapter.adapt(featureVector, targetSize);
+        final input = [adaptedVector];
+        final output = List<double>.filled(1, 0.0).reshape([1, 1]);
 
-      final inferStopwatch = Stopwatch()..start();
-      _interpreter!.run(input, output);
-      inferStopwatch.stop();
+        final inferStopwatch = Stopwatch()..start();
+        _interpreter!.run(input, output);
+        inferStopwatch.stop();
 
-      inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
-      // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
-      predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+        inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
+        // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
+        predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+      } catch (e) {
+        debugPrint('GhostAI: Dynamic shape adaptation or inference error: $e');
+        predictedScore = _heuristicLookAgainScore(featureVectorObj);
+      }
     } else {
       // Heuristic fallback if model not loaded
-      predictedScore = _heuristicLookAgainScore(featureVector);
+      predictedScore = _heuristicLookAgainScore(featureVectorObj);
     }
 
     // 3. Rule matching
@@ -147,8 +197,8 @@ class GhostAI {
     }
 
     // 5. Apply deterministic overrides (expired OTP, expired reminders, duplicates, completed tasks)
-    final hasOtp = featureVector[11] == 1.0; // contains_otp
-    final hasDeadline = featureVector[27] == 1.0; // contains_deadline
+    final hasOtp = featureVectorObj.containsOtp == 1.0;
+    final hasDeadline = featureVectorObj.containsDeadline == 1.0;
 
     if (hasOtp && _isOtpExpired(notification)) {
       finalScore = 0.0;
@@ -182,13 +232,13 @@ class GhostAI {
     return result;
   }
 
-  /// Helper to compute heuristic score if model is not loaded.
-  double _heuristicLookAgainScore(List<double> featureVector) {
-    if (featureVector[11] == 1.0) return 1.0; // OTP
-    if (featureVector[20] == 1.0) return 0.05; // Promo
-    if (featureVector[10] == 1.0) return 0.85; // Money/finance
-    if (featureVector[27] == 1.0) return 0.80; // Deadline
-    return 0.35; // Default medium-low fallback
+  /// Helper to compute heuristic score if model is not loaded or inference fails.
+  double _heuristicLookAgainScore(FeatureVector vector) {
+    if (vector.containsOtp == 1.0) return 1.0;
+    if (vector.isPromotion == 1.0) return 0.05;
+    if (vector.containsMoney == 1.0) return 0.85;
+    if (vector.containsDeadline == 1.0) return 0.80;
+    return 0.35;
   }
 
   /// Parses Validity period of OTP and returns whether it is expired.
