@@ -78,11 +78,19 @@ class GhostAI {
   }
 
   /// Public API: resolves look-again priority score for a notification.
-  static Future<GhostAIResult> predict(AppNotification notification) async {
-    return instance._predict(notification);
+  static Future<GhostAIResult> predict(
+    AppNotification notification, {
+    DateTime? referenceTime,
+  }) async {
+    return instance._predict(notification, referenceTime: referenceTime);
   }
 
-  Future<GhostAIResult> _predict(AppNotification notification) async {
+  Future<GhostAIResult> _predict(
+    AppNotification notification, {
+    DateTime? referenceTime,
+  }) async {
+    final effectiveReferenceTime =
+        referenceTime ?? DateTime.fromMillisecondsSinceEpoch(notification.timestamp);
     final stopwatch = Stopwatch()..start();
 
     // 1. Feature extraction using the existing FeatureExtractor
@@ -150,11 +158,11 @@ class GhostAI {
     final hasOtp = featureVector[11] == 1.0; // contains_otp
     final hasDeadline = featureVector[27] == 1.0; // contains_deadline
 
-    if (hasOtp && _isOtpExpired(notification)) {
+    if (hasOtp && _isOtpExpired(notification, effectiveReferenceTime)) {
       finalScore = 0.0;
-    } else if (hasDeadline && _isReminderExpired(notification)) {
+    } else if (hasDeadline && _isReminderExpired(notification, effectiveReferenceTime)) {
       finalScore = 0.0;
-    } else if (_isDuplicate(notification)) {
+    } else if (_isDuplicate(notification, effectiveReferenceTime)) {
       finalScore = 0.0;
     } else if (_isCompletedTask(notification)) {
       finalScore = 0.0;
@@ -192,7 +200,7 @@ class GhostAI {
   }
 
   /// Parses Validity period of OTP and returns whether it is expired.
-  bool _isOtpExpired(AppNotification notification) {
+  bool _isOtpExpired(AppNotification notification, DateTime referenceTime) {
     final lower = notification.content.toLowerCase();
     final regex = RegExp(
       r'(?:valid|expires|active)\s+(?:for|in)?\s*(\d+)\s*(minute|minutes|min|mins|second|seconds|sec|secs)',
@@ -213,12 +221,12 @@ class GhostAI {
       }
     }
 
-    final elapsedMs = DateTime.now().millisecondsSinceEpoch - notification.timestamp;
+    final elapsedMs = referenceTime.millisecondsSinceEpoch - notification.timestamp;
     return elapsedMs > durationMs;
   }
 
   /// Parses Relative deadline from text and returns whether it has expired.
-  bool _isReminderExpired(AppNotification notification) {
+  bool _isReminderExpired(AppNotification notification, DateTime referenceTime) {
     final lower = notification.content.toLowerCase();
     final relativeRegex = RegExp(
       r'\bin\s+(\d{1,4})\s*(minute|minutes|min|mins|hour|hours|hr|hrs|day|days)\b',
@@ -238,7 +246,7 @@ class GhostAI {
         } else {
           durationMs = amount * 24 * 60 * 60 * 1000;
         }
-        final elapsedMs = DateTime.now().millisecondsSinceEpoch - notification.timestamp;
+        final elapsedMs = referenceTime.millisecondsSinceEpoch - notification.timestamp;
         return elapsedMs > durationMs;
       }
     }
@@ -246,7 +254,7 @@ class GhostAI {
     // Expiry check for calendar days (today/tonight/tomorrow in past)
     if (lower.contains('today') || lower.contains('tonight')) {
       final notifDate = DateTime.fromMillisecondsSinceEpoch(notification.timestamp);
-      final nowDate = DateTime.now();
+      final nowDate = referenceTime;
       if (notifDate.year < nowDate.year ||
           (notifDate.year == nowDate.year && notifDate.month < nowDate.month) ||
           (notifDate.year == nowDate.year && notifDate.month == nowDate.month && notifDate.day < nowDate.day)) {
@@ -258,17 +266,18 @@ class GhostAI {
   }
 
   /// Returns whether this notification is a duplicate within the sliding window.
-  bool _isDuplicate(AppNotification notification) {
-    final now = DateTime.now().millisecondsSinceEpoch;
+  bool _isDuplicate(AppNotification notification, DateTime referenceTime) {
+    final refMs = referenceTime.millisecondsSinceEpoch;
 
     // Prune stale duplicates older than 5 minutes
-    _processedNotifications.removeWhere((n) => now - n.timestamp > _duplicateWindowMs);
+    _processedNotifications.removeWhere((n) => (refMs - n.timestamp).abs() > _duplicateWindowMs);
 
     for (final oldNotif in _processedNotifications) {
       if (oldNotif.packageName == notification.packageName &&
           oldNotif.title == notification.title &&
           oldNotif.content == notification.content &&
-          oldNotif.id != notification.id) {
+          oldNotif.id != notification.id &&
+          (refMs - oldNotif.timestamp).abs() <= _duplicateWindowMs) {
         return true;
       }
     }

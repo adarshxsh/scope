@@ -190,7 +190,10 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
       }
 
       // 2. Perform re-scoring prediction via GhostAI
-      final ghostResult = await GhostAI.predict(item);
+      final ghostResult = await GhostAI.predict(
+        item,
+        referenceTime: DateTime.fromMillisecondsSinceEpoch(item.timestamp),
+      );
 
       var updatedItem = item.copyWith(
         priorityScore: ghostResult.reviewScore,

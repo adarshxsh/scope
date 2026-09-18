@@ -145,7 +145,7 @@ void main() {
       expect(list.first.snoozedUntil, isNull); // Snooze cleared
     });
 
-    test('rescore() auto-expires OTPs whose duration has elapsed', () async {
+    test('rescore() retains high priority score for historical OTPs during queue rescoring passes', () async {
       final oldOtp = AppNotification(
         id: 'otp-old',
         packageName: 'com.whatsapp',
@@ -158,11 +158,11 @@ void main() {
       await notifier.rescore();
 
       final item = container.read(reviewQueueProvider).first;
-      expect(item.state, equals(ReviewState.EXPIRED));
-      expect(item.priorityScore, equals(0.0));
+      expect(item.state, equals(ReviewState.ACTIVE));
+      expect(item.priorityScore, equals(1.0));
     });
 
-    test('rescore() auto-expires relative deadline reminders after they pass', () async {
+    test('rescore() retains high priority score for historical relative deadline reminders during queue rescoring passes', () async {
       final oldReminder = AppNotification(
         id: 'rem-old',
         packageName: 'com.google.android.calendar',
@@ -175,8 +175,8 @@ void main() {
       await notifier.rescore();
 
       final item = container.read(reviewQueueProvider).first;
-      expect(item.state, equals(ReviewState.EXPIRED));
-      expect(item.priorityScore, equals(0.0));
+      expect(item.state, equals(ReviewState.ACTIVE));
+      expect(item.priorityScore, equals(0.80));
     });
 
     test('rescore() auto-archives completed payment reminders', () async {
