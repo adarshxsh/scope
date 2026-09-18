@@ -104,6 +104,14 @@ void main() {
         expect(restored, equals(original));
       });
 
+      test('round-trip with isLowPowerMode true', () {
+        final original = createSample().copyWith(isLowPowerMode: true);
+        final map = original.toMap();
+        final restored = AppNotification.fromMap(map);
+        expect(restored.isLowPowerMode, true);
+        expect(restored, equals(original));
+      });
+
       test('fromMap handles missing fields gracefully', () {
         final notification = AppNotification.fromMap({});
         expect(notification.id, '');
