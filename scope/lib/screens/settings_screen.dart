@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:scope/core/state/notification_controller.dart';
 import 'package:scope/screens/ai_playground_screen.dart';
+import 'package:scope/screens/app_exclusion_screen.dart';
 import 'package:scope/screens/diagnostic_screen.dart';
 import 'package:scope/theme/app_spacing.dart';
 import 'package:scope/theme/scope_navigator.dart';
@@ -45,6 +46,16 @@ class SettingsScreen extends StatelessWidget {
                     title: 'Privacy',
                     subtitle: 'All analysis runs on your device',
                     onTap: null,
+                  ),
+                  const Divider(height: 1, indent: 56),
+                  _SettingsTile(
+                    icon: Icons.block_outlined,
+                    title: 'App Exclusion Controls',
+                    subtitle: '${controller.exclusionService.excludedPackages.length} apps excluded from ingestion',
+                    onTap: () => ScopeNavigator.push(
+                      context,
+                      AppExclusionScreen(controller: controller),
+                    ),
                   ),
                   const Divider(height: 1, indent: 56),
                   _SettingsTile(
