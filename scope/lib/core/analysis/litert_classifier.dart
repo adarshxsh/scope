@@ -5,6 +5,7 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/analysis_result.dart';
 import 'package:scope/core/analysis/notification_analyzer.dart';
 import 'package:scope/core/analysis/wordpiece_tokenizer.dart';
+import 'package:scope/core/analysis/asset_verifier_service.dart';
 
 /// Classifier using LiteRT (TensorFlow Lite) to classify text categories.
 class LiteRtClassifier implements NotificationAnalyzer {
@@ -18,13 +19,26 @@ class LiteRtClassifier implements NotificationAnalyzer {
 
   Future<void> _initialize() async {
     try {
-      // 1. Load Vocab
-      final vocabStr = await rootBundle.loadString('assets/vocab.txt');
-      final lines = vocabStr.split('\n');
-      _tokenizer = WordPieceTokenizer.fromLines(lines);
+      // 1. Verify and Load Vocab
+      final isVocabVerified = await AssetVerifierService.instance.verifyAsset('assets/vocab.txt');
+      if (isVocabVerified) {
+        final vocabStr = await rootBundle.loadString('assets/vocab.txt');
+        final lines = vocabStr.split('\n');
+        _tokenizer = WordPieceTokenizer.fromLines(lines);
+      } else {
+        // ignore: avoid_print
+        print('LiteRtClassifier: Asset verification failed for assets/vocab.txt.');
+      }
 
-      // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
-      _isModelLoaded = false;
+      // 2. Verify model asset
+      final isModelVerified = await AssetVerifierService.instance.verifyAsset('assets/model.tflite');
+      if (isModelVerified) {
+        _isModelLoaded = false;
+      } else {
+        _isModelLoaded = false;
+        // ignore: avoid_print
+        print('LiteRtClassifier: Asset verification failed for assets/model.tflite.');
+      }
     } catch (e) {
       // Graceful degradation: Log and set flags so analyze runs in fallback mode
       // ignore: avoid_print
@@ -34,8 +48,11 @@ class LiteRtClassifier implements NotificationAnalyzer {
       // Ensure tokenizer is loaded even if interpreter fails (so we can test tokenization in fallback)
       if (_tokenizer == null) {
         try {
-          final vocabStr = await rootBundle.loadString('assets/vocab.txt');
-          _tokenizer = WordPieceTokenizer.fromLines(vocabStr.split('\n'));
+          final isVocabVerified = await AssetVerifierService.instance.verifyAsset('assets/vocab.txt');
+          if (isVocabVerified) {
+            final vocabStr = await rootBundle.loadString('assets/vocab.txt');
+            _tokenizer = WordPieceTokenizer.fromLines(vocabStr.split('\n'));
+          }
         } catch (_) {}
       }
     }
