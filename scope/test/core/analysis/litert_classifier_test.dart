@@ -43,5 +43,12 @@ void main() {
       expect(result.score, equals(0.0));
       expect(result.isFallback, isTrue);
     });
+
+    test('initialize() completes without throwing and sets isModelLoaded status', () async {
+      final classifier = LiteRtClassifier();
+      await classifier.initialize();
+      // On desktop/headless test runners without native C library, isModelLoaded is false
+      expect(classifier.isModelLoaded, isFalse);
+    });
   });
 }
