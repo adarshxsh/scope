@@ -380,6 +380,7 @@ class NotificationController extends ChangeNotifier {
 
   Future<void> fetchNotifications() async {
     try {
+      final isLowBattery = await _bridge.isLowBattery();
       final newNotifications = await _bridge.getNotifications();
       final analyzed = <AppNotification>[];
 
@@ -404,7 +405,10 @@ class NotificationController extends ChangeNotifier {
               n.title == raw.title &&
               n.content == raw.content);
           if (!inBatch) {
-            analyzed.add(await _engine.analyze(raw));
+            analyzed.add(await _engine.analyze(
+              raw,
+              isLowBattery: isLowBattery || raw.isLowBattery,
+            ));
           }
         }
       }

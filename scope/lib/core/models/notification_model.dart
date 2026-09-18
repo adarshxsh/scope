@@ -43,6 +43,9 @@ class AppNotification {
   /// Whether this is an ongoing/persistent notification.
   final bool isOngoing;
 
+  /// Whether low battery / power save mode was active when processing.
+  final bool isLowBattery;
+
   /// Priority level resolved by Ghost AI ('critical' | 'high' | 'medium' | 'low').
   final String? priority;
 
@@ -87,6 +90,7 @@ class AppNotification {
     required this.timestamp,
     this.category,
     this.isOngoing = false,
+    this.isLowBattery = false,
     this.priority,
     this.priorityScore,
     this.classifiedCategory,
@@ -150,6 +154,7 @@ class AppNotification {
       timestamp: timestamp,
       category: map['category'] as String?,
       isOngoing: map['isOngoing'] as bool? ?? false,
+      isLowBattery: (map['isLowBattery'] ?? map['isLowPowerMode']) as bool? ?? false,
       priority: map['priority'] as String?,
       priorityScore: (map['priorityScore'] as num?)?.toDouble(),
       classifiedCategory: map['classifiedCategory'] as String?,
@@ -181,6 +186,7 @@ class AppNotification {
       'timestamp': timestamp,
       'category': category,
       'isOngoing': isOngoing,
+      'isLowBattery': isLowBattery,
       'priority': priority,
       'priorityScore': priorityScore,
       'classifiedCategory': classifiedCategory,
@@ -207,6 +213,7 @@ class AppNotification {
         other.timestamp == timestamp &&
         other.category == category &&
         other.isOngoing == isOngoing &&
+        other.isLowBattery == isLowBattery &&
         other.priority == priority &&
         other.priorityScore == priorityScore &&
         other.classifiedCategory == classifiedCategory &&
@@ -241,6 +248,7 @@ class AppNotification {
         timestamp,
         category,
         isOngoing,
+        isLowBattery,
         priority,
         priorityScore,
         classifiedCategory,
@@ -260,8 +268,9 @@ class AppNotification {
     return 'AppNotification(id: $id, package: $packageName, '
         'title: $title, content: $content, '
         'timestamp: $timestamp, category: $category, '
-        'isOngoing: $isOngoing, priority: $priority, '
-        'priorityScore: $priorityScore, classifiedCategory: $classifiedCategory, '
+        'isOngoing: $isOngoing, isLowBattery: $isLowBattery, '
+        'priority: $priority, priorityScore: $priorityScore, '
+        'classifiedCategory: $classifiedCategory, '
         'explanation: $explanation, latencyMs: $latencyMs, '
         'ruleVersion: $ruleVersion, modelVersion: $modelVersion, '
         'engineVersion: $engineVersion, state: $state, '
@@ -278,6 +287,7 @@ class AppNotification {
     int? timestamp,
     String? category,
     bool? isOngoing,
+    bool? isLowBattery,
     String? priority,
     double? priorityScore,
     String? classifiedCategory,
@@ -299,6 +309,7 @@ class AppNotification {
       timestamp: timestamp ?? this.timestamp,
       category: category ?? this.category,
       isOngoing: isOngoing ?? this.isOngoing,
+      isLowBattery: isLowBattery ?? this.isLowBattery,
       priority: priority ?? this.priority,
       priorityScore: priorityScore ?? this.priorityScore,
       classifiedCategory: classifiedCategory ?? this.classifiedCategory,
