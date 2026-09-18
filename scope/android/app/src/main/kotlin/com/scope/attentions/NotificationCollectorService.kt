@@ -3,7 +3,18 @@ package com.scope.attentions
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
-import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.ArrayDeque
+import java.util.HashSet
+import java.util.concurrent.atomic.AtomicLong
+
+/**
+ * Composite key representing a notification signature for O(1) deduplication.
+ */
+data class NotificationKey(
+    val packageName: String,
+    val title: String,
+    val content: String
+)
 
 /**
  * Android service that captures all incoming notifications.
@@ -11,13 +22,13 @@ import java.util.concurrent.ConcurrentLinkedQueue
  * Extends [NotificationListenerService] which requires the user to manually
  * grant "Notification access" in system Settings.
  *
- * Captured notifications are placed in a static [queue] which is drained
+ * Captured notifications are placed in a static bounded ring queue which is drained
  * by [MainActivity] when Flutter requests them via MethodChannel.
  *
  * Design decisions:
- *   - Uses a static ConcurrentLinkedQueue (thread-safe, lock-free) because
- *     the service runs in a separate context from MainActivity.
- *   - No heavy processing here — just capture and queue.
+ *   - Uses a synchronized bounded ring queue with capacity cap of 200 items.
+ *   - Uses AtomicLong for thread-safe unique ID generation.
+ *   - Uses a sliding HashSet for O(1) deduplication of active notifications.
  *   - Skips ongoing/persistent notifications by default (configurable).
  */
 class NotificationCollectorService : NotificationListenerService() {
@@ -25,30 +36,83 @@ class NotificationCollectorService : NotificationListenerService() {
     companion object {
         private const val TAG = "NotifCollector"
 
-        /** Thread-safe queue of captured notifications. */
-        private val queue = ConcurrentLinkedQueue<NotificationData>()
+        /** Maximum capacity for the bounded ring queue. */
+        const val MAX_QUEUE_SIZE = 200
 
-        /** Counter for generating simple unique IDs within a session. */
-        private var idCounter = 0L
+        private val queueLock = Any()
+
+        /** Bounded ring queue of captured notifications. */
+        private val queue = ArrayDeque<NotificationData>(MAX_QUEUE_SIZE)
+
+        /** Hash set for O(1) deduplication of active notifications in the queue. */
+        private val dedupeSet = HashSet<NotificationKey>()
+
+        /** Thread-safe counter for generating unique notification IDs within a session. */
+        private val idCounter = AtomicLong(0L)
 
         /**
-         * Drains all notifications from the queue and returns them.
+         * Enqueues a notification if it is not a duplicate.
+         * Enforces maximum capacity of [MAX_QUEUE_SIZE], evicting the oldest element when full.
+         * Generates a thread-safe ID using [AtomicLong.incrementAndGet].
+         * Returns true if added, false if ignored as duplicate.
+         */
+        fun enqueueNotification(
+            packageName: String,
+            title: String,
+            content: String,
+            timestamp: Long = System.currentTimeMillis(),
+            category: String? = null,
+            isOngoing: Boolean = false
+        ): Boolean {
+            val key = NotificationKey(packageName, title, content)
+            synchronized(queueLock) {
+                if (dedupeSet.contains(key)) {
+                    return false
+                }
+
+                if (queue.size >= MAX_QUEUE_SIZE) {
+                    val evicted = queue.removeFirst()
+                    dedupeSet.remove(NotificationKey(evicted.packageName, evicted.title, evicted.content))
+                }
+
+                val data = NotificationData(
+                    id = "notif_${idCounter.incrementAndGet()}",
+                    packageName = packageName,
+                    title = title,
+                    content = content,
+                    timestamp = timestamp,
+                    category = category,
+                    isOngoing = isOngoing
+                )
+
+                queue.addLast(data)
+                dedupeSet.add(key)
+                return true
+            }
+        }
+
+        /**
+         * Drains all notifications from the queue and resets the deduplication set.
          * Called by [MainActivity] when Flutter requests notifications.
-         * After this call, the queue is empty.
+         * After this call, the queue and deduplication set are empty.
          */
         fun drainQueue(): List<NotificationData> {
-            val result = mutableListOf<NotificationData>()
-            while (true) {
-                val item = queue.poll() ?: break
-                result.add(item)
+            synchronized(queueLock) {
+                val result = ArrayList(queue)
+                queue.clear()
+                dedupeSet.clear()
+                return result
             }
-            return result
         }
 
         /**
          * Returns the current queue size (for diagnostics).
          */
-        fun queueSize(): Int = queue.size
+        fun queueSize(): Int {
+            synchronized(queueLock) {
+                return queue.size
+            }
+        }
     }
 
     private fun addSbnToQueue(sbn: StatusBarNotification) {
@@ -59,16 +123,7 @@ class NotificationCollectorService : NotificationListenerService() {
             val isOngoing = sbn.isOngoing
             val packageName = sbn.packageName ?: "unknown"
 
-            // Ignore if same package, title, and content already exist in queue
-            val isDuplicate = queue.any {
-                it.packageName == packageName && it.title == title && it.content == text
-            }
-            if (isDuplicate) {
-                return
-            }
-
-            val data = NotificationData(
-                id = "notif_${++idCounter}",
+            val added = enqueueNotification(
                 packageName = packageName,
                 title = title,
                 content = text,
@@ -77,8 +132,9 @@ class NotificationCollectorService : NotificationListenerService() {
                 isOngoing = isOngoing
             )
 
-            queue.add(data)
-            Log.d(TAG, "Captured: ${data.packageName} - ${data.title}")
+            if (added) {
+                Log.d(TAG, "Captured: $packageName - $title")
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error capturing/adding notification", e)
         }
