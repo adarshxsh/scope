@@ -1,5 +1,6 @@
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/storage/notification_storage.dart';
+import 'package:scope/core/utils/storage_logger.dart';
 import 'package:scope/database/attention_database.dart';
 
 class DriftNotificationStorage implements NotificationStorage {
@@ -8,13 +9,26 @@ class DriftNotificationStorage implements NotificationStorage {
 
   @override
   Future<void> save(AppNotification notification) async {
-    await _db.notificationDao.insertNotification(_toEntry(notification));
+    try {
+      final sanitized = notification.validateAndSanitize();
+      await _db.notificationDao.insertNotification(_toEntry(sanitized));
+      await _db.enforceCapacityLimit();
+    } catch (e, st) {
+      StorageLogger.logStorageError('DriftNotificationStorage.save', e, st);
+    }
   }
 
   @override
   Future<void> saveAll(List<AppNotification> notifications) async {
-    final entries = notifications.map(_toEntry).toList();
-    await _db.notificationDao.insertAll(entries);
+    if (notifications.isEmpty) return;
+    try {
+      final sanitizedList = notifications.map((n) => n.validateAndSanitize()).toList();
+      final entries = sanitizedList.map(_toEntry).toList();
+      await _db.notificationDao.insertAll(entries);
+      await _db.enforceCapacityLimit();
+    } catch (e, st) {
+      StorageLogger.logStorageError('DriftNotificationStorage.saveAll', e, st);
+    }
   }
 
   @override

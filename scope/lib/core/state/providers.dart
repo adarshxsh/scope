@@ -22,7 +22,8 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
 
   /// Add a notification to the review queue.
   /// Merges duplicate notifications (same packageName, title, content).
-  void add(AppNotification notification) {
+  void add(AppNotification rawNotification) {
+    final notification = rawNotification.validateAndSanitize();
     final now = DateTime.now();
     final index = state.indexWhere((n) =>
         n.packageName == notification.packageName &&
