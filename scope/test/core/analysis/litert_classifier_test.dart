@@ -48,7 +48,8 @@ void main() {
       
       expect(result.category, equals('msg'));
       expect(result.engineName, contains('fallback'));
-      expect(result.score, equals(0.50));
+      expect(result.score, equals(0.0));
+      expect(result.isFallback, isTrue);
       expect(result.matchedSignals.join(), isNot(contains('Mom')));
     });
 
@@ -67,6 +68,8 @@ void main() {
       
       expect(result.category, equals('finance'));
       expect(result.engineName, contains('fallback'));
+      expect(result.score, equals(0.0));
+      expect(result.isFallback, isTrue);
     });
 
     test('executes active TFLite interpreter model inference and computes softmax category scores', () async {
@@ -160,7 +163,8 @@ void main() {
 
       expect(result.engineName, contains('fallback on error'));
       expect(result.category, equals('finance'));
-      expect(result.score, equals(0.50));
+      expect(result.score, equals(0.0));
+      expect(result.isFallback, isTrue);
       expect(result.matchedSignals.join(), isNot(contains('Rs. 5,000')));
     });
   });

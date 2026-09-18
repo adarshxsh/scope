@@ -83,13 +83,14 @@ class LiteRtClassifier implements NotificationAnalyzer {
       stopwatch.stop();
       return AnalysisResult(
         category: category,
-        score: 0.50, // Base default score for fallback
+        score: 0.0, // Zero authentic model confidence for fallback heuristic
         engineName: 'litert_model (fallback)',
         matchedSignals: [
           'Model asset invalid or uninitialized',
           'Tokenizer parsed ${tokenIds.length} tokens',
         ],
         latencyMs: stopwatch.elapsedMilliseconds,
+        isFallback: true,
       );
     }
 
@@ -127,6 +128,7 @@ class LiteRtClassifier implements NotificationAnalyzer {
           'Softmax scores: ${softmaxScores.map((s) => double.parse(s.toStringAsFixed(4))).toList()}',
         ],
         latencyMs: stopwatch.elapsedMilliseconds,
+        isFallback: false,
       );
     } catch (e) {
       // Fallback on inference error
@@ -134,10 +136,11 @@ class LiteRtClassifier implements NotificationAnalyzer {
       stopwatch.stop();
       return AnalysisResult(
         category: category,
-        score: 0.50,
+        score: 0.0, // Zero authentic model confidence on inference error
         engineName: 'litert_model (fallback on error)',
         matchedSignals: ['Inference error: ${e.runtimeType}'],
         latencyMs: stopwatch.elapsedMilliseconds,
+        isFallback: true,
       );
     }
   }
