@@ -16,12 +16,14 @@ part 'attention_database.g.dart';
     ReviewQueueTable,
     FocusSessionsTable,
     DailyBriefTable,
+    InferenceAuditLogsTable,
   ],
   daos: [
     NotificationDao,
     ReviewQueueDao,
     FocusSessionDao,
     DailyBriefDao,
+    InferenceAuditLogDao,
   ],
 )
 class AttentionDatabase extends _$AttentionDatabase {
@@ -34,8 +36,8 @@ class AttentionDatabase extends _$AttentionDatabase {
   @override
   int get schemaVersion => 1;
 
-  /// Runs a single-step atomic transaction to clean up expired notifications
-  /// and any orphaned review queue entries, avoiding main-thread loops.
+  /// Runs a single-step atomic transaction to clean up expired notifications,
+  /// orphaned review queue entries, and audit logs older than 30 days.
   Future<void> runSetBasedCleanup(int cutoffTimestamp) async {
     await transaction(() async {
       // 1. Delete expired notifications based on cutoff timestamp
@@ -48,6 +50,10 @@ class AttentionDatabase extends _$AttentionDatabase {
         return t.notificationId.isNotInQuery(hasNotification);
       });
       await orphanedQuery.go();
+
+      // 3. Purge inference audit logs older than 30 days automatically
+      final auditCutoff30Days = DateTime.now().subtract(const Duration(days: 30)).millisecondsSinceEpoch;
+      await (delete(inferenceAuditLogsTable)..where((t) => t.timestamp.isSmallerThanValue(auditCutoff30Days))).go();
     });
   }
 }
