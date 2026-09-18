@@ -1,11 +1,14 @@
+import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:scope/core/analysis/rule_crypto.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('RuleEngine', () {
-    const String sampleJson = '''
-    {
+    final Map<String, dynamic> samplePayload = {
       "version": "1.2.3",
       "rules": [
         {
@@ -35,18 +38,34 @@ void main() {
           }
         }
       ]
-    }
-    ''';
+    };
 
     late RuleEngine engine;
 
-    setUp(() {
+    setUp(() async {
       engine = RuleEngine();
-      engine.compile(sampleJson);
+      final envelope = await RuleCrypto.createSignedBaseRulesEnvelope(samplePayload);
+      await engine.compile(json.encode(envelope));
     });
 
     test('compiles JSON rules and parses metadata correctly', () {
       expect(engine.version, equals('1.2.3'));
+    });
+
+    test('rejects base rules with invalid or missing Ed25519 signatures', () async {
+      final invalidEngine = RuleEngine();
+      
+      // 1. Unsigned raw JSON
+      final unsignedOk = await invalidEngine.compile(json.encode(samplePayload));
+      expect(unsignedOk, isFalse);
+      expect(invalidEngine.version, equals('0.0.0'));
+
+      // 2. Corrupted signature
+      final envelope = await RuleCrypto.createSignedBaseRulesEnvelope(samplePayload);
+      envelope['signature'] = '0' * 128; // Tampered signature hex
+      final tamperedOk = await invalidEngine.compile(json.encode(envelope));
+      expect(tamperedOk, isFalse);
+      expect(invalidEngine.version, equals('0.0.0'));
     });
 
     test('matches a debit transaction rule successfully (AND condition title+content)', () {
@@ -123,6 +142,71 @@ void main() {
       expect(result!.ruleId, equals('swiggy_promo'));
       expect(result.category, equals('promo'));
       expect(result.priority, equals('low'));
+    });
+
+    test('dynamic user reinforcement rules signed with HMAC load successfully', () async {
+      final customRule = const NotificationRule(
+        id: 'rlhf-1001',
+        category: 'msg',
+        priority: 'critical',
+        conditions: RuleCondition(keywords: ['custom_keyword']),
+      );
+
+      await engine.addReinforcementRule(customRule);
+
+      final newEngine = RuleEngine();
+      final envelope = await RuleCrypto.createSignedBaseRulesEnvelope(samplePayload);
+      await newEngine.compile(json.encode(envelope));
+      final loadedCustom = await newEngine.loadCustomRules();
+
+      expect(loadedCustom, isTrue);
+
+      final notif = AppNotification(
+        id: '99',
+        packageName: 'com.example',
+        title: 'Test',
+        content: 'Hello custom_keyword',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final matchResult = newEngine.match(notif);
+      expect(matchResult, isNotNull);
+      expect(matchResult!.ruleId, equals('rlhf-1001'));
+      expect(matchResult.priority, equals('critical'));
+    });
+
+    test('tampered local dynamic rule fails HMAC verification and falls back safely', () async {
+      final customRuleMap = {
+        "id": "rlhf-tampered",
+        "category": "override",
+        "priority": "critical",
+        "conditions": {
+          "keywords": ["tampered"]
+        }
+      };
+
+      // Create a tampered envelope with invalid HMAC
+      final tamperedEnvelope = {
+        "hmac": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "payload": {
+          "rules": [customRuleMap]
+        }
+      };
+
+      final verified = await RuleCrypto.verifyCustomRulesEnvelope(tamperedEnvelope);
+      expect(verified, isNull);
+    });
+
+    test('rule verification overhead is under 15ms', () async {
+      final envelope = await RuleCrypto.createSignedBaseRulesEnvelope(samplePayload);
+      final envelopeStr = json.encode(envelope);
+
+      final stopwatch = Stopwatch()..start();
+      final testEngine = RuleEngine();
+      await testEngine.compile(envelopeStr);
+      stopwatch.stop();
+
+      expect(stopwatch.elapsedMilliseconds, lessThan(15));
     });
   });
 }
