@@ -61,10 +61,25 @@ class GhostAI {
     if (_interpreter != null) return;
     try {
       // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      final interpreter = await Interpreter.fromAsset('assets/model.tflite');
+      final inputShape = interpreter.getInputTensor(0).shape;
+      final isShapeValid = inputShape.length == 2 &&
+          inputShape[0] == 1 &&
+          inputShape[1] == 63;
+
+      if (!isShapeValid) {
+        debugPrint(
+          'GhostAI: Invalid input tensor shape $inputShape. Expected [1, 63]. Closing interpreter.',
+        );
+        interpreter.close();
+        _interpreter = null;
+      } else {
+        _interpreter = interpreter;
+        debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      }
     } catch (e) {
       debugPrint('GhostAI: Failed to load TFLite model: $e');
+      _interpreter = null;
     }
 
     try {
@@ -93,16 +108,33 @@ class GhostAI {
     int inferenceTimeUs = 0;
 
     if (_interpreter != null) {
-      final input = [featureVector];
-      final output = List<double>.filled(1, 0.0).reshape([1, 1]);
+      try {
+        final inputShape = _interpreter!.getInputTensor(0).shape;
+        final isShapeValid = inputShape.length == 2 &&
+            inputShape[0] == 1 &&
+            inputShape[1] == featureVector.length;
 
-      final inferStopwatch = Stopwatch()..start();
-      _interpreter!.run(input, output);
-      inferStopwatch.stop();
+        if (isShapeValid) {
+          final input = [featureVector];
+          final output = List<double>.filled(1, 0.0).reshape([1, 1]);
 
-      inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
-      // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
-      predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+          final inferStopwatch = Stopwatch()..start();
+          _interpreter!.run(input, output);
+          inferStopwatch.stop();
+
+          inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
+          // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
+          predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+        } else {
+          debugPrint(
+            'GhostAI: Tensor shape mismatch. Expected $inputShape, got [1, ${featureVector.length}]. Falling back to heuristic scoring.',
+          );
+          predictedScore = _heuristicLookAgainScore(featureVector);
+        }
+      } catch (e) {
+        debugPrint('GhostAI: Model inference error: $e. Falling back to heuristic scoring.');
+        predictedScore = _heuristicLookAgainScore(featureVector);
+      }
     } else {
       // Heuristic fallback if model not loaded
       predictedScore = _heuristicLookAgainScore(featureVector);
