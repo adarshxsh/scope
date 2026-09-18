@@ -2709,6 +2709,546 @@ class DailyBriefTableCompanion extends UpdateCompanion<DailyBriefEntry> {
   }
 }
 
+class $RlhfFeedbackTableTable extends RlhfFeedbackTable
+    with TableInfo<$RlhfFeedbackTableTable, RlhfFeedbackEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RlhfFeedbackTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _notificationIdMeta = const VerificationMeta(
+    'notificationId',
+  );
+  @override
+  late final GeneratedColumn<String> notificationId = GeneratedColumn<String>(
+    'notification_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _featureVectorMeta = const VerificationMeta(
+    'featureVector',
+  );
+  @override
+  late final GeneratedColumn<String> featureVector = GeneratedColumn<String>(
+    'feature_vector',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _predictedScoreMeta = const VerificationMeta(
+    'predictedScore',
+  );
+  @override
+  late final GeneratedColumn<double> predictedScore = GeneratedColumn<double>(
+    'predicted_score',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _rewardScoreMeta = const VerificationMeta(
+    'rewardScore',
+  );
+  @override
+  late final GeneratedColumn<double> rewardScore = GeneratedColumn<double>(
+    'reward_score',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedCategoryMeta = const VerificationMeta(
+    'updatedCategory',
+  );
+  @override
+  late final GeneratedColumn<String> updatedCategory = GeneratedColumn<String>(
+    'updated_category',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _updatedPriorityMeta = const VerificationMeta(
+    'updatedPriority',
+  );
+  @override
+  late final GeneratedColumn<String> updatedPriority = GeneratedColumn<String>(
+    'updated_priority',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _timestampMeta = const VerificationMeta(
+    'timestamp',
+  );
+  @override
+  late final GeneratedColumn<DateTime> timestamp = GeneratedColumn<DateTime>(
+    'timestamp',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    notificationId,
+    featureVector,
+    predictedScore,
+    rewardScore,
+    updatedCategory,
+    updatedPriority,
+    timestamp,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'rlhf_feedback_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RlhfFeedbackEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('notification_id')) {
+      context.handle(
+        _notificationIdMeta,
+        notificationId.isAcceptableOrUnknown(
+          data['notification_id']!,
+          _notificationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_notificationIdMeta);
+    }
+    if (data.containsKey('feature_vector')) {
+      context.handle(
+        _featureVectorMeta,
+        featureVector.isAcceptableOrUnknown(
+          data['feature_vector']!,
+          _featureVectorMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_featureVectorMeta);
+    }
+    if (data.containsKey('predicted_score')) {
+      context.handle(
+        _predictedScoreMeta,
+        predictedScore.isAcceptableOrUnknown(
+          data['predicted_score']!,
+          _predictedScoreMeta,
+        ),
+      );
+    }
+    if (data.containsKey('reward_score')) {
+      context.handle(
+        _rewardScoreMeta,
+        rewardScore.isAcceptableOrUnknown(
+          data['reward_score']!,
+          _rewardScoreMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_rewardScoreMeta);
+    }
+    if (data.containsKey('updated_category')) {
+      context.handle(
+        _updatedCategoryMeta,
+        updatedCategory.isAcceptableOrUnknown(
+          data['updated_category']!,
+          _updatedCategoryMeta,
+        ),
+      );
+    }
+    if (data.containsKey('updated_priority')) {
+      context.handle(
+        _updatedPriorityMeta,
+        updatedPriority.isAcceptableOrUnknown(
+          data['updated_priority']!,
+          _updatedPriorityMeta,
+        ),
+      );
+    }
+    if (data.containsKey('timestamp')) {
+      context.handle(
+        _timestampMeta,
+        timestamp.isAcceptableOrUnknown(data['timestamp']!, _timestampMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  RlhfFeedbackEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RlhfFeedbackEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      notificationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notification_id'],
+      )!,
+      featureVector: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}feature_vector'],
+      )!,
+      predictedScore: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}predicted_score'],
+      ),
+      rewardScore: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}reward_score'],
+      )!,
+      updatedCategory: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}updated_category'],
+      ),
+      updatedPriority: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}updated_priority'],
+      ),
+      timestamp: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}timestamp'],
+      )!,
+    );
+  }
+
+  @override
+  $RlhfFeedbackTableTable createAlias(String alias) {
+    return $RlhfFeedbackTableTable(attachedDatabase, alias);
+  }
+}
+
+class RlhfFeedbackEntry extends DataClass
+    implements Insertable<RlhfFeedbackEntry> {
+  final int id;
+  final String notificationId;
+  final String featureVector;
+  final double? predictedScore;
+  final double rewardScore;
+  final String? updatedCategory;
+  final String? updatedPriority;
+  final DateTime timestamp;
+  const RlhfFeedbackEntry({
+    required this.id,
+    required this.notificationId,
+    required this.featureVector,
+    this.predictedScore,
+    required this.rewardScore,
+    this.updatedCategory,
+    this.updatedPriority,
+    required this.timestamp,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['notification_id'] = Variable<String>(notificationId);
+    map['feature_vector'] = Variable<String>(featureVector);
+    if (!nullToAbsent || predictedScore != null) {
+      map['predicted_score'] = Variable<double>(predictedScore);
+    }
+    map['reward_score'] = Variable<double>(rewardScore);
+    if (!nullToAbsent || updatedCategory != null) {
+      map['updated_category'] = Variable<String>(updatedCategory);
+    }
+    if (!nullToAbsent || updatedPriority != null) {
+      map['updated_priority'] = Variable<String>(updatedPriority);
+    }
+    map['timestamp'] = Variable<DateTime>(timestamp);
+    return map;
+  }
+
+  RlhfFeedbackTableCompanion toCompanion(bool nullToAbsent) {
+    return RlhfFeedbackTableCompanion(
+      id: Value(id),
+      notificationId: Value(notificationId),
+      featureVector: Value(featureVector),
+      predictedScore: predictedScore == null && nullToAbsent
+          ? const Value.absent()
+          : Value(predictedScore),
+      rewardScore: Value(rewardScore),
+      updatedCategory: updatedCategory == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedCategory),
+      updatedPriority: updatedPriority == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedPriority),
+      timestamp: Value(timestamp),
+    );
+  }
+
+  factory RlhfFeedbackEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RlhfFeedbackEntry(
+      id: serializer.fromJson<int>(json['id']),
+      notificationId: serializer.fromJson<String>(json['notificationId']),
+      featureVector: serializer.fromJson<String>(json['featureVector']),
+      predictedScore: serializer.fromJson<double?>(json['predictedScore']),
+      rewardScore: serializer.fromJson<double>(json['rewardScore']),
+      updatedCategory: serializer.fromJson<String?>(json['updatedCategory']),
+      updatedPriority: serializer.fromJson<String?>(json['updatedPriority']),
+      timestamp: serializer.fromJson<DateTime>(json['timestamp']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'notificationId': serializer.toJson<String>(notificationId),
+      'featureVector': serializer.toJson<String>(featureVector),
+      'predictedScore': serializer.toJson<double?>(predictedScore),
+      'rewardScore': serializer.toJson<double>(rewardScore),
+      'updatedCategory': serializer.toJson<String?>(updatedCategory),
+      'updatedPriority': serializer.toJson<String?>(updatedPriority),
+      'timestamp': serializer.toJson<DateTime>(timestamp),
+    };
+  }
+
+  RlhfFeedbackEntry copyWith({
+    int? id,
+    String? notificationId,
+    String? featureVector,
+    Value<double?> predictedScore = const Value.absent(),
+    double? rewardScore,
+    Value<String?> updatedCategory = const Value.absent(),
+    Value<String?> updatedPriority = const Value.absent(),
+    DateTime? timestamp,
+  }) => RlhfFeedbackEntry(
+    id: id ?? this.id,
+    notificationId: notificationId ?? this.notificationId,
+    featureVector: featureVector ?? this.featureVector,
+    predictedScore: predictedScore.present
+        ? predictedScore.value
+        : this.predictedScore,
+    rewardScore: rewardScore ?? this.rewardScore,
+    updatedCategory: updatedCategory.present
+        ? updatedCategory.value
+        : this.updatedCategory,
+    updatedPriority: updatedPriority.present
+        ? updatedPriority.value
+        : this.updatedPriority,
+    timestamp: timestamp ?? this.timestamp,
+  );
+  RlhfFeedbackEntry copyWithCompanion(RlhfFeedbackTableCompanion data) {
+    return RlhfFeedbackEntry(
+      id: data.id.present ? data.id.value : this.id,
+      notificationId: data.notificationId.present
+          ? data.notificationId.value
+          : this.notificationId,
+      featureVector: data.featureVector.present
+          ? data.featureVector.value
+          : this.featureVector,
+      predictedScore: data.predictedScore.present
+          ? data.predictedScore.value
+          : this.predictedScore,
+      rewardScore: data.rewardScore.present
+          ? data.rewardScore.value
+          : this.rewardScore,
+      updatedCategory: data.updatedCategory.present
+          ? data.updatedCategory.value
+          : this.updatedCategory,
+      updatedPriority: data.updatedPriority.present
+          ? data.updatedPriority.value
+          : this.updatedPriority,
+      timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RlhfFeedbackEntry(')
+          ..write('id: $id, ')
+          ..write('notificationId: $notificationId, ')
+          ..write('featureVector: $featureVector, ')
+          ..write('predictedScore: $predictedScore, ')
+          ..write('rewardScore: $rewardScore, ')
+          ..write('updatedCategory: $updatedCategory, ')
+          ..write('updatedPriority: $updatedPriority, ')
+          ..write('timestamp: $timestamp')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    notificationId,
+    featureVector,
+    predictedScore,
+    rewardScore,
+    updatedCategory,
+    updatedPriority,
+    timestamp,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RlhfFeedbackEntry &&
+          other.id == this.id &&
+          other.notificationId == this.notificationId &&
+          other.featureVector == this.featureVector &&
+          other.predictedScore == this.predictedScore &&
+          other.rewardScore == this.rewardScore &&
+          other.updatedCategory == this.updatedCategory &&
+          other.updatedPriority == this.updatedPriority &&
+          other.timestamp == this.timestamp);
+}
+
+class RlhfFeedbackTableCompanion extends UpdateCompanion<RlhfFeedbackEntry> {
+  final Value<int> id;
+  final Value<String> notificationId;
+  final Value<String> featureVector;
+  final Value<double?> predictedScore;
+  final Value<double> rewardScore;
+  final Value<String?> updatedCategory;
+  final Value<String?> updatedPriority;
+  final Value<DateTime> timestamp;
+  const RlhfFeedbackTableCompanion({
+    this.id = const Value.absent(),
+    this.notificationId = const Value.absent(),
+    this.featureVector = const Value.absent(),
+    this.predictedScore = const Value.absent(),
+    this.rewardScore = const Value.absent(),
+    this.updatedCategory = const Value.absent(),
+    this.updatedPriority = const Value.absent(),
+    this.timestamp = const Value.absent(),
+  });
+  RlhfFeedbackTableCompanion.insert({
+    this.id = const Value.absent(),
+    required String notificationId,
+    required String featureVector,
+    this.predictedScore = const Value.absent(),
+    required double rewardScore,
+    this.updatedCategory = const Value.absent(),
+    this.updatedPriority = const Value.absent(),
+    this.timestamp = const Value.absent(),
+  }) : notificationId = Value(notificationId),
+       featureVector = Value(featureVector),
+       rewardScore = Value(rewardScore);
+  static Insertable<RlhfFeedbackEntry> custom({
+    Expression<int>? id,
+    Expression<String>? notificationId,
+    Expression<String>? featureVector,
+    Expression<double>? predictedScore,
+    Expression<double>? rewardScore,
+    Expression<String>? updatedCategory,
+    Expression<String>? updatedPriority,
+    Expression<DateTime>? timestamp,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (notificationId != null) 'notification_id': notificationId,
+      if (featureVector != null) 'feature_vector': featureVector,
+      if (predictedScore != null) 'predicted_score': predictedScore,
+      if (rewardScore != null) 'reward_score': rewardScore,
+      if (updatedCategory != null) 'updated_category': updatedCategory,
+      if (updatedPriority != null) 'updated_priority': updatedPriority,
+      if (timestamp != null) 'timestamp': timestamp,
+    });
+  }
+
+  RlhfFeedbackTableCompanion copyWith({
+    Value<int>? id,
+    Value<String>? notificationId,
+    Value<String>? featureVector,
+    Value<double?>? predictedScore,
+    Value<double>? rewardScore,
+    Value<String?>? updatedCategory,
+    Value<String?>? updatedPriority,
+    Value<DateTime>? timestamp,
+  }) {
+    return RlhfFeedbackTableCompanion(
+      id: id ?? this.id,
+      notificationId: notificationId ?? this.notificationId,
+      featureVector: featureVector ?? this.featureVector,
+      predictedScore: predictedScore ?? this.predictedScore,
+      rewardScore: rewardScore ?? this.rewardScore,
+      updatedCategory: updatedCategory ?? this.updatedCategory,
+      updatedPriority: updatedPriority ?? this.updatedPriority,
+      timestamp: timestamp ?? this.timestamp,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (notificationId.present) {
+      map['notification_id'] = Variable<String>(notificationId.value);
+    }
+    if (featureVector.present) {
+      map['feature_vector'] = Variable<String>(featureVector.value);
+    }
+    if (predictedScore.present) {
+      map['predicted_score'] = Variable<double>(predictedScore.value);
+    }
+    if (rewardScore.present) {
+      map['reward_score'] = Variable<double>(rewardScore.value);
+    }
+    if (updatedCategory.present) {
+      map['updated_category'] = Variable<String>(updatedCategory.value);
+    }
+    if (updatedPriority.present) {
+      map['updated_priority'] = Variable<String>(updatedPriority.value);
+    }
+    if (timestamp.present) {
+      map['timestamp'] = Variable<DateTime>(timestamp.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RlhfFeedbackTableCompanion(')
+          ..write('id: $id, ')
+          ..write('notificationId: $notificationId, ')
+          ..write('featureVector: $featureVector, ')
+          ..write('predictedScore: $predictedScore, ')
+          ..write('rewardScore: $rewardScore, ')
+          ..write('updatedCategory: $updatedCategory, ')
+          ..write('updatedPriority: $updatedPriority, ')
+          ..write('timestamp: $timestamp')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AttentionDatabase extends GeneratedDatabase {
   _$AttentionDatabase(QueryExecutor e) : super(e);
   $AttentionDatabaseManager get managers => $AttentionDatabaseManager(this);
@@ -2722,6 +3262,8 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final $DailyBriefTableTable dailyBriefTable = $DailyBriefTableTable(
     this,
   );
+  late final $RlhfFeedbackTableTable rlhfFeedbackTable =
+      $RlhfFeedbackTableTable(this);
   late final NotificationDao notificationDao = NotificationDao(
     this as AttentionDatabase,
   );
@@ -2734,6 +3276,9 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final DailyBriefDao dailyBriefDao = DailyBriefDao(
     this as AttentionDatabase,
   );
+  late final RlhfFeedbackDao rlhfFeedbackDao = RlhfFeedbackDao(
+    this as AttentionDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2743,6 +3288,7 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
     reviewQueueTable,
     focusSessionsTable,
     dailyBriefTable,
+    rlhfFeedbackTable,
   ];
 }
 
@@ -3406,7 +3952,9 @@ class $$NotificationsTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$NotificationsTableTable, NotificationEntry>(
+                    table,
+                  ),
                   $$NotificationsTableTableReferences(db, table, e),
                 ),
               )
@@ -3749,7 +4297,7 @@ class $$ReviewQueueTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$ReviewQueueTableTable, ReviewQueueEntry>(table),
                   $$ReviewQueueTableTableReferences(db, table, e),
                 ),
               )
@@ -4021,7 +4569,18 @@ class $$FocusSessionsTableTableTableManager
                 duration: duration,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$FocusSessionsTableTable, FocusSessionEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $FocusSessionsTableTable,
+                    FocusSessionEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4273,7 +4832,16 @@ class $$DailyBriefTableTableTableManager
                 archivedCount: archivedCount,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$DailyBriefTableTable, DailyBriefEntry>(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $DailyBriefTableTable,
+                    DailyBriefEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4301,6 +4869,293 @@ typedef $$DailyBriefTableTableProcessedTableManager =
       DailyBriefEntry,
       PrefetchHooks Function()
     >;
+typedef $$RlhfFeedbackTableTableCreateCompanionBuilder =
+    RlhfFeedbackTableCompanion Function({
+      Value<int> id,
+      required String notificationId,
+      required String featureVector,
+      Value<double?> predictedScore,
+      required double rewardScore,
+      Value<String?> updatedCategory,
+      Value<String?> updatedPriority,
+      Value<DateTime> timestamp,
+    });
+typedef $$RlhfFeedbackTableTableUpdateCompanionBuilder =
+    RlhfFeedbackTableCompanion Function({
+      Value<int> id,
+      Value<String> notificationId,
+      Value<String> featureVector,
+      Value<double?> predictedScore,
+      Value<double> rewardScore,
+      Value<String?> updatedCategory,
+      Value<String?> updatedPriority,
+      Value<DateTime> timestamp,
+    });
+
+class $$RlhfFeedbackTableTableFilterComposer
+    extends Composer<_$AttentionDatabase, $RlhfFeedbackTableTable> {
+  $$RlhfFeedbackTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get featureVector => $composableBuilder(
+    column: $table.featureVector,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get predictedScore => $composableBuilder(
+    column: $table.predictedScore,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get rewardScore => $composableBuilder(
+    column: $table.rewardScore,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get updatedCategory => $composableBuilder(
+    column: $table.updatedCategory,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get updatedPriority => $composableBuilder(
+    column: $table.updatedPriority,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RlhfFeedbackTableTableOrderingComposer
+    extends Composer<_$AttentionDatabase, $RlhfFeedbackTableTable> {
+  $$RlhfFeedbackTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get featureVector => $composableBuilder(
+    column: $table.featureVector,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get predictedScore => $composableBuilder(
+    column: $table.predictedScore,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get rewardScore => $composableBuilder(
+    column: $table.rewardScore,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get updatedCategory => $composableBuilder(
+    column: $table.updatedCategory,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get updatedPriority => $composableBuilder(
+    column: $table.updatedPriority,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RlhfFeedbackTableTableAnnotationComposer
+    extends Composer<_$AttentionDatabase, $RlhfFeedbackTableTable> {
+  $$RlhfFeedbackTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get featureVector => $composableBuilder(
+    column: $table.featureVector,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get predictedScore => $composableBuilder(
+    column: $table.predictedScore,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get rewardScore => $composableBuilder(
+    column: $table.rewardScore,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get updatedCategory => $composableBuilder(
+    column: $table.updatedCategory,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get updatedPriority => $composableBuilder(
+    column: $table.updatedPriority,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get timestamp =>
+      $composableBuilder(column: $table.timestamp, builder: (column) => column);
+}
+
+class $$RlhfFeedbackTableTableTableManager
+    extends
+        RootTableManager<
+          _$AttentionDatabase,
+          $RlhfFeedbackTableTable,
+          RlhfFeedbackEntry,
+          $$RlhfFeedbackTableTableFilterComposer,
+          $$RlhfFeedbackTableTableOrderingComposer,
+          $$RlhfFeedbackTableTableAnnotationComposer,
+          $$RlhfFeedbackTableTableCreateCompanionBuilder,
+          $$RlhfFeedbackTableTableUpdateCompanionBuilder,
+          (
+            RlhfFeedbackEntry,
+            BaseReferences<
+              _$AttentionDatabase,
+              $RlhfFeedbackTableTable,
+              RlhfFeedbackEntry
+            >,
+          ),
+          RlhfFeedbackEntry,
+          PrefetchHooks Function()
+        > {
+  $$RlhfFeedbackTableTableTableManager(
+    _$AttentionDatabase db,
+    $RlhfFeedbackTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RlhfFeedbackTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RlhfFeedbackTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RlhfFeedbackTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> notificationId = const Value.absent(),
+                Value<String> featureVector = const Value.absent(),
+                Value<double?> predictedScore = const Value.absent(),
+                Value<double> rewardScore = const Value.absent(),
+                Value<String?> updatedCategory = const Value.absent(),
+                Value<String?> updatedPriority = const Value.absent(),
+                Value<DateTime> timestamp = const Value.absent(),
+              }) => RlhfFeedbackTableCompanion(
+                id: id,
+                notificationId: notificationId,
+                featureVector: featureVector,
+                predictedScore: predictedScore,
+                rewardScore: rewardScore,
+                updatedCategory: updatedCategory,
+                updatedPriority: updatedPriority,
+                timestamp: timestamp,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String notificationId,
+                required String featureVector,
+                Value<double?> predictedScore = const Value.absent(),
+                required double rewardScore,
+                Value<String?> updatedCategory = const Value.absent(),
+                Value<String?> updatedPriority = const Value.absent(),
+                Value<DateTime> timestamp = const Value.absent(),
+              }) => RlhfFeedbackTableCompanion.insert(
+                id: id,
+                notificationId: notificationId,
+                featureVector: featureVector,
+                predictedScore: predictedScore,
+                rewardScore: rewardScore,
+                updatedCategory: updatedCategory,
+                updatedPriority: updatedPriority,
+                timestamp: timestamp,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$RlhfFeedbackTableTable, RlhfFeedbackEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $RlhfFeedbackTableTable,
+                    RlhfFeedbackEntry
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RlhfFeedbackTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AttentionDatabase,
+      $RlhfFeedbackTableTable,
+      RlhfFeedbackEntry,
+      $$RlhfFeedbackTableTableFilterComposer,
+      $$RlhfFeedbackTableTableOrderingComposer,
+      $$RlhfFeedbackTableTableAnnotationComposer,
+      $$RlhfFeedbackTableTableCreateCompanionBuilder,
+      $$RlhfFeedbackTableTableUpdateCompanionBuilder,
+      (
+        RlhfFeedbackEntry,
+        BaseReferences<
+          _$AttentionDatabase,
+          $RlhfFeedbackTableTable,
+          RlhfFeedbackEntry
+        >,
+      ),
+      RlhfFeedbackEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AttentionDatabaseManager {
   final _$AttentionDatabase _db;
@@ -4313,4 +5168,6 @@ class $AttentionDatabaseManager {
       $$FocusSessionsTableTableTableManager(_db, _db.focusSessionsTable);
   $$DailyBriefTableTableTableManager get dailyBriefTable =>
       $$DailyBriefTableTableTableManager(_db, _db.dailyBriefTable);
+  $$RlhfFeedbackTableTableTableManager get rlhfFeedbackTable =>
+      $$RlhfFeedbackTableTableTableManager(_db, _db.rlhfFeedbackTable);
 }

@@ -92,6 +92,10 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     if (_selectedNotification == null) return;
 
     if (isReward) {
+      widget.controller.logRlhfFeedback(
+        notification: _selectedNotification!,
+        rewardScore: 1.0,
+      );
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Reward (+1) recorded! AI model confidence reinforced.'),
@@ -109,6 +113,14 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     if (_selectedNotification == null) return;
 
     final n = _selectedNotification!;
+
+    widget.controller.logRlhfFeedback(
+      notification: n,
+      rewardScore: -1.0,
+      updatedCategory: _selectedCategory,
+      updatedPriority: _selectedPriority,
+    );
+
     // Extract defining keywords (e.g. words > 3 chars)
     final words = <String>[];
     for (final w in n.title.split(' ')) {
