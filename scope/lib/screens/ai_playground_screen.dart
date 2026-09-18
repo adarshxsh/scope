@@ -136,6 +136,8 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
       _showCorrectionForm = false;
     });
 
+    if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Reinforcement Rule Learned! Similar messages will now be classified as $_selectedPriority ($_selectedCategory).'),
