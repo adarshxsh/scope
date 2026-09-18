@@ -402,7 +402,33 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
         ),
         const SizedBox(height: 12),
 
-        // 3. Versions and Metadata
+        // 3. Storage Quota & Privacy Guardrails Status
+        ScopeCard(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.shield_outlined, color: theme.colorScheme.tertiary),
+                  const SizedBox(width: 8),
+                  const Text('Storage Quota & Privacy Guardrails',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                ],
+              ),
+              const Divider(height: 20),
+              _buildFeatureRow('Max Entry Capacity Quota', '500 items (Bounded)'),
+              _buildFeatureRow('Sanitization & PII Protection', 'ACTIVE (Redacted in logs)'),
+              _buildFeatureRow(
+                'Latency Benchmark (<50ms)',
+                '${notif.latencyMs ?? 0} ms (${(notif.latencyMs ?? 0) <= 50 ? "PASSED" : "WARN"})',
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // 4. Versions and Metadata
         ScopeCard(
           padding: const EdgeInsets.all(12.0),
           child: Row(

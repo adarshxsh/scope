@@ -156,5 +156,28 @@ void main() {
         expect(await storage.count, 2); // upsert, not a new entry
       });
     });
+
+    group('maxCapacity quota enforcement', () {
+      test('evicts oldest items when exceeding maxCapacity limit of 500', () async {
+        final notifications = List.generate(
+          510,
+          (i) => makeNotification(
+            id: 'notif_$i',
+            timestamp: 1000 + i,
+            title: 'Title $i',
+          ),
+        );
+
+        await storage.saveAll(notifications);
+        expect(await storage.count, equals(500));
+
+        final all = await storage.getAll();
+        // The 10 oldest (notif_0 to notif_9) should have been evicted
+        expect(all.any((n) => n.id == 'notif_0'), isFalse);
+        expect(all.any((n) => n.id == 'notif_9'), isFalse);
+        expect(all.any((n) => n.id == 'notif_10'), isTrue);
+        expect(all.any((n) => n.id == 'notif_509'), isTrue);
+      });
+    });
   });
 }
