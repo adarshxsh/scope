@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
+import 'package:scope/core/utils/asset_verifier.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -60,7 +62,8 @@ class GhostAI {
   Future<void> initialize() async {
     if (_interpreter != null) return;
     try {
-      // 1. Load interpreter from assets
+      // 1. Verify model asset and load interpreter from assets
+      await AssetVerifier.loadAndVerifyAsset('assets/model.tflite');
       _interpreter = await Interpreter.fromAsset('assets/model.tflite');
       debugPrint('GhostAI: TFLite interpreter loaded successfully.');
     } catch (e) {
@@ -68,8 +71,9 @@ class GhostAI {
     }
 
     try {
-      // 2. Load and compile rules database
-      final jsonStr = await rootBundle.loadString('assets/rules.json');
+      // 2. Verify rules asset and load/compile rules database
+      final rulesBytes = await AssetVerifier.loadAndVerifyAsset('assets/rules.json');
+      final jsonStr = utf8.decode(rulesBytes);
       _ruleEngine.compile(jsonStr);
       debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
     } catch (e) {
