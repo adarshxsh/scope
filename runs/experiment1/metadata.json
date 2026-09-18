@@ -9,14 +9,14 @@
     "Dense(1, look_again_score)"
   ],
   "artifacts": {
-    "evaluation_dir": "runs/experiment1/evaluation",
-    "history_csv": "runs/experiment1/history.csv",
-    "label_encoder": "runs/experiment1/label_encoder.json",
-    "quantized_tflite": "runs/experiment1/export/ghost_ai.tflite",
-    "saved_model": "runs/experiment1/export/saved_model"
+    "evaluation_dir": "/app/scope/runs/experiment1/evaluation",
+    "history_csv": "/app/scope/runs/experiment1/history.csv",
+    "label_encoder": "/app/scope/runs/experiment1/label_encoder.json",
+    "quantized_tflite": "/app/scope/runs/experiment1/export/ghost_ai.tflite",
+    "saved_model": "/app/scope/runs/experiment1/export/saved_model"
   },
-  "created_at": "2026-06-26T20:58:33.117663+00:00",
-  "dataset_path": "attentionos-dataset/output/notifications_100000_seed42.jsonl",
+  "created_at": "2026-09-13T02:06:46.624249+00:00",
+  "dataset_path": "/app/scope/attentionos-dataset/output/notifications_100000_seed42.jsonl",
   "feature_source": "Flutter deterministic FeatureExtractor",
   "feature_vector_size": 63,
   "flutter": {
@@ -33,10 +33,10 @@
     ]
   },
   "metrics": {
-    "mae": 2.1886918544769287,
-    "mse": 9.998480796813965,
-    "r2": 0.9888623356819153,
-    "rmse": 3.162037443929778
+    "mae": 2.1007273197174072,
+    "mse": 9.250704765319824,
+    "r2": 0.9896953105926514,
+    "rmse": 3.0414971256471417
   },
   "normalization": {
     "mean": [
@@ -82,8 +82,8 @@
       12.9991,
       553.3235375,
       552.4152875,
-      11.526925,
-      3.9842,
+      2.0,
+      7.0,
       0.24955,
       0.125675,
       0.0882125,
@@ -147,8 +147,8 @@
       7.070824189991606,
       76318.54501100964,
       79206.91844880141,
-      47.779650044366676,
-      4.000975360000822,
+      0.0,
+      0.0,
       0.18727479749979947,
       0.10988079437490776,
       0.08043105484365767,
