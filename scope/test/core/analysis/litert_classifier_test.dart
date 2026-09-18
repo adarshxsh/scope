@@ -19,6 +19,7 @@ void main() {
 
       final result = await classifier.analyze(notif);
       
+      expect(classifier.isModelLoaded, isFalse);
       expect(result.category, equals('msg'));
       expect(result.engineName, contains('fallback'));
       expect(result.score, equals(0.0));
@@ -38,6 +39,7 @@ void main() {
 
       final result = await classifier.analyze(notif);
       
+      expect(classifier.isModelLoaded, isFalse);
       expect(result.category, equals('finance'));
       expect(result.engineName, contains('fallback'));
       expect(result.score, equals(0.0));
