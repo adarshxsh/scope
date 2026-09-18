@@ -129,12 +129,13 @@ Example:
 
 ## Inputs
 
-The generator will provide:
-* Application Name
-* Notification Type
-* Intent
-* Language
-* Structured entities
+* Application Name: {{ app_context }}
+* Notification Type: {{ notification_type }}
+* Intent: {{ intent }}
+* Language: en
+{% if entities %}
+* Structured entities: {{ entities | tojson }}
+{% endif %}
 
 Use ONLY those inputs. Do not invent unrelated scenarios.
 
