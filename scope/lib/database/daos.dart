@@ -154,3 +154,56 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
     await delete(dailyBriefTable).go();
   }
 }
+
+@DriftAccessor(tables: [PrivacyBudgetTable])
+class PrivacyBudgetDao extends DatabaseAccessor<AttentionDatabase> with _$PrivacyBudgetDaoMixin {
+  PrivacyBudgetDao(super.db);
+
+  Future<PrivacyBudgetEntry?> getBudgetForDate(String date) {
+    return (select(privacyBudgetTable)..where((t) => t.date.equals(date))).getSingleOrNull();
+  }
+
+  Future<void> insertOrUpdate(PrivacyBudgetEntry entry) async {
+    await into(privacyBudgetTable).insert(entry, mode: InsertMode.insertOrReplace);
+  }
+
+  Future<void> updateConsumedEpsilon(String date, double consumedEpsilon) async {
+    final existing = await getBudgetForDate(date);
+    if (existing != null) {
+      await update(privacyBudgetTable).replace(existing.copyWith(
+        consumedEpsilon: consumedEpsilon,
+        lastUpdated: DateTime.now(),
+      ));
+    } else {
+      await into(privacyBudgetTable).insert(PrivacyBudgetEntry(
+        id: 0,
+        date: date,
+        consumedEpsilon: consumedEpsilon,
+        maxEpsilon: 2.0,
+        lastUpdated: DateTime.now(),
+      ));
+    }
+  }
+
+  Future<void> resetBudget(String date, {double maxEpsilon = 2.0}) async {
+    await into(privacyBudgetTable).insert(
+      PrivacyBudgetEntry(
+        id: 0,
+        date: date,
+        consumedEpsilon: 0.0,
+        maxEpsilon: maxEpsilon,
+        lastUpdated: DateTime.now(),
+      ),
+      mode: InsertMode.insertOrReplace,
+    );
+  }
+
+  Future<List<PrivacyBudgetEntry>> getAll() {
+    return select(privacyBudgetTable).get();
+  }
+
+  Future<void> clearAll() async {
+    await delete(privacyBudgetTable).go();
+  }
+}
+
