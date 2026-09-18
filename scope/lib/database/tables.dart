@@ -1,13 +1,14 @@
 import 'package:drift/drift.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/database/converters.dart';
+import 'package:scope/database/encryption_converter.dart';
 
 @DataClassName('NotificationEntry')
 class NotificationsTable extends Table {
   TextColumn get id => text()();
   TextColumn get packageName => text()();
-  TextColumn get title => text()();
-  TextColumn get content => text()();
+  TextColumn get title => text().map(const EncryptedTextConverter())();
+  TextColumn get content => text().map(const EncryptedTextConverter())();
   IntColumn get timestamp => integer()();
   TextColumn get category => text().nullable()();
   BoolColumn get isOngoing => boolean().withDefault(const Constant(false))();
