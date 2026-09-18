@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/privacy/privacy_budget_manager.dart';
 import 'package:scope/database/attention_database.dart';
 import 'package:scope/database/tables.dart';
 
@@ -99,6 +100,23 @@ class FocusSessionDao extends DatabaseAccessor<AttentionDatabase> with _$FocusSe
     return select(focusSessionsTable).get();
   }
 
+  /// Queries total focus duration in seconds with sensitivity-calibrated Laplace noise applied.
+  /// Uses session duration clipping parameter (7200s max per session) to bound global sensitivity.
+  Future<NoisedQueryResult<int>> getNoisedTotalFocusDuration(
+    PrivacyBudgetManager budgetManager, {
+    double sensitivity = 7200.0,
+    double? epsilon,
+  }) async {
+    return budgetManager.executeNoisedQuery<int>(
+      sensitivity: sensitivity,
+      epsilon: epsilon,
+      exactQuery: () async {
+        final sessions = await getAll();
+        return sessions.fold<int>(0, (sum, s) => sum + s.duration.clamp(0, 7200));
+      },
+    );
+  }
+
   Future<void> clearAll() async {
     await delete(focusSessionsTable).go();
   }
@@ -114,6 +132,22 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
 
   Future<DailyBriefEntry?> getBriefForDate(String date) {
     return (select(dailyBriefTable)..where((t) => t.date.equals(date))).getSingleOrNull();
+  }
+
+  /// Queries daily reviewed notification count with sensitivity-calibrated Laplace noise applied (sensitivity = 1.0).
+  Future<NoisedQueryResult<int>> getNoisedReviewedCount(
+    PrivacyBudgetManager budgetManager,
+    String date, {
+    double? epsilon,
+  }) async {
+    return budgetManager.executeNoisedQuery<int>(
+      sensitivity: 1.0,
+      epsilon: epsilon,
+      exactQuery: () async {
+        final brief = await getBriefForDate(date);
+        return brief?.notificationsReviewed ?? 0;
+      },
+    );
   }
 
   Future<void> incrementStats(
@@ -154,3 +188,57 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
     await delete(dailyBriefTable).go();
   }
 }
+
+@DriftAccessor(tables: [PrivacyLedgerTable])
+class PrivacyLedgerDao extends DatabaseAccessor<AttentionDatabase> with _$PrivacyLedgerDaoMixin {
+  PrivacyLedgerDao(super.db);
+
+  Future<double> getEpsilonSpentForDate(String date) async {
+    final query = select(privacyLedgerTable)..where((t) => t.date.equals(date));
+    final entries = await query.get();
+    return entries.fold<double>(0.0, (sum, item) => sum + item.epsilonSpent);
+  }
+
+  Future<double> getEpsilonSpentForMonth(String monthPrefix) async {
+    final query = select(privacyLedgerTable)..where((t) => t.date.like('$monthPrefix%'));
+    final entries = await query.get();
+    return entries.fold<double>(0.0, (sum, item) => sum + item.epsilonSpent);
+  }
+
+  Future<void> recordQueryConsumption(String date, double epsilon, double delta) async {
+    final query = select(privacyLedgerTable)..where((t) => t.date.equals(date));
+    final existing = await query.getSingleOrNull();
+    final now = DateTime.now();
+
+    if (existing != null) {
+      await update(privacyLedgerTable).replace(
+        existing.copyWith(
+          epsilonSpent: existing.epsilonSpent + epsilon,
+          deltaSpent: existing.deltaSpent + delta,
+          queryCount: existing.queryCount + 1,
+          lastUpdated: now,
+        ),
+      );
+    } else {
+      await into(privacyLedgerTable).insert(
+        PrivacyLedgerEntry(
+          id: 0,
+          date: date,
+          epsilonSpent: epsilon,
+          deltaSpent: delta,
+          queryCount: 1,
+          lastUpdated: now,
+        ),
+      );
+    }
+  }
+
+  Future<List<PrivacyLedgerEntry>> getAll() {
+    return select(privacyLedgerTable).get();
+  }
+
+  Future<void> clearAll() async {
+    await delete(privacyLedgerTable).go();
+  }
+}
+
