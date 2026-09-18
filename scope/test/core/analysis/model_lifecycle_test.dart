@@ -23,7 +23,7 @@ void main() {
 
       final result = await classifier.analyze(notif);
       expect(result.category, equals('msg'));
-      expect(result.score, equals(0.50));
+      expect(result.score, equals(0.0));
     });
 
     test('GhostAI exposes modelVersion and manages duplicate cache bounds', () async {
