@@ -14,6 +14,7 @@ from faker import Faker
 from jinja2 import Template
 
 from policy.scoring import score_notification
+from sanitizer.privacy import AuditLogger, PrivacySanitizer
 from validator.duplicate import text_fingerprint
 from validator.schema import validate_record
 
@@ -159,13 +160,15 @@ SCENARIOS: tuple[Scenario, ...] = (
 
 
 class NotificationDatasetGenerator:
-    def __init__(self, seed: int = 42, use_ollama: bool = False, ollama_model: str = "gemma3:9b") -> None:
+    def __init__(self, seed: int = 42, use_ollama: bool = False, ollama_model: str = "gemma3:9b", sanitize: bool = True) -> None:
         self.seed = seed
         self.random = random.Random(seed)
         self.fake = Faker("en_IN")
         Faker.seed(seed)
         self.use_ollama = use_ollama
         self.ollama_model = ollama_model
+        self.sanitize = sanitize
+        self.sanitizer = PrivacySanitizer()
         self.base_time = datetime(2026, 6, 26, 9, 0, 0, tzinfo=timezone.utc)
         self._weighted_scenarios = [scenario for scenario in SCENARIOS for _ in range(scenario.weight)]
         self._seen_text: set[str] = set()
@@ -258,7 +261,14 @@ class NotificationDatasetGenerator:
             "is_recurring": record["is_recurring"],
             "look_again": record["look_again"],
         }
+
+        if self.sanitize:
+            record = self.sanitizer.sanitize_record(record)
+            record["title"] = self._clip(record["title"], 50)
+            record["body"] = self._clip(record["body"], 140)
+
         return record
+
 
     def _choose_app(self, scenario: Scenario) -> AppProfile:
         category_matches = [app for app in POPULAR_APPS if app.category == scenario.category]
