@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/models/model_manager.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 
@@ -60,11 +62,22 @@ class GhostAI {
   Future<void> initialize() async {
     if (_interpreter != null) return;
     try {
-      // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      final dynamicModelFile = await ModelManager.instance.getLookAgainModelFile();
+      if (dynamicModelFile != null) {
+        _interpreter = Interpreter.fromFile(dynamicModelFile);
+        debugPrint('GhostAI: Dynamic TFLite interpreter loaded from ${dynamicModelFile.path}.');
+      } else {
+        _interpreter = await Interpreter.fromAsset('assets/model.tflite');
+        debugPrint('GhostAI: TFLite interpreter loaded successfully from asset.');
+      }
     } catch (e) {
-      debugPrint('GhostAI: Failed to load TFLite model: $e');
+      debugPrint('GhostAI: Failed to load dynamic model, trying asset fallback: $e');
+      try {
+        _interpreter = await Interpreter.fromAsset('assets/model.tflite');
+        debugPrint('GhostAI: Fallback asset TFLite interpreter loaded successfully.');
+      } catch (assetErr) {
+        debugPrint('GhostAI: Failed to load TFLite model: $assetErr');
+      }
     }
 
     try {
