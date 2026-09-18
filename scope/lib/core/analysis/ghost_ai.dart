@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
@@ -41,6 +42,11 @@ class GhostAI {
   Interpreter? _interpreter;
   final RuleEngine _ruleEngine = RuleEngine();
 
+  Map<String, dynamic>? _metadata;
+  int? _expectedVectorSize;
+  List<int>? _expectedInputShape;
+  List<String>? _metadataFeatureNames;
+
   // Slide-cache for duplicate detection
   final List<AppNotification> _processedNotifications = [];
   static const int _maxCacheSize = 100;
@@ -56,19 +62,61 @@ class GhostAI {
   /// Returns whether the model is loaded.
   bool get isModelLoaded => _interpreter != null;
 
-  /// Initializes the TFLite interpreter and rules database once on startup.
+  /// Returns whether sidecar metadata is loaded.
+  bool get isMetadataLoaded => _metadata != null;
+
+  /// Returns expected model input tensor shape from metadata asset.
+  List<int>? get expectedInputShape => _expectedInputShape;
+
+  /// Returns expected feature vector size from metadata asset.
+  int get expectedVectorSize => _expectedVectorSize ?? FeatureVector.size;
+
+  /// Returns target feature names from metadata asset if present.
+  List<String>? get metadataFeatureNames => _metadataFeatureNames;
+
+  /// Initializes the TFLite interpreter, sidecar metadata, and rules database once on startup.
   Future<void> initialize() async {
-    if (_interpreter != null) return;
-    try {
-      // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
-    } catch (e) {
-      debugPrint('GhostAI: Failed to load TFLite model: $e');
+    if (_interpreter == null) {
+      try {
+        // 1. Load interpreter from assets
+        _interpreter = await Interpreter.fromAsset('assets/model.tflite');
+        debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      } catch (e) {
+        debugPrint('GhostAI: Failed to load TFLite model: $e');
+      }
+    }
+
+    if (_metadata == null) {
+      try {
+        // 2. Load sidecar metadata asset
+        final metaStr = await rootBundle.loadString('assets/metadata.json');
+        final jsonMap = json.decode(metaStr) as Map<String, dynamic>;
+        _metadata = jsonMap;
+        if (jsonMap.containsKey('feature_vector_size')) {
+          _expectedVectorSize = jsonMap['feature_vector_size'] as int?;
+        }
+        if (jsonMap.containsKey('flutter') && jsonMap['flutter'] is Map) {
+          final flutterMap = jsonMap['flutter'] as Map<String, dynamic>;
+          if (flutterMap.containsKey('input_shape')) {
+            _expectedInputShape = (flutterMap['input_shape'] as List)
+                .map((e) => (e as num).toInt())
+                .toList();
+          }
+        }
+        if (jsonMap.containsKey('feature_names') && jsonMap['feature_names'] is List) {
+          _metadataFeatureNames = (jsonMap['feature_names'] as List)
+              .map((e) => e.toString())
+              .toList();
+        }
+        debugPrint('GhostAI: Sidecar metadata loaded successfully (vector size: $expectedVectorSize).');
+      } catch (e) {
+        debugPrint('GhostAI: Failed to load sidecar metadata asset: $e');
+        _metadata = null;
+      }
     }
 
     try {
-      // 2. Load and compile rules database
+      // 3. Load and compile rules database
       final jsonStr = await rootBundle.loadString('assets/rules.json');
       _ruleEngine.compile(jsonStr);
       debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
@@ -85,15 +133,25 @@ class GhostAI {
   Future<GhostAIResult> _predict(AppNotification notification) async {
     final stopwatch = Stopwatch()..start();
 
-    // 1. Feature extraction using the existing FeatureExtractor
-    final featureVector = FeatureExtractor.extractFromAppNotification(notification);
+    // 1. Feature extraction using named feature mappings
+    final featureVector = FeatureExtractor.extractVector(
+      NotificationFeatureInput.fromAppNotification(notification),
+      targetFeatureNames: _metadataFeatureNames,
+    );
+    final namedFeatures = featureVector.toNamedMap();
 
-    // 2. Model inference
+    // 2. Model inference with dynamic vector size & tensor shape validation
     double predictedScore = 0.0;
     int inferenceTimeUs = 0;
 
-    if (_interpreter != null) {
-      final input = [featureVector];
+    final expectedSize = expectedVectorSize;
+    final isVectorValid = featureVector.values.length == expectedSize &&
+        (_expectedInputShape == null ||
+            (_expectedInputShape!.length == 2 &&
+                _expectedInputShape![1] == featureVector.values.length));
+
+    if (_interpreter != null && isMetadataLoaded && isVectorValid) {
+      final input = [featureVector.values];
       final output = List<double>.filled(1, 0.0).reshape([1, 1]);
 
       final inferStopwatch = Stopwatch()..start();
@@ -104,8 +162,8 @@ class GhostAI {
       // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
       predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
     } else {
-      // Heuristic fallback if model not loaded
-      predictedScore = _heuristicLookAgainScore(featureVector);
+      // Heuristic fallback if model/metadata not loaded or vector size mismatch
+      predictedScore = _heuristicLookAgainScore(namedFeatures);
     }
 
     // 3. Rule matching
@@ -146,9 +204,9 @@ class GhostAI {
       }
     }
 
-    // 5. Apply deterministic overrides (expired OTP, expired reminders, duplicates, completed tasks)
-    final hasOtp = featureVector[11] == 1.0; // contains_otp
-    final hasDeadline = featureVector[27] == 1.0; // contains_deadline
+    // 5. Apply deterministic overrides using named feature lookups
+    final hasOtp = namedFeatures['contains_otp'] == 1.0;
+    final hasDeadline = namedFeatures['contains_deadline'] == 1.0;
 
     if (hasOtp && _isOtpExpired(notification)) {
       finalScore = 0.0;
@@ -169,7 +227,7 @@ class GhostAI {
       reviewScore: finalScore,
       confidence: 1.0,
       inferenceTimeUs: inferenceTimeUs > 0 ? inferenceTimeUs : stopwatch.elapsedMicroseconds,
-      featureVector: featureVector,
+      featureVector: featureVector.values,
       predictedScore: predictedScore,
       ruleScore: ruleScore,
     );
@@ -182,12 +240,12 @@ class GhostAI {
     return result;
   }
 
-  /// Helper to compute heuristic score if model is not loaded.
-  double _heuristicLookAgainScore(List<double> featureVector) {
-    if (featureVector[11] == 1.0) return 1.0; // OTP
-    if (featureVector[20] == 1.0) return 0.05; // Promo
-    if (featureVector[10] == 1.0) return 0.85; // Money/finance
-    if (featureVector[27] == 1.0) return 0.80; // Deadline
+  /// Helper to compute heuristic score if model is not loaded or vector size is invalid.
+  double _heuristicLookAgainScore(Map<String, double> namedFeatures) {
+    if (namedFeatures['contains_otp'] == 1.0) return 1.0; // OTP
+    if (namedFeatures['is_promotion'] == 1.0) return 0.05; // Promo
+    if (namedFeatures['contains_money'] == 1.0) return 0.85; // Money/finance
+    if (namedFeatures['contains_deadline'] == 1.0) return 0.80; // Deadline
     return 0.35; // Default medium-low fallback
   }
 
