@@ -273,5 +273,110 @@ void main() {
       // Missing one deleted due to being orphaned
       expect(queueItems.first.notificationId, equals('n-new'));
     });
+
+    test('UserSettingsDao default creation and boundary validation', () async {
+      var settings = await db.userSettingsDao.getUserSettings();
+      expect(settings.retentionDays, equals(7));
+      expect(settings.telemetryEnabled, isTrue);
+      expect(settings.storageQuotaMb, equals(25));
+      expect(settings.maxRowCap, equals(5000));
+
+      // Test valid update
+      await db.userSettingsDao.updateUserSettings(
+        retentionDays: 14,
+        telemetryEnabled: false,
+        storageQuotaMb: 50,
+        maxRowCap: 10000,
+      );
+
+      settings = await db.userSettingsDao.getUserSettings();
+      expect(settings.retentionDays, equals(14));
+      expect(settings.telemetryEnabled, isFalse);
+      expect(settings.storageQuotaMb, equals(50));
+      expect(settings.maxRowCap, equals(10000));
+
+      // Test invalid boundaries (should be rejected/ignored, keeping previous valid values)
+      await db.userSettingsDao.updateUserSettings(
+        retentionDays: 9999, // Invalid (>365 and != -1)
+        storageQuotaMb: 1,    // Invalid (<5)
+        maxRowCap: 10,        // Invalid (<100)
+      );
+
+      settings = await db.userSettingsDao.getUserSettings();
+      expect(settings.retentionDays, equals(14));
+      expect(settings.storageQuotaMb, equals(50));
+      expect(settings.maxRowCap, equals(10000));
+    });
+
+    test('InferenceTelemetryDao logs events when enabled and bypasses when disabled', () async {
+      await db.userSettingsDao.updateUserSettings(telemetryEnabled: true);
+
+      await db.inferenceTelemetryDao.logEvent(InferenceTelemetryTableCompanion.insert(
+        notificationId: const Value('n1'),
+        eventType: 'inference',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+        latencyMs: const Value(12),
+        priority: const Value('high'),
+        fusedScore: const Value(85.0),
+        metadata: const Value('{"category":"finance"}'),
+      ));
+
+      var count = await db.inferenceTelemetryDao.getTelemetryCount();
+      expect(count, equals(1));
+
+      // Disable telemetry logging
+      await db.userSettingsDao.updateUserSettings(telemetryEnabled: false);
+
+      await db.inferenceTelemetryDao.logEvent(InferenceTelemetryTableCompanion.insert(
+        notificationId: const Value('n2'),
+        eventType: 'inference',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+        latencyMs: const Value(10),
+        priority: const Value('low'),
+        fusedScore: const Value(10.0),
+        metadata: const Value('{"category":"promo"}'),
+      ));
+
+      // Count should remain 1 because telemetry was disabled
+      count = await db.inferenceTelemetryDao.getTelemetryCount();
+      expect(count, equals(1));
+
+      // Clear all
+      await db.inferenceTelemetryDao.clearAll();
+      count = await db.inferenceTelemetryDao.getTelemetryCount();
+      expect(count, equals(0));
+    });
+
+    test('runSetBasedCleanup respects user retention settings and row cap eviction', () async {
+      final nowMs = DateTime.now().millisecondsSinceEpoch;
+      final fourDaysOld = DateTime.now().subtract(const Duration(days: 4)).millisecondsSinceEpoch;
+      final tenDaysOld = DateTime.now().subtract(const Duration(days: 10)).millisecondsSinceEpoch;
+
+      for (int i = 1; i <= 5; i++) {
+        await db.notificationDao.insertNotification(NotificationEntry(
+          id: 'n-$i',
+          packageName: 'com.app',
+          title: 'Notif $i',
+          content: 'Content $i',
+          timestamp: i == 1 ? tenDaysOld : (i == 2 ? fourDaysOld : nowMs + i),
+          state: ReviewState.ACTIVE,
+          reviewed: false,
+          dismissed: false,
+          isOngoing: false,
+          createdAt: DateTime.now(),
+        ));
+      }
+
+      // Configure retentionDays = 7
+      await db.userSettingsDao.updateUserSettings(retentionDays: 7);
+
+      await db.runSetBasedCleanup(null, 3);
+
+      final notifs = await db.notificationDao.getAll();
+      // Should be trimmed down to maxRowCap = 3
+      expect(notifs.length, equals(3));
+      // 10 days old item (n-1) was deleted by age retention, then excess was trimmed to 3
+      expect(notifs.any((n) => n.id == 'n-1'), isFalse);
+    });
   });
 }
