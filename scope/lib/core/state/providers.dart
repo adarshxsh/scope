@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
+import 'package:scope/core/utils/audit_logger.dart';
 import 'package:scope/database/attention_database.dart';
 import 'package:scope/database/database_provider.dart';
 import 'package:scope/database/drift_notification_storage.dart';
@@ -181,65 +182,84 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
         continue;
       }
 
-      // 1. Un-snooze if duration elapsed
-      ReviewState currentState = item.state;
-      if (currentState == ReviewState.SNOOZED &&
-          item.snoozedUntil != null &&
-          now.isAfter(item.snoozedUntil!)) {
-        currentState = ReviewState.ACTIVE;
-      }
+      try {
+        // 1. Un-snooze if duration elapsed
+        ReviewState currentState = item.state;
+        if (currentState == ReviewState.SNOOZED &&
+            item.snoozedUntil != null &&
+            now.isAfter(item.snoozedUntil!)) {
+          currentState = ReviewState.ACTIVE;
+        }
 
-      // 2. Perform re-scoring prediction via GhostAI
-      final ghostResult = await GhostAI.predict(item);
+        // 2. Perform re-scoring prediction via GhostAI
+        final ghostResult = await GhostAI.predict(item, now: now);
 
-      var updatedItem = item.copyWith(
-        priorityScore: ghostResult.reviewScore,
-        state: currentState,
-        lastUpdated: now,
-      );
+        var updatedItem = item.copyWith(
+          priorityScore: ghostResult.reviewScore,
+          state: currentState,
+          lastUpdated: now,
+        );
 
-      // 3. Auto-expire OTPs
-      final hasOtp = updatedItem.extractedFeatures?['otp'] != null ||
-          updatedItem.title.toLowerCase().contains('otp') ||
-          updatedItem.content.toLowerCase().contains('otp');
-      if (hasOtp && ghostResult.reviewScore == 0.0) {
-        updatedItem = updatedItem.copyWith(state: ReviewState.EXPIRED);
-      }
+        // 3. Auto-expire OTPs
+        final hasOtp = updatedItem.extractedFeatures?['otp'] != null ||
+            updatedItem.title.toLowerCase().contains('otp') ||
+            updatedItem.content.toLowerCase().contains('otp');
+        if (hasOtp && ghostResult.reviewScore == 0.0) {
+          updatedItem = updatedItem.copyWith(state: ReviewState.EXPIRED);
+        }
 
-      // 4. Auto-expire reminders
-      final hasDeadline = updatedItem.extractedFeatures?['hasDeadline'] == true ||
-          updatedItem.title.toLowerCase().contains('deadline') ||
-          updatedItem.content.toLowerCase().contains('deadline') ||
-          updatedItem.title.toLowerCase().contains('reminder') ||
-          updatedItem.content.toLowerCase().contains('reminder') ||
-          RegExp(r'\bin\s+(\d{1,4})\s*(minute|minutes|min|mins|hour|hours|hr|hrs|day|days)\b', caseSensitive: false)
-              .hasMatch(updatedItem.content.toLowerCase());
-      if (hasDeadline && ghostResult.reviewScore == 0.0) {
-        updatedItem = updatedItem.copyWith(state: ReviewState.EXPIRED);
-      }
+        // 4. Auto-expire reminders
+        final hasDeadline = updatedItem.extractedFeatures?['hasDeadline'] == true ||
+            updatedItem.title.toLowerCase().contains('deadline') ||
+            updatedItem.content.toLowerCase().contains('deadline') ||
+            updatedItem.title.toLowerCase().contains('reminder') ||
+            updatedItem.content.toLowerCase().contains('reminder') ||
+            RegExp(r'\bin\s+(\d{1,4})\s*(minute|minutes|min|mins|hour|hours|hr|hrs|day|days)\b', caseSensitive: false)
+                .hasMatch(updatedItem.content.toLowerCase());
+        if (hasDeadline && ghostResult.reviewScore == 0.0) {
+          updatedItem = updatedItem.copyWith(state: ReviewState.EXPIRED);
+        }
 
-      // 5. Remove completed payment reminders (transition to ARCHIVED)
-      final isFinance =
-          (updatedItem.classifiedCategory ?? updatedItem.category ?? '').toLowerCase() == 'finance' ||
-              updatedItem.extractedFeatures?['amount'] != null ||
-              updatedItem.title.toLowerCase().contains('bill') ||
-              updatedItem.title.toLowerCase().contains('payment') ||
-              updatedItem.title.toLowerCase().contains('finance') ||
-              updatedItem.content.toLowerCase().contains('bill') ||
-              updatedItem.content.toLowerCase().contains('payment') ||
-              updatedItem.content.toLowerCase().contains('finance') ||
-              updatedItem.content.toLowerCase().contains('rs');
-      final isCompleted = _checkCompletedKeywords(updatedItem.title, updatedItem.content);
-      if (isFinance && isCompleted) {
-        updatedItem = updatedItem.copyWith(state: ReviewState.ARCHIVED);
-      }
+        // 5. Remove completed payment reminders (transition to ARCHIVED)
+        final isFinance =
+            (updatedItem.classifiedCategory ?? updatedItem.category ?? '').toLowerCase() == 'finance' ||
+                updatedItem.extractedFeatures?['amount'] != null ||
+                updatedItem.title.toLowerCase().contains('bill') ||
+                updatedItem.title.toLowerCase().contains('payment') ||
+                updatedItem.title.toLowerCase().contains('finance') ||
+                updatedItem.content.toLowerCase().contains('bill') ||
+                updatedItem.content.toLowerCase().contains('payment') ||
+                updatedItem.content.toLowerCase().contains('finance') ||
+                updatedItem.content.toLowerCase().contains('rs');
+        final isCompleted = _checkCompletedKeywords(updatedItem.title, updatedItem.content);
+        if (isFinance && isCompleted) {
+          updatedItem = updatedItem.copyWith(state: ReviewState.ARCHIVED);
+        }
 
-      updated.add(updatedItem);
+        if (updatedItem.state != item.state) {
+          ExpiryAuditLogger.instance.log(
+            level: AuditLogLevel.info,
+            category: 'RescoreStateTransition',
+            message: 'State changed from ${item.state.name} to ${updatedItem.state.name}',
+            notificationId: updatedItem.id,
+          );
+        }
 
-      // Save updated items to DB
-      if (_db != null) {
-        await DriftNotificationStorage(_db).save(updatedItem);
-        await _saveQueueEntry(updatedItem, expiry: updatedItem.snoozedUntil);
+        updated.add(updatedItem);
+
+        // Save updated items to DB
+        if (_db != null) {
+          await DriftNotificationStorage(_db).save(updatedItem);
+          await _saveQueueEntry(updatedItem, expiry: updatedItem.snoozedUntil);
+        }
+      } catch (e) {
+        ExpiryAuditLogger.instance.logFallbackRecovery(
+          notificationId: item.id,
+          component: 'ReviewQueueNotifier.rescore',
+          error: e.toString(),
+          fallbackAction: 'Retained existing item priority and state',
+        );
+        updated.add(item);
       }
     }
 
