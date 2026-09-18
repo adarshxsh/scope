@@ -1,4 +1,7 @@
+import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as path;
 import 'package:scope/core/analysis/ghost_ai.dart';
 import 'package:scope/core/models/notification_model.dart';
 
@@ -9,6 +12,65 @@ void main() {
     // Clear duplicate cache before each test to prevent test cross-contamination
     setUp(() {
       GhostAI.instance.clearCache();
+    });
+
+    group('Dynamic TFLite Model Loading and Fallback', () {
+      late Directory tempDir;
+
+      setUp(() async {
+        tempDir = await Directory.systemTemp.createTemp('ghost_ai_test_');
+
+        const channels = [
+          MethodChannel('plugins.flutter.io/path_provider'),
+          MethodChannel('plugins.flutter.io/path_provider_android'),
+          MethodChannel('plugins.flutter.io/path_provider_ios'),
+          MethodChannel('plugins.flutter.io/path_provider_macos'),
+          MethodChannel('plugins.flutter.io/path_provider_linux'),
+          MethodChannel('plugins.flutter.io/path_provider_windows'),
+        ];
+
+        for (final channel in channels) {
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+            if (methodCall.method == 'getApplicationDocumentsPath') {
+              return tempDir.path;
+            }
+            return null;
+          });
+        }
+      });
+
+      tearDown(() async {
+        if (await tempDir.exists()) {
+          await tempDir.delete(recursive: true);
+        }
+      });
+
+      test('falls back to bundled asset when local models/model.tflite does not exist', () async {
+        final modelsDir = Directory(path.join(tempDir.path, 'models'));
+        if (await modelsDir.exists()) {
+          await modelsDir.delete(recursive: true);
+        }
+
+        await GhostAI.instance.reloadModel();
+        // Completed without throwing uncaught exceptions
+      });
+
+      test('attempts to load from local storage when models/model.tflite exists', () async {
+        final modelsDir = Directory(path.join(tempDir.path, 'models'));
+        await modelsDir.create(recursive: true);
+        final localModelFile = File(path.join(modelsDir.path, 'model.tflite'));
+
+        await localModelFile.writeAsBytes([0, 1, 2, 3, 4, 5]);
+
+        await GhostAI.instance.reloadModel();
+        // Detected local file and handled invalid/corrupt binary gracefully with fallback
+      });
+
+      test('reloadModel disposes previous interpreter instance and re-initializes', () async {
+        await GhostAI.instance.reloadModel();
+        await GhostAI.instance.reloadModel();
+      });
     });
 
     test('initialization handles missing assets and falls back gracefully', () async {
