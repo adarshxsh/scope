@@ -322,8 +322,10 @@ class GhostAI {
   /// Outputs structured AI execution reports in debug mode.
   void _logStructured(AppNotification notification, GhostAIResult result) {
     debugPrint('=== GHOST AI INFERENCE REPORT ===');
-    debugPrint('Notification: "${notification.title}" - "${notification.content}"');
+    debugPrint('Notification ID: ${notification.id}');
     debugPrint('Package: ${notification.packageName}');
+    debugPrint('Title Length: ${notification.title.length}');
+    debugPrint('Content Length: ${notification.content.length}');
     debugPrint('Feature Vector (First 15): ${result.featureVector.take(15).toList()}...');
     debugPrint('Inference Time: ${result.inferenceTimeUs} us');
     debugPrint('Raw Predicted Score: ${(result.predictedScore * 100).toStringAsFixed(2)}');
