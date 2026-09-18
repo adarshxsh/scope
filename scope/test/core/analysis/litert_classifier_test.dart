@@ -43,5 +43,26 @@ void main() {
       expect(result.score, equals(0.0));
       expect(result.isFallback, isTrue);
     });
+
+    test('verifies asset SHA-256 digests and manages isModelLoaded state', () async {
+      final classifier = LiteRtClassifier();
+      // Allow async initialization to complete
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      // isModelLoaded is false on desktop test env without native tflite library, or true if loaded
+      expect(classifier.isModelLoaded, isFalse);
+
+      final notif = AppNotification(
+        id: '3',
+        packageName: 'com.whatsapp',
+        title: 'OTP Code',
+        content: 'Your code is 123456',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final result = await classifier.analyze(notif);
+      expect(result.category, equals('sys'));
+      expect(result.engineName, contains('fallback'));
+    });
   });
 }

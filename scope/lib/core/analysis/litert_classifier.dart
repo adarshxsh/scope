@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
@@ -5,6 +6,7 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/analysis_result.dart';
 import 'package:scope/core/analysis/notification_analyzer.dart';
 import 'package:scope/core/analysis/wordpiece_tokenizer.dart';
+import 'package:scope/core/analysis/asset_verifier.dart';
 
 /// Classifier using LiteRT (TensorFlow Lite) to classify text categories.
 class LiteRtClassifier implements NotificationAnalyzer {
@@ -18,13 +20,29 @@ class LiteRtClassifier implements NotificationAnalyzer {
 
   Future<void> _initialize() async {
     try {
-      // 1. Load Vocab
-      final vocabStr = await rootBundle.loadString('assets/vocab.txt');
+      // 1. Load Vocab Byte Buffer and verify SHA-256
+      final vocabByteData = await rootBundle.load('assets/vocab.txt');
+      final vocabBytes = vocabByteData.buffer.asUint8List(
+        vocabByteData.offsetInBytes,
+        vocabByteData.lengthInBytes,
+      );
+      AssetVerifier.verifyAndGetBuffer('assets/vocab.txt', vocabBytes);
+
+      final vocabStr = utf8.decode(vocabBytes);
       final lines = vocabStr.split('\n');
       _tokenizer = WordPieceTokenizer.fromLines(lines);
 
-      // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
-      _isModelLoaded = false;
+      // 2. Load Model Byte Buffer and verify SHA-256
+      final modelByteData = await rootBundle.load('assets/model.tflite');
+      final modelBytes = modelByteData.buffer.asUint8List(
+        modelByteData.offsetInBytes,
+        modelByteData.lengthInBytes,
+      );
+      AssetVerifier.verifyAndGetBuffer('assets/model.tflite', modelBytes);
+
+      // 3. Instantiate Interpreter from verified buffer
+      _interpreter = Interpreter.fromBuffer(modelBytes);
+      _isModelLoaded = true;
     } catch (e) {
       // Graceful degradation: Log and set flags so analyze runs in fallback mode
       // ignore: avoid_print
@@ -34,8 +52,15 @@ class LiteRtClassifier implements NotificationAnalyzer {
       // Ensure tokenizer is loaded even if interpreter fails (so we can test tokenization in fallback)
       if (_tokenizer == null) {
         try {
-          final vocabStr = await rootBundle.loadString('assets/vocab.txt');
-          _tokenizer = WordPieceTokenizer.fromLines(vocabStr.split('\n'));
+          final vocabByteData = await rootBundle.load('assets/vocab.txt');
+          final vocabBytes = vocabByteData.buffer.asUint8List(
+            vocabByteData.offsetInBytes,
+            vocabByteData.lengthInBytes,
+          );
+          if (AssetVerifier.verifyAsset('assets/vocab.txt', vocabBytes)) {
+            final vocabStr = utf8.decode(vocabBytes);
+            _tokenizer = WordPieceTokenizer.fromLines(vocabStr.split('\n'));
+          }
         } catch (_) {}
       }
     }
