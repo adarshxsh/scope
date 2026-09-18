@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
@@ -114,6 +115,15 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!kDebugMode) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Ghost AI Diagnostics')),
+        body: const Center(
+          child: Text('Developer diagnostics are disabled in release builds.'),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Ghost AI Diagnostics'),
