@@ -93,16 +93,36 @@ class GhostAI {
     int inferenceTimeUs = 0;
 
     if (_interpreter != null) {
-      final input = [featureVector];
-      final output = List<double>.filled(1, 0.0).reshape([1, 1]);
+      try {
+        final inputTensor = _interpreter!.getInputTensor(0);
+        final targetDim = (inputTensor.shape.length > 1 && inputTensor.shape[1] > 0)
+            ? inputTensor.shape[1]
+            : 63;
+        final adaptedVector =
+            FeatureVector(featureVector).padOrTruncate(targetDim).toList();
 
-      final inferStopwatch = Stopwatch()..start();
-      _interpreter!.run(input, output);
-      inferStopwatch.stop();
+        final input = [adaptedVector];
+        final output = List<double>.filled(1, 0.0).reshape([1, 1]);
 
-      inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
-      // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
-      predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+        final inferStopwatch = Stopwatch()..start();
+        _interpreter!.run(input, output);
+        inferStopwatch.stop();
+
+        inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
+        final rawScore = output[0][0];
+        if (rawScore.isFinite) {
+          // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
+          predictedScore = (rawScore / 100.0).clamp(0.0, 1.0);
+        } else {
+          debugPrint(
+            'GhostAI: Non-finite score from interpreter ($rawScore), falling back to heuristics.',
+          );
+          predictedScore = _heuristicLookAgainScore(featureVector);
+        }
+      } catch (e, stack) {
+        debugPrint('GhostAI: Error during TFLite inference: $e\n$stack');
+        predictedScore = _heuristicLookAgainScore(featureVector);
+      }
     } else {
       // Heuristic fallback if model not loaded
       predictedScore = _heuristicLookAgainScore(featureVector);
@@ -147,8 +167,8 @@ class GhostAI {
     }
 
     // 5. Apply deterministic overrides (expired OTP, expired reminders, duplicates, completed tasks)
-    final hasOtp = featureVector[11] == 1.0; // contains_otp
-    final hasDeadline = featureVector[27] == 1.0; // contains_deadline
+    final hasOtp = featureVector.length > 11 && featureVector[11] == 1.0; // contains_otp
+    final hasDeadline = featureVector.length > 27 && featureVector[27] == 1.0; // contains_deadline
 
     if (hasOtp && _isOtpExpired(notification)) {
       finalScore = 0.0;
@@ -184,10 +204,10 @@ class GhostAI {
 
   /// Helper to compute heuristic score if model is not loaded.
   double _heuristicLookAgainScore(List<double> featureVector) {
-    if (featureVector[11] == 1.0) return 1.0; // OTP
-    if (featureVector[20] == 1.0) return 0.05; // Promo
-    if (featureVector[10] == 1.0) return 0.85; // Money/finance
-    if (featureVector[27] == 1.0) return 0.80; // Deadline
+    if (featureVector.length > 11 && featureVector[11] == 1.0) return 1.0; // OTP
+    if (featureVector.length > 20 && featureVector[20] == 1.0) return 0.05; // Promo
+    if (featureVector.length > 10 && featureVector[10] == 1.0) return 0.85; // Money/finance
+    if (featureVector.length > 27 && featureVector[27] == 1.0) return 0.80; // Deadline
     return 0.35; // Default medium-low fallback
   }
 
@@ -319,10 +339,25 @@ class GhostAI {
     return false;
   }
 
-  /// Outputs structured AI execution reports in debug mode.
+  /// Outputs structured AI execution reports in debug mode with cleartext PII redacted.
   void _logStructured(AppNotification notification, GhostAIResult result) {
+    final titleRedacted = notification.title.replaceAll(
+      RegExp(r'\b\d{4,8}\b'),
+      '[REDACTED_OTP]',
+    );
+    final contentRedacted = notification.content
+        .replaceAll(RegExp(r'\b\d{4,8}\b'), '[REDACTED_OTP]')
+        .replaceAll(
+          RegExp(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b'),
+          '[REDACTED_EMAIL]',
+        )
+        .replaceAll(
+          RegExp(r'(?:₹|rs\.?|inr|usd|\$|eur|€)\s*\d+(?:\.\d+)?', caseSensitive: false),
+          '[REDACTED_AMOUNT]',
+        );
+
     debugPrint('=== GHOST AI INFERENCE REPORT ===');
-    debugPrint('Notification: "${notification.title}" - "${notification.content}"');
+    debugPrint('Notification: "$titleRedacted" - "$contentRedacted"');
     debugPrint('Package: ${notification.packageName}');
     debugPrint('Feature Vector (First 15): ${result.featureVector.take(15).toList()}...');
     debugPrint('Inference Time: ${result.inferenceTimeUs} us');

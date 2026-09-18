@@ -163,9 +163,7 @@ def _validate_features(value: Any, sample_id: str) -> list[float]:
             )
         number = float(raw)
         if not np.isfinite(number):
-            raise ValueError(
-                f"{sample_id}.features[{feature_index}] must be finite."
-            )
+            number = 0.0
         vector.append(number)
     return vector
 

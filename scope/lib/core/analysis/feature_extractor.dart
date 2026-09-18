@@ -171,16 +171,34 @@ class FeatureVector {
 
   final List<double> values;
 
-  FeatureVector(Iterable<double> values) : values = List.unmodifiable(values) {
-    if (this.values.length != size) {
+  FeatureVector(Iterable<double> values, {int? targetDimension})
+      : values = List.unmodifiable(
+          values.map((value) => (value.isNaN || value.isInfinite) ? 0.0 : value),
+        ) {
+    final expectedSize = targetDimension ?? size;
+    if (this.values.length != expectedSize) {
       throw ArgumentError.value(
         this.values.length,
         'values.length',
-        'FeatureVector must contain exactly $size values.',
+        'FeatureVector must contain exactly $expectedSize values.',
       );
     }
-    if (this.values.any((value) => value.isNaN || value.isInfinite)) {
-      throw ArgumentError('FeatureVector cannot contain NaN or infinity.');
+  }
+
+  /// Dynamically adapts vector dimensions to match model input shape via padding or truncation.
+  FeatureVector padOrTruncate(int targetDimension) {
+    if (values.length == targetDimension) return this;
+    if (values.length > targetDimension) {
+      return FeatureVector(
+        values.sublist(0, targetDimension),
+        targetDimension: targetDimension,
+      );
+    } else {
+      final padded = List<double>.filled(targetDimension, 0.0);
+      for (var i = 0; i < values.length; i++) {
+        padded[i] = values[i];
+      }
+      return FeatureVector(padded, targetDimension: targetDimension);
     }
   }
 
@@ -259,7 +277,7 @@ class FeatureExtractor {
     caseSensitive: false,
   );
   static final RegExp _relativeDeadlineRegex = RegExp(
-    r'\bin\s+(\d{1,4})\s*(minute|minutes|min|mins|hour|hours|hr|hrs|day|days)\b',
+    r'\bin\s+(\d+)\s*(minute|minutes|min|mins|hour|hours|hr|hrs|day|days)\b',
     caseSensitive: false,
   );
 
@@ -550,8 +568,14 @@ class FeatureExtractor {
 
   /// Extracts a fixed-width numerical feature vector from normalized input.
   static FeatureVector extractVector(NotificationFeatureInput notification) {
-    final title = normalize(notification.title);
-    final body = normalize(notification.body);
+    final rawTitle = normalize(notification.title);
+    final rawBody = normalize(notification.body);
+    final title = rawTitle.runes.length > 1000
+        ? String.fromCharCodes(rawTitle.runes.take(1000))
+        : rawTitle;
+    final body = rawBody.runes.length > 1000
+        ? String.fromCharCodes(rawBody.runes.take(1000))
+        : rawBody;
     final combined = normalize('$title $body');
     final lower = combined.toLowerCase();
     final timestamp = DateTime.fromMillisecondsSinceEpoch(
@@ -564,7 +588,7 @@ class FeatureExtractor {
     final uppercase = _upperRegex.allMatches(combined).length;
     final digits = _digitRegex.allMatches(combined).length;
     final otp = _extractOtp(combined);
-    final amount = _extractAmount(combined) ?? 0.0;
+    final amount = (_extractAmount(combined) ?? 0.0).clamp(0.0, 100000.0);
     final currency = _extractCurrency(combined);
     final containsDeadline = _containsKeyword(lower, _deadlineWords);
     final isPromotion =
@@ -594,8 +618,8 @@ class FeatureExtractor {
     );
 
     final values = [
-      title.runes.length.toDouble(),
-      body.runes.length.toDouble(),
+      title.runes.length.toDouble().clamp(0.0, 1000.0),
+      body.runes.length.toDouble().clamp(0.0, 1000.0),
       _wordRegex.allMatches(combined).length.toDouble(),
       letters == 0 ? 0.0 : uppercase / letters,
       digits / textUnitCount,
@@ -688,7 +712,9 @@ class FeatureExtractor {
     if (match == null) return null;
     final raw = match.group(1) ?? match.group(2);
     if (raw == null) return null;
-    return double.tryParse(raw.replaceAll(',', ''));
+    final parsed = double.tryParse(raw.replaceAll(',', ''));
+    if (parsed == null || !parsed.isFinite) return null;
+    return parsed.clamp(0.0, 100000.0);
   }
 
   static String _extractCurrency(String text) {
@@ -749,9 +775,15 @@ class FeatureExtractor {
     }
     final amount = int.tryParse(match.group(1) ?? '') ?? 0;
     final unit = match.group(2) ?? '';
-    if (unit.startsWith('min')) return amount;
-    if (unit.startsWith('hour') || unit.startsWith('hr')) return amount * 60;
-    return amount * 1440;
+    int mins = 0;
+    if (unit.startsWith('min')) {
+      mins = amount;
+    } else if (unit.startsWith('hour') || unit.startsWith('hr')) {
+      mins = amount * 60;
+    } else {
+      mins = amount * 1440;
+    }
+    return mins.clamp(0, 43200);
   }
 
   static int _categoryId(String category, String lower) {
