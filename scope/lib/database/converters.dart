@@ -19,3 +19,22 @@ class JsonConverter extends TypeConverter<Map<String, dynamic>, String> {
     return json.encode(value);
   }
 }
+
+/// Drift converter to serialize/deserialize `List<dynamic>` to/from text fields.
+class JsonListConverter extends TypeConverter<List<dynamic>, String> {
+  const JsonListConverter();
+
+  @override
+  List<dynamic> fromSql(String fromDb) {
+    try {
+      return json.decode(fromDb) as List<dynamic>;
+    } catch (_) {
+      return [];
+    }
+  }
+
+  @override
+  String toSql(List<dynamic> value) {
+    return json.encode(value);
+  }
+}
