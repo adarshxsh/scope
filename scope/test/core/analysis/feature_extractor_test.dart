@@ -151,6 +151,38 @@ void main() {
       );
       expect(values[FeatureVector.featureNames.indexOf('person_present')], 1.0);
     });
+
+    group('adaptVectorLength', () {
+      test('zero-pads shorter feature vectors to target length', () {
+        final shortVector = [1.0, 2.0, 3.0];
+        final adapted = FeatureExtractor.adaptVectorLength(shortVector, 6);
+
+        expect(adapted, equals([1.0, 2.0, 3.0, 0.0, 0.0, 0.0]));
+        expect(adapted.length, equals(6));
+      });
+
+      test('truncates longer feature vectors by dropping higher-index features first', () {
+        final longVector = [10.0, 20.0, 30.0, 40.0, 50.0];
+        final adapted = FeatureExtractor.adaptVectorLength(longVector, 3);
+
+        expect(adapted, equals([10.0, 20.0, 30.0]));
+        expect(adapted.length, equals(3));
+      });
+
+      test('returns unchanged vector if target length matches vector length', () {
+        final exactVector = [5.0, 10.0, 15.0];
+        final adapted = FeatureExtractor.adaptVectorLength(exactVector, 3);
+
+        expect(adapted, equals([5.0, 10.0, 15.0]));
+        expect(identical(adapted, exactVector), isTrue);
+      });
+
+      test('returns empty list for non-positive target length', () {
+        final vector = [1.0, 2.0];
+        expect(FeatureExtractor.adaptVectorLength(vector, 0), isEmpty);
+        expect(FeatureExtractor.adaptVectorLength(vector, -5), isEmpty);
+      });
+    });
   });
 
   group('MetadataAnalyzer', () {
