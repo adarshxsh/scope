@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/telemetry/telemetry_governance_service.dart';
 import 'package:scope/database/attention_database.dart';
 import 'package:scope/database/tables.dart';
 
@@ -123,27 +124,17 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
     int calendar = 0,
     int reminders = 0,
     int archived = 0,
+    TelemetryGovernanceService? telemetryService,
   }) async {
-    final existing = await getBriefForDate(date);
-    if (existing != null) {
-      await update(dailyBriefTable).replace(existing.copyWith(
-        notificationsReviewed: existing.notificationsReviewed + reviewed,
-        actionsCompleted: existing.actionsCompleted + completed,
-        calendarEventsCreated: existing.calendarEventsCreated + calendar,
-        remindersCreated: existing.remindersCreated + reminders,
-        archivedCount: existing.archivedCount + archived,
-      ));
-    } else {
-      await into(dailyBriefTable).insert(DailyBriefEntry(
-        id: 0,
-        date: date,
-        notificationsReviewed: reviewed,
-        actionsCompleted: completed,
-        calendarEventsCreated: calendar,
-        remindersCreated: reminders,
-        archivedCount: archived,
-      ));
-    }
+    final service = telemetryService ?? TelemetryGovernanceService(db: db);
+    await service.recordDailyBriefStats(
+      date,
+      notificationsReviewed: reviewed,
+      actionsCompleted: completed,
+      calendarEventsCreated: calendar,
+      remindersCreated: reminders,
+      archivedCount: archived,
+    );
   }
 
   Future<List<DailyBriefEntry>> getAll() {
