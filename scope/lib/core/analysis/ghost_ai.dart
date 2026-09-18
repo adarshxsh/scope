@@ -4,6 +4,7 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
+import 'package:scope/core/utils/privacy_logger.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -62,18 +63,18 @@ class GhostAI {
     try {
       // 1. Load interpreter from assets
       _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      PrivacyLogger.log('GhostAI: TFLite interpreter loaded successfully.');
     } catch (e) {
-      debugPrint('GhostAI: Failed to load TFLite model: $e');
+      PrivacyLogger.log('GhostAI: Failed to load TFLite model: $e');
     }
 
     try {
       // 2. Load and compile rules database
       final jsonStr = await rootBundle.loadString('assets/rules.json');
       _ruleEngine.compile(jsonStr);
-      debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
+      PrivacyLogger.log('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
     } catch (e) {
-      debugPrint('GhostAI: Failed to initialize rules database: $e');
+      PrivacyLogger.log('GhostAI: Failed to initialize rules database: $e');
     }
   }
 
@@ -321,14 +322,24 @@ class GhostAI {
 
   /// Outputs structured AI execution reports in debug mode.
   void _logStructured(AppNotification notification, GhostAIResult result) {
-    debugPrint('=== GHOST AI INFERENCE REPORT ===');
-    debugPrint('Notification: "${notification.title}" - "${notification.content}"');
-    debugPrint('Package: ${notification.packageName}');
-    debugPrint('Feature Vector (First 15): ${result.featureVector.take(15).toList()}...');
-    debugPrint('Inference Time: ${result.inferenceTimeUs} us');
-    debugPrint('Raw Predicted Score: ${(result.predictedScore * 100).toStringAsFixed(2)}');
-    debugPrint('Rule Score: ${result.ruleScore != null ? (result.ruleScore! * 100).toStringAsFixed(2) : "N/A"}');
-    debugPrint('Final Fused Score: ${(result.reviewScore * 100).toStringAsFixed(2)}');
-    debugPrint('==================================');
+    PrivacyLogger.log('=== GHOST AI INFERENCE REPORT ===');
+    PrivacyLogger.log(
+      'Notification: "${PrivacyLogger.sanitize(notification.title)}" - "${PrivacyLogger.sanitize(notification.content)}"',
+    );
+    PrivacyLogger.log('Package: ${notification.packageName}');
+    PrivacyLogger.log(
+      'Feature Vector (First 15): ${result.featureVector.take(15).toList()}...',
+    );
+    PrivacyLogger.log('Inference Time: ${result.inferenceTimeUs} us');
+    PrivacyLogger.log(
+      'Raw Predicted Score: ${(result.predictedScore * 100).toStringAsFixed(2)}',
+    );
+    PrivacyLogger.log(
+      'Rule Score: ${result.ruleScore != null ? (result.ruleScore! * 100).toStringAsFixed(2) : "N/A"}',
+    );
+    PrivacyLogger.log(
+      'Final Fused Score: ${(result.reviewScore * 100).toStringAsFixed(2)}',
+    );
+    PrivacyLogger.log('==================================');
   }
 }
