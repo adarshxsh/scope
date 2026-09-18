@@ -7,6 +7,8 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/database/tables.dart';
 import 'package:scope/database/daos.dart';
 import 'package:scope/database/converters.dart';
+import 'package:scope/database/database_migrator.dart';
+import 'package:scope/database/secure_key_storage.dart';
 
 part 'attention_database.g.dart';
 
@@ -25,7 +27,17 @@ part 'attention_database.g.dart';
   ],
 )
 class AttentionDatabase extends _$AttentionDatabase {
-  AttentionDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
+  AttentionDatabase([QueryExecutor? executor, String? encryptionKey, File? overrideFile])
+      : super(executor ?? openConnection(encryptionKey: encryptionKey, overrideFile: overrideFile));
+
+  factory AttentionDatabase.encrypted(String key, {File? file}) {
+    return AttentionDatabase(null, key, file);
+  }
+
+  factory AttentionDatabase.withKeyManager({DatabaseKeyManager? keyManager, File? file}) {
+    final km = keyManager ?? DatabaseKeyManager();
+    return AttentionDatabase(openConnectionWithKeyManager(km, overrideFile: file));
+  }
 
   factory AttentionDatabase.inMemory() {
     return AttentionDatabase(NativeDatabase.memory());
@@ -52,10 +64,45 @@ class AttentionDatabase extends _$AttentionDatabase {
   }
 }
 
-QueryExecutor _openConnection() {
+QueryExecutor openConnectionWithKeyManager(DatabaseKeyManager keyManager, {File? overrideFile}) {
   return LazyDatabase(() async {
-    final dbFolder = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dbFolder.path, 'attention_os.db'));
-    return NativeDatabase(file);
+    final key = await keyManager.getOrCreateKey();
+    final file = overrideFile ?? await getDatabaseFile();
+    await _handleLegacyMigrationIfNeeded(file, key);
+    return _createNativeDatabase(file, key);
   });
+}
+
+QueryExecutor openConnection({String? encryptionKey, File? overrideFile}) {
+  return LazyDatabase(() async {
+    final file = overrideFile ?? await getDatabaseFile();
+    final key = encryptionKey ?? await DatabaseKeyManager().getOrCreateKey();
+    await _handleLegacyMigrationIfNeeded(file, key);
+    return _createNativeDatabase(file, key);
+  });
+}
+
+Future<File> getDatabaseFile() async {
+  final dbFolder = await getApplicationDocumentsDirectory();
+  return File(p.join(dbFolder.path, 'attention_os.db'));
+}
+
+Future<void> _handleLegacyMigrationIfNeeded(File file, String key) async {
+  if (DatabaseMigrator.isUnencryptedCleartext(file)) {
+    await DatabaseMigrator.migrateCleartextToEncrypted(
+      dbFile: file,
+      encryptionKey: key,
+    );
+  }
+}
+
+QueryExecutor _createNativeDatabase(File file, String? encryptionKey) {
+  return NativeDatabase(
+    file,
+    setup: (db) {
+      if (encryptionKey != null && encryptionKey.isNotEmpty) {
+        db.execute("PRAGMA key = '$encryptionKey';");
+      }
+    },
+  );
 }
