@@ -154,3 +154,99 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
     await delete(dailyBriefTable).go();
   }
 }
+
+@DriftAccessor(tables: [UserSettingsTable])
+class UserSettingsDao extends DatabaseAccessor<AttentionDatabase> with _$UserSettingsDaoMixin {
+  UserSettingsDao(super.db);
+
+  Future<UserSettingsEntry> getUserSettings() async {
+    final settings = await (select(userSettingsTable)..where((t) => t.id.equals(1))).getSingleOrNull();
+    if (settings != null) return settings;
+
+    final defaultSettings = UserSettingsEntry(
+      id: 1,
+      retentionDays: 7,
+      telemetryEnabled: true,
+      storageQuotaMb: 25,
+      maxRowCap: 1000,
+      lastUpdated: DateTime.now(),
+    );
+    await into(userSettingsTable).insert(defaultSettings, mode: InsertMode.insertOrReplace);
+    return defaultSettings;
+  }
+
+  Future<void> updateUserSettings({
+    int? retentionDays,
+    bool? telemetryEnabled,
+    int? storageQuotaMb,
+    int? maxRowCap,
+  }) async {
+    final current = await getUserSettings();
+
+    // Enforce strict validation boundaries
+    int validRetention = current.retentionDays;
+    if (retentionDays != null) {
+      if (retentionDays == -1 || (retentionDays >= 1 && retentionDays <= 365)) {
+        validRetention = retentionDays;
+      }
+    }
+
+    final validTelemetry = telemetryEnabled ?? current.telemetryEnabled;
+
+    int validQuota = current.storageQuotaMb;
+    if (storageQuotaMb != null && storageQuotaMb >= 5 && storageQuotaMb <= 500) {
+      validQuota = storageQuotaMb;
+    }
+
+    int validCap = current.maxRowCap;
+    if (maxRowCap != null && (maxRowCap == 0 || (maxRowCap >= 50 && maxRowCap <= 50000))) {
+      validCap = maxRowCap;
+    }
+
+    final updated = current.copyWith(
+      retentionDays: validRetention,
+      telemetryEnabled: validTelemetry,
+      storageQuotaMb: validQuota,
+      maxRowCap: validCap,
+      lastUpdated: Value(DateTime.now()),
+    );
+    await into(userSettingsTable).insert(updated, mode: InsertMode.insertOrReplace);
+  }
+}
+
+@DriftAccessor(tables: [InferenceTelemetryTable])
+class InferenceTelemetryDao extends DatabaseAccessor<AttentionDatabase> with _$InferenceTelemetryDaoMixin {
+  InferenceTelemetryDao(super.db);
+
+  Future<void> logEvent(Insertable<InferenceTelemetryEntry> entry) async {
+    final settings = await db.userSettingsDao.getUserSettings();
+    if (!settings.telemetryEnabled) return; // Gracefully bypass if disabled
+
+    await into(inferenceTelemetryTable).insert(entry);
+  }
+
+  Future<int> getTelemetryCount() async {
+    final countExpr = inferenceTelemetryTable.id.count();
+    final query = selectOnly(inferenceTelemetryTable)..addColumns([countExpr]);
+    final row = await query.getSingle();
+    return row.read(countExpr) ?? 0;
+  }
+
+  Future<int> deleteOlderThan(int cutoffTimestamp) {
+    return (delete(inferenceTelemetryTable)
+          ..where((t) => t.timestamp.isSmallerThanValue(cutoffTimestamp)))
+        .go();
+  }
+
+  Future<void> clearAll() async {
+    await delete(inferenceTelemetryTable).go();
+  }
+
+  Future<List<InferenceTelemetryEntry>> getRecentEvents([int limit = 50]) {
+    return (select(inferenceTelemetryTable)
+          ..orderBy([(t) => OrderingTerm(expression: t.timestamp, mode: OrderingMode.desc)])
+          ..limit(limit))
+        .get();
+  }
+}
+
