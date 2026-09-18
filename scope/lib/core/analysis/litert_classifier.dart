@@ -75,10 +75,11 @@ class LiteRtClassifier implements NotificationAnalyzer {
 
       return AnalysisResult(
         category: category,
-        score: 0.50, // Base default score for fallback
+        score: 0.0, // Zero authentic model confidence for fallback heuristic
         engineName: 'litert_model (fallback)',
         matchedSignals: matchedSignals,
         latencyMs: stopwatch.elapsedMilliseconds,
+        isFallback: true,
       );
     }
 
@@ -115,16 +116,18 @@ class LiteRtClassifier implements NotificationAnalyzer {
         engineName: 'litert_model',
         matchedSignals: ['Softmax scores: $softmaxScores'],
         latencyMs: stopwatch.elapsedMilliseconds,
+        isFallback: false,
       );
     } catch (e) {
       // Fallback on inference error
       final category = _runFallbackHeuristic(combinedText);
       return AnalysisResult(
         category: category,
-        score: 0.50,
+        score: 0.0, // Zero authentic model confidence on inference error
         engineName: 'litert_model (fallback on error)',
         matchedSignals: ['Inference error: $e'],
         latencyMs: stopwatch.elapsedMilliseconds,
+        isFallback: true,
       );
     }
   }
