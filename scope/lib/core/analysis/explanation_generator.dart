@@ -14,7 +14,12 @@ class ExplanationGenerator {
     buffer.writeln('Priority resolved: **${priority.toUpperCase()}**');
     buffer.writeln('• Category: Inferred semantic category is **${fusedResult.category}**.');
     buffer.writeln('• Source: Handled by **${fusedResult.engineName}**.');
-    buffer.writeln('• Confidence: **${(fusedResult.score * 100).toStringAsFixed(0)}%**.');
+    if (fusedResult.isFallback) {
+      buffer.writeln('• Status: **Fallback Heuristic (ML Inference Bypassed/Failed)**.');
+      buffer.writeln('• Confidence: **N/A (Fallback)**.');
+    } else {
+      buffer.writeln('• Confidence: **${(fusedResult.score * 100).toStringAsFixed(0)}%**.');
+    }
 
     if (features.otp != null) {
       buffer.writeln('• OTP Code: Found verification code **${features.otp}**.');
