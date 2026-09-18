@@ -1,11 +1,14 @@
+import 'dart:convert';
 import 'package:drift/drift.dart';
+import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/sync/crdt.dart';
 import 'package:scope/database/attention_database.dart';
 import 'package:scope/database/tables.dart';
 
 part 'daos.g.dart';
 
-@DriftAccessor(tables: [NotificationsTable])
+@DriftAccessor(tables: [NotificationsTable, ReviewQueueTable])
 class NotificationDao extends DatabaseAccessor<AttentionDatabase> with _$NotificationDaoMixin {
   NotificationDao(super.db);
 
@@ -50,6 +53,66 @@ class NotificationDao extends DatabaseAccessor<AttentionDatabase> with _$Notific
     final query = selectOnly(notificationsTable)..addColumns([countExpr]);
     final row = await query.getSingle();
     return row.read(countExpr) ?? 0;
+  }
+
+  Future<void> mergeNotificationStateDelta(NotificationStateDelta remoteDelta) async {
+    final localEntry = await getById(remoteDelta.notificationId);
+    if (localEntry == null) {
+      final newEntry = NotificationEntry(
+        id: remoteDelta.notificationId,
+        packageName: 'unknown',
+        title: '',
+        content: '',
+        timestamp: remoteDelta.timestamp,
+        isOngoing: false,
+        state: remoteDelta.state,
+        snoozedUntil: remoteDelta.snoozedUntil,
+        lastUpdated: DateTime.fromMillisecondsSinceEpoch(remoteDelta.timestamp, isUtc: true),
+        reviewed: remoteDelta.state == ReviewState.REVIEWED,
+        dismissed: remoteDelta.state == ReviewState.ARCHIVED,
+        createdAt: DateTime.fromMillisecondsSinceEpoch(remoteDelta.timestamp, isUtc: true),
+        vectorClock: remoteDelta.vectorClock.toJson(),
+        originDeviceId: remoteDelta.originDeviceId,
+        syncTimestamp: DateTime.fromMillisecondsSinceEpoch(remoteDelta.timestamp, isUtc: true),
+      );
+      await into(notificationsTable).insert(newEntry, mode: InsertMode.insertOrReplace);
+      return;
+    }
+
+    final localVc = VectorClock.fromJson(localEntry.vectorClock ?? '{}');
+    final localTimestamp = localEntry.syncTimestamp?.millisecondsSinceEpoch ??
+        localEntry.lastUpdated?.millisecondsSinceEpoch ??
+        localEntry.timestamp;
+    final localDelta = NotificationStateDelta(
+      notificationId: localEntry.id,
+      state: localEntry.state,
+      snoozedUntil: localEntry.snoozedUntil,
+      originDeviceId: localEntry.originDeviceId ?? '',
+      vectorClock: localVc,
+      timestamp: localTimestamp,
+    );
+
+    final winningDelta = CrdtStateResolver.resolveNotificationDelta(localDelta, remoteDelta);
+
+    await (update(notificationsTable)..where((t) => t.id.equals(remoteDelta.notificationId))).write(
+      NotificationsTableCompanion(
+        state: Value(winningDelta.state),
+        snoozedUntil: Value(winningDelta.snoozedUntil),
+        vectorClock: Value(winningDelta.vectorClock.toJson()),
+        originDeviceId: Value(winningDelta.originDeviceId),
+        syncTimestamp: Value(DateTime.fromMillisecondsSinceEpoch(winningDelta.timestamp, isUtc: true)),
+        lastUpdated: Value(DateTime.now().toUtc()),
+      ),
+    );
+
+    await (update(db.reviewQueueTable)..where((t) => t.notificationId.equals(remoteDelta.notificationId))).write(
+      ReviewQueueTableCompanion(
+        status: Value(winningDelta.state),
+        vectorClock: Value(winningDelta.vectorClock.toJson()),
+        originDeviceId: Value(winningDelta.originDeviceId),
+        syncTimestamp: Value(DateTime.fromMillisecondsSinceEpoch(winningDelta.timestamp, isUtc: true)),
+      ),
+    );
   }
 }
 
@@ -152,5 +215,116 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
 
   Future<void> clearAll() async {
     await delete(dailyBriefTable).go();
+  }
+}
+
+@DriftAccessor(tables: [RlhfRulesTable])
+class RlhfRulesDao extends DatabaseAccessor<AttentionDatabase> with _$RlhfRulesDaoMixin {
+  RlhfRulesDao(super.db);
+
+  Future<void> insertOrUpdateRule(RlhfRuleEntry entry) async {
+    await into(rlhfRulesTable).insert(entry, mode: InsertMode.insertOrReplace);
+  }
+
+  Future<RlhfRuleEntry?> getRuleById(String id) {
+    return (select(rlhfRulesTable)..where((t) => t.id.equals(id))).getSingleOrNull();
+  }
+
+  Future<List<RlhfRuleEntry>> getAllActiveRules() {
+    return (select(rlhfRulesTable)..where((t) => t.isDeleted.equals(false))).get();
+  }
+
+  Future<List<RlhfRuleEntry>> getAllRules() {
+    return select(rlhfRulesTable).get();
+  }
+
+  Future<void> mergeRlhfRuleDelta(RlhfRuleDelta remoteDelta) async {
+    final localEntry = await getRuleById(remoteDelta.ruleId);
+    if (localEntry == null) {
+      if (remoteDelta.rule == null && remoteDelta.isDeleted) return;
+      final newEntry = RlhfRuleEntry(
+        id: remoteDelta.ruleId,
+        category: remoteDelta.rule?.category ?? '',
+        priority: remoteDelta.rule?.priority ?? '',
+        conditionsJson: json.encode(remoteDelta.rule?.conditions.toMap() ?? {}),
+        isDeleted: remoteDelta.isDeleted,
+        originDeviceId: remoteDelta.originDeviceId,
+        vectorClock: remoteDelta.vectorClock.toJson(),
+        syncTimestamp: DateTime.fromMillisecondsSinceEpoch(remoteDelta.timestamp, isUtc: true),
+        updatedAt: DateTime.fromMillisecondsSinceEpoch(remoteDelta.timestamp, isUtc: true),
+      );
+      await into(rlhfRulesTable).insert(newEntry, mode: InsertMode.insertOrReplace);
+      return;
+    }
+
+    final localVc = VectorClock.fromJson(localEntry.vectorClock ?? '{}');
+    final localTimestamp = localEntry.syncTimestamp?.millisecondsSinceEpoch ?? localEntry.updatedAt.millisecondsSinceEpoch;
+
+    NotificationRule? localRule;
+    if (localEntry.conditionsJson.isNotEmpty) {
+      try {
+        final map = json.decode(localEntry.conditionsJson) as Map<String, dynamic>;
+        localRule = NotificationRule(
+          id: localEntry.id,
+          category: localEntry.category,
+          priority: localEntry.priority,
+          conditions: RuleCondition.fromMap(map),
+        );
+      } catch (_) {}
+    }
+
+    final localDelta = RlhfRuleDelta(
+      ruleId: localEntry.id,
+      rule: localRule,
+      isDeleted: localEntry.isDeleted,
+      originDeviceId: localEntry.originDeviceId ?? '',
+      vectorClock: localVc,
+      timestamp: localTimestamp,
+    );
+
+    final winningDelta = CrdtStateResolver.resolveRuleDelta(localDelta, remoteDelta);
+    final winningRule = winningDelta.rule ?? remoteDelta.rule ?? localRule;
+
+    await (update(rlhfRulesTable)..where((t) => t.id.equals(remoteDelta.ruleId))).write(
+      RlhfRulesTableCompanion(
+        category: Value(winningRule?.category ?? localEntry.category),
+        priority: Value(winningRule?.priority ?? localEntry.priority),
+        conditionsJson: Value(json.encode(winningRule?.conditions.toMap() ?? {})),
+        isDeleted: Value(winningDelta.isDeleted),
+        vectorClock: Value(winningDelta.vectorClock.toJson()),
+        originDeviceId: Value(winningDelta.originDeviceId),
+        syncTimestamp: Value(DateTime.fromMillisecondsSinceEpoch(winningDelta.timestamp, isUtc: true)),
+        updatedAt: Value(DateTime.now().toUtc()),
+      ),
+    );
+  }
+
+  Future<void> clearAll() async {
+    await delete(rlhfRulesTable).go();
+  }
+}
+
+@DriftAccessor(tables: [OfflineSyncQueueTable])
+class OfflineSyncQueueDao extends DatabaseAccessor<AttentionDatabase> with _$OfflineSyncQueueDaoMixin {
+  OfflineSyncQueueDao(super.db);
+
+  Future<int> enqueue(OfflineSyncQueueTableCompanion entry) async {
+    return into(offlineSyncQueueTable).insert(entry);
+  }
+
+  Future<List<OfflineSyncQueueEntry>> getPendingItems() {
+    return (select(offlineSyncQueueTable)
+          ..where((t) => t.isSynced.equals(false))
+          ..orderBy([(t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.asc)]))
+        .get();
+  }
+
+  Future<void> markSynced(int id) async {
+    await (update(offlineSyncQueueTable)..where((t) => t.id.equals(id)))
+        .write(const OfflineSyncQueueTableCompanion(isSynced: Value(true)));
+  }
+
+  Future<void> clearAll() async {
+    await delete(offlineSyncQueueTable).go();
   }
 }
