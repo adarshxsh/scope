@@ -154,3 +154,51 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
     await delete(dailyBriefTable).go();
   }
 }
+
+@DriftAccessor(tables: [InferenceAuditLogsTable])
+class InferenceAuditDao extends DatabaseAccessor<AttentionDatabase> with _$InferenceAuditDaoMixin {
+  InferenceAuditDao(super.db);
+
+  Future<int> insertAuditLog(InferenceAuditLogsTableCompanion entry) async {
+    return into(inferenceAuditLogsTable).insert(entry);
+  }
+
+
+  Future<List<InferenceAuditLogEntry>> getAuditLogsForNotification(String notificationId) {
+    return (select(inferenceAuditLogsTable)
+          ..where((t) => t.notificationId.equals(notificationId))
+          ..orderBy([(t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc)]))
+        .get();
+  }
+
+  Future<List<InferenceAuditLogEntry>> getRecentAuditLogs({int limit = 50}) {
+    return (select(inferenceAuditLogsTable)
+          ..orderBy([(t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc)])
+          ..limit(limit))
+        .get();
+  }
+
+  Future<int> clearOldAuditLogs({int maxRows = 500}) async {
+    final countExpr = inferenceAuditLogsTable.id.count();
+    final query = selectOnly(inferenceAuditLogsTable)..addColumns([countExpr]);
+    final row = await query.getSingle();
+    final count = row.read(countExpr) ?? 0;
+
+    if (count > maxRows) {
+      final excess = count - maxRows;
+      final oldestIdsQuery = selectOnly(inferenceAuditLogsTable)
+        ..addColumns([inferenceAuditLogsTable.id])
+        ..orderBy([OrderingTerm(expression: inferenceAuditLogsTable.id, mode: OrderingMode.asc)])
+        ..limit(excess);
+      final oldestRows = await oldestIdsQuery.get();
+      final idsToDelete = oldestRows.map((r) => r.read(inferenceAuditLogsTable.id)!).toList();
+      return (delete(inferenceAuditLogsTable)..where((t) => t.id.isIn(idsToDelete))).go();
+    }
+    return 0;
+  }
+
+  Future<void> clearAll() async {
+    await delete(inferenceAuditLogsTable).go();
+  }
+}
+
