@@ -91,7 +91,13 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
   void _submitFeedback(bool isReward) {
     if (_selectedNotification == null) return;
 
+    final notifId = _selectedNotification!.id;
     if (isReward) {
+      widget.controller.recordFeedback(
+        notificationId: notifId,
+        action: 'reward',
+        customTargetScore: 1.0,
+      );
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Reward (+1) recorded! AI model confidence reinforced.'),
@@ -99,6 +105,11 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
         ),
       );
     } else {
+      widget.controller.recordFeedback(
+        notificationId: notifId,
+        action: 'penalty',
+        customTargetScore: 0.0,
+      );
       setState(() {
         _showCorrectionForm = true;
       });
