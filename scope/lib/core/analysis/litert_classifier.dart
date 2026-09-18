@@ -1,41 +1,98 @@
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/analysis_result.dart';
 import 'package:scope/core/analysis/notification_analyzer.dart';
 import 'package:scope/core/analysis/wordpiece_tokenizer.dart';
+import 'package:scope/core/analysis/asset_verifier_service.dart';
+import 'package:scope/core/analysis/asset_integrity.dart';
 
 /// Classifier using LiteRT (TensorFlow Lite) to classify text categories.
 class LiteRtClassifier implements NotificationAnalyzer {
   Interpreter? _interpreter;
   WordPieceTokenizer? _tokenizer;
   bool _isModelLoaded = false;
+  Future<void>? _initFuture;
 
-  LiteRtClassifier() {
-    _initialize();
+  LiteRtClassifier({Map<String, String>? customHashes}) {
+    _initFuture = _initialize(customHashes: customHashes);
   }
 
-  Future<void> _initialize() async {
-    try {
-      // 1. Load Vocab
-      final vocabStr = await rootBundle.loadString('assets/vocab.txt');
-      final lines = vocabStr.split('\n');
-      _tokenizer = WordPieceTokenizer.fromLines(lines);
+  /// Explicit initialization method for tests or callers requiring custom asset hashes.
+  Future<void> initialize({Map<String, String>? customHashes}) async {
+    _initFuture = _initialize(customHashes: customHashes);
+    await _initFuture;
+  }
 
-      // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
-      _isModelLoaded = false;
+  Future<void> _initialize({Map<String, String>? customHashes}) async {
+    try {
+      // 1. Load & verify Vocab asset
+      bool isVocabVerified = false;
+      if (customHashes != null) {
+        try {
+          final vocabData = await rootBundle.load('assets/vocab.txt');
+          final vocabBytes = vocabData.buffer.asUint8List(vocabData.offsetInBytes, vocabData.lengthInBytes);
+          isVocabVerified = AssetIntegrity.verify('assets/vocab.txt', vocabBytes, customHashes: customHashes);
+        } catch (_) {
+          isVocabVerified = false;
+        }
+      } else {
+        isVocabVerified = await AssetVerifierService.instance.verifyAsset('assets/vocab.txt');
+      }
+
+      if (isVocabVerified) {
+        final vocabStr = await rootBundle.loadString('assets/vocab.txt');
+        final lines = vocabStr.split('\n');
+        _tokenizer = WordPieceTokenizer.fromLines(lines);
+      } else {
+        debugPrint('LiteRtClassifier: Asset verification failed for assets/vocab.txt.');
+      }
+
+      // 2. Load & verify Model asset
+      bool isModelVerified = false;
+      if (customHashes != null) {
+        try {
+          final modelData = await rootBundle.load('assets/model.tflite');
+          final modelBytes = modelData.buffer.asUint8List(modelData.offsetInBytes, modelData.lengthInBytes);
+          isModelVerified = AssetIntegrity.verify('assets/model.tflite', modelBytes, customHashes: customHashes);
+        } catch (_) {
+          isModelVerified = false;
+        }
+      } else {
+        isModelVerified = await AssetVerifierService.instance.verifyAsset('assets/model.tflite');
+      }
+
+      if (isModelVerified) {
+        _isModelLoaded = false; // Model is look-again regression model in GhostAI
+      } else {
+        _isModelLoaded = false;
+        debugPrint('LiteRtClassifier: Asset verification failed for assets/model.tflite.');
+      }
     } catch (e) {
       // Graceful degradation: Log and set flags so analyze runs in fallback mode
-      // ignore: avoid_print
-      print('LiteRtClassifier failed to initialize: $e');
+      debugPrint('LiteRtClassifier failed to initialize: $e');
       _isModelLoaded = false;
 
       // Ensure tokenizer is loaded even if interpreter fails (so we can test tokenization in fallback)
       if (_tokenizer == null) {
         try {
-          final vocabStr = await rootBundle.loadString('assets/vocab.txt');
-          _tokenizer = WordPieceTokenizer.fromLines(vocabStr.split('\n'));
+          bool isVocabVerified = false;
+          if (customHashes != null) {
+            try {
+              final vocabData = await rootBundle.load('assets/vocab.txt');
+              final vocabBytes = vocabData.buffer.asUint8List(vocabData.offsetInBytes, vocabData.lengthInBytes);
+              isVocabVerified = AssetIntegrity.verify('assets/vocab.txt', vocabBytes, customHashes: customHashes);
+            } catch (_) {}
+          } else {
+            isVocabVerified = await AssetVerifierService.instance.verifyAsset('assets/vocab.txt');
+          }
+
+          if (isVocabVerified) {
+            final vocabStr = await rootBundle.loadString('assets/vocab.txt');
+            _tokenizer = WordPieceTokenizer.fromLines(vocabStr.split('\n'));
+          }
         } catch (_) {}
       }
     }
@@ -50,6 +107,9 @@ class LiteRtClassifier implements NotificationAnalyzer {
     final combinedText = '${notification.title} ${notification.content}';
 
     // Ensure initialization finished
+    if (_initFuture != null) {
+      await _initFuture;
+    }
     if (_tokenizer == null) {
       await _initialize();
     }
