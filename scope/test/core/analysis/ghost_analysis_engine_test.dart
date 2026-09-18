@@ -77,5 +77,38 @@ void main() {
       expect(analyzed.priority, equals('low'));
       expect(analyzed.classifiedCategory, equals('promo'));
     });
+
+    test('uses LRU cache for duplicate analyze calls meeting sub-50ms benchmark', () async {
+      final notif = AppNotification(
+        id: 'cache_test_1',
+        packageName: 'com.test.app',
+        title: 'Duplicate Title',
+        content: 'Duplicate content',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final firstPass = await engine.analyze(notif);
+      expect(firstPass.latencyMs, isNotNull);
+
+      final secondPass = await engine.analyze(notif);
+      expect(secondPass.priority, equals(firstPass.priority));
+      expect(secondPass.latencyMs, lessThan(50));
+    });
+
+    test('clears LRU cache on demand', () async {
+      final notif = AppNotification(
+        id: 'cache_clear_1',
+        packageName: 'com.test.app',
+        title: 'Title',
+        content: 'Content',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      await engine.analyze(notif);
+      engine.clearCache();
+      // Should re-analyze without error
+      final reAnalyzed = await engine.analyze(notif);
+      expect(reAnalyzed.id, equals('cache_clear_1'));
+    });
   });
 }
