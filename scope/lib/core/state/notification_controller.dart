@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/services/app_exclusion_service.dart';
 import 'package:scope/core/storage/notification_storage.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/core/utils/focus_area_mapper.dart';
@@ -42,12 +43,15 @@ class NotificationController extends ChangeNotifier {
     NotificationBridge? bridge,
     NotificationStorage? storage,
     GhostAnalysisEngine? engine,
+    AppExclusionService? exclusionService,
     ProviderContainer? container,
   })  : _bridge = bridge ?? NotificationBridge(),
         _container = container ?? providerContainer,
         _storage = storage ?? DriftNotificationStorage(container?.read(databaseProvider) ?? providerContainer.read(databaseProvider)),
-        _engine = engine ?? GhostAnalysisEngine() {
+        _engine = engine ?? GhostAnalysisEngine(),
+        exclusionService = exclusionService ?? AppExclusionService(bridge: bridge) {
     _engine.initialize();
+    this.exclusionService.initialize();
 
     // Listen to changes in Riverpod's reviewQueueProvider to keep legacy notifier list in sync
     _container.listen<List<AppNotification>>(reviewQueueProvider, (previous, next) {
@@ -63,6 +67,7 @@ class NotificationController extends ChangeNotifier {
   final NotificationStorage _storage;
   final GhostAnalysisEngine _engine;
   final ProviderContainer _container;
+  final AppExclusionService exclusionService;
 
   List<AppNotification> _notifications = [];
   bool _isListenerEnabled = false;
@@ -378,8 +383,40 @@ class NotificationController extends ChangeNotifier {
 
   Future<void> refresh() => _checkPermissionAndFetch();
 
+  AppNotification _verifyAndSanitize(AppNotification raw) {
+    var title = raw.title;
+    var content = raw.content;
+    var pkg = raw.packageName.trim();
+    var ts = raw.timestamp;
+
+    if (pkg.isEmpty) {
+      pkg = 'unknown';
+    }
+
+    if (title.length > 256) {
+      title = title.substring(0, 256);
+    }
+
+    if (content.length > 2048) {
+      content = content.substring(0, 2048);
+    }
+
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    if (ts <= 0 || ts > nowMs + 86400000) {
+      ts = nowMs;
+    }
+
+    return raw.copyWith(
+      packageName: pkg,
+      title: title,
+      content: content,
+      timestamp: ts,
+    );
+  }
+
   Future<void> fetchNotifications() async {
     try {
+      await exclusionService.initialize();
       final newNotifications = await _bridge.getNotifications();
       final analyzed = <AppNotification>[];
 
@@ -388,24 +425,35 @@ class NotificationController extends ChangeNotifier {
       }
 
       for (final raw in newNotifications) {
-        // Ignore ongoing background/system notifications (e.g. charging, media playback)
-        if (raw.isOngoing) continue;
+        try {
+          // App exclusion control: filter out excluded package names
+          if (exclusionService.isPackageExcluded(raw.packageName)) continue;
 
-        final isDuplicate = _notifications.any((n) =>
-            n.packageName == raw.packageName &&
-            n.timestamp == raw.timestamp &&
-            n.title == raw.title &&
-            n.content == raw.content);
+          // Ignore ongoing background/system notifications (e.g. charging, media playback)
+          if (raw.isOngoing) continue;
 
-        if (!isDuplicate) {
-          final inBatch = analyzed.any((n) =>
-              n.packageName == raw.packageName &&
-              n.timestamp == raw.timestamp &&
-              n.title == raw.title &&
-              n.content == raw.content);
-          if (!inBatch) {
-            analyzed.add(await _engine.analyze(raw));
+          // Verification & sanitization check
+          final sanitized = _verifyAndSanitize(raw);
+
+          final isDuplicate = _notifications.any((n) =>
+              n.packageName == sanitized.packageName &&
+              n.timestamp == sanitized.timestamp &&
+              n.title == sanitized.title &&
+              n.content == sanitized.content);
+
+          if (!isDuplicate) {
+            final inBatch = analyzed.any((n) =>
+                n.packageName == sanitized.packageName &&
+                n.timestamp == sanitized.timestamp &&
+                n.title == sanitized.title &&
+                n.content == sanitized.content);
+            if (!inBatch) {
+              final result = await _engine.analyze(sanitized);
+              analyzed.add(result);
+            }
           }
+        } catch (e, stackTrace) {
+          debugPrint('Isolated exception analyzing notification ${raw.id}: $e\n$stackTrace');
         }
       }
 
@@ -428,26 +476,36 @@ class NotificationController extends ChangeNotifier {
   Future<void> generateTestData() async {
     _initialLoadCompleted = true;
     _isLoading = false;
+    await exclusionService.initialize();
     final generator = TestNotificationGenerator();
     final testNotifs = generator.generateAll();
     final analyzed = <AppNotification>[];
 
     for (final raw in testNotifs) {
-      final isDuplicate = _notifications.any((n) =>
-          n.packageName == raw.packageName &&
-          n.timestamp == raw.timestamp &&
-          n.title == raw.title &&
-          n.content == raw.content);
+      try {
+        if (exclusionService.isPackageExcluded(raw.packageName)) continue;
 
-      if (!isDuplicate) {
-        final inBatch = analyzed.any((n) =>
-            n.packageName == raw.packageName &&
-            n.timestamp == raw.timestamp &&
-            n.title == raw.title &&
-            n.content == raw.content);
-        if (!inBatch) {
-          analyzed.add(await _engine.analyze(raw));
+        final sanitized = _verifyAndSanitize(raw);
+
+        final isDuplicate = _notifications.any((n) =>
+            n.packageName == sanitized.packageName &&
+            n.timestamp == sanitized.timestamp &&
+            n.title == sanitized.title &&
+            n.content == sanitized.content);
+
+        if (!isDuplicate) {
+          final inBatch = analyzed.any((n) =>
+              n.packageName == sanitized.packageName &&
+              n.timestamp == sanitized.timestamp &&
+              n.title == sanitized.title &&
+              n.content == sanitized.content);
+          if (!inBatch) {
+            final result = await _engine.analyze(sanitized);
+            analyzed.add(result);
+          }
         }
+      } catch (e, stackTrace) {
+        debugPrint('Isolated exception in test data notification ${raw.id}: $e\n$stackTrace');
       }
     }
 

@@ -44,6 +44,17 @@ class MainActivity : FlutterActivity() {
                         result.success(true)
                     }
 
+                    "setExcludedPackages" -> {
+                        val packages = call.argument<List<String>>("packages") ?: emptyList()
+                        NotificationCollectorService.setExcludedPackages(packages)
+                        result.success(true)
+                    }
+
+                    "getExcludedPackages" -> {
+                        val excluded = NotificationCollectorService.getExcludedPackages()
+                        result.success(excluded)
+                    }
+
                     else -> result.notImplemented()
                 }
             }
