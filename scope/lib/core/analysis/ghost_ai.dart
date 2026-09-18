@@ -68,12 +68,18 @@ class GhostAI {
     }
 
     try {
-      // 2. Load and compile rules database
+      // 2. Load and compile signed rules database
       final jsonStr = await rootBundle.loadString('assets/rules.json');
-      _ruleEngine.compile(jsonStr);
-      debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
+      try {
+        _ruleEngine.compileSigned(jsonStr);
+        debugPrint('GhostAI: Signed rule engine initialized (version: ${_ruleEngine.version}).');
+      } on SignatureVerificationException catch (e) {
+        debugPrint('SECURITY WARNING: Rule database signature verification failed: $e. Falling back to default heuristics.');
+        _ruleEngine.loadDefaultFallbackRules();
+      }
     } catch (e) {
-      debugPrint('GhostAI: Failed to initialize rules database: $e');
+      debugPrint('GhostAI: Failed to initialize rules database: $e. Falling back to default heuristics.');
+      _ruleEngine.loadDefaultFallbackRules();
     }
   }
 
