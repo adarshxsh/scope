@@ -4,6 +4,7 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
+import 'package:scope/core/analysis/asset_verifier.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -58,19 +59,23 @@ class GhostAI {
 
   /// Initializes the TFLite interpreter and rules database once on startup.
   Future<void> initialize() async {
-    if (_interpreter != null) return;
-    try {
-      // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
-    } catch (e) {
-      debugPrint('GhostAI: Failed to load TFLite model: $e');
+    if (_interpreter == null) {
+      try {
+        // 1. Verify and load interpreter from assets
+        await AssetVerifier.verifyAsset('assets/model.tflite');
+        _interpreter = await Interpreter.fromAsset('assets/model.tflite');
+        debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      } catch (e) {
+        debugPrint('GhostAI: Failed to load TFLite model: $e');
+      }
     }
 
     try {
-      // 2. Load and compile rules database
+      // 2. Verify and load compiled signed rules database
+      await AssetVerifier.verifyAsset('assets/rules.json');
       final jsonStr = await rootBundle.loadString('assets/rules.json');
-      _ruleEngine.compile(jsonStr);
+      _ruleEngine.compileSigned(jsonStr);
+      await _ruleEngine.loadCustomRules();
       debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
     } catch (e) {
       debugPrint('GhostAI: Failed to initialize rules database: $e');
@@ -319,10 +324,10 @@ class GhostAI {
     return false;
   }
 
-  /// Outputs structured AI execution reports in debug mode.
+  /// Outputs structured AI execution reports in debug mode without exposing cleartext PII.
   void _logStructured(AppNotification notification, GhostAIResult result) {
     debugPrint('=== GHOST AI INFERENCE REPORT ===');
-    debugPrint('Notification: "${notification.title}" - "${notification.content}"');
+    debugPrint('Notification: "${_sanitizePii(notification.title)}" - "${_sanitizePii(notification.content)}"');
     debugPrint('Package: ${notification.packageName}');
     debugPrint('Feature Vector (First 15): ${result.featureVector.take(15).toList()}...');
     debugPrint('Inference Time: ${result.inferenceTimeUs} us');
@@ -330,5 +335,14 @@ class GhostAI {
     debugPrint('Rule Score: ${result.ruleScore != null ? (result.ruleScore! * 100).toStringAsFixed(2) : "N/A"}');
     debugPrint('Final Fused Score: ${(result.reviewScore * 100).toStringAsFixed(2)}');
     debugPrint('==================================');
+  }
+
+  String _sanitizePii(String text) {
+    if (text.isEmpty) return text;
+    var sanitized = text;
+    sanitized = sanitized.replaceAll(RegExp(r'\b\d{4,8}\b'), '[REDACTED_NUM]');
+    sanitized = sanitized.replaceAll(RegExp(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'), '[REDACTED_EMAIL]');
+    sanitized = sanitized.replaceAll(RegExp(r'\+?\d{10,12}'), '[REDACTED_PHONE]');
+    return sanitized;
   }
 }
