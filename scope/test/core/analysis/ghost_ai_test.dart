@@ -233,5 +233,22 @@ void main() {
         expect(result.reviewScore, isPositive); // Not overridden
       });
     });
+
+    group('Dynamic Model Inference & Fallback', () {
+      test('predict handles feature vectors with dynamic dimensions seamlessly', () async {
+        final promoNotif = AppNotification(
+          id: 'promo-1',
+          packageName: 'com.retail.app',
+          title: 'Mega Sale',
+          content: 'Get 50% discount on all items today!',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        final result = await GhostAI.predict(promoNotif);
+        expect(result.featureVector, isNotEmpty);
+        expect(result.predictedScore, isNotNull);
+        expect(result.reviewScore, isNotNull);
+      });
+    });
   });
 }
