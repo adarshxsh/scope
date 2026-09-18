@@ -13,16 +13,36 @@ class TestNotificationGenerator {
   AppNotification? generateByType(String type) {
     try {
       return switch (type) {
-        'message' => _parsedNotifications.firstWhere((n) => n.packageName == 'org.telegram.messenger'),
-        'email' => _parsedNotifications.firstWhere((n) => n.packageName == 'com.google.android.gm'),
-        'chat' => _parsedNotifications.firstWhere((n) => n.packageName == 'com.atlassian.android.jira.core'),
-        'social' => _parsedNotifications.firstWhere((n) => n.packageName == 'com.spotify.music'),
-        'promo' => _parsedNotifications.firstWhere((n) => n.packageName == 'com.myntra.android'),
-        'finance' => _parsedNotifications.firstWhere((n) => n.packageName == 'com.nextbillion.groww'),
-        'health' => _parsedNotifications.firstWhere((n) => n.packageName == 'com.passportindia'),
-        'news' => _parsedNotifications.firstWhere((n) => n.packageName == 'com.zerodha.kite3'),
-        'system' => _parsedNotifications.firstWhere((n) => n.packageName == 'com.digilocker.android'),
-        'scholarship' => _parsedNotifications.firstWhere((n) => n.packageName == 'com.myairtelapp'),
+        'message' => _parsedNotifications.firstWhere(
+          (n) => n.packageName == 'org.telegram.messenger',
+        ),
+        'email' => _parsedNotifications.firstWhere(
+          (n) => n.packageName == 'com.google.android.gm',
+        ),
+        'chat' => _parsedNotifications.firstWhere(
+          (n) => n.packageName == 'com.atlassian.android.jira.core',
+        ),
+        'social' => _parsedNotifications.firstWhere(
+          (n) => n.packageName == 'com.spotify.music',
+        ),
+        'promo' => _parsedNotifications.firstWhere(
+          (n) => n.packageName == 'com.myntra.android',
+        ),
+        'finance' => _parsedNotifications.firstWhere(
+          (n) => n.packageName == 'com.nextbillion.groww',
+        ),
+        'health' => _parsedNotifications.firstWhere(
+          (n) => n.packageName == 'com.passportindia',
+        ),
+        'news' => _parsedNotifications.firstWhere(
+          (n) => n.packageName == 'com.zerodha.kite3',
+        ),
+        'system' => _parsedNotifications.firstWhere(
+          (n) => n.packageName == 'com.digilocker.android',
+        ),
+        'scholarship' => _parsedNotifications.firstWhere(
+          (n) => n.packageName == 'com.myairtelapp',
+        ),
         _ => null,
       };
     } catch (_) {
@@ -44,32 +64,46 @@ class TestNotificationGenerator {
     'scholarship',
   ];
 
-  static final List<AppNotification> _parsedNotifications = _rawJsonData.map((jsonStr) {
+  static final List<AppNotification> _parsedNotifications = _rawJsonData.map((
+    jsonStr,
+  ) {
     final map = json.decode(jsonStr) as Map<String, dynamic>;
     final android = map['android'] as Map<String, dynamic>? ?? {};
     final entities = map['entities'] as Map<String, dynamic>? ?? {};
 
     // Determine extracted features matching ExtractedFeatures class keys
-    final otpStr = entities['otp_length'] != null 
-        ? (map['body'] as String).replaceAll(RegExp(r'\D'), '') 
+    final otpStr = entities['otp_length'] != null
+        ? (map['body'] as String).replaceAll(RegExp(r'\D'), '')
         : null;
 
     final extracted = <String, dynamic>{
       'otp': otpStr != null && otpStr.length >= 4 ? otpStr : null,
       'amount': (entities['amount'] as num?)?.toDouble(),
       'hasDeadline': map['contains_date'] == true || map['deadline'] != null,
-      'urls': map['contains_link'] == true ? ['https://example.com'] : <String>[],
-      'emails': map['contains_email'] == true ? ['user@example.com'] : <String>[],
-      'phoneNumbers': map['contains_phone'] == true ? ['9876543210'] : <String>[],
+      'urls': map['contains_link'] == true
+          ? ['https://example.com']
+          : <String>[],
+      'emails': map['contains_email'] == true
+          ? ['user@example.com']
+          : <String>[],
+      'phoneNumbers': map['contains_phone'] == true
+          ? ['9876543210']
+          : <String>[],
     };
 
     return AppNotification(
       id: map['id'] as String,
-      packageName: map['package_name'] as String? ?? android['package_name'] as String? ?? 'unknown',
+      packageName:
+          map['package_name'] as String? ??
+          android['package_name'] as String? ??
+          'unknown',
       title: map['title'] as String? ?? '',
       content: map['body'] as String? ?? '',
       timestamp: android['timestamp'] != null
-          ? DateTime.tryParse(android['timestamp'] as String)?.millisecondsSinceEpoch ?? DateTime.now().millisecondsSinceEpoch
+          ? DateTime.tryParse(
+                  android['timestamp'] as String,
+                )?.millisecondsSinceEpoch ??
+                DateTime.now().millisecondsSinceEpoch
           : DateTime.now().millisecondsSinceEpoch,
       category: android['category'] as String?,
       isOngoing: android['ongoing'] as bool? ?? false,
@@ -111,7 +145,7 @@ class TestNotificationGenerator {
     // --- App promotional notifications (not counted in stats) ---
     r'''{"id":"promo-welcome-001","app_name":"AttentionOS","package_name":"com.scope.attentionos","category":"Onboarding","subcategory":"Welcome","notification_type":"promo","title":"Welcome to AttentionOS","body":"Your notifications are now AI-powered. Swipe through your cards to see how Ghost AI classifies each one — Critical, High, Medium, or Low.","language":"en","contains_money":false,"contains_otp":false,"contains_link":false,"contains_email":false,"contains_phone":false,"contains_attachment":false,"contains_location":false,"contains_date":false,"contains_time":false,"deadline":null,"requires_action":false,"action_type":null,"intent":"browse","is_recurring":false,"urgency":"low","entities":{"app":"AttentionOS"},"android":{"package_name":"com.scope.attentionos","channel_id":"onboarding","channel_name":"Onboarding","category":"promo","importance":2,"group":"com.scope.attentionos.onboarding","conversation":false,"timestamp":"2026-06-27T08:00:00+00:00","visibility":"public","ongoing":false,"foreground_service":false,"priority":-1,"notification_id":1,"tag":"promo_welcome"},"priority_score":0,"priority":"low","priority_reason":"promotional; app_onboarding","look_again_score":0,"look_again":false,"labels":{"category_class":"Onboarding","intent":"browse","urgency":"low","requires_action":false,"is_promotion":true,"is_duplicate_candidate":false,"is_recurring":false,"look_again":false}}''',
     r'''{"id":"promo-focus-002","app_name":"AttentionOS","package_name":"com.scope.attentionos","category":"Onboarding","subcategory":"Tips","notification_type":"promo","title":"Try Focus Sessions","body":"Swipe up to clear a notification, swipe down to archive it. Focus Sessions help you review everything in under 2 minutes — no notification left behind.","language":"en","contains_money":false,"contains_otp":false,"contains_link":false,"contains_email":false,"contains_phone":false,"contains_attachment":false,"contains_location":false,"contains_date":false,"contains_time":false,"deadline":null,"requires_action":false,"action_type":null,"intent":"browse","is_recurring":false,"urgency":"low","entities":{"app":"AttentionOS"},"android":{"package_name":"com.scope.attentionos","channel_id":"onboarding","channel_name":"Onboarding","category":"promo","importance":2,"group":"com.scope.attentionos.tips","conversation":false,"timestamp":"2026-06-27T08:01:00+00:00","visibility":"public","ongoing":false,"foreground_service":false,"priority":-1,"notification_id":2,"tag":"promo_focus"},"priority_score":0,"priority":"low","priority_reason":"promotional; app_tips","look_again_score":0,"look_again":false,"labels":{"category_class":"Onboarding","intent":"browse","urgency":"low","requires_action":false,"is_promotion":true,"is_duplicate_candidate":false,"is_recurring":false,"look_again":false}}''',
-    r'''{"id":"promo-privacy-003","app_name":"AttentionOS","package_name":"com.scope.attentionos","category":"Onboarding","subcategory":"Privacy","notification_type":"promo","title":"Your data stays on-device","body":"Ghost AI runs entirely on your phone. No notification content ever leaves your device — your attention, your control. Everything is processed locally with TensorFlow Lite.","language":"en","contains_money":false,"contains_otp":false,"contains_link":false,"contains_email":false,"contains_phone":false,"contains_attachment":false,"contains_location":false,"contains_date":false,"contains_time":false,"deadline":null,"requires_action":false,"action_type":null,"intent":"browse","is_recurring":false,"urgency":"low","entities":{"app":"AttentionOS"},"android":{"package_name":"com.scope.attentionos","channel_id":"onboarding","channel_name":"Onboarding","category":"promo","importance":2,"group":"com.scope.attentionos.privacy","conversation":false,"timestamp":"2026-06-27T08:02:00+00:00","visibility":"public","ongoing":false,"foreground_service":false,"priority":-1,"notification_id":3,"tag":"promo_privacy"},"priority_score":0,"priority":"low","priority_reason":"promotional; privacy_info","look_again_score":0,"look_again":false,"labels":{"category_class":"Onboarding","intent":"browse","urgency":"low","requires_action":false,"is_promotion":true,"is_duplicate_candidate":false,"is_recurring":false,"look_again":false}}'''
+    r'''{"id":"promo-privacy-003","app_name":"AttentionOS","package_name":"com.scope.attentionos","category":"Onboarding","subcategory":"Privacy","notification_type":"promo","title":"Your data stays on-device","body":"Ghost AI runs entirely on your phone. No notification content ever leaves your device — your attention, your control. Everything is processed locally with TensorFlow Lite.","language":"en","contains_money":false,"contains_otp":false,"contains_link":false,"contains_email":false,"contains_phone":false,"contains_attachment":false,"contains_location":false,"contains_date":false,"contains_time":false,"deadline":null,"requires_action":false,"action_type":null,"intent":"browse","is_recurring":false,"urgency":"low","entities":{"app":"AttentionOS"},"android":{"package_name":"com.scope.attentionos","channel_id":"onboarding","channel_name":"Onboarding","category":"promo","importance":2,"group":"com.scope.attentionos.privacy","conversation":false,"timestamp":"2026-06-27T08:02:00+00:00","visibility":"public","ongoing":false,"foreground_service":false,"priority":-1,"notification_id":3,"tag":"promo_privacy"},"priority_score":0,"priority":"low","priority_reason":"promotional; privacy_info","look_again_score":0,"look_again":false,"labels":{"category_class":"Onboarding","intent":"browse","urgency":"low","requires_action":false,"is_promotion":true,"is_duplicate_candidate":false,"is_recurring":false,"look_again":false}}''',
   ];
 
   /// Package name used for AttentionOS promotional/onboarding notifications.

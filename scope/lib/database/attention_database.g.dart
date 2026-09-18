@@ -2709,6 +2709,326 @@ class DailyBriefTableCompanion extends UpdateCompanion<DailyBriefEntry> {
   }
 }
 
+class $AppSettingsTableTable extends AppSettingsTable
+    with TableInfo<$AppSettingsTableTable, AppSettingsEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AppSettingsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _retentionDaysMeta = const VerificationMeta(
+    'retentionDays',
+  );
+  @override
+  late final GeneratedColumn<int> retentionDays = GeneratedColumn<int>(
+    'retention_days',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(7),
+  );
+  static const VerificationMeta _storageQuotaMeta = const VerificationMeta(
+    'storageQuota',
+  );
+  @override
+  late final GeneratedColumn<int> storageQuota = GeneratedColumn<int>(
+    'storage_quota',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(-1),
+  );
+  static const VerificationMeta _telemetryEnabledMeta = const VerificationMeta(
+    'telemetryEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> telemetryEnabled = GeneratedColumn<bool>(
+    'telemetry_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("telemetry_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    retentionDays,
+    storageQuota,
+    telemetryEnabled,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'app_settings_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AppSettingsEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('retention_days')) {
+      context.handle(
+        _retentionDaysMeta,
+        retentionDays.isAcceptableOrUnknown(
+          data['retention_days']!,
+          _retentionDaysMeta,
+        ),
+      );
+    }
+    if (data.containsKey('storage_quota')) {
+      context.handle(
+        _storageQuotaMeta,
+        storageQuota.isAcceptableOrUnknown(
+          data['storage_quota']!,
+          _storageQuotaMeta,
+        ),
+      );
+    }
+    if (data.containsKey('telemetry_enabled')) {
+      context.handle(
+        _telemetryEnabledMeta,
+        telemetryEnabled.isAcceptableOrUnknown(
+          data['telemetry_enabled']!,
+          _telemetryEnabledMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AppSettingsEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AppSettingsEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      retentionDays: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}retention_days'],
+      )!,
+      storageQuota: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}storage_quota'],
+      )!,
+      telemetryEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}telemetry_enabled'],
+      )!,
+    );
+  }
+
+  @override
+  $AppSettingsTableTable createAlias(String alias) {
+    return $AppSettingsTableTable(attachedDatabase, alias);
+  }
+}
+
+class AppSettingsEntry extends DataClass
+    implements Insertable<AppSettingsEntry> {
+  final int id;
+  final int retentionDays;
+  final int storageQuota;
+  final bool telemetryEnabled;
+  const AppSettingsEntry({
+    required this.id,
+    required this.retentionDays,
+    required this.storageQuota,
+    required this.telemetryEnabled,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['retention_days'] = Variable<int>(retentionDays);
+    map['storage_quota'] = Variable<int>(storageQuota);
+    map['telemetry_enabled'] = Variable<bool>(telemetryEnabled);
+    return map;
+  }
+
+  AppSettingsTableCompanion toCompanion(bool nullToAbsent) {
+    return AppSettingsTableCompanion(
+      id: Value(id),
+      retentionDays: Value(retentionDays),
+      storageQuota: Value(storageQuota),
+      telemetryEnabled: Value(telemetryEnabled),
+    );
+  }
+
+  factory AppSettingsEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AppSettingsEntry(
+      id: serializer.fromJson<int>(json['id']),
+      retentionDays: serializer.fromJson<int>(json['retentionDays']),
+      storageQuota: serializer.fromJson<int>(json['storageQuota']),
+      telemetryEnabled: serializer.fromJson<bool>(json['telemetryEnabled']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'retentionDays': serializer.toJson<int>(retentionDays),
+      'storageQuota': serializer.toJson<int>(storageQuota),
+      'telemetryEnabled': serializer.toJson<bool>(telemetryEnabled),
+    };
+  }
+
+  AppSettingsEntry copyWith({
+    int? id,
+    int? retentionDays,
+    int? storageQuota,
+    bool? telemetryEnabled,
+  }) => AppSettingsEntry(
+    id: id ?? this.id,
+    retentionDays: retentionDays ?? this.retentionDays,
+    storageQuota: storageQuota ?? this.storageQuota,
+    telemetryEnabled: telemetryEnabled ?? this.telemetryEnabled,
+  );
+  AppSettingsEntry copyWithCompanion(AppSettingsTableCompanion data) {
+    return AppSettingsEntry(
+      id: data.id.present ? data.id.value : this.id,
+      retentionDays: data.retentionDays.present
+          ? data.retentionDays.value
+          : this.retentionDays,
+      storageQuota: data.storageQuota.present
+          ? data.storageQuota.value
+          : this.storageQuota,
+      telemetryEnabled: data.telemetryEnabled.present
+          ? data.telemetryEnabled.value
+          : this.telemetryEnabled,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AppSettingsEntry(')
+          ..write('id: $id, ')
+          ..write('retentionDays: $retentionDays, ')
+          ..write('storageQuota: $storageQuota, ')
+          ..write('telemetryEnabled: $telemetryEnabled')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, retentionDays, storageQuota, telemetryEnabled);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AppSettingsEntry &&
+          other.id == this.id &&
+          other.retentionDays == this.retentionDays &&
+          other.storageQuota == this.storageQuota &&
+          other.telemetryEnabled == this.telemetryEnabled);
+}
+
+class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsEntry> {
+  final Value<int> id;
+  final Value<int> retentionDays;
+  final Value<int> storageQuota;
+  final Value<bool> telemetryEnabled;
+  const AppSettingsTableCompanion({
+    this.id = const Value.absent(),
+    this.retentionDays = const Value.absent(),
+    this.storageQuota = const Value.absent(),
+    this.telemetryEnabled = const Value.absent(),
+  });
+  AppSettingsTableCompanion.insert({
+    this.id = const Value.absent(),
+    this.retentionDays = const Value.absent(),
+    this.storageQuota = const Value.absent(),
+    this.telemetryEnabled = const Value.absent(),
+  });
+  static Insertable<AppSettingsEntry> custom({
+    Expression<int>? id,
+    Expression<int>? retentionDays,
+    Expression<int>? storageQuota,
+    Expression<bool>? telemetryEnabled,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (retentionDays != null) 'retention_days': retentionDays,
+      if (storageQuota != null) 'storage_quota': storageQuota,
+      if (telemetryEnabled != null) 'telemetry_enabled': telemetryEnabled,
+    });
+  }
+
+  AppSettingsTableCompanion copyWith({
+    Value<int>? id,
+    Value<int>? retentionDays,
+    Value<int>? storageQuota,
+    Value<bool>? telemetryEnabled,
+  }) {
+    return AppSettingsTableCompanion(
+      id: id ?? this.id,
+      retentionDays: retentionDays ?? this.retentionDays,
+      storageQuota: storageQuota ?? this.storageQuota,
+      telemetryEnabled: telemetryEnabled ?? this.telemetryEnabled,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (retentionDays.present) {
+      map['retention_days'] = Variable<int>(retentionDays.value);
+    }
+    if (storageQuota.present) {
+      map['storage_quota'] = Variable<int>(storageQuota.value);
+    }
+    if (telemetryEnabled.present) {
+      map['telemetry_enabled'] = Variable<bool>(telemetryEnabled.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AppSettingsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('retentionDays: $retentionDays, ')
+          ..write('storageQuota: $storageQuota, ')
+          ..write('telemetryEnabled: $telemetryEnabled')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AttentionDatabase extends GeneratedDatabase {
   _$AttentionDatabase(QueryExecutor e) : super(e);
   $AttentionDatabaseManager get managers => $AttentionDatabaseManager(this);
@@ -2720,6 +3040,9 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final $FocusSessionsTableTable focusSessionsTable =
       $FocusSessionsTableTable(this);
   late final $DailyBriefTableTable dailyBriefTable = $DailyBriefTableTable(
+    this,
+  );
+  late final $AppSettingsTableTable appSettingsTable = $AppSettingsTableTable(
     this,
   );
   late final NotificationDao notificationDao = NotificationDao(
@@ -2734,6 +3057,9 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final DailyBriefDao dailyBriefDao = DailyBriefDao(
     this as AttentionDatabase,
   );
+  late final AppSettingsDao appSettingsDao = AppSettingsDao(
+    this as AttentionDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2743,6 +3069,7 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
     reviewQueueTable,
     focusSessionsTable,
     dailyBriefTable,
+    appSettingsTable,
   ];
 }
 
@@ -3406,7 +3733,9 @@ class $$NotificationsTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$NotificationsTableTable, NotificationEntry>(
+                    table,
+                  ),
                   $$NotificationsTableTableReferences(db, table, e),
                 ),
               )
@@ -3749,7 +4078,7 @@ class $$ReviewQueueTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$ReviewQueueTableTable, ReviewQueueEntry>(table),
                   $$ReviewQueueTableTableReferences(db, table, e),
                 ),
               )
@@ -4021,7 +4350,18 @@ class $$FocusSessionsTableTableTableManager
                 duration: duration,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$FocusSessionsTableTable, FocusSessionEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $FocusSessionsTableTable,
+                    FocusSessionEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4273,7 +4613,16 @@ class $$DailyBriefTableTableTableManager
                 archivedCount: archivedCount,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$DailyBriefTableTable, DailyBriefEntry>(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $DailyBriefTableTable,
+                    DailyBriefEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4301,6 +4650,206 @@ typedef $$DailyBriefTableTableProcessedTableManager =
       DailyBriefEntry,
       PrefetchHooks Function()
     >;
+typedef $$AppSettingsTableTableCreateCompanionBuilder =
+    AppSettingsTableCompanion Function({
+      Value<int> id,
+      Value<int> retentionDays,
+      Value<int> storageQuota,
+      Value<bool> telemetryEnabled,
+    });
+typedef $$AppSettingsTableTableUpdateCompanionBuilder =
+    AppSettingsTableCompanion Function({
+      Value<int> id,
+      Value<int> retentionDays,
+      Value<int> storageQuota,
+      Value<bool> telemetryEnabled,
+    });
+
+class $$AppSettingsTableTableFilterComposer
+    extends Composer<_$AttentionDatabase, $AppSettingsTableTable> {
+  $$AppSettingsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get retentionDays => $composableBuilder(
+    column: $table.retentionDays,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get storageQuota => $composableBuilder(
+    column: $table.storageQuota,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get telemetryEnabled => $composableBuilder(
+    column: $table.telemetryEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AppSettingsTableTableOrderingComposer
+    extends Composer<_$AttentionDatabase, $AppSettingsTableTable> {
+  $$AppSettingsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get retentionDays => $composableBuilder(
+    column: $table.retentionDays,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get storageQuota => $composableBuilder(
+    column: $table.storageQuota,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get telemetryEnabled => $composableBuilder(
+    column: $table.telemetryEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AppSettingsTableTableAnnotationComposer
+    extends Composer<_$AttentionDatabase, $AppSettingsTableTable> {
+  $$AppSettingsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get retentionDays => $composableBuilder(
+    column: $table.retentionDays,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get storageQuota => $composableBuilder(
+    column: $table.storageQuota,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get telemetryEnabled => $composableBuilder(
+    column: $table.telemetryEnabled,
+    builder: (column) => column,
+  );
+}
+
+class $$AppSettingsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AttentionDatabase,
+          $AppSettingsTableTable,
+          AppSettingsEntry,
+          $$AppSettingsTableTableFilterComposer,
+          $$AppSettingsTableTableOrderingComposer,
+          $$AppSettingsTableTableAnnotationComposer,
+          $$AppSettingsTableTableCreateCompanionBuilder,
+          $$AppSettingsTableTableUpdateCompanionBuilder,
+          (
+            AppSettingsEntry,
+            BaseReferences<
+              _$AttentionDatabase,
+              $AppSettingsTableTable,
+              AppSettingsEntry
+            >,
+          ),
+          AppSettingsEntry,
+          PrefetchHooks Function()
+        > {
+  $$AppSettingsTableTableTableManager(
+    _$AttentionDatabase db,
+    $AppSettingsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AppSettingsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AppSettingsTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AppSettingsTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> retentionDays = const Value.absent(),
+                Value<int> storageQuota = const Value.absent(),
+                Value<bool> telemetryEnabled = const Value.absent(),
+              }) => AppSettingsTableCompanion(
+                id: id,
+                retentionDays: retentionDays,
+                storageQuota: storageQuota,
+                telemetryEnabled: telemetryEnabled,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> retentionDays = const Value.absent(),
+                Value<int> storageQuota = const Value.absent(),
+                Value<bool> telemetryEnabled = const Value.absent(),
+              }) => AppSettingsTableCompanion.insert(
+                id: id,
+                retentionDays: retentionDays,
+                storageQuota: storageQuota,
+                telemetryEnabled: telemetryEnabled,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$AppSettingsTableTable, AppSettingsEntry>(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $AppSettingsTableTable,
+                    AppSettingsEntry
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AppSettingsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AttentionDatabase,
+      $AppSettingsTableTable,
+      AppSettingsEntry,
+      $$AppSettingsTableTableFilterComposer,
+      $$AppSettingsTableTableOrderingComposer,
+      $$AppSettingsTableTableAnnotationComposer,
+      $$AppSettingsTableTableCreateCompanionBuilder,
+      $$AppSettingsTableTableUpdateCompanionBuilder,
+      (
+        AppSettingsEntry,
+        BaseReferences<
+          _$AttentionDatabase,
+          $AppSettingsTableTable,
+          AppSettingsEntry
+        >,
+      ),
+      AppSettingsEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AttentionDatabaseManager {
   final _$AttentionDatabase _db;
@@ -4313,4 +4862,6 @@ class $AttentionDatabaseManager {
       $$FocusSessionsTableTableTableManager(_db, _db.focusSessionsTable);
   $$DailyBriefTableTableTableManager get dailyBriefTable =>
       $$DailyBriefTableTableTableManager(_db, _db.dailyBriefTable);
+  $$AppSettingsTableTableTableManager get appSettingsTable =>
+      $$AppSettingsTableTableTableManager(_db, _db.appSettingsTable);
 }
