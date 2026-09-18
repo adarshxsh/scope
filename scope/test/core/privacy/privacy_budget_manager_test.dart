@@ -2,7 +2,6 @@ import 'dart:math';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scope/core/privacy/privacy_budget_manager.dart';
 import 'package:scope/core/state/notification_controller.dart';
-import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/utils/focus_area_mapper.dart';
 import 'package:scope/database/attention_database.dart';
 
