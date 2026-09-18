@@ -65,6 +65,7 @@ class NotificationController extends ChangeNotifier {
   final ProviderContainer _container;
 
   List<AppNotification> _notifications = [];
+  UserSettingsEntry? _userSettings;
   bool _isListenerEnabled = false;
   bool _isLoading = true;
   Timer? _pollTimer;
@@ -76,6 +77,73 @@ class NotificationController extends ChangeNotifier {
   FocusFilterType _filterType = FocusFilterType.none;
   FocusArea? _focusAreaFilter;
   bool _initialLoadCompleted = false;
+
+  UserSettingsEntry? get userSettings => _userSettings;
+  int get retentionDays => _userSettings?.retentionDays ?? 7;
+  bool get telemetryEnabled => _userSettings?.telemetryEnabled ?? true;
+  int get storageQuotaMb => _userSettings?.storageQuotaMb ?? 25;
+  int get maxRowCap => _userSettings?.maxRowCap ?? 5000;
+
+  Future<void> loadUserSettings() async {
+    try {
+      final db = _container.read(databaseProvider);
+      _userSettings = await db.userSettingsDao.getUserSettings();
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<void> updateUserSettings({
+    int? retentionDays,
+    bool? telemetryEnabled,
+    int? storageQuotaMb,
+    int? maxRowCap,
+  }) async {
+    try {
+      final db = _container.read(databaseProvider);
+      await db.userSettingsDao.updateUserSettings(
+        retentionDays: retentionDays,
+        telemetryEnabled: telemetryEnabled,
+        storageQuotaMb: storageQuotaMb,
+        maxRowCap: maxRowCap,
+      );
+      _userSettings = await db.userSettingsDao.getUserSettings();
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<void> clearTelemetryLogs() async {
+    try {
+      final db = _container.read(databaseProvider);
+      await db.inferenceTelemetryDao.clearAll();
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<void> enforceStorageQuota() async {
+    try {
+      final db = _container.read(databaseProvider);
+      await db.runSetBasedCleanup();
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<int> getTelemetryCount() async {
+    try {
+      final db = _container.read(databaseProvider);
+      return await db.inferenceTelemetryDao.getTelemetryCount();
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  Future<int> getStorageUsageBytes() async {
+    try {
+      final db = _container.read(databaseProvider);
+      return await db.getStorageUsageBytes();
+    } catch (_) {
+      return 0;
+    }
+  }
 
   // Focus Session state
   bool _inFocusSession = false;
@@ -319,33 +387,43 @@ class NotificationController extends ChangeNotifier {
   }
 
   Future<void> _loadInitialNotifications() async {
-    if (_initialLoadCompleted) return;
-    final loaded = await _storage.getAll();
-    if (_initialLoadCompleted) return;
+    if (_initialLoadCompleted || _isDisposed) return;
+    try {
+      await loadUserSettings();
+      if (_isDisposed) return;
+      final loaded = await _storage.getAll();
+      if (_initialLoadCompleted || _isDisposed) return;
 
-    if (_notifications.isEmpty) {
-      _notifications = loaded;
-    }
-    if (_notifications.isNotEmpty) {
-      final notifier = _container.read(reviewQueueProvider.notifier);
-      notifier.load(_notifications);
-      await notifier.rescore();
-    }
-    _initialLoadCompleted = true;
-    _isLoading = false;
-    notifyListeners();
+      if (_notifications.isEmpty) {
+        _notifications = loaded;
+      }
+      if (_notifications.isNotEmpty && !_isDisposed) {
+        final notifier = _container.read(reviewQueueProvider.notifier);
+        notifier.load(_notifications);
+        await notifier.rescore();
+      }
+      _initialLoadCompleted = true;
+      _isLoading = false;
+      notifyListeners();
 
-    // Trigger initial cleanup once on startup
-    runBackgroundCleanup();
-    
-    // Set up daily cleanup timer
-    _cleanupTimer?.cancel();
-    _cleanupTimer = Timer.periodic(const Duration(hours: 24), (_) {
-      runBackgroundCleanup();
-    });
+      // Trigger initial cleanup once on startup
+      if (!_isDisposed) {
+        runBackgroundCleanup();
+      }
+      
+      // Set up daily cleanup timer
+      if (!_isDisposed) {
+        _cleanupTimer?.cancel();
+        _cleanupTimer = Timer.periodic(const Duration(hours: 24), (_) {
+          runBackgroundCleanup();
+        });
+      }
+    } catch (_) {
+      // Ignore background load errors if disposed
+    }
   }
 
-  /// Cleans up old notifications (older than 7 days) and orphaned review queue items.
+  /// Cleans up old notifications according to user-configured retention and storage quota limits.
   Future<void> runBackgroundCleanup() async {
     if (_isCleaningUp) return;
 
@@ -358,11 +436,11 @@ class NotificationController extends ChangeNotifier {
         if (_isDisposed) return;
       }
 
-      final cutoff = DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch;
       final db = _container.read(databaseProvider);
+      _userSettings = await db.userSettingsDao.getUserSettings();
       
-      // Execute the single-step atomic transaction
-      await db.runSetBasedCleanup(cutoff);
+      // Execute the set-based atomic cleanup and quota eviction
+      await db.runSetBasedCleanup();
 
     } catch (_) {
       // Silently handle errors to not interrupt UI
@@ -411,6 +489,25 @@ class NotificationController extends ChangeNotifier {
 
       if (analyzed.isNotEmpty) {
         await _storage.saveAll(analyzed);
+
+        // Log structured telemetry without cleartext PII
+        if (telemetryEnabled) {
+          final db = _container.read(databaseProvider);
+          for (final n in analyzed) {
+            await db.inferenceTelemetryDao.logEvent(
+              InferenceTelemetryTableCompanion.insert(
+                notificationId: Value(n.id),
+                eventType: 'inference',
+                timestamp: DateTime.now().millisecondsSinceEpoch,
+                latencyMs: Value(n.latencyMs),
+                priority: Value(n.priority),
+                fusedScore: Value(n.priorityScore),
+                metadata: Value('{"category":"${n.classifiedCategory ?? n.category ?? ''}"}'),
+              ),
+            );
+          }
+        }
+
         final loaded = await _storage.getAll();
         final notifier = _container.read(reviewQueueProvider.notifier);
         notifier.load(loaded);
@@ -453,6 +550,25 @@ class NotificationController extends ChangeNotifier {
 
     if (analyzed.isNotEmpty) {
       await _storage.saveAll(analyzed);
+
+      // Log structured telemetry without cleartext PII
+      if (telemetryEnabled) {
+        final db = _container.read(databaseProvider);
+        for (final n in analyzed) {
+          await db.inferenceTelemetryDao.logEvent(
+            InferenceTelemetryTableCompanion.insert(
+              notificationId: Value(n.id),
+              eventType: 'inference',
+              timestamp: DateTime.now().millisecondsSinceEpoch,
+              latencyMs: Value(n.latencyMs),
+              priority: Value(n.priority),
+              fusedScore: Value(n.priorityScore),
+              metadata: Value('{"category":"${n.classifiedCategory ?? n.category ?? ''}"}'),
+            ),
+          );
+        }
+      }
+
       final loaded = await _storage.getAll();
       final notifier = _container.read(reviewQueueProvider.notifier);
       notifier.load(loaded);

@@ -2709,6 +2709,996 @@ class DailyBriefTableCompanion extends UpdateCompanion<DailyBriefEntry> {
   }
 }
 
+class $UserSettingsTableTable extends UserSettingsTable
+    with TableInfo<$UserSettingsTableTable, UserSettingsEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $UserSettingsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _retentionDaysMeta = const VerificationMeta(
+    'retentionDays',
+  );
+  @override
+  late final GeneratedColumn<int> retentionDays = GeneratedColumn<int>(
+    'retention_days',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(7),
+  );
+  static const VerificationMeta _telemetryEnabledMeta = const VerificationMeta(
+    'telemetryEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> telemetryEnabled = GeneratedColumn<bool>(
+    'telemetry_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("telemetry_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _storageQuotaMbMeta = const VerificationMeta(
+    'storageQuotaMb',
+  );
+  @override
+  late final GeneratedColumn<int> storageQuotaMb = GeneratedColumn<int>(
+    'storage_quota_mb',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(25),
+  );
+  static const VerificationMeta _maxRowCapMeta = const VerificationMeta(
+    'maxRowCap',
+  );
+  @override
+  late final GeneratedColumn<int> maxRowCap = GeneratedColumn<int>(
+    'max_row_cap',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(5000),
+  );
+  static const VerificationMeta _lastUpdatedMeta = const VerificationMeta(
+    'lastUpdated',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastUpdated = GeneratedColumn<DateTime>(
+    'last_updated',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    retentionDays,
+    telemetryEnabled,
+    storageQuotaMb,
+    maxRowCap,
+    lastUpdated,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'user_settings_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<UserSettingsEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('retention_days')) {
+      context.handle(
+        _retentionDaysMeta,
+        retentionDays.isAcceptableOrUnknown(
+          data['retention_days']!,
+          _retentionDaysMeta,
+        ),
+      );
+    }
+    if (data.containsKey('telemetry_enabled')) {
+      context.handle(
+        _telemetryEnabledMeta,
+        telemetryEnabled.isAcceptableOrUnknown(
+          data['telemetry_enabled']!,
+          _telemetryEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('storage_quota_mb')) {
+      context.handle(
+        _storageQuotaMbMeta,
+        storageQuotaMb.isAcceptableOrUnknown(
+          data['storage_quota_mb']!,
+          _storageQuotaMbMeta,
+        ),
+      );
+    }
+    if (data.containsKey('max_row_cap')) {
+      context.handle(
+        _maxRowCapMeta,
+        maxRowCap.isAcceptableOrUnknown(data['max_row_cap']!, _maxRowCapMeta),
+      );
+    }
+    if (data.containsKey('last_updated')) {
+      context.handle(
+        _lastUpdatedMeta,
+        lastUpdated.isAcceptableOrUnknown(
+          data['last_updated']!,
+          _lastUpdatedMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  UserSettingsEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return UserSettingsEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      retentionDays: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}retention_days'],
+      )!,
+      telemetryEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}telemetry_enabled'],
+      )!,
+      storageQuotaMb: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}storage_quota_mb'],
+      )!,
+      maxRowCap: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}max_row_cap'],
+      )!,
+      lastUpdated: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_updated'],
+      ),
+    );
+  }
+
+  @override
+  $UserSettingsTableTable createAlias(String alias) {
+    return $UserSettingsTableTable(attachedDatabase, alias);
+  }
+}
+
+class UserSettingsEntry extends DataClass
+    implements Insertable<UserSettingsEntry> {
+  final int id;
+  final int retentionDays;
+  final bool telemetryEnabled;
+  final int storageQuotaMb;
+  final int maxRowCap;
+  final DateTime? lastUpdated;
+  const UserSettingsEntry({
+    required this.id,
+    required this.retentionDays,
+    required this.telemetryEnabled,
+    required this.storageQuotaMb,
+    required this.maxRowCap,
+    this.lastUpdated,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['retention_days'] = Variable<int>(retentionDays);
+    map['telemetry_enabled'] = Variable<bool>(telemetryEnabled);
+    map['storage_quota_mb'] = Variable<int>(storageQuotaMb);
+    map['max_row_cap'] = Variable<int>(maxRowCap);
+    if (!nullToAbsent || lastUpdated != null) {
+      map['last_updated'] = Variable<DateTime>(lastUpdated);
+    }
+    return map;
+  }
+
+  UserSettingsTableCompanion toCompanion(bool nullToAbsent) {
+    return UserSettingsTableCompanion(
+      id: Value(id),
+      retentionDays: Value(retentionDays),
+      telemetryEnabled: Value(telemetryEnabled),
+      storageQuotaMb: Value(storageQuotaMb),
+      maxRowCap: Value(maxRowCap),
+      lastUpdated: lastUpdated == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastUpdated),
+    );
+  }
+
+  factory UserSettingsEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return UserSettingsEntry(
+      id: serializer.fromJson<int>(json['id']),
+      retentionDays: serializer.fromJson<int>(json['retentionDays']),
+      telemetryEnabled: serializer.fromJson<bool>(json['telemetryEnabled']),
+      storageQuotaMb: serializer.fromJson<int>(json['storageQuotaMb']),
+      maxRowCap: serializer.fromJson<int>(json['maxRowCap']),
+      lastUpdated: serializer.fromJson<DateTime?>(json['lastUpdated']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'retentionDays': serializer.toJson<int>(retentionDays),
+      'telemetryEnabled': serializer.toJson<bool>(telemetryEnabled),
+      'storageQuotaMb': serializer.toJson<int>(storageQuotaMb),
+      'maxRowCap': serializer.toJson<int>(maxRowCap),
+      'lastUpdated': serializer.toJson<DateTime?>(lastUpdated),
+    };
+  }
+
+  UserSettingsEntry copyWith({
+    int? id,
+    int? retentionDays,
+    bool? telemetryEnabled,
+    int? storageQuotaMb,
+    int? maxRowCap,
+    Value<DateTime?> lastUpdated = const Value.absent(),
+  }) => UserSettingsEntry(
+    id: id ?? this.id,
+    retentionDays: retentionDays ?? this.retentionDays,
+    telemetryEnabled: telemetryEnabled ?? this.telemetryEnabled,
+    storageQuotaMb: storageQuotaMb ?? this.storageQuotaMb,
+    maxRowCap: maxRowCap ?? this.maxRowCap,
+    lastUpdated: lastUpdated.present ? lastUpdated.value : this.lastUpdated,
+  );
+  UserSettingsEntry copyWithCompanion(UserSettingsTableCompanion data) {
+    return UserSettingsEntry(
+      id: data.id.present ? data.id.value : this.id,
+      retentionDays: data.retentionDays.present
+          ? data.retentionDays.value
+          : this.retentionDays,
+      telemetryEnabled: data.telemetryEnabled.present
+          ? data.telemetryEnabled.value
+          : this.telemetryEnabled,
+      storageQuotaMb: data.storageQuotaMb.present
+          ? data.storageQuotaMb.value
+          : this.storageQuotaMb,
+      maxRowCap: data.maxRowCap.present ? data.maxRowCap.value : this.maxRowCap,
+      lastUpdated: data.lastUpdated.present
+          ? data.lastUpdated.value
+          : this.lastUpdated,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UserSettingsEntry(')
+          ..write('id: $id, ')
+          ..write('retentionDays: $retentionDays, ')
+          ..write('telemetryEnabled: $telemetryEnabled, ')
+          ..write('storageQuotaMb: $storageQuotaMb, ')
+          ..write('maxRowCap: $maxRowCap, ')
+          ..write('lastUpdated: $lastUpdated')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    retentionDays,
+    telemetryEnabled,
+    storageQuotaMb,
+    maxRowCap,
+    lastUpdated,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is UserSettingsEntry &&
+          other.id == this.id &&
+          other.retentionDays == this.retentionDays &&
+          other.telemetryEnabled == this.telemetryEnabled &&
+          other.storageQuotaMb == this.storageQuotaMb &&
+          other.maxRowCap == this.maxRowCap &&
+          other.lastUpdated == this.lastUpdated);
+}
+
+class UserSettingsTableCompanion extends UpdateCompanion<UserSettingsEntry> {
+  final Value<int> id;
+  final Value<int> retentionDays;
+  final Value<bool> telemetryEnabled;
+  final Value<int> storageQuotaMb;
+  final Value<int> maxRowCap;
+  final Value<DateTime?> lastUpdated;
+  const UserSettingsTableCompanion({
+    this.id = const Value.absent(),
+    this.retentionDays = const Value.absent(),
+    this.telemetryEnabled = const Value.absent(),
+    this.storageQuotaMb = const Value.absent(),
+    this.maxRowCap = const Value.absent(),
+    this.lastUpdated = const Value.absent(),
+  });
+  UserSettingsTableCompanion.insert({
+    this.id = const Value.absent(),
+    this.retentionDays = const Value.absent(),
+    this.telemetryEnabled = const Value.absent(),
+    this.storageQuotaMb = const Value.absent(),
+    this.maxRowCap = const Value.absent(),
+    this.lastUpdated = const Value.absent(),
+  });
+  static Insertable<UserSettingsEntry> custom({
+    Expression<int>? id,
+    Expression<int>? retentionDays,
+    Expression<bool>? telemetryEnabled,
+    Expression<int>? storageQuotaMb,
+    Expression<int>? maxRowCap,
+    Expression<DateTime>? lastUpdated,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (retentionDays != null) 'retention_days': retentionDays,
+      if (telemetryEnabled != null) 'telemetry_enabled': telemetryEnabled,
+      if (storageQuotaMb != null) 'storage_quota_mb': storageQuotaMb,
+      if (maxRowCap != null) 'max_row_cap': maxRowCap,
+      if (lastUpdated != null) 'last_updated': lastUpdated,
+    });
+  }
+
+  UserSettingsTableCompanion copyWith({
+    Value<int>? id,
+    Value<int>? retentionDays,
+    Value<bool>? telemetryEnabled,
+    Value<int>? storageQuotaMb,
+    Value<int>? maxRowCap,
+    Value<DateTime?>? lastUpdated,
+  }) {
+    return UserSettingsTableCompanion(
+      id: id ?? this.id,
+      retentionDays: retentionDays ?? this.retentionDays,
+      telemetryEnabled: telemetryEnabled ?? this.telemetryEnabled,
+      storageQuotaMb: storageQuotaMb ?? this.storageQuotaMb,
+      maxRowCap: maxRowCap ?? this.maxRowCap,
+      lastUpdated: lastUpdated ?? this.lastUpdated,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (retentionDays.present) {
+      map['retention_days'] = Variable<int>(retentionDays.value);
+    }
+    if (telemetryEnabled.present) {
+      map['telemetry_enabled'] = Variable<bool>(telemetryEnabled.value);
+    }
+    if (storageQuotaMb.present) {
+      map['storage_quota_mb'] = Variable<int>(storageQuotaMb.value);
+    }
+    if (maxRowCap.present) {
+      map['max_row_cap'] = Variable<int>(maxRowCap.value);
+    }
+    if (lastUpdated.present) {
+      map['last_updated'] = Variable<DateTime>(lastUpdated.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UserSettingsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('retentionDays: $retentionDays, ')
+          ..write('telemetryEnabled: $telemetryEnabled, ')
+          ..write('storageQuotaMb: $storageQuotaMb, ')
+          ..write('maxRowCap: $maxRowCap, ')
+          ..write('lastUpdated: $lastUpdated')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $InferenceTelemetryTableTable extends InferenceTelemetryTable
+    with TableInfo<$InferenceTelemetryTableTable, InferenceTelemetryEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $InferenceTelemetryTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _notificationIdMeta = const VerificationMeta(
+    'notificationId',
+  );
+  @override
+  late final GeneratedColumn<String> notificationId = GeneratedColumn<String>(
+    'notification_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _eventTypeMeta = const VerificationMeta(
+    'eventType',
+  );
+  @override
+  late final GeneratedColumn<String> eventType = GeneratedColumn<String>(
+    'event_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _timestampMeta = const VerificationMeta(
+    'timestamp',
+  );
+  @override
+  late final GeneratedColumn<int> timestamp = GeneratedColumn<int>(
+    'timestamp',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _latencyMsMeta = const VerificationMeta(
+    'latencyMs',
+  );
+  @override
+  late final GeneratedColumn<int> latencyMs = GeneratedColumn<int>(
+    'latency_ms',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _priorityMeta = const VerificationMeta(
+    'priority',
+  );
+  @override
+  late final GeneratedColumn<String> priority = GeneratedColumn<String>(
+    'priority',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _fusedScoreMeta = const VerificationMeta(
+    'fusedScore',
+  );
+  @override
+  late final GeneratedColumn<double> fusedScore = GeneratedColumn<double>(
+    'fused_score',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _metadataMeta = const VerificationMeta(
+    'metadata',
+  );
+  @override
+  late final GeneratedColumn<String> metadata = GeneratedColumn<String>(
+    'metadata',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    notificationId,
+    eventType,
+    timestamp,
+    latencyMs,
+    priority,
+    fusedScore,
+    metadata,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'inference_telemetry_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<InferenceTelemetryEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('notification_id')) {
+      context.handle(
+        _notificationIdMeta,
+        notificationId.isAcceptableOrUnknown(
+          data['notification_id']!,
+          _notificationIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('event_type')) {
+      context.handle(
+        _eventTypeMeta,
+        eventType.isAcceptableOrUnknown(data['event_type']!, _eventTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_eventTypeMeta);
+    }
+    if (data.containsKey('timestamp')) {
+      context.handle(
+        _timestampMeta,
+        timestamp.isAcceptableOrUnknown(data['timestamp']!, _timestampMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_timestampMeta);
+    }
+    if (data.containsKey('latency_ms')) {
+      context.handle(
+        _latencyMsMeta,
+        latencyMs.isAcceptableOrUnknown(data['latency_ms']!, _latencyMsMeta),
+      );
+    }
+    if (data.containsKey('priority')) {
+      context.handle(
+        _priorityMeta,
+        priority.isAcceptableOrUnknown(data['priority']!, _priorityMeta),
+      );
+    }
+    if (data.containsKey('fused_score')) {
+      context.handle(
+        _fusedScoreMeta,
+        fusedScore.isAcceptableOrUnknown(data['fused_score']!, _fusedScoreMeta),
+      );
+    }
+    if (data.containsKey('metadata')) {
+      context.handle(
+        _metadataMeta,
+        metadata.isAcceptableOrUnknown(data['metadata']!, _metadataMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  InferenceTelemetryEntry map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return InferenceTelemetryEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      notificationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notification_id'],
+      ),
+      eventType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}event_type'],
+      )!,
+      timestamp: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}timestamp'],
+      )!,
+      latencyMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}latency_ms'],
+      ),
+      priority: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}priority'],
+      ),
+      fusedScore: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}fused_score'],
+      ),
+      metadata: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}metadata'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $InferenceTelemetryTableTable createAlias(String alias) {
+    return $InferenceTelemetryTableTable(attachedDatabase, alias);
+  }
+}
+
+class InferenceTelemetryEntry extends DataClass
+    implements Insertable<InferenceTelemetryEntry> {
+  final int id;
+  final String? notificationId;
+  final String eventType;
+  final int timestamp;
+  final int? latencyMs;
+  final String? priority;
+  final double? fusedScore;
+  final String? metadata;
+  final DateTime createdAt;
+  const InferenceTelemetryEntry({
+    required this.id,
+    this.notificationId,
+    required this.eventType,
+    required this.timestamp,
+    this.latencyMs,
+    this.priority,
+    this.fusedScore,
+    this.metadata,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    if (!nullToAbsent || notificationId != null) {
+      map['notification_id'] = Variable<String>(notificationId);
+    }
+    map['event_type'] = Variable<String>(eventType);
+    map['timestamp'] = Variable<int>(timestamp);
+    if (!nullToAbsent || latencyMs != null) {
+      map['latency_ms'] = Variable<int>(latencyMs);
+    }
+    if (!nullToAbsent || priority != null) {
+      map['priority'] = Variable<String>(priority);
+    }
+    if (!nullToAbsent || fusedScore != null) {
+      map['fused_score'] = Variable<double>(fusedScore);
+    }
+    if (!nullToAbsent || metadata != null) {
+      map['metadata'] = Variable<String>(metadata);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  InferenceTelemetryTableCompanion toCompanion(bool nullToAbsent) {
+    return InferenceTelemetryTableCompanion(
+      id: Value(id),
+      notificationId: notificationId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notificationId),
+      eventType: Value(eventType),
+      timestamp: Value(timestamp),
+      latencyMs: latencyMs == null && nullToAbsent
+          ? const Value.absent()
+          : Value(latencyMs),
+      priority: priority == null && nullToAbsent
+          ? const Value.absent()
+          : Value(priority),
+      fusedScore: fusedScore == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fusedScore),
+      metadata: metadata == null && nullToAbsent
+          ? const Value.absent()
+          : Value(metadata),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory InferenceTelemetryEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return InferenceTelemetryEntry(
+      id: serializer.fromJson<int>(json['id']),
+      notificationId: serializer.fromJson<String?>(json['notificationId']),
+      eventType: serializer.fromJson<String>(json['eventType']),
+      timestamp: serializer.fromJson<int>(json['timestamp']),
+      latencyMs: serializer.fromJson<int?>(json['latencyMs']),
+      priority: serializer.fromJson<String?>(json['priority']),
+      fusedScore: serializer.fromJson<double?>(json['fusedScore']),
+      metadata: serializer.fromJson<String?>(json['metadata']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'notificationId': serializer.toJson<String?>(notificationId),
+      'eventType': serializer.toJson<String>(eventType),
+      'timestamp': serializer.toJson<int>(timestamp),
+      'latencyMs': serializer.toJson<int?>(latencyMs),
+      'priority': serializer.toJson<String?>(priority),
+      'fusedScore': serializer.toJson<double?>(fusedScore),
+      'metadata': serializer.toJson<String?>(metadata),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  InferenceTelemetryEntry copyWith({
+    int? id,
+    Value<String?> notificationId = const Value.absent(),
+    String? eventType,
+    int? timestamp,
+    Value<int?> latencyMs = const Value.absent(),
+    Value<String?> priority = const Value.absent(),
+    Value<double?> fusedScore = const Value.absent(),
+    Value<String?> metadata = const Value.absent(),
+    DateTime? createdAt,
+  }) => InferenceTelemetryEntry(
+    id: id ?? this.id,
+    notificationId: notificationId.present
+        ? notificationId.value
+        : this.notificationId,
+    eventType: eventType ?? this.eventType,
+    timestamp: timestamp ?? this.timestamp,
+    latencyMs: latencyMs.present ? latencyMs.value : this.latencyMs,
+    priority: priority.present ? priority.value : this.priority,
+    fusedScore: fusedScore.present ? fusedScore.value : this.fusedScore,
+    metadata: metadata.present ? metadata.value : this.metadata,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  InferenceTelemetryEntry copyWithCompanion(
+    InferenceTelemetryTableCompanion data,
+  ) {
+    return InferenceTelemetryEntry(
+      id: data.id.present ? data.id.value : this.id,
+      notificationId: data.notificationId.present
+          ? data.notificationId.value
+          : this.notificationId,
+      eventType: data.eventType.present ? data.eventType.value : this.eventType,
+      timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
+      latencyMs: data.latencyMs.present ? data.latencyMs.value : this.latencyMs,
+      priority: data.priority.present ? data.priority.value : this.priority,
+      fusedScore: data.fusedScore.present
+          ? data.fusedScore.value
+          : this.fusedScore,
+      metadata: data.metadata.present ? data.metadata.value : this.metadata,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InferenceTelemetryEntry(')
+          ..write('id: $id, ')
+          ..write('notificationId: $notificationId, ')
+          ..write('eventType: $eventType, ')
+          ..write('timestamp: $timestamp, ')
+          ..write('latencyMs: $latencyMs, ')
+          ..write('priority: $priority, ')
+          ..write('fusedScore: $fusedScore, ')
+          ..write('metadata: $metadata, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    notificationId,
+    eventType,
+    timestamp,
+    latencyMs,
+    priority,
+    fusedScore,
+    metadata,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is InferenceTelemetryEntry &&
+          other.id == this.id &&
+          other.notificationId == this.notificationId &&
+          other.eventType == this.eventType &&
+          other.timestamp == this.timestamp &&
+          other.latencyMs == this.latencyMs &&
+          other.priority == this.priority &&
+          other.fusedScore == this.fusedScore &&
+          other.metadata == this.metadata &&
+          other.createdAt == this.createdAt);
+}
+
+class InferenceTelemetryTableCompanion
+    extends UpdateCompanion<InferenceTelemetryEntry> {
+  final Value<int> id;
+  final Value<String?> notificationId;
+  final Value<String> eventType;
+  final Value<int> timestamp;
+  final Value<int?> latencyMs;
+  final Value<String?> priority;
+  final Value<double?> fusedScore;
+  final Value<String?> metadata;
+  final Value<DateTime> createdAt;
+  const InferenceTelemetryTableCompanion({
+    this.id = const Value.absent(),
+    this.notificationId = const Value.absent(),
+    this.eventType = const Value.absent(),
+    this.timestamp = const Value.absent(),
+    this.latencyMs = const Value.absent(),
+    this.priority = const Value.absent(),
+    this.fusedScore = const Value.absent(),
+    this.metadata = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  InferenceTelemetryTableCompanion.insert({
+    this.id = const Value.absent(),
+    this.notificationId = const Value.absent(),
+    required String eventType,
+    required int timestamp,
+    this.latencyMs = const Value.absent(),
+    this.priority = const Value.absent(),
+    this.fusedScore = const Value.absent(),
+    this.metadata = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  }) : eventType = Value(eventType),
+       timestamp = Value(timestamp);
+  static Insertable<InferenceTelemetryEntry> custom({
+    Expression<int>? id,
+    Expression<String>? notificationId,
+    Expression<String>? eventType,
+    Expression<int>? timestamp,
+    Expression<int>? latencyMs,
+    Expression<String>? priority,
+    Expression<double>? fusedScore,
+    Expression<String>? metadata,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (notificationId != null) 'notification_id': notificationId,
+      if (eventType != null) 'event_type': eventType,
+      if (timestamp != null) 'timestamp': timestamp,
+      if (latencyMs != null) 'latency_ms': latencyMs,
+      if (priority != null) 'priority': priority,
+      if (fusedScore != null) 'fused_score': fusedScore,
+      if (metadata != null) 'metadata': metadata,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  InferenceTelemetryTableCompanion copyWith({
+    Value<int>? id,
+    Value<String?>? notificationId,
+    Value<String>? eventType,
+    Value<int>? timestamp,
+    Value<int?>? latencyMs,
+    Value<String?>? priority,
+    Value<double?>? fusedScore,
+    Value<String?>? metadata,
+    Value<DateTime>? createdAt,
+  }) {
+    return InferenceTelemetryTableCompanion(
+      id: id ?? this.id,
+      notificationId: notificationId ?? this.notificationId,
+      eventType: eventType ?? this.eventType,
+      timestamp: timestamp ?? this.timestamp,
+      latencyMs: latencyMs ?? this.latencyMs,
+      priority: priority ?? this.priority,
+      fusedScore: fusedScore ?? this.fusedScore,
+      metadata: metadata ?? this.metadata,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (notificationId.present) {
+      map['notification_id'] = Variable<String>(notificationId.value);
+    }
+    if (eventType.present) {
+      map['event_type'] = Variable<String>(eventType.value);
+    }
+    if (timestamp.present) {
+      map['timestamp'] = Variable<int>(timestamp.value);
+    }
+    if (latencyMs.present) {
+      map['latency_ms'] = Variable<int>(latencyMs.value);
+    }
+    if (priority.present) {
+      map['priority'] = Variable<String>(priority.value);
+    }
+    if (fusedScore.present) {
+      map['fused_score'] = Variable<double>(fusedScore.value);
+    }
+    if (metadata.present) {
+      map['metadata'] = Variable<String>(metadata.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InferenceTelemetryTableCompanion(')
+          ..write('id: $id, ')
+          ..write('notificationId: $notificationId, ')
+          ..write('eventType: $eventType, ')
+          ..write('timestamp: $timestamp, ')
+          ..write('latencyMs: $latencyMs, ')
+          ..write('priority: $priority, ')
+          ..write('fusedScore: $fusedScore, ')
+          ..write('metadata: $metadata, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AttentionDatabase extends GeneratedDatabase {
   _$AttentionDatabase(QueryExecutor e) : super(e);
   $AttentionDatabaseManager get managers => $AttentionDatabaseManager(this);
@@ -2722,6 +3712,10 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final $DailyBriefTableTable dailyBriefTable = $DailyBriefTableTable(
     this,
   );
+  late final $UserSettingsTableTable userSettingsTable =
+      $UserSettingsTableTable(this);
+  late final $InferenceTelemetryTableTable inferenceTelemetryTable =
+      $InferenceTelemetryTableTable(this);
   late final NotificationDao notificationDao = NotificationDao(
     this as AttentionDatabase,
   );
@@ -2734,6 +3728,11 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final DailyBriefDao dailyBriefDao = DailyBriefDao(
     this as AttentionDatabase,
   );
+  late final UserSettingsDao userSettingsDao = UserSettingsDao(
+    this as AttentionDatabase,
+  );
+  late final InferenceTelemetryDao inferenceTelemetryDao =
+      InferenceTelemetryDao(this as AttentionDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2743,6 +3742,8 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
     reviewQueueTable,
     focusSessionsTable,
     dailyBriefTable,
+    userSettingsTable,
+    inferenceTelemetryTable,
   ];
 }
 
@@ -3406,7 +4407,9 @@ class $$NotificationsTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$NotificationsTableTable, NotificationEntry>(
+                    table,
+                  ),
                   $$NotificationsTableTableReferences(db, table, e),
                 ),
               )
@@ -3749,7 +4752,7 @@ class $$ReviewQueueTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$ReviewQueueTableTable, ReviewQueueEntry>(table),
                   $$ReviewQueueTableTableReferences(db, table, e),
                 ),
               )
@@ -4021,7 +5024,18 @@ class $$FocusSessionsTableTableTableManager
                 duration: duration,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$FocusSessionsTableTable, FocusSessionEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $FocusSessionsTableTable,
+                    FocusSessionEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4273,7 +5287,16 @@ class $$DailyBriefTableTableTableManager
                 archivedCount: archivedCount,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$DailyBriefTableTable, DailyBriefEntry>(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $DailyBriefTableTable,
+                    DailyBriefEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4301,6 +5324,556 @@ typedef $$DailyBriefTableTableProcessedTableManager =
       DailyBriefEntry,
       PrefetchHooks Function()
     >;
+typedef $$UserSettingsTableTableCreateCompanionBuilder =
+    UserSettingsTableCompanion Function({
+      Value<int> id,
+      Value<int> retentionDays,
+      Value<bool> telemetryEnabled,
+      Value<int> storageQuotaMb,
+      Value<int> maxRowCap,
+      Value<DateTime?> lastUpdated,
+    });
+typedef $$UserSettingsTableTableUpdateCompanionBuilder =
+    UserSettingsTableCompanion Function({
+      Value<int> id,
+      Value<int> retentionDays,
+      Value<bool> telemetryEnabled,
+      Value<int> storageQuotaMb,
+      Value<int> maxRowCap,
+      Value<DateTime?> lastUpdated,
+    });
+
+class $$UserSettingsTableTableFilterComposer
+    extends Composer<_$AttentionDatabase, $UserSettingsTableTable> {
+  $$UserSettingsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get retentionDays => $composableBuilder(
+    column: $table.retentionDays,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get telemetryEnabled => $composableBuilder(
+    column: $table.telemetryEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get storageQuotaMb => $composableBuilder(
+    column: $table.storageQuotaMb,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get maxRowCap => $composableBuilder(
+    column: $table.maxRowCap,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastUpdated => $composableBuilder(
+    column: $table.lastUpdated,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$UserSettingsTableTableOrderingComposer
+    extends Composer<_$AttentionDatabase, $UserSettingsTableTable> {
+  $$UserSettingsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get retentionDays => $composableBuilder(
+    column: $table.retentionDays,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get telemetryEnabled => $composableBuilder(
+    column: $table.telemetryEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get storageQuotaMb => $composableBuilder(
+    column: $table.storageQuotaMb,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get maxRowCap => $composableBuilder(
+    column: $table.maxRowCap,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastUpdated => $composableBuilder(
+    column: $table.lastUpdated,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$UserSettingsTableTableAnnotationComposer
+    extends Composer<_$AttentionDatabase, $UserSettingsTableTable> {
+  $$UserSettingsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get retentionDays => $composableBuilder(
+    column: $table.retentionDays,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get telemetryEnabled => $composableBuilder(
+    column: $table.telemetryEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get storageQuotaMb => $composableBuilder(
+    column: $table.storageQuotaMb,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get maxRowCap =>
+      $composableBuilder(column: $table.maxRowCap, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastUpdated => $composableBuilder(
+    column: $table.lastUpdated,
+    builder: (column) => column,
+  );
+}
+
+class $$UserSettingsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AttentionDatabase,
+          $UserSettingsTableTable,
+          UserSettingsEntry,
+          $$UserSettingsTableTableFilterComposer,
+          $$UserSettingsTableTableOrderingComposer,
+          $$UserSettingsTableTableAnnotationComposer,
+          $$UserSettingsTableTableCreateCompanionBuilder,
+          $$UserSettingsTableTableUpdateCompanionBuilder,
+          (
+            UserSettingsEntry,
+            BaseReferences<
+              _$AttentionDatabase,
+              $UserSettingsTableTable,
+              UserSettingsEntry
+            >,
+          ),
+          UserSettingsEntry,
+          PrefetchHooks Function()
+        > {
+  $$UserSettingsTableTableTableManager(
+    _$AttentionDatabase db,
+    $UserSettingsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$UserSettingsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$UserSettingsTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$UserSettingsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> retentionDays = const Value.absent(),
+                Value<bool> telemetryEnabled = const Value.absent(),
+                Value<int> storageQuotaMb = const Value.absent(),
+                Value<int> maxRowCap = const Value.absent(),
+                Value<DateTime?> lastUpdated = const Value.absent(),
+              }) => UserSettingsTableCompanion(
+                id: id,
+                retentionDays: retentionDays,
+                telemetryEnabled: telemetryEnabled,
+                storageQuotaMb: storageQuotaMb,
+                maxRowCap: maxRowCap,
+                lastUpdated: lastUpdated,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> retentionDays = const Value.absent(),
+                Value<bool> telemetryEnabled = const Value.absent(),
+                Value<int> storageQuotaMb = const Value.absent(),
+                Value<int> maxRowCap = const Value.absent(),
+                Value<DateTime?> lastUpdated = const Value.absent(),
+              }) => UserSettingsTableCompanion.insert(
+                id: id,
+                retentionDays: retentionDays,
+                telemetryEnabled: telemetryEnabled,
+                storageQuotaMb: storageQuotaMb,
+                maxRowCap: maxRowCap,
+                lastUpdated: lastUpdated,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$UserSettingsTableTable, UserSettingsEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $UserSettingsTableTable,
+                    UserSettingsEntry
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$UserSettingsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AttentionDatabase,
+      $UserSettingsTableTable,
+      UserSettingsEntry,
+      $$UserSettingsTableTableFilterComposer,
+      $$UserSettingsTableTableOrderingComposer,
+      $$UserSettingsTableTableAnnotationComposer,
+      $$UserSettingsTableTableCreateCompanionBuilder,
+      $$UserSettingsTableTableUpdateCompanionBuilder,
+      (
+        UserSettingsEntry,
+        BaseReferences<
+          _$AttentionDatabase,
+          $UserSettingsTableTable,
+          UserSettingsEntry
+        >,
+      ),
+      UserSettingsEntry,
+      PrefetchHooks Function()
+    >;
+typedef $$InferenceTelemetryTableTableCreateCompanionBuilder =
+    InferenceTelemetryTableCompanion Function({
+      Value<int> id,
+      Value<String?> notificationId,
+      required String eventType,
+      required int timestamp,
+      Value<int?> latencyMs,
+      Value<String?> priority,
+      Value<double?> fusedScore,
+      Value<String?> metadata,
+      Value<DateTime> createdAt,
+    });
+typedef $$InferenceTelemetryTableTableUpdateCompanionBuilder =
+    InferenceTelemetryTableCompanion Function({
+      Value<int> id,
+      Value<String?> notificationId,
+      Value<String> eventType,
+      Value<int> timestamp,
+      Value<int?> latencyMs,
+      Value<String?> priority,
+      Value<double?> fusedScore,
+      Value<String?> metadata,
+      Value<DateTime> createdAt,
+    });
+
+class $$InferenceTelemetryTableTableFilterComposer
+    extends Composer<_$AttentionDatabase, $InferenceTelemetryTableTable> {
+  $$InferenceTelemetryTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get eventType => $composableBuilder(
+    column: $table.eventType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get latencyMs => $composableBuilder(
+    column: $table.latencyMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get priority => $composableBuilder(
+    column: $table.priority,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get fusedScore => $composableBuilder(
+    column: $table.fusedScore,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get metadata => $composableBuilder(
+    column: $table.metadata,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$InferenceTelemetryTableTableOrderingComposer
+    extends Composer<_$AttentionDatabase, $InferenceTelemetryTableTable> {
+  $$InferenceTelemetryTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get eventType => $composableBuilder(
+    column: $table.eventType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get latencyMs => $composableBuilder(
+    column: $table.latencyMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get priority => $composableBuilder(
+    column: $table.priority,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get fusedScore => $composableBuilder(
+    column: $table.fusedScore,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get metadata => $composableBuilder(
+    column: $table.metadata,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$InferenceTelemetryTableTableAnnotationComposer
+    extends Composer<_$AttentionDatabase, $InferenceTelemetryTableTable> {
+  $$InferenceTelemetryTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get eventType =>
+      $composableBuilder(column: $table.eventType, builder: (column) => column);
+
+  GeneratedColumn<int> get timestamp =>
+      $composableBuilder(column: $table.timestamp, builder: (column) => column);
+
+  GeneratedColumn<int> get latencyMs =>
+      $composableBuilder(column: $table.latencyMs, builder: (column) => column);
+
+  GeneratedColumn<String> get priority =>
+      $composableBuilder(column: $table.priority, builder: (column) => column);
+
+  GeneratedColumn<double> get fusedScore => $composableBuilder(
+    column: $table.fusedScore,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get metadata =>
+      $composableBuilder(column: $table.metadata, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$InferenceTelemetryTableTableTableManager
+    extends
+        RootTableManager<
+          _$AttentionDatabase,
+          $InferenceTelemetryTableTable,
+          InferenceTelemetryEntry,
+          $$InferenceTelemetryTableTableFilterComposer,
+          $$InferenceTelemetryTableTableOrderingComposer,
+          $$InferenceTelemetryTableTableAnnotationComposer,
+          $$InferenceTelemetryTableTableCreateCompanionBuilder,
+          $$InferenceTelemetryTableTableUpdateCompanionBuilder,
+          (
+            InferenceTelemetryEntry,
+            BaseReferences<
+              _$AttentionDatabase,
+              $InferenceTelemetryTableTable,
+              InferenceTelemetryEntry
+            >,
+          ),
+          InferenceTelemetryEntry,
+          PrefetchHooks Function()
+        > {
+  $$InferenceTelemetryTableTableTableManager(
+    _$AttentionDatabase db,
+    $InferenceTelemetryTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$InferenceTelemetryTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$InferenceTelemetryTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$InferenceTelemetryTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String?> notificationId = const Value.absent(),
+                Value<String> eventType = const Value.absent(),
+                Value<int> timestamp = const Value.absent(),
+                Value<int?> latencyMs = const Value.absent(),
+                Value<String?> priority = const Value.absent(),
+                Value<double?> fusedScore = const Value.absent(),
+                Value<String?> metadata = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => InferenceTelemetryTableCompanion(
+                id: id,
+                notificationId: notificationId,
+                eventType: eventType,
+                timestamp: timestamp,
+                latencyMs: latencyMs,
+                priority: priority,
+                fusedScore: fusedScore,
+                metadata: metadata,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String?> notificationId = const Value.absent(),
+                required String eventType,
+                required int timestamp,
+                Value<int?> latencyMs = const Value.absent(),
+                Value<String?> priority = const Value.absent(),
+                Value<double?> fusedScore = const Value.absent(),
+                Value<String?> metadata = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => InferenceTelemetryTableCompanion.insert(
+                id: id,
+                notificationId: notificationId,
+                eventType: eventType,
+                timestamp: timestamp,
+                latencyMs: latencyMs,
+                priority: priority,
+                fusedScore: fusedScore,
+                metadata: metadata,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $InferenceTelemetryTableTable,
+                    InferenceTelemetryEntry
+                  >(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $InferenceTelemetryTableTable,
+                    InferenceTelemetryEntry
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$InferenceTelemetryTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AttentionDatabase,
+      $InferenceTelemetryTableTable,
+      InferenceTelemetryEntry,
+      $$InferenceTelemetryTableTableFilterComposer,
+      $$InferenceTelemetryTableTableOrderingComposer,
+      $$InferenceTelemetryTableTableAnnotationComposer,
+      $$InferenceTelemetryTableTableCreateCompanionBuilder,
+      $$InferenceTelemetryTableTableUpdateCompanionBuilder,
+      (
+        InferenceTelemetryEntry,
+        BaseReferences<
+          _$AttentionDatabase,
+          $InferenceTelemetryTableTable,
+          InferenceTelemetryEntry
+        >,
+      ),
+      InferenceTelemetryEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AttentionDatabaseManager {
   final _$AttentionDatabase _db;
@@ -4313,4 +5886,11 @@ class $AttentionDatabaseManager {
       $$FocusSessionsTableTableTableManager(_db, _db.focusSessionsTable);
   $$DailyBriefTableTableTableManager get dailyBriefTable =>
       $$DailyBriefTableTableTableManager(_db, _db.dailyBriefTable);
+  $$UserSettingsTableTableTableManager get userSettingsTable =>
+      $$UserSettingsTableTableTableManager(_db, _db.userSettingsTable);
+  $$InferenceTelemetryTableTableTableManager get inferenceTelemetryTable =>
+      $$InferenceTelemetryTableTableTableManager(
+        _db,
+        _db.inferenceTelemetryTable,
+      );
 }
