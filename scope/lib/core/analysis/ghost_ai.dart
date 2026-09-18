@@ -4,6 +4,8 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
+import 'package:scope/core/analysis/asset_verifier_service.dart';
+import 'package:scope/core/analysis/asset_integrity.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -57,24 +59,66 @@ class GhostAI {
   bool get isModelLoaded => _interpreter != null;
 
   /// Initializes the TFLite interpreter and rules database once on startup.
-  Future<void> initialize() async {
-    if (_interpreter != null) return;
-    try {
-      // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
-    } catch (e) {
-      debugPrint('GhostAI: Failed to load TFLite model: $e');
+  Future<void> initialize({Map<String, String>? customHashes}) async {
+    if (_interpreter == null) {
+      bool isModelVerified = false;
+      if (customHashes != null) {
+        try {
+          final modelData = await rootBundle.load('assets/model.tflite');
+          final modelBytes = modelData.buffer.asUint8List(modelData.offsetInBytes, modelData.lengthInBytes);
+          isModelVerified = AssetIntegrity.verify('assets/model.tflite', modelBytes, customHashes: customHashes);
+        } catch (_) {
+          isModelVerified = false;
+        }
+      } else {
+        isModelVerified = await AssetVerifierService.instance.verifyAsset('assets/model.tflite');
+      }
+
+      if (isModelVerified) {
+        try {
+          _interpreter = await Interpreter.fromAsset('assets/model.tflite');
+          debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+        } catch (e) {
+          debugPrint('GhostAI: Failed to load TFLite model: $e');
+          _interpreter = null;
+        }
+      } else {
+        debugPrint('GhostAI: Asset verification failed for assets/model.tflite. Aborting interpreter initialization.');
+        _interpreter = null;
+      }
     }
 
-    try {
-      // 2. Load and compile rules database
-      final jsonStr = await rootBundle.loadString('assets/rules.json');
-      _ruleEngine.compile(jsonStr);
-      debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
-    } catch (e) {
-      debugPrint('GhostAI: Failed to initialize rules database: $e');
+    bool isRulesVerified = false;
+    if (customHashes != null) {
+      try {
+        final rulesData = await rootBundle.load('assets/rules.json');
+        final rulesBytes = rulesData.buffer.asUint8List(rulesData.offsetInBytes, rulesData.lengthInBytes);
+        isRulesVerified = AssetIntegrity.verify('assets/rules.json', rulesBytes, customHashes: customHashes);
+      } catch (_) {
+        isRulesVerified = false;
+      }
+    } else {
+      isRulesVerified = await AssetVerifierService.instance.verifyAsset('assets/rules.json');
     }
+
+    if (isRulesVerified) {
+      try {
+        final jsonStr = await rootBundle.loadString('assets/rules.json');
+        _ruleEngine.compile(jsonStr);
+        debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
+      } catch (e) {
+        debugPrint('GhostAI: Failed to initialize rules database: $e');
+      }
+    } else {
+      debugPrint('GhostAI: Asset verification failed for assets/rules.json. Skipping rule compilation.');
+    }
+  }
+
+  /// Helper to reset instance state for unit testing.
+  @visibleForTesting
+  void resetForTest() {
+    _interpreter = null;
+    clearCache();
   }
 
   /// Public API: resolves look-again priority score for a notification.
