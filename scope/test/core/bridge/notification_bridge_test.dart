@@ -129,5 +129,39 @@ void main() {
         await bridge.openNotificationSettings();
       });
     });
+
+    group('getQueueSize', () {
+      test('returns queue size integer from channel', () async {
+        mockHandler((call) async => 42);
+        final size = await bridge.getQueueSize();
+        expect(size, 42);
+        expect(log.single.method, 'getQueueSize');
+      });
+
+      test('returns 0 on PlatformException', () async {
+        mockHandler((call) async {
+          throw PlatformException(code: 'ERROR');
+        });
+        final size = await bridge.getQueueSize();
+        expect(size, 0);
+      });
+    });
+
+    group('clearQueue', () {
+      test('invokes clearQueue method on channel', () async {
+        mockHandler((call) async => true);
+        final success = await bridge.clearQueue();
+        expect(success, true);
+        expect(log.single.method, 'clearQueue');
+      });
+
+      test('returns false on PlatformException', () async {
+        mockHandler((call) async {
+          throw PlatformException(code: 'ERROR');
+        });
+        final success = await bridge.clearQueue();
+        expect(success, false);
+      });
+    });
   });
 }

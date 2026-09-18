@@ -25,6 +25,9 @@ class NotificationCollectorService : NotificationListenerService() {
     companion object {
         private const val TAG = "NotifCollector"
 
+        /** Maximum capacity guardrail for the native notification queue to prevent memory leaks. */
+        const val MAX_QUEUE_SIZE = 500
+
         /** Thread-safe queue of captured notifications. */
         private val queue = ConcurrentLinkedQueue<NotificationData>()
 
@@ -43,6 +46,14 @@ class NotificationCollectorService : NotificationListenerService() {
                 result.add(item)
             }
             return result
+        }
+
+        /**
+         * Clears all notifications from the queue.
+         */
+        fun clearQueue() {
+            queue.clear()
+            Log.i(TAG, "Notification queue cleared.")
         }
 
         /**
@@ -67,6 +78,19 @@ class NotificationCollectorService : NotificationListenerService() {
                 return
             }
 
+            // Enforce queue capacity guardrail: evict oldest items if at/exceeding capacity
+            while (queue.size >= MAX_QUEUE_SIZE) {
+                val evicted = queue.poll()
+                if (evicted != null) {
+                    Log.w(
+                        TAG,
+                        "Notification queue capacity limit ($MAX_QUEUE_SIZE) reached. Evicted oldest notification [id=${evicted.id}, package=${evicted.packageName}] to prevent memory leak."
+                    )
+                } else {
+                    break
+                }
+            }
+
             val data = NotificationData(
                 id = "notif_${++idCounter}",
                 packageName = packageName,
@@ -79,7 +103,7 @@ class NotificationCollectorService : NotificationListenerService() {
 
             queue.add(data)
             Log.d(TAG, "Captured: ${data.packageName} - ${data.title}")
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Log.e(TAG, "Error capturing/adding notification", e)
         }
     }
