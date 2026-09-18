@@ -4,6 +4,7 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
+import 'package:scope/core/analysis/thermal_guardrails.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -80,6 +81,82 @@ class GhostAI {
   /// Public API: resolves look-again priority score for a notification.
   static Future<GhostAIResult> predict(AppNotification notification) async {
     return instance._predict(notification);
+  }
+
+  /// Fast-path fallback API: resolves look-again priority score without TFLite matrix operations.
+  static Future<GhostAIResult> predictFastPath(AppNotification notification) async {
+    return instance._predictFastPath(notification);
+  }
+
+  Future<GhostAIResult> _predictFastPath(AppNotification notification) async {
+    final stopwatch = Stopwatch()..start();
+    final featureVector = FeatureExtractor.extractFromAppNotification(notification);
+    final predictedScore = _heuristicLookAgainScore(featureVector);
+
+    final ruleMatch = _ruleEngine.match(notification);
+    double? ruleScore;
+    if (ruleMatch != null) {
+      switch (ruleMatch.priority) {
+        case 'critical':
+          ruleScore = 1.0;
+          break;
+        case 'high':
+          ruleScore = 0.85;
+          break;
+        case 'medium':
+          ruleScore = 0.50;
+          break;
+        case 'low':
+        default:
+          ruleScore = 0.15;
+          break;
+      }
+    }
+
+    double finalScore = predictedScore;
+    if (ruleScore != null && ruleMatch != null) {
+      final isCriticalBypass = ruleMatch.priority == 'critical' ||
+          ruleMatch.ruleId == 'otp_security' ||
+          ruleMatch.ruleId == 'finance_debit' ||
+          ruleMatch.ruleId == 'scholarship_portal';
+
+      if (isCriticalBypass) {
+        finalScore = 1.0;
+      } else {
+        finalScore = (predictedScore + ruleScore) / 2.0;
+      }
+    }
+
+    final hasOtp = featureVector[11] == 1.0;
+    final hasDeadline = featureVector[27] == 1.0;
+
+    if (hasOtp && _isOtpExpired(notification)) {
+      finalScore = 0.0;
+    } else if (hasDeadline && _isReminderExpired(notification)) {
+      finalScore = 0.0;
+    } else if (_isDuplicate(notification)) {
+      finalScore = 0.0;
+    } else if (_isCompletedTask(notification)) {
+      finalScore = 0.0;
+    }
+
+    stopwatch.stop();
+    _cacheNotification(notification);
+
+    final result = GhostAIResult(
+      reviewScore: finalScore,
+      confidence: 1.0,
+      inferenceTimeUs: stopwatch.elapsedMicroseconds,
+      featureVector: featureVector,
+      predictedScore: predictedScore,
+      ruleScore: ruleScore,
+    );
+
+    if (kDebugMode) {
+      _logStructured(notification, result);
+    }
+
+    return result;
   }
 
   Future<GhostAIResult> _predict(AppNotification notification) async {
@@ -319,10 +396,13 @@ class GhostAI {
     return false;
   }
 
-  /// Outputs structured AI execution reports in debug mode.
+  /// Outputs structured AI execution reports in debug mode without cleartext PII.
   void _logStructured(AppNotification notification, GhostAIResult result) {
+    final sanitizedTitle = ThermalGuardrails.sanitizePii(notification.title);
+    final sanitizedContent = ThermalGuardrails.sanitizePii(notification.content);
+
     debugPrint('=== GHOST AI INFERENCE REPORT ===');
-    debugPrint('Notification: "${notification.title}" - "${notification.content}"');
+    debugPrint('Notification: "$sanitizedTitle" - "$sanitizedContent"');
     debugPrint('Package: ${notification.packageName}');
     debugPrint('Feature Vector (First 15): ${result.featureVector.take(15).toList()}...');
     debugPrint('Inference Time: ${result.inferenceTimeUs} us');
