@@ -75,4 +75,28 @@ class NotificationBridge {
       // Not on Android — nothing to do
     }
   }
+
+  /// Queries the current size of the native notification queue.
+  Future<int> getQueueSize() async {
+    try {
+      final result = await _channel.invokeMethod<int>('getQueueSize');
+      return result ?? 0;
+    } on PlatformException {
+      return 0;
+    } on MissingPluginException {
+      return 0;
+    }
+  }
+
+  /// Requests the native collector service to clear its pending queue.
+  Future<bool> clearQueue() async {
+    try {
+      final result = await _channel.invokeMethod<bool>('clearQueue');
+      return result ?? false;
+    } on PlatformException {
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
 }
