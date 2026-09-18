@@ -1,10 +1,11 @@
 package com.scope.attentions
 
 import android.util.Log
+import java.security.MessageDigest
 
 /**
  * Utility for redacting sensitive PII and authentication details from notification titles
- * and content before writing to system Logcat buffers.
+ * and content before writing to system Logcat buffers, and hashing package names.
  */
 object NotificationRedactor {
 
@@ -48,4 +49,26 @@ object NotificationRedactor {
 
     @JvmStatic
     fun redactContent(content: String?): String = redact(content)
+
+    @JvmStatic
+    fun redactOtp(text: String?): String {
+        if (text.isNullOrEmpty()) return ""
+        return try {
+            otpRegex.replace(text, "[REDACTED_OTP]")
+        } catch (e: Exception) {
+            "[REDACTED_OTP]"
+        }
+    }
+
+    @JvmStatic
+    fun hashPackageName(packageName: String?): String {
+        if (packageName.isNullOrEmpty()) return "unknown_hash"
+        return try {
+            val digest = MessageDigest.getInstance("SHA-256")
+            val hash = digest.digest(packageName.toByteArray(Charsets.UTF_8))
+            hash.joinToString("") { "%02x".format(it) }.take(16)
+        } catch (e: Exception) {
+            "hash_error"
+        }
+    }
 }
