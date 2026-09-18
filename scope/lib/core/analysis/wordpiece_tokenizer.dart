@@ -8,7 +8,10 @@ class WordPieceTokenizer {
   WordPieceTokenizer(this.vocab, {this.maxSeqLength = 64});
 
   /// Loads vocabulary from a list of lines (e.g. from vocab.txt).
-  factory WordPieceTokenizer.fromLines(List<String> lines, {int maxSeqLength = 64}) {
+  factory WordPieceTokenizer.fromLines(
+    List<String> lines, {
+    int maxSeqLength = 64,
+  }) {
     final vocabMap = <String, int>{};
     for (int i = 0; i < lines.length; i++) {
       final line = lines[i].trim();

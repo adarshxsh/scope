@@ -62,102 +62,131 @@ abstract final class SmartActions {
 
     if (features.hasDeadline ||
         _containsAny(text, ['appointment', 'meeting', 'deadline', 'closes'])) {
-      actions.add(const SmartAction(
-        label: 'Add Calendar',
-        icon: Icons.calendar_today_outlined,
-        type: SmartActionType.addCalendar,
-        color: AppColors.calendar,
-        isPrimary: true,
-      ));
+      actions.add(
+        const SmartAction(
+          label: 'Add Calendar',
+          icon: Icons.calendar_today_outlined,
+          type: SmartActionType.addCalendar,
+          color: AppColors.calendar,
+          isPrimary: true,
+        ),
+      );
     }
 
     if (features.urls.isNotEmpty ||
-        _containsAny(text, ['portal', 'apply', 'website', 'visit', 'scholarship'])) {
-      actions.add(SmartAction(
-        label: _containsAny(text, ['portal', 'scholarship', 'apply']) ? 'Open Portal' : 'Open Website',
-        icon: Icons.language_outlined,
-        type: SmartActionType.openUrl,
-        color: AppColors.portal,
-        isPrimary: actions.isEmpty,
-      ));
+        _containsAny(text, [
+          'portal',
+          'apply',
+          'website',
+          'visit',
+          'scholarship',
+        ])) {
+      actions.add(
+        SmartAction(
+          label: _containsAny(text, ['portal', 'scholarship', 'apply'])
+              ? 'Open Portal'
+              : 'Open Website',
+          icon: Icons.language_outlined,
+          type: SmartActionType.openUrl,
+          color: AppColors.portal,
+          isPrimary: actions.isEmpty,
+        ),
+      );
     }
 
     if (_containsAny(text, ['meeting', 'standup', 'zoom', 'teams'])) {
-      actions.add(SmartAction(
-        label: 'Join',
-        icon: Icons.videocam_outlined,
-        type: SmartActionType.join,
-        color: AppColors.calendar,
-        isPrimary: actions.isEmpty,
-      ));
+      actions.add(
+        SmartAction(
+          label: 'Join',
+          icon: Icons.videocam_outlined,
+          type: SmartActionType.join,
+          color: AppColors.calendar,
+          isPrimary: actions.isEmpty,
+        ),
+      );
     }
 
-    if (_containsAny(text, ['pdf', 'document', 'download']) || area == FocusArea.government) {
-      actions.add(const SmartAction(
-        label: 'Download PDF',
-        icon: Icons.download_outlined,
-        type: SmartActionType.download,
-        color: AppColors.portal,
-      ));
+    if (_containsAny(text, ['pdf', 'document', 'download']) ||
+        area == FocusArea.government) {
+      actions.add(
+        const SmartAction(
+          label: 'Download PDF',
+          icon: Icons.download_outlined,
+          type: SmartActionType.download,
+          color: AppColors.portal,
+        ),
+      );
     }
 
     if (_containsAny(pkg, ['hdfc', 'sbi', 'paytm', 'phonepe', 'gpay']) ||
         features.amount != null) {
-      actions.add(SmartAction(
-        label: 'Pay',
-        icon: Icons.payment,
-        type: SmartActionType.pay,
-        color: AppColors.finance,
-        isPrimary: actions.isEmpty,
-      ));
-      actions.add(const SmartAction(
-        label: 'View Statement',
-        icon: Icons.receipt_long_outlined,
-        type: SmartActionType.viewStatement,
-        color: AppColors.finance,
-      ));
+      actions.add(
+        SmartAction(
+          label: 'Pay',
+          icon: Icons.payment,
+          type: SmartActionType.pay,
+          color: AppColors.finance,
+          isPrimary: actions.isEmpty,
+        ),
+      );
+      actions.add(
+        const SmartAction(
+          label: 'View Statement',
+          icon: Icons.receipt_long_outlined,
+          type: SmartActionType.viewStatement,
+          color: AppColors.finance,
+        ),
+      );
     }
 
     if (_containsAny(text, ['delivery', 'shipped', 'track', 'package'])) {
-      actions.add(SmartAction(
-        label: 'Track Package',
-        icon: Icons.local_shipping_outlined,
-        type: SmartActionType.track,
-        color: AppColors.portal,
-        isPrimary: actions.isEmpty,
-      ));
+      actions.add(
+        SmartAction(
+          label: 'Track Package',
+          icon: Icons.local_shipping_outlined,
+          type: SmartActionType.track,
+          color: AppColors.portal,
+          isPrimary: actions.isEmpty,
+        ),
+      );
     }
 
     if (_containsAny(text, ['reply', '@', 'message', 'chat'])) {
-      actions.add(const SmartAction(
-        label: 'Reply',
-        icon: Icons.reply_outlined,
-        type: SmartActionType.reply,
-        color: AppColors.calendar,
-      ));
+      actions.add(
+        const SmartAction(
+          label: 'Reply',
+          icon: Icons.reply_outlined,
+          type: SmartActionType.reply,
+          color: AppColors.calendar,
+        ),
+      );
     }
 
+    actions.add(
+      const SmartAction(
+        label: 'Remind Tonight',
+        icon: Icons.schedule_outlined,
+        type: SmartActionType.remind,
+        color: AppColors.remind,
+      ),
+    );
 
+    actions.add(
+      const SmartAction(
+        label: 'Archive',
+        icon: Icons.archive_outlined,
+        type: SmartActionType.archive,
+      ),
+    );
 
-    actions.add(const SmartAction(
-      label: 'Remind Tonight',
-      icon: Icons.schedule_outlined,
-      type: SmartActionType.remind,
-      color: AppColors.remind,
-    ));
-
-    actions.add(const SmartAction(
-      label: 'Archive',
-      icon: Icons.archive_outlined,
-      type: SmartActionType.archive,
-    ));
-
-    actions.add(const SmartAction(
-      label: 'Clear',
-      icon: Icons.check_circle_outline,
-      type: SmartActionType.complete,
-      color: AppColors.complete,
-    ));
+    actions.add(
+      const SmartAction(
+        label: 'Clear',
+        icon: Icons.check_circle_outline,
+        type: SmartActionType.complete,
+        color: AppColors.complete,
+      ),
+    );
 
     return _dedupe(actions);
   }
