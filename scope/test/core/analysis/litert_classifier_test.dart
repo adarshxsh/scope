@@ -137,7 +137,8 @@ void main() {
 
       expect(result.engineName, contains('fallback on error'));
       expect(result.category, equals('sys'));
-      expect(result.score, equals(0.50));
+      expect(result.score, equals(0.0));
+      expect(result.isFallback, isTrue);
     });
   });
 }
