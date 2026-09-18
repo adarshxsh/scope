@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/privacy/pii_redactor.dart';
 import 'package:scope/theme/app_colors.dart';
 import 'package:scope/theme/app_spacing.dart';
 import 'package:scope/widgets/primitives/scope_surface.dart';
@@ -29,7 +30,9 @@ class NotificationInsightCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            notification.title.isNotEmpty ? notification.title : '(No title)',
+            PiiRedactor.redactText(
+              notification.title.isNotEmpty ? notification.title : '(No title)',
+            ).redactedText,
             style: theme.textTheme.titleSmall,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -37,7 +40,7 @@ class NotificationInsightCard extends StatelessWidget {
           if (notification.content.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.sm),
             Text(
-              notification.content,
+              PiiRedactor.redactText(notification.content).redactedText,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodyMedium,

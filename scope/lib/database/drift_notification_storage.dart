@@ -1,4 +1,5 @@
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/privacy/pii_redactor.dart';
 import 'package:scope/core/storage/notification_storage.dart';
 import 'package:scope/database/attention_database.dart';
 
@@ -45,7 +46,8 @@ class DriftNotificationStorage implements NotificationStorage {
     return await _db.notificationDao.getCount();
   }
 
-  NotificationEntry _toEntry(AppNotification n) {
+  NotificationEntry _toEntry(AppNotification raw) {
+    final n = PiiRedactor.redactNotification(raw, source: 'DRIFT_STORAGE');
     return NotificationEntry(
       id: n.id,
       packageName: n.packageName,

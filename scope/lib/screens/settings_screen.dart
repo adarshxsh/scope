@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:scope/core/privacy/pii_audit_logger.dart';
 import 'package:scope/core/state/notification_controller.dart';
 import 'package:scope/screens/ai_playground_screen.dart';
 import 'package:scope/screens/diagnostic_screen.dart';
@@ -42,9 +43,9 @@ class SettingsScreen extends StatelessWidget {
                   const Divider(height: 1, indent: 56),
                   _SettingsTile(
                     icon: Icons.shield_outlined,
-                    title: 'Privacy',
-                    subtitle: 'All analysis runs on your device',
-                    onTap: null,
+                    title: 'Privacy & PII Audit Guardrails',
+                    subtitle: 'On-device storage redaction & audit log',
+                    onTap: () => _showPrivacyAuditDialog(context),
                   ),
                   const Divider(height: 1, indent: 56),
                   _SettingsTile(
@@ -125,6 +126,57 @@ class SettingsScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showPrivacyAuditDialog(BuildContext context) {
+    final stats = PiiAuditLogger.getStats();
+    final events = PiiAuditLogger.getEvents().reversed.take(10).toList();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Privacy & PII Guardrails'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Total Redaction Events: ${stats['totalEvents']}'),
+              Text('Fallback Recoveries: ${stats['fallbackCount']}'),
+              const SizedBox(height: AppSpacing.md),
+              const Text('Recent Audit Events:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: AppSpacing.sm),
+              if (events.isEmpty)
+                const Text('No PII redaction events recorded yet.')
+              else
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: events.length,
+                    itemBuilder: (context, idx) {
+                      final e = events[idx];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          '${e.action}: ${e.piiTypes.map((t) => t.name).join(', ')} (${e.timestamp.toIso8601String().substring(11, 19)})',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
+        ],
       ),
     );
   }
