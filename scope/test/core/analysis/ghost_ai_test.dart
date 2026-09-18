@@ -11,30 +11,42 @@ void main() {
       GhostAI.instance.clearCache();
     });
 
-    test('initialization handles missing assets and falls back gracefully', () async {
-      // Should not throw, should log and proceed with isModelLoaded = false
-      await GhostAI.instance.initialize();
-      expect(GhostAI.instance.isModelLoaded, isFalse);
-    });
+    test(
+      'initialization handles missing assets and falls back gracefully',
+      () async {
+        // Should not throw, should log and proceed with isModelLoaded = false
+        await GhostAI.instance.initialize();
+        expect(GhostAI.instance.isModelLoaded, isFalse);
+      },
+    );
 
-    test('predict outputs basic inference results and falls back to heuristics', () async {
-      final notif = AppNotification(
-        id: 'otp-notif',
-        packageName: 'com.whatsapp',
-        title: 'WhatsApp Code',
-        content: 'Your verification code is 882715. Valid for 10 minutes.',
-        timestamp: DateTime.now().millisecondsSinceEpoch,
-      );
+    test(
+      'predict outputs basic inference results and falls back to heuristics',
+      () async {
+        final notif = AppNotification(
+          id: 'otp-notif',
+          packageName: 'com.whatsapp',
+          title: 'WhatsApp Code',
+          content: 'Your verification code is 882715. Valid for 10 minutes.',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
 
-      final result = await GhostAI.predict(notif);
+        final result = await GhostAI.predict(notif);
 
-      expect(result.reviewScore, equals(1.0)); // OTP heuristic is 1.0 and not expired
-      expect(result.confidence, equals(1.0));
-      expect(result.inferenceTimeUs, isPositive);
-      expect(result.featureVector, isNotEmpty);
-      expect(result.featureVector.length, equals(63));
-      expect(result.predictedScore, equals(1.0)); // Heuristic fallback score for OTP
-    });
+        expect(
+          result.reviewScore,
+          equals(1.0),
+        ); // OTP heuristic is 1.0 and not expired
+        expect(result.confidence, equals(1.0));
+        expect(result.inferenceTimeUs, isPositive);
+        expect(result.featureVector, isNotEmpty);
+        expect(result.featureVector.length, equals(63));
+        expect(
+          result.predictedScore,
+          equals(1.0),
+        ); // Heuristic fallback score for OTP
+      },
+    );
 
     group('Expired OTP Overrides', () {
       test('does not override fresh OTPs', () async {
@@ -43,7 +55,8 @@ void main() {
           packageName: 'com.whatsapp',
           title: 'WhatsApp Code',
           content: 'Your verification code is 882715. Expires in 5 minutes.',
-          timestamp: DateTime.now().millisecondsSinceEpoch - 60 * 1000, // 1 minute ago
+          timestamp:
+              DateTime.now().millisecondsSinceEpoch - 60 * 1000, // 1 minute ago
         );
 
         final result = await GhostAI.predict(freshNotif);
@@ -56,25 +69,32 @@ void main() {
           packageName: 'com.whatsapp',
           title: 'WhatsApp Code',
           content: 'Your verification code is 882715. Expires in 5 minutes.',
-          timestamp: DateTime.now().millisecondsSinceEpoch - 6 * 60 * 1000, // 6 minutes ago
+          timestamp:
+              DateTime.now().millisecondsSinceEpoch -
+              6 * 60 * 1000, // 6 minutes ago
         );
 
         final result = await GhostAI.predict(expiredNotif);
         expect(result.reviewScore, equals(0.0)); // Overridden to 0
       });
 
-      test('overrides expired OTP based on default duration (10 mins)', () async {
-        final expiredNotifDefault = AppNotification(
-          id: 'otp-expired-default',
-          packageName: 'com.whatsapp',
-          title: 'WhatsApp Code',
-          content: 'Your verification code is 882715.',
-          timestamp: DateTime.now().millisecondsSinceEpoch - 11 * 60 * 1000, // 11 minutes ago
-        );
+      test(
+        'overrides expired OTP based on default duration (10 mins)',
+        () async {
+          final expiredNotifDefault = AppNotification(
+            id: 'otp-expired-default',
+            packageName: 'com.whatsapp',
+            title: 'WhatsApp Code',
+            content: 'Your verification code is 882715.',
+            timestamp:
+                DateTime.now().millisecondsSinceEpoch -
+                11 * 60 * 1000, // 11 minutes ago
+          );
 
-        final result = await GhostAI.predict(expiredNotifDefault);
-        expect(result.reviewScore, equals(0.0)); // Overridden to 0
-      });
+          final result = await GhostAI.predict(expiredNotifDefault);
+          expect(result.reviewScore, equals(0.0)); // Overridden to 0
+        },
+      );
     });
 
     group('Expired Reminder Overrides', () {
@@ -84,7 +104,9 @@ void main() {
           packageName: 'com.google.android.calendar',
           title: 'Upcoming meeting reminder',
           content: 'Standup starts in 10 minutes',
-          timestamp: DateTime.now().millisecondsSinceEpoch - 2 * 60 * 1000, // 2 minutes ago
+          timestamp:
+              DateTime.now().millisecondsSinceEpoch -
+              2 * 60 * 1000, // 2 minutes ago
         );
 
         final result = await GhostAI.predict(freshReminder);
@@ -97,7 +119,9 @@ void main() {
           packageName: 'com.google.android.calendar',
           title: 'Upcoming meeting reminder',
           content: 'Standup starts in 10 minutes',
-          timestamp: DateTime.now().millisecondsSinceEpoch - 12 * 60 * 1000, // 12 minutes ago
+          timestamp:
+              DateTime.now().millisecondsSinceEpoch -
+              12 * 60 * 1000, // 12 minutes ago
         );
 
         final result = await GhostAI.predict(expiredReminder);
@@ -174,7 +198,9 @@ void main() {
           packageName: 'com.whatsapp',
           title: 'Mom',
           content: 'Please buy milk.',
-          timestamp: DateTime.now().millisecondsSinceEpoch - 6 * 60 * 1000, // 6 minutes ago
+          timestamp:
+              DateTime.now().millisecondsSinceEpoch -
+              6 * 60 * 1000, // 6 minutes ago
         );
 
         final newNotif = AppNotification(
@@ -189,7 +215,10 @@ void main() {
         final newResult = await GhostAI.predict(newNotif);
 
         expect(oldResult.reviewScore, isPositive);
-        expect(newResult.reviewScore, isPositive); // Not overridden because outside window
+        expect(
+          newResult.reviewScore,
+          isPositive,
+        ); // Not overridden because outside window
       });
     });
 
