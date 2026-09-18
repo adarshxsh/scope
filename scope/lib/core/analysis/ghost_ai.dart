@@ -1,9 +1,12 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
+import 'package:scope/core/utils/privacy_sanitizer.dart';
+
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -40,10 +43,11 @@ class GhostAI {
   static GhostAI? _instance;
   Interpreter? _interpreter;
   final RuleEngine _ruleEngine = RuleEngine();
+  String _modelVersion = '1.0.0-tflite';
 
   // Slide-cache for duplicate detection
   final List<AppNotification> _processedNotifications = [];
-  static const int _maxCacheSize = 100;
+  static const int _maxCacheSize = 500;
   static const int _duplicateWindowMs = 300000; // 5 minutes
 
   GhostAI._();
@@ -52,6 +56,9 @@ class GhostAI {
 
   /// Exposes rule engine compilation version.
   String get ruleVersion => _ruleEngine.version;
+
+  /// Exposes model version string.
+  String get modelVersion => _interpreter != null ? _modelVersion : 'fallback-heuristics';
 
   /// Returns whether the model is loaded.
   bool get isModelLoaded => _interpreter != null;
@@ -62,6 +69,7 @@ class GhostAI {
     try {
       // 1. Load interpreter from assets
       _interpreter = await Interpreter.fromAsset('assets/model.tflite');
+      _modelVersion = '1.0.0-tflite';
       debugPrint('GhostAI: TFLite interpreter loaded successfully.');
     } catch (e) {
       debugPrint('GhostAI: Failed to load TFLite model: $e');
@@ -76,6 +84,38 @@ class GhostAI {
       debugPrint('GhostAI: Failed to initialize rules database: $e');
     }
   }
+
+  /// Dynamic OTA or local model update from file path.
+  Future<bool> updateModelFromFile(String filePath) async {
+    try {
+      final newInterpreter = Interpreter.fromFile(File(filePath));
+      _interpreter?.close();
+      _interpreter = newInterpreter;
+      _modelVersion = '2.0.0-ota-file';
+      debugPrint('GhostAI: Updated model from file: $filePath');
+      return true;
+    } catch (e) {
+
+      debugPrint('GhostAI: Failed to update model from $filePath: $e');
+      return false;
+    }
+  }
+
+  /// Dynamic model update from in-memory byte buffer.
+  Future<bool> updateModelFromBytes(Uint8List bytes) async {
+    try {
+      final newInterpreter = Interpreter.fromBuffer(bytes);
+      _interpreter?.close();
+      _interpreter = newInterpreter;
+      _modelVersion = '2.0.0-ota-bytes';
+      debugPrint('GhostAI: Updated model from bytes buffer');
+      return true;
+    } catch (e) {
+      debugPrint('GhostAI: Failed to update model from bytes: $e');
+      return false;
+    }
+  }
+
 
   /// Public API: resolves look-again priority score for a notification.
   static Future<GhostAIResult> predict(AppNotification notification) async {
@@ -321,8 +361,10 @@ class GhostAI {
 
   /// Outputs structured AI execution reports in debug mode.
   void _logStructured(AppNotification notification, GhostAIResult result) {
+    final sanitizedTitle = PrivacySanitizer.sanitizeText(notification.title);
+    final sanitizedContent = PrivacySanitizer.sanitizeText(notification.content);
     debugPrint('=== GHOST AI INFERENCE REPORT ===');
-    debugPrint('Notification: "${notification.title}" - "${notification.content}"');
+    debugPrint('Notification: "$sanitizedTitle" - "$sanitizedContent"');
     debugPrint('Package: ${notification.packageName}');
     debugPrint('Feature Vector (First 15): ${result.featureVector.take(15).toList()}...');
     debugPrint('Inference Time: ${result.inferenceTimeUs} us');
@@ -331,4 +373,5 @@ class GhostAI {
     debugPrint('Final Fused Score: ${(result.reviewScore * 100).toStringAsFixed(2)}');
     debugPrint('==================================');
   }
+
 }
