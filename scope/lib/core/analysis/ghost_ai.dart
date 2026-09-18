@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
+import 'package:scope/core/analysis/model_manager.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -38,7 +38,6 @@ class GhostAIResult {
 /// Core inference singleton coordinating look-again score predictions and overrides.
 class GhostAI {
   static GhostAI? _instance;
-  Interpreter? _interpreter;
   final RuleEngine _ruleEngine = RuleEngine();
 
   // Slide-cache for duplicate detection
@@ -53,18 +52,17 @@ class GhostAI {
   /// Exposes rule engine compilation version.
   String get ruleVersion => _ruleEngine.version;
 
-  /// Returns whether the model is loaded.
-  bool get isModelLoaded => _interpreter != null;
+  /// Returns whether the active model is loaded.
+  bool get isModelLoaded => ModelManager.instance.isModelLoaded;
 
-  /// Initializes the TFLite interpreter and rules database once on startup.
+  /// Initializes the ModelManager and rules database once on startup.
   Future<void> initialize() async {
-    if (_interpreter != null) return;
     try {
-      // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      // 1. Initialize ModelManager (checks local storage before bundled asset)
+      await ModelManager.instance.initialize();
+      debugPrint('GhostAI: ModelManager initialized (source: ${ModelManager.instance.activeSource.name}).');
     } catch (e) {
-      debugPrint('GhostAI: Failed to load TFLite model: $e');
+      debugPrint('GhostAI: Failed to initialize ModelManager: $e');
     }
 
     try {
@@ -88,21 +86,23 @@ class GhostAI {
     // 1. Feature extraction using the existing FeatureExtractor
     final featureVector = FeatureExtractor.extractFromAppNotification(notification);
 
-    // 2. Model inference
+    // 2. Model inference via ModelManager
     double predictedScore = 0.0;
     int inferenceTimeUs = 0;
 
-    if (_interpreter != null) {
-      final input = [featureVector];
-      final output = List<double>.filled(1, 0.0).reshape([1, 1]);
-
+    if (ModelManager.instance.isModelLoaded) {
       final inferStopwatch = Stopwatch()..start();
-      _interpreter!.run(input, output);
+      final rawScore = await ModelManager.instance.predictScore(featureVector);
       inferStopwatch.stop();
 
       inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
-      // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
-      predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+
+      if (rawScore != null) {
+        // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
+        predictedScore = (rawScore / 100.0).clamp(0.0, 1.0);
+      } else {
+        predictedScore = _heuristicLookAgainScore(featureVector);
+      }
     } else {
       // Heuristic fallback if model not loaded
       predictedScore = _heuristicLookAgainScore(featureVector);
