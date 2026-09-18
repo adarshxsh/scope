@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
@@ -50,27 +52,82 @@ class GhostAI {
 
   static GhostAI get instance => _instance ??= GhostAI._();
 
+  bool _isCustomModelLoaded = false;
+
+  /// Whether a custom retrained model was loaded from local application storage.
+  bool get isCustomModelLoaded => _isCustomModelLoaded;
+
   /// Exposes rule engine compilation version.
   String get ruleVersion => _ruleEngine.version;
 
   /// Returns whether the model is loaded.
   bool get isModelLoaded => _interpreter != null;
 
-  /// Initializes the TFLite interpreter and rules database once on startup.
-  Future<void> initialize() async {
-    if (_interpreter != null) return;
+  /// Resets interpreter instance for testing or re-initialization.
+  void resetInterpreter() {
     try {
-      // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
-    } catch (e) {
-      debugPrint('GhostAI: Failed to load TFLite model: $e');
+      _interpreter?.close();
+    } catch (_) {}
+    _interpreter = null;
+    _isCustomModelLoaded = false;
+  }
+
+  /// Initializes the TFLite interpreter and rules database on startup.
+  /// Checks local application storage for custom model files before falling back
+  /// to the default bundled asset.
+  Future<void> initialize({String? customModelPath}) async {
+    if (_interpreter != null) return;
+
+    File? customFile;
+    if (customModelPath != null) {
+      customFile = File(customModelPath);
+    } else {
+      try {
+        final docsDir = await getApplicationDocumentsDirectory();
+        for (final fileName in ['custom_model.tflite', 'ghost_ai.tflite', 'model.tflite']) {
+          final candidate = File('${docsDir.path}/$fileName');
+          if (await candidate.exists()) {
+            customFile = candidate;
+            break;
+          }
+        }
+      } catch (e) {
+        debugPrint('GhostAI: Failed to access local application storage for model check: $e');
+      }
+    }
+
+    // Check if custom model file exists and is readable
+    if (customFile != null && await customFile.exists()) {
+      try {
+        final bytes = await customFile.readAsBytes();
+        if (bytes.isNotEmpty) {
+          _interpreter = Interpreter.fromFile(customFile);
+          _isCustomModelLoaded = true;
+          debugPrint('GhostAI: Custom model loaded successfully from ${customFile.path}.');
+        }
+      } catch (e) {
+        debugPrint('GhostAI: Custom model file invalid or unreadable ($e), falling back to default asset.');
+        _interpreter = null;
+        _isCustomModelLoaded = false;
+      }
+    }
+
+    // Fall back to bundled default asset if custom model was not loaded
+    if (_interpreter == null) {
+      try {
+        _interpreter = await Interpreter.fromAsset('assets/model.tflite');
+        _isCustomModelLoaded = false;
+        debugPrint('GhostAI: Bundled TFLite interpreter loaded successfully.');
+      } catch (e) {
+        debugPrint('GhostAI: Failed to load bundled TFLite model: $e');
+      }
     }
 
     try {
       // 2. Load and compile rules database
       final jsonStr = await rootBundle.loadString('assets/rules.json');
       _ruleEngine.compile(jsonStr);
+      await _ruleEngine.loadCustomRules();
       debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
     } catch (e) {
       debugPrint('GhostAI: Failed to initialize rules database: $e');

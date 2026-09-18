@@ -88,16 +88,25 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     });
   }
 
-  void _submitFeedback(bool isReward) {
+  void _submitFeedback(bool isReward) async {
     if (_selectedNotification == null) return;
 
     if (isReward) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Reward (+1) recorded! AI model confidence reinforced.'),
-          backgroundColor: Colors.green,
-        ),
+      final n = _selectedNotification!;
+      final target = n.priority ?? 'medium';
+      await widget.controller.recordFeedback(
+        id: n.id,
+        userRating: 1,
+        targetLabel: target,
       );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Reward (+1) recorded! AI model confidence reinforced.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     } else {
       setState(() {
         _showCorrectionForm = true;
@@ -105,7 +114,7 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     }
   }
 
-  void _applyReinforcementRule() {
+  void _applyReinforcementRule() async {
     if (_selectedNotification == null) return;
 
     final n = _selectedNotification!;
@@ -132,16 +141,26 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
 
     widget.controller.engine.ruleEngine.addReinforcementRule(newRule);
 
+    // Record penalty (-1) and updated target label / category
+    await widget.controller.recordFeedback(
+      id: n.id,
+      userRating: -1,
+      targetLabel: _selectedPriority,
+      category: _selectedCategory,
+    );
+
     setState(() {
       _showCorrectionForm = false;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Reinforcement Rule Learned! Similar messages will now be classified as $_selectedPriority ($_selectedCategory).'),
-        backgroundColor: AppColors.seed,
-      ),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Reinforcement Rule Learned! Similar messages will now be classified as $_selectedPriority ($_selectedCategory).'),
+          backgroundColor: AppColors.seed,
+        ),
+      );
+    }
   }
 
   @override

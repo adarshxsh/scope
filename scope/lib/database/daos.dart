@@ -37,7 +37,7 @@ class NotificationDao extends DatabaseAccessor<AttentionDatabase> with _$Notific
 
   Future<int> deleteOlderThan(int cutoffTimestamp) {
     return (delete(notificationsTable)
-          ..where((t) => t.timestamp.isSmallerThanValue(cutoffTimestamp)))
+          ..where((t) => t.timestamp.isSmallerThanValue(cutoffTimestamp) & t.userRating.isNull() & t.targetLabel.isNull()))
         .go();
   }
 
