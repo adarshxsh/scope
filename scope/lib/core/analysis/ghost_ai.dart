@@ -61,10 +61,19 @@ class GhostAI {
     if (_interpreter != null) return;
     try {
       // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      final interpreter = await Interpreter.fromAsset('assets/model.tflite');
+      final inputShape = interpreter.getInputTensor(0).shape;
+      if (!listEquals(inputShape, const [1, 63])) {
+        debugPrint('GhostAI: Invalid input tensor shape $inputShape. Expected [1, 63].');
+        interpreter.close();
+        _interpreter = null;
+      } else {
+        _interpreter = interpreter;
+        debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      }
     } catch (e) {
       debugPrint('GhostAI: Failed to load TFLite model: $e');
+      _interpreter = null;
     }
 
     try {
@@ -93,16 +102,22 @@ class GhostAI {
     int inferenceTimeUs = 0;
 
     if (_interpreter != null) {
-      final input = [featureVector];
-      final output = List<double>.filled(1, 0.0).reshape([1, 1]);
+      final inputShape = _interpreter!.getInputTensor(0).shape;
+      if (!listEquals(inputShape, const [1, 63])) {
+        debugPrint('GhostAI: Input tensor shape mismatch $inputShape != [1, 63]. Falling back.');
+        predictedScore = _heuristicLookAgainScore(featureVector);
+      } else {
+        final input = [featureVector];
+        final output = List<double>.filled(1, 0.0).reshape([1, 1]);
 
-      final inferStopwatch = Stopwatch()..start();
-      _interpreter!.run(input, output);
-      inferStopwatch.stop();
+        final inferStopwatch = Stopwatch()..start();
+        _interpreter!.run(input, output);
+        inferStopwatch.stop();
 
-      inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
-      // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
-      predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+        inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
+        // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
+        predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+      }
     } else {
       // Heuristic fallback if model not loaded
       predictedScore = _heuristicLookAgainScore(featureVector);
