@@ -29,9 +29,13 @@ class MainActivity : FlutterActivity() {
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "getNotifications" -> {
-                        val notifications = NotificationCollectorService.drainQueue()
-                        val mapList = notifications.map { it.toMap() }
-                        result.success(mapList)
+                        try {
+                            val notifications = NotificationCollectorService.drainQueue()
+                            val mapList = notifications.map { it.toMap() }
+                            result.success(mapList)
+                        } catch (e: Exception) {
+                            result.error("QUEUE_ERROR", "Failed to drain notification queue", e.localizedMessage)
+                        }
                     }
 
                     "isListenerEnabled" -> {
