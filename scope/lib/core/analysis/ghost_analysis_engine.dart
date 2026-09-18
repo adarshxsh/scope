@@ -107,7 +107,7 @@ class GhostAnalysisEngine {
       latencyMs: stopwatch.elapsedMilliseconds,
       ruleVersion: ruleEngine.version,
       modelVersion: activeModelVersion,
-      engineVersion: '2.0.0-hybrid',
+      engineVersion: fusedResult.isFallback ? '2.0.0-hybrid (fallback)' : '2.0.0-hybrid',
       extractedFeatures: features.toMap(),
     );
   }
