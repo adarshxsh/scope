@@ -4,6 +4,7 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
+import 'package:scope/core/analysis/inference_telemetry.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -85,30 +86,45 @@ class GhostAI {
   Future<GhostAIResult> _predict(AppNotification notification) async {
     final stopwatch = Stopwatch()..start();
 
-    // 1. Feature extraction using the existing FeatureExtractor
+    // 1. Feature extraction with stage timing
+    final extractStopwatch = Stopwatch()..start();
     final featureVector = FeatureExtractor.extractFromAppNotification(notification);
+    extractStopwatch.stop();
+    final featureExtractionUs = extractStopwatch.elapsedMicroseconds;
 
     // 2. Model inference
     double predictedScore = 0.0;
     int inferenceTimeUs = 0;
+    bool isFallback = false;
+    String? errorLog;
 
     if (_interpreter != null) {
-      final input = [featureVector];
-      final output = List<double>.filled(1, 0.0).reshape([1, 1]);
+      try {
+        final input = [featureVector];
+        final output = List<double>.filled(1, 0.0).reshape([1, 1]);
 
-      final inferStopwatch = Stopwatch()..start();
-      _interpreter!.run(input, output);
-      inferStopwatch.stop();
+        final inferStopwatch = Stopwatch()..start();
+        _interpreter!.run(input, output);
+        inferStopwatch.stop();
 
-      inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
-      // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
-      predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+        inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
+        // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
+        predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+      } catch (e) {
+        isFallback = true;
+        errorLog = 'TFLite inference exception: $e';
+        predictedScore = _heuristicLookAgainScore(featureVector);
+        debugPrint('GhostAI: Exception during TFLite inference, using heuristic fallback: $e');
+      }
     } else {
       // Heuristic fallback if model not loaded
+      isFallback = true;
+      errorLog = 'Model not loaded; heuristic fallback used';
       predictedScore = _heuristicLookAgainScore(featureVector);
     }
 
-    // 3. Rule matching
+    // 3. Rule matching with stage timing
+    final ruleStopwatch = Stopwatch()..start();
     final ruleMatch = _ruleEngine.match(notification);
     double? ruleScore;
     if (ruleMatch != null) {
@@ -128,6 +144,8 @@ class GhostAI {
           break;
       }
     }
+    ruleStopwatch.stop();
+    final ruleEngineUs = ruleStopwatch.elapsedMicroseconds;
 
     // 4. Score Fusion (rules + predictions)
     double finalScore = predictedScore;
@@ -172,6 +190,32 @@ class GhostAI {
       featureVector: featureVector,
       predictedScore: predictedScore,
       ruleScore: ruleScore,
+    );
+
+    // Record model inference performance telemetry
+    ModelInferenceTelemetryTracker.instance.record(
+      InferenceTelemetryRecord(
+        id: 'tel_${DateTime.now().microsecondsSinceEpoch}',
+        notificationId: notification.id,
+        timestamp: DateTime.now(),
+        featureExtractionUs: featureExtractionUs,
+        ruleEngineUs: ruleEngineUs,
+        modelInferenceUs: inferenceTimeUs,
+        totalPipelineUs: stopwatch.elapsedMicroseconds,
+        isModelLoaded: isModelLoaded,
+        isFallbackUsed: isFallback,
+        predictedScore: predictedScore,
+        ruleScore: ruleScore,
+        finalFusedScore: finalScore,
+        resolvedPriority: notification.priority ?? 'medium',
+        classifiedCategory: notification.classifiedCategory ?? 'msg',
+        ruleVersion: ruleVersion,
+        modelVersion: isModelLoaded ? '1.0.0-tflite' : 'fallback-heuristics',
+        sanitizedPackage: ModelInferenceTelemetryTracker.sanitizePackageName(notification.packageName),
+        hasPiiRedacted: true,
+        status: isFallback ? 'fallback' : 'success',
+        errorLog: errorLog,
+      ),
     );
 
     // Structured logging in debug mode
