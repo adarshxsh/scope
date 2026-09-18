@@ -1,5 +1,8 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
@@ -39,6 +42,7 @@ class GhostAIResult {
 class GhostAI {
   static GhostAI? _instance;
   Interpreter? _interpreter;
+  String? _modelSource; // 'local', 'asset', or null
   final RuleEngine _ruleEngine = RuleEngine();
 
   // Slide-cache for duplicate detection
@@ -56,24 +60,90 @@ class GhostAI {
   /// Returns whether the model is loaded.
   bool get isModelLoaded => _interpreter != null;
 
+  /// Returns the source of the currently loaded model ('local', 'asset', or null).
+  String? get modelSource => _modelSource;
+
+  /// Returns whether the model was loaded from local application storage.
+  bool get isLocalModel => _modelSource == 'local';
+
   /// Initializes the TFLite interpreter and rules database once on startup.
-  Future<void> initialize() async {
-    if (_interpreter != null) return;
-    try {
-      // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
-    } catch (e) {
-      debugPrint('GhostAI: Failed to load TFLite model: $e');
+  /// Evaluates dynamic model binary in local device storage prior to falling back to statically bundled assets.
+  Future<void> initialize({String? customPath}) async {
+    if (_interpreter == null) {
+      await _loadModel(customPath: customPath);
     }
 
     try {
-      // 2. Load and compile rules database
+      // Load and compile rules database
       final jsonStr = await rootBundle.loadString('assets/rules.json');
       _ruleEngine.compile(jsonStr);
       debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
     } catch (e) {
       debugPrint('GhostAI: Failed to initialize rules database: $e');
+    }
+  }
+
+  /// Reloads the TFLite model, closing any existing interpreter instance first to prevent memory leaks.
+  /// Evaluates dynamic model binary in local device storage prior to falling back to statically bundled assets.
+  Future<void> reloadModel({String? customPath}) async {
+    if (_interpreter != null) {
+      try {
+        _interpreter!.close();
+        debugPrint('GhostAI: Closed existing TFLite interpreter instance.');
+      } catch (e) {
+        debugPrint('GhostAI: Error closing previous TFLite interpreter: $e');
+      }
+      _interpreter = null;
+    }
+    _modelSource = null;
+
+    await _loadModel(customPath: customPath);
+  }
+
+  /// Internal helper to evaluate local storage first, then fallback to asset bundle.
+  Future<void> _loadModel({String? customPath}) async {
+    _modelSource = null;
+
+    // 1. Check local device application storage (or custom path)
+    try {
+      File? localFile;
+      if (customPath != null) {
+        localFile = File(customPath);
+      } else {
+        try {
+          final docDir = await getApplicationDocumentsDirectory();
+          final localPath = p.join(docDir.path, 'models', 'model.tflite');
+          localFile = File(localPath);
+        } catch (e) {
+          debugPrint('GhostAI: Failed to get application documents directory: $e');
+        }
+      }
+
+      if (localFile != null && await localFile.exists()) {
+        try {
+          _interpreter = Interpreter.fromFile(localFile);
+          _modelSource = 'local';
+          debugPrint('GhostAI: TFLite interpreter loaded successfully from local storage (${localFile.path}).');
+          return;
+        } catch (e) {
+          debugPrint('GhostAI: Failed to load local TFLite model from ${localFile.path}: $e. Falling back to asset bundle.');
+        }
+      } else if (localFile != null) {
+        debugPrint('GhostAI: Local model file not found at ${localFile.path}.');
+      }
+    } catch (e) {
+      debugPrint('GhostAI: Error evaluating local model file: $e');
+    }
+
+    // 2. Fall back to statically bundled asset model
+    try {
+      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
+      _modelSource = 'asset';
+      debugPrint('GhostAI: TFLite interpreter loaded successfully from asset bundle.');
+    } catch (e) {
+      _interpreter = null;
+      _modelSource = null;
+      debugPrint('GhostAI: Failed to load bundled asset TFLite model: $e');
     }
   }
 
