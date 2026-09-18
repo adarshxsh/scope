@@ -5,6 +5,8 @@ import 'package:scope/database/attention_database.dart';
 import 'package:scope/database/database_provider.dart';
 import 'package:scope/database/drift_notification_storage.dart';
 
+import 'package:scope/database/telemetry_privacy_wrapper.dart';
+
 enum QueueSortOrder {
   reviewScore,
   deadline,
@@ -340,4 +342,9 @@ final sortedReviewQueueProvider = Provider<List<AppNotification>>((ref) {
   }
 
   return activeItems;
+});
+
+final telemetryPrivacyWrapperProvider = Provider<TelemetryPrivacyWrapper>((ref) {
+  final db = ref.watch(databaseProvider);
+  return TelemetryPrivacyWrapper(db);
 });

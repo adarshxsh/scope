@@ -1,7 +1,9 @@
+import 'dart:math';
 import 'package:drift/drift.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/database/attention_database.dart';
 import 'package:scope/database/tables.dart';
+import 'package:scope/database/telemetry_privacy_wrapper.dart';
 
 part 'daos.g.dart';
 
@@ -84,7 +86,15 @@ class FocusSessionDao extends DatabaseAccessor<AttentionDatabase> with _$FocusSe
   FocusSessionDao(super.db);
 
   Future<void> insertSession(FocusSessionEntry entry) async {
-    await into(focusSessionsTable).insert(entry);
+    final sanitized = entry.copyWith(
+      sessionStart: TelemetrySanitizer.quantizeTimestamp(entry.sessionStart),
+      sessionEnd: entry.sessionEnd != null
+          ? Value(TelemetrySanitizer.quantizeTimestamp(entry.sessionEnd!))
+          : const Value.absent(),
+      duration: TelemetrySanitizer.bucketDuration(entry.duration),
+      interruptions: TelemetrySanitizer.bucketInterruptions(entry.interruptions),
+    );
+    await into(focusSessionsTable).insert(sanitized);
   }
 
   Future<FocusSessionEntry?> getActiveSession() {
@@ -92,7 +102,15 @@ class FocusSessionDao extends DatabaseAccessor<AttentionDatabase> with _$FocusSe
   }
 
   Future<void> updateSession(FocusSessionEntry entry) async {
-    await update(focusSessionsTable).replace(entry);
+    final sanitized = entry.copyWith(
+      sessionStart: TelemetrySanitizer.quantizeTimestamp(entry.sessionStart),
+      sessionEnd: entry.sessionEnd != null
+          ? Value(TelemetrySanitizer.quantizeTimestamp(entry.sessionEnd!))
+          : const Value.absent(),
+      duration: TelemetrySanitizer.bucketDuration(entry.duration),
+      interruptions: TelemetrySanitizer.bucketInterruptions(entry.interruptions),
+    );
+    await update(focusSessionsTable).replace(sanitized);
   }
 
   Future<List<FocusSessionEntry>> getAll() {
@@ -108,12 +126,24 @@ class FocusSessionDao extends DatabaseAccessor<AttentionDatabase> with _$FocusSe
 class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBriefDaoMixin {
   DailyBriefDao(super.db);
 
+  DailyBriefEntry _clamp(DailyBriefEntry entry) {
+    return entry.copyWith(
+      notificationsReviewed: max(0, entry.notificationsReviewed),
+      actionsCompleted: max(0, entry.actionsCompleted),
+      calendarEventsCreated: max(0, entry.calendarEventsCreated),
+      remindersCreated: max(0, entry.remindersCreated),
+      archivedCount: max(0, entry.archivedCount),
+    );
+  }
+
   Future<void> insertOrUpdate(DailyBriefEntry entry) async {
     await into(dailyBriefTable).insert(entry, mode: InsertMode.insertOrReplace);
   }
 
-  Future<DailyBriefEntry?> getBriefForDate(String date) {
-    return (select(dailyBriefTable)..where((t) => t.date.equals(date))).getSingleOrNull();
+  Future<DailyBriefEntry?> getBriefForDate(String date) async {
+    final entry = await (select(dailyBriefTable)..where((t) => t.date.equals(date))).getSingleOrNull();
+    if (entry == null) return null;
+    return _clamp(entry);
   }
 
   Future<void> incrementStats(
@@ -124,7 +154,7 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
     int reminders = 0,
     int archived = 0,
   }) async {
-    final existing = await getBriefForDate(date);
+    final existing = await (select(dailyBriefTable)..where((t) => t.date.equals(date))).getSingleOrNull();
     if (existing != null) {
       await update(dailyBriefTable).replace(existing.copyWith(
         notificationsReviewed: existing.notificationsReviewed + reviewed,
@@ -146,8 +176,9 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
     }
   }
 
-  Future<List<DailyBriefEntry>> getAll() {
-    return select(dailyBriefTable).get();
+  Future<List<DailyBriefEntry>> getAll() async {
+    final list = await select(dailyBriefTable).get();
+    return list.map(_clamp).toList();
   }
 
   Future<void> clearAll() async {
