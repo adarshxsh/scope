@@ -1,8 +1,28 @@
+import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUpAll(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      const MethodChannel('plugins.flutter.io/path_provider'),
+      (MethodCall methodCall) async {
+        return '.';
+      },
+    );
+  });
+
+  tearDownAll(() async {
+    final file = File('./rlhf_rules.json');
+    if (await file.exists()) {
+      await file.delete();
+    }
+  });
+
   group('RuleEngine', () {
     const String sampleJson = '''
     {
@@ -123,6 +143,190 @@ void main() {
       expect(result!.ruleId, equals('swiggy_promo'));
       expect(result.category, equals('promo'));
       expect(result.priority, equals('low'));
+    });
+
+    group('Schema Validation & Custom Rules', () {
+      test('validates valid custom rule structure', () {
+        final validMap = {
+          'id': 'rlhf-101',
+          'category': 'msg',
+          'priority': 'high',
+          'conditions': {
+            'keywords': ['hello', 'world']
+          }
+        };
+        final validation = RuleSchemaValidator.validateCustomRule(validMap);
+        expect(validation.isValid, isTrue);
+        expect(validation.error, isNull);
+      });
+
+      test('rejects custom rules with missing required properties', () {
+        final missingId = {
+          'category': 'msg',
+          'priority': 'high',
+          'conditions': {'keywords': ['test']}
+        };
+        expect(RuleSchemaValidator.validateCustomRule(missingId).isValid, isFalse);
+
+        final missingCategory = {
+          'id': 'rlhf-102',
+          'priority': 'high',
+          'conditions': {'keywords': ['test']}
+        };
+        expect(RuleSchemaValidator.validateCustomRule(missingCategory).isValid, isFalse);
+
+        final missingConditions = {
+          'id': 'rlhf-103',
+          'category': 'msg',
+          'priority': 'high',
+        };
+        expect(RuleSchemaValidator.validateCustomRule(missingConditions).isValid, isFalse);
+      });
+
+      test('rejects custom rules using reserved system rule IDs', () {
+        final reserved = {
+          'id': 'otp_security',
+          'category': 'sys',
+          'priority': 'high',
+          'conditions': {'keywords': ['otp']}
+        };
+        final res = RuleSchemaValidator.validateCustomRule(reserved);
+        expect(res.isValid, isFalse);
+        expect(res.error, contains('reserved for system security rules'));
+      });
+
+      test('rejects custom rules with empty condition blocks (Requirement 5)', () {
+        final emptyConditions = {
+          'id': 'rlhf-104',
+          'category': 'msg',
+          'priority': 'high',
+          'conditions': {
+            'packages': [],
+            'keywords': ['   '],
+            'title_keywords': []
+          }
+        };
+        final res = RuleSchemaValidator.validateCustomRule(emptyConditions);
+        expect(res.isValid, isFalse);
+        expect(res.error, contains('non-empty condition block'));
+      });
+
+      test('rejects custom rules with invalid condition data types', () {
+        final invalidTypes = {
+          'id': 'rlhf-105',
+          'category': 'msg',
+          'priority': 'high',
+          'conditions': {
+            'keywords': [123, 456]
+          }
+        };
+        expect(RuleSchemaValidator.validateCustomRule(invalidTypes).isValid, isFalse);
+      });
+    });
+
+    group('Priority Caps & Evaluation Order', () {
+      test('automatically demotes custom rules from critical to high priority (Requirement 2)', () {
+        final customCriticalMap = {
+          'id': 'rlhf-bypass-attempt',
+          'category': 'promo',
+          'priority': 'critical',
+          'conditions': {
+            'keywords': ['free money']
+          }
+        };
+
+        final rule = NotificationRule.fromMap(customCriticalMap, isCustom: true);
+        expect(rule.priority, equals('high'));
+      });
+
+      test('addReinforcementRule demotes critical priority custom rule', () {
+        final customRule = NotificationRule(
+          id: 'rlhf-999',
+          category: 'promo',
+          priority: 'critical',
+          conditions: const RuleCondition(keywords: ['win prize']),
+        );
+
+        engine.addReinforcementRule(customRule);
+
+        final notif = AppNotification(
+          id: '99',
+          packageName: 'com.spam.app',
+          title: 'Special Offer',
+          content: 'You win prize today!',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        final match = engine.match(notif);
+        expect(match, isNotNull);
+        expect(match!.ruleId, equals('rlhf-999'));
+        expect(match.priority, equals('high'));
+      });
+
+      test('base system security rules take precedence over custom user rules (Requirement 3)', () {
+        final conflictingCustomRule = NotificationRule(
+          id: 'rlhf-custom-hdfc',
+          category: 'promo',
+          priority: 'low',
+          conditions: const RuleCondition(
+            packages: ['com.hdfc.mobilebanking'],
+            keywords: ['debited'],
+          ),
+        );
+
+        engine.addReinforcementRule(conflictingCustomRule);
+
+        final notif = AppNotification(
+          id: '1',
+          packageName: 'com.hdfc.mobilebanking',
+          title: 'HDFC Bank Alert',
+          content: 'Your account has been debited Rs. 15,000.',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        final result = engine.match(notif);
+        expect(result, isNotNull);
+        expect(result!.ruleId, equals('bank_debit'));
+        expect(result.priority, equals('critical'));
+      });
+    });
+
+    group('Regex Condition Sanitization', () {
+      test('sanitizes regex wildcards and handles invalid regex syntax gracefully (Requirement 4)', () {
+        final wildcardRule = NotificationRule(
+          id: 'rlhf-wildcard',
+          category: 'msg',
+          priority: 'medium',
+          conditions: const RuleCondition(
+            keywords: ['.*', '[open-bracket', '(?invalid-regex'],
+          ),
+        );
+
+        engine.addReinforcementRule(wildcardRule);
+
+        final normalNotif = AppNotification(
+          id: '50',
+          packageName: 'com.chat',
+          title: 'Message',
+          content: 'Just saying hello!',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        final normalResult = engine.match(normalNotif);
+        expect(normalResult, isNull);
+
+        final literalNotif = AppNotification(
+          id: '51',
+          packageName: 'com.chat',
+          title: 'Message',
+          content: 'Matched .* literal',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        final literalResult = engine.match(literalNotif);
+        expect(literalResult, isNotNull);
+        expect(literalResult!.ruleId, equals('rlhf-wildcard'));
+      });
     });
   });
 }
