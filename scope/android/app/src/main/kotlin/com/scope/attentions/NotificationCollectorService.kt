@@ -3,6 +3,7 @@ package com.scope.attentions
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
+import java.security.MessageDigest
 import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
@@ -17,7 +18,8 @@ import java.util.concurrent.ConcurrentLinkedQueue
  * Design decisions:
  *   - Uses a static ConcurrentLinkedQueue (thread-safe, lock-free) because
  *     the service runs in a separate context from MainActivity.
- *   - No heavy processing here — just capture and queue.
+ *   - Payload fields (title, content) are redacted and AES-256 GCM encrypted in memory.
+ *   - Logcat entries output hashed package names and message counts only.
  *   - Skips ongoing/persistent notifications by default (configurable).
  */
 class NotificationCollectorService : NotificationListenerService() {
@@ -32,7 +34,19 @@ class NotificationCollectorService : NotificationListenerService() {
         private var idCounter = 0L
 
         /**
-         * Drains all notifications from the queue and returns them.
+         * Hashes package name using SHA-256 for anonymous Logcat output.
+         */
+        private fun hashPackageName(pkg: String): String {
+            return try {
+                val bytes = MessageDigest.getInstance("SHA-256").digest(pkg.toByteArray(Charsets.UTF_8))
+                bytes.take(6).joinToString("") { "%02x".format(it) }
+            } catch (e: Exception) {
+                "anon"
+            }
+        }
+
+        /**
+         * Drains all notifications from the queue and returns them decrypted.
          * Called by [MainActivity] when Flutter requests notifications.
          * After this call, the queue is empty.
          */
@@ -40,7 +54,11 @@ class NotificationCollectorService : NotificationListenerService() {
             val result = mutableListOf<NotificationData>()
             while (true) {
                 val item = queue.poll() ?: break
-                result.add(item)
+                val decryptedItem = item.copy(
+                    title = CryptoManager.decrypt(item.title),
+                    content = CryptoManager.decrypt(item.content)
+                )
+                result.add(decryptedItem)
             }
             return result
         }
@@ -54,31 +72,39 @@ class NotificationCollectorService : NotificationListenerService() {
     private fun addSbnToQueue(sbn: StatusBarNotification) {
         try {
             val extras = sbn.notification.extras
-            val title = extras?.getCharSequence("android.title")?.toString() ?: ""
-            val text = extras?.getCharSequence("android.text")?.toString() ?: ""
+            val rawTitle = extras?.getCharSequence("android.title")?.toString() ?: ""
+            val rawText = extras?.getCharSequence("android.text")?.toString() ?: ""
             val isOngoing = sbn.isOngoing
             val packageName = sbn.packageName ?: "unknown"
 
+            val redactedTitle = NotificationRedactor.redact(rawTitle)
+            val redactedContent = NotificationRedactor.redact(rawText)
+
             // Ignore if same package, title, and content already exist in queue
-            val isDuplicate = queue.any {
-                it.packageName == packageName && it.title == title && it.content == text
+            val isDuplicate = queue.any { item ->
+                item.packageName == packageName &&
+                CryptoManager.decrypt(item.title) == redactedTitle &&
+                CryptoManager.decrypt(item.content) == redactedContent
             }
             if (isDuplicate) {
                 return
             }
 
+            val encryptedTitle = CryptoManager.encrypt(redactedTitle)
+            val encryptedContent = CryptoManager.encrypt(redactedContent)
+
             val data = NotificationData(
                 id = "notif_${++idCounter}",
                 packageName = packageName,
-                title = title,
-                content = text,
+                title = encryptedTitle,
+                content = encryptedContent,
                 timestamp = sbn.postTime,
                 category = sbn.notification.category,
                 isOngoing = isOngoing
             )
 
             queue.add(data)
-            Log.d(TAG, "Captured: ${data.packageName} - ${data.title}")
+            Log.d(TAG, "Captured: pkg=${hashPackageName(packageName)}, queueSize=${queueSize()}")
         } catch (e: Exception) {
             Log.e(TAG, "Error capturing/adding notification", e)
         }
@@ -91,8 +117,8 @@ class NotificationCollectorService : NotificationListenerService() {
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         if (sbn == null) return
-        // Log for now; future phases may track dismissed notifications
-        Log.d(TAG, "Removed: ${sbn.packageName} - ${sbn.notification.extras?.getCharSequence("android.title")}")
+        val pkg = sbn.packageName ?: "unknown"
+        Log.d(TAG, "Removed: pkg=${hashPackageName(pkg)}, queueSize=${queueSize()}")
     }
 
     override fun onListenerConnected() {
