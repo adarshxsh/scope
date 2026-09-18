@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
@@ -25,6 +27,12 @@ class GhostAIResult {
   /// Rule match score (0.0 to 1.0) output by the rule engine.
   final double? ruleScore;
 
+  /// Active model version string.
+  final String modelVersion;
+
+  /// Active model source identifier ('local_storage' | 'bundled_asset' | 'fallback_heuristics').
+  final String modelSource;
+
   const GhostAIResult({
     required this.reviewScore,
     this.confidence,
@@ -32,6 +40,8 @@ class GhostAIResult {
     required this.featureVector,
     required this.predictedScore,
     this.ruleScore,
+    required this.modelVersion,
+    required this.modelSource,
   });
 }
 
@@ -40,6 +50,9 @@ class GhostAI {
   static GhostAI? _instance;
   Interpreter? _interpreter;
   final RuleEngine _ruleEngine = RuleEngine();
+
+  String _modelVersion = '1.0.0-tflite';
+  String _modelSource = 'bundled_asset';
 
   // Slide-cache for duplicate detection
   final List<AppNotification> _processedNotifications = [];
@@ -56,24 +69,126 @@ class GhostAI {
   /// Returns whether the model is loaded.
   bool get isModelLoaded => _interpreter != null;
 
+  /// Version string of the active model.
+  String get modelVersion => _modelVersion;
+
+  /// Source identifier of the active model ('local_storage' | 'bundled_asset' | 'fallback_heuristics').
+  String get modelSource => _modelSource;
+
   /// Initializes the TFLite interpreter and rules database once on startup.
-  Future<void> initialize() async {
-    if (_interpreter != null) return;
-    try {
-      // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
-    } catch (e) {
-      debugPrint('GhostAI: Failed to load TFLite model: $e');
+  /// Checks local app storage for dynamic model binaries before falling back to default bundled assets.
+  Future<void> initialize({File? customModelFile, String? customModelPath}) async {
+    Interpreter? loadedInterpreter;
+    String loadedSource = 'fallback_heuristics';
+    String loadedVersion = 'fallback-heuristics';
+
+    File? candidateFile = customModelFile;
+    if (candidateFile == null && customModelPath != null && customModelPath.isNotEmpty) {
+      candidateFile = File(customModelPath);
+    }
+
+    final List<File> searchCandidates = [];
+    if (candidateFile != null) {
+      searchCandidates.add(candidateFile);
     }
 
     try {
-      // 2. Load and compile rules database
+      final docDir = await getApplicationDocumentsDirectory();
+      searchCandidates.addAll([
+        File('${docDir.path}/custom_model.tflite'),
+        File('${docDir.path}/models/custom_model.tflite'),
+        File('${docDir.path}/model.tflite'),
+        File('${docDir.path}/models/model.tflite'),
+        File('${docDir.path}/ghost_ai.tflite'),
+        File('${docDir.path}/models/ghost_ai.tflite'),
+      ]);
+    } catch (e) {
+      debugPrint('GhostAI: Path provider unavailable for dynamic model check: $e');
+    }
+
+    for (final file in searchCandidates) {
+      if (file.existsSync()) {
+        try {
+          final interp = Interpreter.fromFile(file);
+          if (_validateInterpreterDimensions(interp)) {
+            loadedInterpreter = interp;
+            loadedSource = 'local_storage';
+            loadedVersion = 'custom-local-tflite';
+            debugPrint('GhostAI: Successfully loaded dynamic local model binary from ${file.path}');
+            break;
+          } else {
+            interp.close();
+            debugPrint('GhostAI: Dynamic local model ${file.path} failed dimension validation.');
+          }
+        } catch (e) {
+          debugPrint('GhostAI: Failed to load dynamic model binary from ${file.path}: $e');
+        }
+      }
+    }
+
+    if (loadedInterpreter == null) {
+      try {
+        final interp = await Interpreter.fromAsset('assets/model.tflite');
+        if (_validateInterpreterDimensions(interp)) {
+          loadedInterpreter = interp;
+          loadedSource = 'bundled_asset';
+          loadedVersion = '1.0.0-tflite';
+          debugPrint('GhostAI: Bundled TFLite interpreter loaded successfully.');
+        } else {
+          interp.close();
+          debugPrint('GhostAI: Bundled TFLite interpreter failed dimension validation.');
+        }
+      } catch (e) {
+        debugPrint('GhostAI: Failed to load bundled TFLite model asset: $e');
+      }
+    }
+
+    if (_interpreter != null && _interpreter != loadedInterpreter) {
+      _interpreter!.close();
+    }
+
+    _interpreter = loadedInterpreter;
+    _modelSource = loadedSource;
+    _modelVersion = loadedVersion;
+
+    try {
       final jsonStr = await rootBundle.loadString('assets/rules.json');
       _ruleEngine.compile(jsonStr);
+      await _ruleEngine.loadCustomRules();
       debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
     } catch (e) {
       debugPrint('GhostAI: Failed to initialize rules database: $e');
+    }
+  }
+
+  /// Validates input and output dimensions of TFLite model interpreter.
+  bool _validateInterpreterDimensions(Interpreter interpreter) {
+    try {
+      final inputTensors = interpreter.getInputTensors();
+      final outputTensors = interpreter.getOutputTensors();
+
+      if (inputTensors.isEmpty || outputTensors.isEmpty) return false;
+
+      final inputShape = inputTensors[0].shape;
+      final outputShape = outputTensors[0].shape;
+
+      final inputSize = inputShape.isEmpty ? 0 : inputShape.reduce((a, b) => a * b);
+      final outputSize = outputShape.isEmpty ? 0 : outputShape.reduce((a, b) => a * b);
+
+      if (inputSize != FeatureVector.size) {
+        debugPrint('GhostAI: Model input tensor size mismatch: $inputSize (expected ${FeatureVector.size})');
+        return false;
+      }
+
+      if (outputSize != 1) {
+        debugPrint('GhostAI: Model output tensor size mismatch: $outputSize (expected 1)');
+        return false;
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('GhostAI: Error validating model tensor dimensions: $e');
+      return false;
     }
   }
 
@@ -172,6 +287,8 @@ class GhostAI {
       featureVector: featureVector,
       predictedScore: predictedScore,
       ruleScore: ruleScore,
+      modelVersion: _modelVersion,
+      modelSource: _modelSource,
     );
 
     // Structured logging in debug mode
@@ -324,6 +441,8 @@ class GhostAI {
     debugPrint('=== GHOST AI INFERENCE REPORT ===');
     debugPrint('Notification: "${notification.title}" - "${notification.content}"');
     debugPrint('Package: ${notification.packageName}');
+    debugPrint('Model Version: ${result.modelVersion}');
+    debugPrint('Model Source: ${result.modelSource}');
     debugPrint('Feature Vector (First 15): ${result.featureVector.take(15).toList()}...');
     debugPrint('Inference Time: ${result.inferenceTimeUs} us');
     debugPrint('Raw Predicted Score: ${(result.predictedScore * 100).toStringAsFixed(2)}');
