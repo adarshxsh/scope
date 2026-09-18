@@ -93,16 +93,21 @@ class GhostAI {
     int inferenceTimeUs = 0;
 
     if (_interpreter != null) {
-      final input = [featureVector];
-      final output = List<double>.filled(1, 0.0).reshape([1, 1]);
+      try {
+        final input = [featureVector];
+        final output = List<double>.filled(1, 0.0).reshape([1, 1]);
 
-      final inferStopwatch = Stopwatch()..start();
-      _interpreter!.run(input, output);
-      inferStopwatch.stop();
+        final inferStopwatch = Stopwatch()..start();
+        _interpreter!.run(input, output);
+        inferStopwatch.stop();
 
-      inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
-      // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
-      predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+        inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
+        // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
+        predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+      } catch (e) {
+        debugPrint('GhostAI: Interpreter execution failed, reverting to heuristic scoring: $e');
+        predictedScore = _heuristicLookAgainScore(featureVector);
+      }
     } else {
       // Heuristic fallback if model not loaded
       predictedScore = _heuristicLookAgainScore(featureVector);
@@ -287,6 +292,12 @@ class GhostAI {
   /// Helper to clear the duplicate memory cache (used for unit tests).
   void clearCache() {
     _processedNotifications.clear();
+  }
+
+  /// Allows setting or clearing the TFLite interpreter for testing purposes.
+  @visibleForTesting
+  set interpreter(Interpreter? interpreter) {
+    _interpreter = interpreter;
   }
 
   /// Returns whether a notification indicates that a task/action is completed.
