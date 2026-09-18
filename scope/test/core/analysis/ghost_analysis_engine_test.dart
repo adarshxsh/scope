@@ -77,5 +77,42 @@ void main() {
       expect(analyzed.priority, equals('low'));
       expect(analyzed.classifiedCategory, equals('promo'));
     });
+
+    test('bypasses TFLite model inference and sets modelVersion under low-power mode', () async {
+      final notif = AppNotification(
+        id: '4',
+        packageName: 'com.whatsapp',
+        title: 'Security Alert',
+        content: 'Your verification code is 123456.',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+        isLowPowerMode: true,
+      );
+
+      final analyzed = await engine.analyze(notif);
+
+      expect(analyzed.isLowPowerMode, isTrue);
+      expect(analyzed.modelVersion, equals('power-save-heuristic-fallback'));
+      expect(analyzed.priority, equals('critical'));
+      expect(analyzed.extractedFeatures!['otp'], equals('123456'));
+      expect(analyzed.latencyMs! < 10, isTrue);
+    });
+
+    test('resumes normal model inference when low-power mode is deactivated', () async {
+      final lowPowerNotif = AppNotification(
+        id: '5',
+        packageName: 'com.example.bank',
+        title: 'Transaction Alert',
+        content: 'Your account has been debited Rs. 5,000.',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+        isLowPowerMode: true,
+      );
+
+      final lowPowerResult = await engine.analyze(lowPowerNotif);
+      expect(lowPowerResult.modelVersion, equals('power-save-heuristic-fallback'));
+
+      final normalNotif = lowPowerNotif.copyWith(isLowPowerMode: false);
+      final normalResult = await engine.analyze(normalNotif);
+      expect(normalResult.modelVersion, isNot(equals('power-save-heuristic-fallback')));
+    });
   });
 }
