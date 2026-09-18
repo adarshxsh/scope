@@ -150,6 +150,30 @@ class GhostAI {
     final hasOtp = featureVector[11] == 1.0; // contains_otp
     final hasDeadline = featureVector[27] == 1.0; // contains_deadline
 
+    final isTaskApp = notification.packageName.contains('task') ||
+        notification.packageName.contains('todo') ||
+        notification.packageName.contains('jira') ||
+        notification.packageName.contains('keep') ||
+        notification.packageName.contains('calendar');
+
+    bool bypassCompletedTaskOverride = false;
+    if (!isTaskApp && ruleMatch != null) {
+      final isFinanceRule = ruleMatch.category == 'finance' || ruleMatch.ruleId.contains('finance');
+      final isFinanceFeature = featureVector[29] == 1.0 ||
+          featureVector[10] == 1.0 ||
+          featureVector[22] == 1.0 ||
+          featureVector[59] == 1.0;
+
+      final isDeliveryRule = ruleMatch.category == 'delivery' || ruleMatch.category == 'transport';
+      final isDeliveryFeature = featureVector[30] == 1.0 ||
+          featureVector[21] == 1.0 ||
+          featureVector[58] == 1.0;
+
+      if ((isFinanceRule && isFinanceFeature) || (isDeliveryRule && isDeliveryFeature)) {
+        bypassCompletedTaskOverride = true;
+      }
+    }
+
     if (hasOtp && _isOtpExpired(notification)) {
       finalScore = 0.0;
     } else if (hasDeadline && _isReminderExpired(notification)) {
@@ -157,7 +181,9 @@ class GhostAI {
     } else if (_isDuplicate(notification)) {
       finalScore = 0.0;
     } else if (_isCompletedTask(notification)) {
-      finalScore = 0.0;
+      if (!bypassCompletedTaskOverride) {
+        finalScore = 0.0;
+      }
     }
 
     stopwatch.stop();
