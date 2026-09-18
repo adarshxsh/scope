@@ -39,6 +39,7 @@ class GhostAIResult {
 class GhostAI {
   static GhostAI? _instance;
   Interpreter? _interpreter;
+  bool _isModelValid = false;
   final RuleEngine _ruleEngine = RuleEngine();
 
   // Slide-cache for duplicate detection
@@ -53,8 +54,46 @@ class GhostAI {
   /// Exposes rule engine compilation version.
   String get ruleVersion => _ruleEngine.version;
 
-  /// Returns whether the model is loaded.
-  bool get isModelLoaded => _interpreter != null;
+  /// Returns whether the model is loaded and valid.
+  bool get isModelLoaded => _interpreter != null && _isModelValid;
+
+  /// Returns whether the loaded interpreter satisfies the tensor contract.
+  bool get isModelValid => _isModelValid;
+
+  /// Validates interpreter input tensor shape ([1, 63]) and data type (float32 or int8/uint8).
+  bool _validateInterpreterContract(Interpreter interpreter) {
+    try {
+      final inputTensors = interpreter.getInputTensors();
+      if (inputTensors.isEmpty) return false;
+
+      final inputTensor = inputTensors.first;
+      final shape = inputTensor.shape;
+      final type = inputTensor.type;
+
+      if (shape.length != 2 || shape[0] != 1 || shape[1] != 63) {
+        debugPrint('GhostAI: Interpreter input tensor shape mismatch ($shape != [1, 63]).');
+        return false;
+      }
+
+      final typeStr = type.toString().toLowerCase();
+      final isValidType = type == TfLiteType.kTfLiteFloat32 ||
+          type == TfLiteType.kTfLiteInt8 ||
+          type == TfLiteType.kTfLiteUInt8 ||
+          typeStr.contains('float32') ||
+          typeStr.contains('int8') ||
+          typeStr.contains('uint8');
+
+      if (!isValidType) {
+        debugPrint('GhostAI: Interpreter input tensor type mismatch ($type).');
+        return false;
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('GhostAI: Exception during interpreter contract validation: $e');
+      return false;
+    }
+  }
 
   /// Initializes the TFLite interpreter and rules database once on startup.
   Future<void> initialize() async {
@@ -62,8 +101,14 @@ class GhostAI {
     try {
       // 1. Load interpreter from assets
       _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      _isModelValid = _validateInterpreterContract(_interpreter!);
+      if (_isModelValid) {
+        debugPrint('GhostAI: TFLite interpreter loaded and contract verified successfully.');
+      } else {
+        debugPrint('GhostAI: TFLite model loaded but contract validation failed.');
+      }
     } catch (e) {
+      _isModelValid = false;
       debugPrint('GhostAI: Failed to load TFLite model: $e');
     }
 
@@ -75,6 +120,13 @@ class GhostAI {
     } catch (e) {
       debugPrint('GhostAI: Failed to initialize rules database: $e');
     }
+  }
+
+  /// Helper to allow setting/testing interpreter contract validity in unit tests
+  @visibleForTesting
+  void setInterpreterContractForTest(Interpreter? interpreter, {bool isValid = true}) {
+    _interpreter = interpreter;
+    _isModelValid = interpreter != null ? isValid : false;
   }
 
   /// Public API: resolves look-again priority score for a notification.
@@ -92,19 +144,33 @@ class GhostAI {
     double predictedScore = 0.0;
     int inferenceTimeUs = 0;
 
-    if (_interpreter != null) {
-      final input = [featureVector];
-      final output = List<double>.filled(1, 0.0).reshape([1, 1]);
+    final isContractValid = _interpreter != null &&
+        _isModelValid &&
+        featureVector.length == 63;
 
-      final inferStopwatch = Stopwatch()..start();
-      _interpreter!.run(input, output);
-      inferStopwatch.stop();
+    if (isContractValid) {
+      try {
+        final input = [featureVector];
+        final output = List<double>.filled(1, 0.0).reshape([1, 1]);
 
-      inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
-      // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
-      predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+        final inferStopwatch = Stopwatch()..start();
+        _interpreter!.run(input, output);
+        inferStopwatch.stop();
+
+        inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
+        // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
+        predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+      } catch (e) {
+        debugPrint('GhostAI: Inference error, falling back to heuristic: $e');
+        predictedScore = _heuristicLookAgainScore(featureVector);
+      }
     } else {
-      // Heuristic fallback if model not loaded
+      if (_interpreter != null && !_isModelValid) {
+        debugPrint('GhostAI: Pre-inference tensor shape/type contract mismatch. Bypassing TFLite inference.');
+      } else if (featureVector.length != 63) {
+        debugPrint('GhostAI: Feature vector length mismatch (${featureVector.length} != 63). Bypassing TFLite inference.');
+      }
+      // Heuristic fallback if model not loaded or schema invalid
       predictedScore = _heuristicLookAgainScore(featureVector);
     }
 

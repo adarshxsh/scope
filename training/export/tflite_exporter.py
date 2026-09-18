@@ -31,6 +31,21 @@ def export_float32_tflite(
     return output_path
 
 
+def export_quantized_tflite(
+    saved_model_dir: Path,
+    output_path: Path,
+    representative_data: np.ndarray | None = None,
+) -> Path:
+    ensure_dir(output_path.parent)
+    converter = tf.lite.TFLiteConverter.from_saved_model(str(saved_model_dir))
+    converter.optimizations = [tf.lite.Optimize.DEFAULT]
+    if representative_data is not None and len(representative_data) > 0:
+        converter.representative_dataset = _representative_dataset(representative_data)
+    model_bytes = converter.convert()
+    output_path.write_bytes(model_bytes)
+    return output_path
+
+
 def _representative_dataset(
     features: np.ndarray,
     max_samples: int = 256,
