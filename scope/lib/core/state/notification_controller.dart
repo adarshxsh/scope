@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
+import 'package:scope/core/export/jsonl_exporter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/storage/notification_storage.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
@@ -516,6 +518,48 @@ class NotificationController extends ChangeNotifier {
   void resetSessionStats() {
     sessionStats = ReviewSessionStats();
     notifyListeners();
+  }
+
+  /// Records user rating feedback (+1 reward / -1 penalty) and corrected target label.
+  Future<void> recordFeedback({
+    required String id,
+    required int userRating,
+    required String targetLabel,
+    String? category,
+  }) async {
+    final index = _notifications.indexWhere((n) => n.id == id);
+    if (index >= 0) {
+      final current = _notifications[index];
+      final updated = current.copyWith(
+        userRating: userRating,
+        targetLabel: targetLabel,
+        classifiedCategory: category ?? current.classifiedCategory,
+        lastUpdated: DateTime.now(),
+      );
+      _notifications[index] = updated;
+      await _storage.save(updated);
+
+      final notifier = _container.read(reviewQueueProvider.notifier);
+      notifier.load(_notifications);
+
+      notifyListeners();
+    }
+  }
+
+  /// Retrieves all stored notifications that have user feedback recorded.
+  Future<List<AppNotification>> getFeedbackNotifications() async {
+    final all = await _storage.getAll();
+    return all.where((n) => n.userRating != null || n.targetLabel != null).toList();
+  }
+
+  /// Exports feedback records to a local JSONL file.
+  Future<File> exportFeedbackJsonl({String? customPath}) async {
+    final feedbackNotifs = await getFeedbackNotifications();
+    final itemsToExport = feedbackNotifs.isNotEmpty ? feedbackNotifs : _notifications;
+    return JsonlExporter.exportToJsonl(
+      itemsToExport,
+      outputPath: customPath,
+    );
   }
 
   bool isArchived(String id) {

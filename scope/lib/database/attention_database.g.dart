@@ -281,6 +281,28 @@ class $NotificationsTableTable extends NotificationsTable
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _userRatingMeta = const VerificationMeta(
+    'userRating',
+  );
+  @override
+  late final GeneratedColumn<int> userRating = GeneratedColumn<int>(
+    'user_rating',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _targetLabelMeta = const VerificationMeta(
+    'targetLabel',
+  );
+  @override
+  late final GeneratedColumn<String> targetLabel = GeneratedColumn<String>(
+    'target_label',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -307,6 +329,8 @@ class $NotificationsTableTable extends NotificationsTable
     reviewed,
     dismissed,
     createdAt,
+    userRating,
+    targetLabel,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -489,6 +513,21 @@ class $NotificationsTableTable extends NotificationsTable
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
       );
     }
+    if (data.containsKey('user_rating')) {
+      context.handle(
+        _userRatingMeta,
+        userRating.isAcceptableOrUnknown(data['user_rating']!, _userRatingMeta),
+      );
+    }
+    if (data.containsKey('target_label')) {
+      context.handle(
+        _targetLabelMeta,
+        targetLabel.isAcceptableOrUnknown(
+          data['target_label']!,
+          _targetLabelMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -599,6 +638,14 @@ class $NotificationsTableTable extends NotificationsTable
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      userRating: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}user_rating'],
+      ),
+      targetLabel: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_label'],
+      ),
     );
   }
 
@@ -643,6 +690,8 @@ class NotificationEntry extends DataClass
   final bool reviewed;
   final bool dismissed;
   final DateTime createdAt;
+  final int? userRating;
+  final String? targetLabel;
   const NotificationEntry({
     required this.id,
     required this.packageName,
@@ -668,6 +717,8 @@ class NotificationEntry extends DataClass
     required this.reviewed,
     required this.dismissed,
     required this.createdAt,
+    this.userRating,
+    this.targetLabel,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -732,6 +783,12 @@ class NotificationEntry extends DataClass
     map['reviewed'] = Variable<bool>(reviewed);
     map['dismissed'] = Variable<bool>(dismissed);
     map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || userRating != null) {
+      map['user_rating'] = Variable<int>(userRating);
+    }
+    if (!nullToAbsent || targetLabel != null) {
+      map['target_label'] = Variable<String>(targetLabel);
+    }
     return map;
   }
 
@@ -789,6 +846,12 @@ class NotificationEntry extends DataClass
       reviewed: Value(reviewed),
       dismissed: Value(dismissed),
       createdAt: Value(createdAt),
+      userRating: userRating == null && nullToAbsent
+          ? const Value.absent()
+          : Value(userRating),
+      targetLabel: targetLabel == null && nullToAbsent
+          ? const Value.absent()
+          : Value(targetLabel),
     );
   }
 
@@ -828,6 +891,8 @@ class NotificationEntry extends DataClass
       reviewed: serializer.fromJson<bool>(json['reviewed']),
       dismissed: serializer.fromJson<bool>(json['dismissed']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      userRating: serializer.fromJson<int?>(json['userRating']),
+      targetLabel: serializer.fromJson<String?>(json['targetLabel']),
     );
   }
   @override
@@ -862,6 +927,8 @@ class NotificationEntry extends DataClass
       'reviewed': serializer.toJson<bool>(reviewed),
       'dismissed': serializer.toJson<bool>(dismissed),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'userRating': serializer.toJson<int?>(userRating),
+      'targetLabel': serializer.toJson<String?>(targetLabel),
     };
   }
 
@@ -890,6 +957,8 @@ class NotificationEntry extends DataClass
     bool? reviewed,
     bool? dismissed,
     DateTime? createdAt,
+    Value<int?> userRating = const Value.absent(),
+    Value<String?> targetLabel = const Value.absent(),
   }) => NotificationEntry(
     id: id ?? this.id,
     packageName: packageName ?? this.packageName,
@@ -923,6 +992,8 @@ class NotificationEntry extends DataClass
     reviewed: reviewed ?? this.reviewed,
     dismissed: dismissed ?? this.dismissed,
     createdAt: createdAt ?? this.createdAt,
+    userRating: userRating.present ? userRating.value : this.userRating,
+    targetLabel: targetLabel.present ? targetLabel.value : this.targetLabel,
   );
   NotificationEntry copyWithCompanion(NotificationsTableCompanion data) {
     return NotificationEntry(
@@ -974,6 +1045,12 @@ class NotificationEntry extends DataClass
       reviewed: data.reviewed.present ? data.reviewed.value : this.reviewed,
       dismissed: data.dismissed.present ? data.dismissed.value : this.dismissed,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      userRating: data.userRating.present
+          ? data.userRating.value
+          : this.userRating,
+      targetLabel: data.targetLabel.present
+          ? data.targetLabel.value
+          : this.targetLabel,
     );
   }
 
@@ -1003,7 +1080,9 @@ class NotificationEntry extends DataClass
           ..write('finalScore: $finalScore, ')
           ..write('reviewed: $reviewed, ')
           ..write('dismissed: $dismissed, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('userRating: $userRating, ')
+          ..write('targetLabel: $targetLabel')
           ..write(')'))
         .toString();
   }
@@ -1034,6 +1113,8 @@ class NotificationEntry extends DataClass
     reviewed,
     dismissed,
     createdAt,
+    userRating,
+    targetLabel,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -1062,7 +1143,9 @@ class NotificationEntry extends DataClass
           other.finalScore == this.finalScore &&
           other.reviewed == this.reviewed &&
           other.dismissed == this.dismissed &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.userRating == this.userRating &&
+          other.targetLabel == this.targetLabel);
 }
 
 class NotificationsTableCompanion extends UpdateCompanion<NotificationEntry> {
@@ -1090,6 +1173,8 @@ class NotificationsTableCompanion extends UpdateCompanion<NotificationEntry> {
   final Value<bool> reviewed;
   final Value<bool> dismissed;
   final Value<DateTime> createdAt;
+  final Value<int?> userRating;
+  final Value<String?> targetLabel;
   final Value<int> rowid;
   const NotificationsTableCompanion({
     this.id = const Value.absent(),
@@ -1116,6 +1201,8 @@ class NotificationsTableCompanion extends UpdateCompanion<NotificationEntry> {
     this.reviewed = const Value.absent(),
     this.dismissed = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.userRating = const Value.absent(),
+    this.targetLabel = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   NotificationsTableCompanion.insert({
@@ -1143,6 +1230,8 @@ class NotificationsTableCompanion extends UpdateCompanion<NotificationEntry> {
     this.reviewed = const Value.absent(),
     this.dismissed = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.userRating = const Value.absent(),
+    this.targetLabel = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        packageName = Value(packageName),
@@ -1175,6 +1264,8 @@ class NotificationsTableCompanion extends UpdateCompanion<NotificationEntry> {
     Expression<bool>? reviewed,
     Expression<bool>? dismissed,
     Expression<DateTime>? createdAt,
+    Expression<int>? userRating,
+    Expression<String>? targetLabel,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1202,6 +1293,8 @@ class NotificationsTableCompanion extends UpdateCompanion<NotificationEntry> {
       if (reviewed != null) 'reviewed': reviewed,
       if (dismissed != null) 'dismissed': dismissed,
       if (createdAt != null) 'created_at': createdAt,
+      if (userRating != null) 'user_rating': userRating,
+      if (targetLabel != null) 'target_label': targetLabel,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1231,6 +1324,8 @@ class NotificationsTableCompanion extends UpdateCompanion<NotificationEntry> {
     Value<bool>? reviewed,
     Value<bool>? dismissed,
     Value<DateTime>? createdAt,
+    Value<int?>? userRating,
+    Value<String?>? targetLabel,
     Value<int>? rowid,
   }) {
     return NotificationsTableCompanion(
@@ -1258,6 +1353,8 @@ class NotificationsTableCompanion extends UpdateCompanion<NotificationEntry> {
       reviewed: reviewed ?? this.reviewed,
       dismissed: dismissed ?? this.dismissed,
       createdAt: createdAt ?? this.createdAt,
+      userRating: userRating ?? this.userRating,
+      targetLabel: targetLabel ?? this.targetLabel,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1343,6 +1440,12 @@ class NotificationsTableCompanion extends UpdateCompanion<NotificationEntry> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (userRating.present) {
+      map['user_rating'] = Variable<int>(userRating.value);
+    }
+    if (targetLabel.present) {
+      map['target_label'] = Variable<String>(targetLabel.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1376,6 +1479,8 @@ class NotificationsTableCompanion extends UpdateCompanion<NotificationEntry> {
           ..write('reviewed: $reviewed, ')
           ..write('dismissed: $dismissed, ')
           ..write('createdAt: $createdAt, ')
+          ..write('userRating: $userRating, ')
+          ..write('targetLabel: $targetLabel, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2772,6 +2877,8 @@ typedef $$NotificationsTableTableCreateCompanionBuilder =
       Value<bool> reviewed,
       Value<bool> dismissed,
       Value<DateTime> createdAt,
+      Value<int?> userRating,
+      Value<String?> targetLabel,
       Value<int> rowid,
     });
 typedef $$NotificationsTableTableUpdateCompanionBuilder =
@@ -2800,6 +2907,8 @@ typedef $$NotificationsTableTableUpdateCompanionBuilder =
       Value<bool> reviewed,
       Value<bool> dismissed,
       Value<DateTime> createdAt,
+      Value<int?> userRating,
+      Value<String?> targetLabel,
       Value<int> rowid,
     });
 
@@ -2974,6 +3083,16 @@ class $$NotificationsTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get userRating => $composableBuilder(
+    column: $table.userRating,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get targetLabel => $composableBuilder(
+    column: $table.targetLabel,
+    builder: (column) => ColumnFilters(column),
+  );
+
   Expression<bool> reviewQueueTableRefs(
     Expression<bool> Function($$ReviewQueueTableTableFilterComposer f) f,
   ) {
@@ -3128,6 +3247,16 @@ class $$NotificationsTableTableOrderingComposer
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get userRating => $composableBuilder(
+    column: $table.userRating,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get targetLabel => $composableBuilder(
+    column: $table.targetLabel,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$NotificationsTableTableAnnotationComposer
@@ -3236,6 +3365,16 @@ class $$NotificationsTableTableAnnotationComposer
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
+  GeneratedColumn<int> get userRating => $composableBuilder(
+    column: $table.userRating,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get targetLabel => $composableBuilder(
+    column: $table.targetLabel,
+    builder: (column) => column,
+  );
+
   Expression<T> reviewQueueTableRefs<T extends Object>(
     Expression<T> Function($$ReviewQueueTableTableAnnotationComposer a) f,
   ) {
@@ -3320,6 +3459,8 @@ class $$NotificationsTableTableTableManager
                 Value<bool> reviewed = const Value.absent(),
                 Value<bool> dismissed = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<int?> userRating = const Value.absent(),
+                Value<String?> targetLabel = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => NotificationsTableCompanion(
                 id: id,
@@ -3346,6 +3487,8 @@ class $$NotificationsTableTableTableManager
                 reviewed: reviewed,
                 dismissed: dismissed,
                 createdAt: createdAt,
+                userRating: userRating,
+                targetLabel: targetLabel,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -3375,6 +3518,8 @@ class $$NotificationsTableTableTableManager
                 Value<bool> reviewed = const Value.absent(),
                 Value<bool> dismissed = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<int?> userRating = const Value.absent(),
+                Value<String?> targetLabel = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => NotificationsTableCompanion.insert(
                 id: id,
@@ -3401,6 +3546,8 @@ class $$NotificationsTableTableTableManager
                 reviewed: reviewed,
                 dismissed: dismissed,
                 createdAt: createdAt,
+                userRating: userRating,
+                targetLabel: targetLabel,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
