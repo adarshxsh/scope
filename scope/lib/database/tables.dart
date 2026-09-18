@@ -65,3 +65,13 @@ class DailyBriefTable extends Table {
   IntColumn get remindersCreated => integer().withDefault(const Constant(0))();
   IntColumn get archivedCount => integer().withDefault(const Constant(0))();
 }
+
+@DataClassName('PrivacyLedgerEntry')
+class PrivacyLedgerTable extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get date => text()(); // YYYY-MM-DD
+  RealColumn get epsilonSpent => real().withDefault(const Constant(0.0))();
+  RealColumn get deltaSpent => real().withDefault(const Constant(0.0))();
+  IntColumn get queryCount => integer().withDefault(const Constant(0))();
+  DateTimeColumn get lastUpdated => dateTime().withDefault(currentDateAndTime)();
+}

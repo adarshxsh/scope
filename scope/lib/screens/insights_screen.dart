@@ -1,6 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/privacy/privacy_budget_manager.dart';
 import 'package:scope/core/state/notification_controller.dart';
 import 'package:scope/core/utils/focus_area_mapper.dart';
 import 'package:scope/theme/app_colors.dart';
@@ -11,7 +12,25 @@ import 'package:scope/widgets/primitives/scope_surface.dart';
 import 'package:scope/widgets/scope_screen_body.dart';
 import 'package:scope/widgets/section_header.dart';
 
-/// Analytics overview using beautiful fl_charts.
+class _PrivacyInsightsData {
+  final Map<String, NoisedQueryResult<int>> priorities;
+  final List<NoisedQueryResult<num>> hourlyVolume;
+  final NoisedQueryResult<int> totalCaptured;
+  final Map<FocusArea, NoisedQueryResult<int>> focusCounts;
+  final NoisedQueryResult<int> focusDuration;
+  final PrivacyBudgetStatus status;
+
+  _PrivacyInsightsData({
+    required this.priorities,
+    required this.hourlyVolume,
+    required this.totalCaptured,
+    required this.focusCounts,
+    required this.focusDuration,
+    required this.status,
+  });
+}
+
+/// Analytics overview using differential privacy protected fl_charts.
 class InsightsScreen extends StatefulWidget {
   final NotificationController controller;
 
@@ -24,25 +43,37 @@ class InsightsScreen extends StatefulWidget {
 class _InsightsScreenState extends State<InsightsScreen> {
   int _touchedPieIndex = -1;
   int _touchedBarIndex = -1;
+  late Future<_PrivacyInsightsData> _insightsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _insightsFuture = _fetchPrivacyProtectedData();
+  }
+
+  Future<_PrivacyInsightsData> _fetchPrivacyProtectedData() async {
+    final status = await widget.controller.getPrivacyBudgetStatus();
+    final priorities = await widget.controller.getNoisedPriorityDistribution();
+    final hourly = await widget.controller.getNoisedHourlyVolume();
+    final totalCaptured = await widget.controller.getNoisedTotalCapturedCount();
+    final focusCounts = await widget.controller.getNoisedFocusAreaCounts();
+    final focusDuration = await widget.controller.getNoisedTotalFocusDuration();
+
+    return _PrivacyInsightsData(
+      priorities: priorities,
+      hourlyVolume: hourly,
+      totalCaptured: totalCaptured,
+      focusCounts: focusCounts,
+      focusDuration: focusDuration,
+      status: status,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final notifications = widget.controller.notifications;
-    final priorities = {'critical': 0, 'high': 0, 'medium': 0, 'low': 0};
-    
-    // Group by hour
-    final hourlyVolume = List<int>.filled(24, 0);
 
-    for (final n in notifications) {
-      final p = n.priority ?? 'medium';
-      priorities[p] = (priorities[p] ?? 0) + 1;
-      
-      final hour = DateTime.fromMillisecondsSinceEpoch(n.timestamp).hour;
-      hourlyVolume[hour]++;
-    }
-
-    final focusCounts = widget.controller.focusAreaCounts;
     final withLatency = notifications.where((n) => n.latencyMs != null).toList();
     final avgLatency = withLatency.isEmpty
         ? 0
@@ -50,223 +81,313 @@ class _InsightsScreenState extends State<InsightsScreen> {
 
     return SafeArea(
       child: ScopeScreenBody(
-        child: ListView(
-          padding: const EdgeInsets.only(bottom: AppSpacing.xl),
-          children: [
-            const SectionHeader(
-              title: 'Insights',
-              subtitle: 'How your attention is distributed.',
-            ),
-            
-            // Priority Pie Chart
-            ScopeSurface(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Priority Distribution', style: theme.textTheme.titleMedium),
-                  const SizedBox(height: AppSpacing.xl),
-                  SizedBox(
-                    height: 220,
-                    child: Stack(
-                      alignment: Alignment.center,
+        child: FutureBuilder<_PrivacyInsightsData>(
+          future: _insightsFuture,
+          builder: (context, snapshot) {
+            final data = snapshot.data;
+
+            // Fallback default or loading state data if waiting
+            final priorityMap = <String, int>{
+              'critical': data?.priorities['critical']?.noisedInt ?? 0,
+              'high': data?.priorities['high']?.noisedInt ?? 0,
+              'medium': data?.priorities['medium']?.noisedInt ?? 0,
+              'low': data?.priorities['low']?.noisedInt ?? 0,
+            };
+
+            final hourlyVolume = data?.hourlyVolume.map((e) => e.noisedValue.round()).toList() ??
+                List<int>.filled(24, 0);
+
+            final totalCapturedDisplay = data?.totalCaptured.isBudgetExhausted == true
+                ? (data?.totalCaptured.coarsenedBounds ?? '~')
+                : '${data?.totalCaptured.noisedInt ?? notifications.length}';
+
+            final isExhausted = data?.status.isExhausted ?? false;
+
+            return ListView(
+              padding: const EdgeInsets.only(bottom: AppSpacing.xl),
+              children: [
+                const SectionHeader(
+                  title: 'Insights',
+                  subtitle: 'How your attention is distributed (DP Protected).',
+                ),
+
+                // Privacy Budget Ledger Banner / Exhaustion Indicator
+                if (data != null) ...[
+                  ScopeSurface(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: Row(
                       children: [
-                        PieChart(
-                          PieChartData(
-                            pieTouchData: PieTouchData(
-                              touchCallback: (FlTouchEvent event, pieTouchResponse) {
-                                setState(() {
-                                  if (!event.isInterestedForInteractions ||
-                                      pieTouchResponse == null ||
-                                      pieTouchResponse.touchedSection == null) {
-                                    _touchedPieIndex = -1;
-                                    return;
-                                  }
-                                  _touchedPieIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
-                                });
-                              },
-                            ),
-                            borderData: FlBorderData(show: false),
-                            sectionsSpace: 4,
-                            centerSpaceRadius: 60,
-                            sections: _buildPieSections(priorities, notifications.length),
-                          ),
+                        Icon(
+                          isExhausted ? Icons.warning_amber_rounded : Icons.shield,
+                          color: isExhausted ? Colors.orangeAccent : AppColors.seed,
+                          size: 22,
                         ),
-                        // Center text
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              '${notifications.length}',
-                              style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
-                            ),
-                            Text(
-                              'Total',
-                              style: theme.textTheme.bodySmall?.copyWith(color: Colors.white54),
-                            ),
-                          ],
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isExhausted
+                                    ? 'Privacy Budget Exhausted'
+                                    : 'Differential Privacy Active',
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  color: isExhausted ? Colors.orangeAccent : Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                isExhausted
+                                    ? 'Daily budget limit (${data.status.dailyCap.toStringAsFixed(1)} ε) exceeded. Displaying coarsened bounds.'
+                                    : 'Remaining budget today: ${data.status.remainingDaily.toStringAsFixed(2)} / ${data.status.dailyCap.toStringAsFixed(1)} ε',
+                                style: theme.textTheme.bodySmall?.copyWith(color: Colors.white70),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.lg),
-                  _buildLegend(),
-                ],
-              ),
-            ),
-            
-            const SizedBox(height: AppSpacing.md),
-            
-            // Hourly Volume Bar Chart
-            ScopeSurface(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Hourly Volume', style: theme.textTheme.titleMedium),
                   const SizedBox(height: AppSpacing.md),
-                  Text('When you receive the most notifications', style: theme.textTheme.bodySmall?.copyWith(color: Colors.white54)),
-                  const SizedBox(height: AppSpacing.xl),
-                  SizedBox(
-                    height: 200,
-                    child: BarChart(
-                      BarChartData(
-                        alignment: BarChartAlignment.spaceAround,
-                        barTouchData: BarTouchData(
-                          touchTooltipData: BarTouchTooltipData(
-                            getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                              return BarTooltipItem(
-                                '${rod.toY.round()} msgs\n',
-                                const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                                children: <TextSpan>[
-                                  TextSpan(
-                                    text: '${group.x.toString().padLeft(2, '0')}:00',
-                                    style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.normal),
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
-                          touchCallback: (FlTouchEvent event, barTouchResponse) {
-                            setState(() {
-                              if (!event.isInterestedForInteractions ||
-                                  barTouchResponse == null ||
-                                  barTouchResponse.spot == null) {
-                                _touchedBarIndex = -1;
-                                return;
-                              }
-                              _touchedBarIndex = barTouchResponse.spot!.touchedBarGroupIndex;
-                            });
-                          },
-                        ),
-                        titlesData: FlTitlesData(
-                          show: true,
-                          bottomTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              getTitlesWidget: (value, meta) {
-                                // Show title every 6 hours
-                                if (value % 6 != 0) return const SizedBox.shrink();
-                                return Padding(
-                                  padding: const EdgeInsets.only(top: 8.0),
-                                  child: Text(
-                                    '${value.toInt().toString().padLeft(2, '0')}:00',
-                                    style: const TextStyle(color: Colors.white54, fontSize: 10),
-                                  ),
-                                );
-                              },
-                              reservedSize: 28,
-                            ),
-                          ),
-                          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                        ),
-                        gridData: const FlGridData(show: false),
-                        borderData: FlBorderData(show: false),
-                        barGroups: _buildBarGroups(hourlyVolume),
-                      ),
-                    ),
-                  ),
                 ],
-              ),
-            ),
-            
-            const SizedBox(height: AppSpacing.md),
-            
-            // Overview Analysis
-            ScopeSurface(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Analysis Overview', style: theme.textTheme.titleMedium),
-                  const SizedBox(height: AppSpacing.md),
-                  ScopeRow.info(label: 'Total captured', value: '${notifications.length}'),
-                  ScopeRow.info(label: 'Needs action', value: '${widget.controller.needsAction.length}'),
-                  ScopeRow.info(label: 'Completed today', value: '${widget.controller.completedToday.length}'),
-                  ScopeRow.info(label: 'Avg AI latency (ms)', value: '$avgLatency'),
-                ],
-              ),
-            ),
-            
-            const SizedBox(height: AppSpacing.md),
-            
-            // Focus Areas
-            ScopeSurface(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Focus Areas', style: theme.textTheme.titleMedium),
-                  const SizedBox(height: AppSpacing.md),
-                  ...FocusArea.values.map(
-                    (area) => Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              ScopeIconBox(icon: area.icon, size: ScopeIconBoxSize.sm),
-                              const SizedBox(width: AppSpacing.sm),
-                              Text(area.label, style: theme.textTheme.bodyMedium),
-                            ],
-                          ),
-                          Text('${focusCounts[area]}', style: theme.textTheme.titleSmall),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            const SizedBox(height: AppSpacing.md),
-            
-            // Ghost AI Insights
-            ScopeSurface(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+
+                // Priority Pie Chart
+                ScopeSurface(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.auto_awesome, color: AppColors.medium, size: 20),
-                      const SizedBox(width: AppSpacing.sm),
-                      Text('Ghost AI Insights', style: theme.textTheme.titleMedium),
+                      Text('Priority Distribution', style: theme.textTheme.titleMedium),
+                      const SizedBox(height: AppSpacing.xl),
+                      SizedBox(
+                        height: 220,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            PieChart(
+                              PieChartData(
+                                pieTouchData: PieTouchData(
+                                  touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                                    setState(() {
+                                      if (!event.isInterestedForInteractions ||
+                                          pieTouchResponse == null ||
+                                          pieTouchResponse.touchedSection == null) {
+                                        _touchedPieIndex = -1;
+                                        return;
+                                      }
+                                      _touchedPieIndex =
+                                          pieTouchResponse.touchedSection!.touchedSectionIndex;
+                                    });
+                                  },
+                                ),
+                                borderData: FlBorderData(show: false),
+                                sectionsSpace: 4,
+                                centerSpaceRadius: 60,
+                                sections: _buildPieSections(priorityMap, notifications.length),
+                              ),
+                            ),
+                            // Center text
+                            Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  totalCapturedDisplay,
+                                  style: theme.textTheme.headlineMedium
+                                      ?.copyWith(fontWeight: FontWeight.bold),
+                                ),
+                                Text(
+                                  'Total',
+                                  style: theme.textTheme.bodySmall?.copyWith(color: Colors.white54),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      _buildLegend(),
                     ],
                   ),
-                  const SizedBox(height: AppSpacing.md),
-                  ..._generateDynamicInsights(notifications, hourlyVolume, focusCounts, theme),
-                ],
-              ),
-            ),
-          ],
+                ),
+
+                const SizedBox(height: AppSpacing.md),
+
+                // Hourly Volume Bar Chart
+                ScopeSurface(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Hourly Volume', style: theme.textTheme.titleMedium),
+                      const SizedBox(height: AppSpacing.md),
+                      Text('When you receive the most notifications',
+                          style: theme.textTheme.bodySmall?.copyWith(color: Colors.white54)),
+                      const SizedBox(height: AppSpacing.xl),
+                      SizedBox(
+                        height: 200,
+                        child: BarChart(
+                          BarChartData(
+                            alignment: BarChartAlignment.spaceAround,
+                            barTouchData: BarTouchData(
+                              touchTooltipData: BarTouchTooltipData(
+                                getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                                  return BarTooltipItem(
+                                    '${rod.toY.round()} msgs\n',
+                                    const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                    children: <TextSpan>[
+                                      TextSpan(
+                                        text: '${group.x.toString().padLeft(2, '0')}:00',
+                                        style: const TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.normal),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                              touchCallback: (FlTouchEvent event, barTouchResponse) {
+                                setState(() {
+                                  if (!event.isInterestedForInteractions ||
+                                      barTouchResponse == null ||
+                                      barTouchResponse.spot == null) {
+                                    _touchedBarIndex = -1;
+                                    return;
+                                  }
+                                  _touchedBarIndex = barTouchResponse.spot!.touchedBarGroupIndex;
+                                });
+                              },
+                            ),
+                            titlesData: FlTitlesData(
+                              show: true,
+                              bottomTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  getTitlesWidget: (value, meta) {
+                                    if (value % 6 != 0) return const SizedBox.shrink();
+                                    return Padding(
+                                      padding: const EdgeInsets.only(top: 8.0),
+                                      child: Text(
+                                        '${value.toInt().toString().padLeft(2, '0')}:00',
+                                        style: const TextStyle(color: Colors.white54, fontSize: 10),
+                                      ),
+                                    );
+                                  },
+                                  reservedSize: 28,
+                                ),
+                              ),
+                              leftTitles:
+                                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                              topTitles:
+                                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                              rightTitles:
+                                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                            ),
+                            gridData: const FlGridData(show: false),
+                            borderData: FlBorderData(show: false),
+                            barGroups: _buildBarGroups(hourlyVolume),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: AppSpacing.md),
+
+                // Overview Analysis
+                ScopeSurface(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Analysis Overview', style: theme.textTheme.titleMedium),
+                      const SizedBox(height: AppSpacing.md),
+                      ScopeRow.info(label: 'Total captured', value: totalCapturedDisplay),
+                      ScopeRow.info(
+                          label: 'Needs action', value: '${widget.controller.needsAction.length}'),
+                      ScopeRow.info(
+                          label: 'Completed today',
+                          value: '${widget.controller.completedToday.length}'),
+                      ScopeRow.info(label: 'Avg AI latency (ms)', value: '$avgLatency'),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: AppSpacing.md),
+
+                // Focus Areas
+                ScopeSurface(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Focus Areas', style: theme.textTheme.titleMedium),
+                      const SizedBox(height: AppSpacing.md),
+                      ...FocusArea.values.map(
+                        (area) {
+                          final countResult = data?.focusCounts[area];
+                          final countStr = countResult?.isBudgetExhausted == true
+                              ? (countResult?.coarsenedBounds ?? '~')
+                              : '${countResult?.noisedInt ?? widget.controller.focusAreaCounts[area] ?? 0}';
+
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    ScopeIconBox(icon: area.icon, size: ScopeIconBoxSize.sm),
+                                    const SizedBox(width: AppSpacing.sm),
+                                    Text(area.label, style: theme.textTheme.bodyMedium),
+                                  ],
+                                ),
+                                Text(countStr, style: theme.textTheme.titleSmall),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: AppSpacing.md),
+
+                // Ghost AI Insights
+                ScopeSurface(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.auto_awesome, color: AppColors.medium, size: 20),
+                          const SizedBox(width: AppSpacing.sm),
+                          Text('Ghost AI Insights', style: theme.textTheme.titleMedium),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      ..._generateDynamicInsights(
+                          notifications,
+                          hourlyVolume,
+                          data?.focusCounts
+                                  .map((k, v) => MapEntry(k, v.noisedInt)) ??
+                              widget.controller.focusAreaCounts,
+                          theme),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
   }
+
 
   List<Widget> _generateDynamicInsights(
     List<AppNotification> notifications,
