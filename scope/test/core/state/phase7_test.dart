@@ -1,25 +1,37 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:drift/native.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/state/notification_controller.dart';
 import 'package:scope/core/state/providers.dart';
 import 'package:scope/core/utils/focus_area_mapper.dart';
+import 'package:scope/database/attention_database.dart';
+import 'package:scope/database/database_provider.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('Phase 7 State Consistency and Focus Queue Tests', () {
+    late AttentionDatabase db;
     late ProviderContainer container;
     late NotificationController controller;
 
-    setUp(() {
-      container = ProviderContainer();
+    setUp(() async {
+      db = AttentionDatabase(NativeDatabase.memory());
+      container = ProviderContainer(
+        overrides: [
+          databaseProvider.overrideWithValue(db),
+        ],
+      );
       controller = NotificationController(container: container);
+      await Future.delayed(const Duration(milliseconds: 50));
     });
 
-    tearDown(() {
+    tearDown(() async {
+      await Future.delayed(const Duration(milliseconds: 50));
       controller.dispose();
       container.dispose();
+      await db.close();
     });
 
     test('Stable ID generation using DJB2 hashing', () {
