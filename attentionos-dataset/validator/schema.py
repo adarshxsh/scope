@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from sanitizer.privacy import validate_privacy_compliance
+
 REQUIRED_FIELDS = {
     "id",
     "app_name",
@@ -35,4 +37,8 @@ def validate_record(record: dict) -> list[str]:
     score = record.get("priority_score")
     if not isinstance(score, int) or score < 0 or score > 100:
         errors.append("priority_score must be an integer in 0..100")
+    
+    privacy_errors = validate_privacy_compliance(record)
+    errors.extend(privacy_errors)
+
     return errors
