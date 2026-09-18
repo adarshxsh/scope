@@ -62,8 +62,12 @@ class GhostAI {
     try {
       // 1. Load interpreter from assets
       _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      final inputShape = _interpreter!.getInputTensor(0).shape;
+      debugPrint(
+        'GhostAI: TFLite interpreter loaded successfully. Input tensor shape: $inputShape',
+      );
     } catch (e) {
+      _interpreter = null;
       debugPrint('GhostAI: Failed to load TFLite model: $e');
     }
 
@@ -71,7 +75,9 @@ class GhostAI {
       // 2. Load and compile rules database
       final jsonStr = await rootBundle.loadString('assets/rules.json');
       _ruleEngine.compile(jsonStr);
-      debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
+      debugPrint(
+        'GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).',
+      );
     } catch (e) {
       debugPrint('GhostAI: Failed to initialize rules database: $e');
     }
@@ -86,23 +92,42 @@ class GhostAI {
     final stopwatch = Stopwatch()..start();
 
     // 1. Feature extraction using the existing FeatureExtractor
-    final featureVector = FeatureExtractor.extractFromAppNotification(notification);
+    final featureVector =
+        FeatureExtractor.extractFromAppNotification(notification);
 
     // 2. Model inference
     double predictedScore = 0.0;
     int inferenceTimeUs = 0;
 
     if (_interpreter != null) {
-      final input = [featureVector];
-      final output = List<double>.filled(1, 0.0).reshape([1, 1]);
+      try {
+        final inputShape = _interpreter!.getInputTensor(0).shape;
+        final expectedSize =
+            inputShape.length > 1 ? inputShape[1] : inputShape[0];
 
-      final inferStopwatch = Stopwatch()..start();
-      _interpreter!.run(input, output);
-      inferStopwatch.stop();
+        if (featureVector.length != expectedSize) {
+          debugPrint(
+            'GhostAI: Feature vector size (${featureVector.length}) does not match model input shape $inputShape. Falling back to heuristics.',
+          );
+          predictedScore = _heuristicLookAgainScore(featureVector);
+        } else {
+          final input = [featureVector];
+          final output = List<double>.filled(1, 0.0).reshape([1, 1]);
 
-      inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
-      // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
-      predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+          final inferStopwatch = Stopwatch()..start();
+          _interpreter!.run(input, output);
+          inferStopwatch.stop();
+
+          inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
+          // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
+          predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+        }
+      } catch (e) {
+        debugPrint(
+          'GhostAI: TFLite inference execution failed: $e. Falling back to heuristics.',
+        );
+        predictedScore = _heuristicLookAgainScore(featureVector);
+      }
     } else {
       // Heuristic fallback if model not loaded
       predictedScore = _heuristicLookAgainScore(featureVector);
@@ -147,8 +172,8 @@ class GhostAI {
     }
 
     // 5. Apply deterministic overrides (expired OTP, expired reminders, duplicates, completed tasks)
-    final hasOtp = featureVector[11] == 1.0; // contains_otp
-    final hasDeadline = featureVector[27] == 1.0; // contains_deadline
+    final hasOtp = featureVector.getFeature('contains_otp') == 1.0;
+    final hasDeadline = featureVector.getFeature('contains_deadline') == 1.0;
 
     if (hasOtp && _isOtpExpired(notification)) {
       finalScore = 0.0;
@@ -168,7 +193,9 @@ class GhostAI {
     final result = GhostAIResult(
       reviewScore: finalScore,
       confidence: 1.0,
-      inferenceTimeUs: inferenceTimeUs > 0 ? inferenceTimeUs : stopwatch.elapsedMicroseconds,
+      inferenceTimeUs: inferenceTimeUs > 0
+          ? inferenceTimeUs
+          : stopwatch.elapsedMicroseconds,
       featureVector: featureVector,
       predictedScore: predictedScore,
       ruleScore: ruleScore,
@@ -184,10 +211,13 @@ class GhostAI {
 
   /// Helper to compute heuristic score if model is not loaded.
   double _heuristicLookAgainScore(List<double> featureVector) {
-    if (featureVector[11] == 1.0) return 1.0; // OTP
-    if (featureVector[20] == 1.0) return 0.05; // Promo
-    if (featureVector[10] == 1.0) return 0.85; // Money/finance
-    if (featureVector[27] == 1.0) return 0.80; // Deadline
+    if (featureVector.getFeature('contains_otp') == 1.0) return 1.0;
+    if (featureVector.getFeature('is_promotion') == 1.0 ||
+        featureVector.getFeature('contains_discount') == 1.0) {
+      return 0.05;
+    }
+    if (featureVector.getFeature('contains_money') == 1.0) return 0.85;
+    if (featureVector.getFeature('contains_deadline') == 1.0) return 0.80;
     return 0.35; // Default medium-low fallback
   }
 
