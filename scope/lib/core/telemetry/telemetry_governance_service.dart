@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'package:drift/drift.dart';
 import 'package:scope/database/attention_database.dart';
 
 /// TelemetryGovernanceService enforces on-device differential privacy governance

@@ -1,7 +1,6 @@
 import 'dart:math';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/native.dart';
-import 'package:drift/drift.dart' show Value;
 import 'package:scope/core/telemetry/telemetry_governance_service.dart';
 import 'package:scope/database/attention_database.dart';
 
