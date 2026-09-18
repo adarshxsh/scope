@@ -391,16 +391,17 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
                 ],
               ),
               const Divider(height: 20),
-              _buildFeatureRow('OTP Code', otp),
-              _buildFeatureRow('Transaction Amount', amountStr),
+              _buildFeatureRow('OTP Code', otp != null ? '[REDACTED_OTP]' : null),
+              _buildFeatureRow('Transaction Amount', amountStr != null ? 'Rs. [REDACTED_AMOUNT]' : null),
               _buildFeatureRow('Has Deadline Warning', hasDeadline),
               _buildFeatureRow('Hyperlinks (URLs)', urlsStr),
-              _buildFeatureRow('Emails', emailsStr),
-              _buildFeatureRow('Phone Numbers', phoneNumbersStr),
+              _buildFeatureRow('Emails', emailsStr != null ? '[REDACTED_EMAIL]' : null),
+              _buildFeatureRow('Phone Numbers', phoneNumbersStr != null ? '[REDACTED_PHONE]' : null),
             ],
           ),
         ),
         const SizedBox(height: 12),
+
 
         // 3. Versions and Metadata
         ScopeCard(
