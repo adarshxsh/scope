@@ -168,7 +168,7 @@ class ReviewCard extends StatelessWidget {
 
   bool _hasDetectedInfo(ExtractedFeatures features) {
     return features.hasDeadline ||
-        features.amount != null ||
+        features.hasAmount ||
         features.urls.isNotEmpty ||
         features.phoneNumbers.isNotEmpty;
   }
@@ -196,12 +196,26 @@ class DetectedInfoPanel extends StatelessWidget {
         const SizedBox(height: AppSpacing.sm),
         if (features.hasDeadline)
           _DetectedLine(icon: Icons.event, text: 'Deadline detected', color: rowColor),
-        if (features.amount != null)
-          _DetectedLine(icon: Icons.currency_rupee, text: '₹${features.amount}', color: rowColor),
+        if (features.hasAmount)
+          _DetectedLine(
+            icon: Icons.currency_rupee,
+            text: (features.amountDisplay != null && features.amountDisplay!.contains('REDACTED'))
+                ? features.amountDisplay!
+                : (features.amount != null ? '₹${features.amount}' : '[REDACTED_AMOUNT]'),
+            color: rowColor,
+          ),
         if (features.urls.isNotEmpty)
-          _DetectedLine(icon: Icons.link, text: features.urls.first, color: rowColor),
+          _DetectedLine(
+            icon: Icons.link,
+            text: features.urls.first.contains('REDACTED') ? features.urls.first : '[REDACTED_URL]',
+            color: rowColor,
+          ),
         if (features.phoneNumbers.isNotEmpty)
-          _DetectedLine(icon: Icons.phone, text: features.phoneNumbers.first, color: rowColor),
+          _DetectedLine(
+            icon: Icons.phone,
+            text: features.phoneNumbers.first.contains('REDACTED') ? features.phoneNumbers.first : '[REDACTED_PHONE]',
+            color: rowColor,
+          ),
       ],
     );
   }
