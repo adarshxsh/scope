@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
 import 'package:scope/core/models/notification_model.dart';
@@ -34,6 +35,42 @@ void main() {
       expect(result.featureVector, isNotEmpty);
       expect(result.featureVector.length, equals(63));
       expect(result.predictedScore, equals(1.0)); // Heuristic fallback score for OTP
+    });
+
+    test('predict sanitizes notification title and content in structured debug logs', () async {
+      final printedLogs = <String>[];
+      final originalDebugPrint = debugPrint;
+      debugPrint = (String? message, {int? wrapWidth}) {
+        if (message != null) printedLogs.add(message);
+      };
+
+      try {
+        final sensitiveNotif = AppNotification(
+          id: 'secret-otp',
+          packageName: 'com.bank.app',
+          title: 'Secret Bank Code',
+          content: 'Your OTP is 998877 for transfer of \$500.00',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        await GhostAI.predict(sensitiveNotif);
+
+        expect(printedLogs, isNotEmpty);
+        final combinedLog = printedLogs.join('\n');
+
+        expect(combinedLog.contains('Secret Bank Code'), isFalse);
+        expect(combinedLog.contains('998877'), isFalse);
+        expect(combinedLog.contains('\$500.00'), isFalse);
+
+        expect(combinedLog.contains('[REDACTED len=${'Secret Bank Code'.length}]'), isTrue);
+        expect(combinedLog.contains('[REDACTED len=${'Your OTP is 998877 for transfer of \$500.00'.length}]'), isTrue);
+
+        expect(combinedLog.contains('Package: com.bank.app'), isTrue);
+        expect(combinedLog.contains('Inference Time:'), isTrue);
+        expect(combinedLog.contains('Final Fused Score:'), isTrue);
+      } finally {
+        debugPrint = originalDebugPrint;
+      }
     });
 
     group('Expired OTP Overrides', () {
