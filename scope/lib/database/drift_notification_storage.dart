@@ -6,15 +6,45 @@ class DriftNotificationStorage implements NotificationStorage {
   final AttentionDatabase _db;
   DriftNotificationStorage(this._db);
 
+  static const int maxCapacity = 500;
+
   @override
   Future<void> save(AppNotification notification) async {
-    await _db.notificationDao.insertNotification(_toEntry(notification));
+    try {
+      await _db.notificationDao.insertNotification(_toEntry(notification));
+      await _enforceCapacityLimit();
+    } catch (_) {
+      // Graceful error recovery during background notification processing
+    }
   }
 
   @override
   Future<void> saveAll(List<AppNotification> notifications) async {
-    final entries = notifications.map(_toEntry).toList();
-    await _db.notificationDao.insertAll(entries);
+    if (notifications.isEmpty) return;
+    try {
+      final entries = notifications.map(_toEntry).toList();
+      await _db.notificationDao.insertAll(entries);
+      await _enforceCapacityLimit();
+    } catch (_) {
+      // Graceful error recovery during background notification processing
+    }
+  }
+
+  Future<void> _enforceCapacityLimit() async {
+    try {
+      final count = await _db.notificationDao.getCount();
+      if (count > maxCapacity) {
+        final excess = count - maxCapacity;
+        // Fetch oldest entries to delete
+        final allEntries = await _db.notificationDao.getAll();
+        final toDelete = allEntries.reversed.take(excess);
+        for (final entry in toDelete) {
+          await (_db.delete(_db.notificationsTable)..where((t) => t.id.equals(entry.id))).go();
+        }
+      }
+    } catch (_) {
+      // Graceful recovery if database connection is closed or undergoing background cleanup
+    }
   }
 
   @override
