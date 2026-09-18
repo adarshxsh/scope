@@ -41,9 +41,14 @@ class NotificationDao extends DatabaseAccessor<AttentionDatabase> with _$Notific
         .go();
   }
 
+  Future<int> deleteByIds(List<String> ids) {
+    return (delete(notificationsTable)..where((t) => t.id.isIn(ids))).go();
+  }
+
   Future<void> clearAll() async {
     await delete(notificationsTable).go();
   }
+
 
   Future<int> getCount() async {
     final countExpr = notificationsTable.id.count();
@@ -154,3 +159,25 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
     await delete(dailyBriefTable).go();
   }
 }
+
+@DriftAccessor(tables: [GuardrailSettingsTable])
+class GuardrailDao extends DatabaseAccessor<AttentionDatabase> with _$GuardrailDaoMixin {
+  GuardrailDao(super.db);
+
+  Future<void> setSetting(String key, String value) async {
+    await into(guardrailSettingsTable).insert(
+      GuardrailSettingEntry(key: key, value: value, updatedAt: DateTime.now()),
+      mode: InsertMode.insertOrReplace,
+    );
+  }
+
+  Future<String?> getSetting(String key) async {
+    final entry = await (select(guardrailSettingsTable)..where((t) => t.key.equals(key))).getSingleOrNull();
+    return entry?.value;
+  }
+
+  Future<void> clearAll() async {
+    await delete(guardrailSettingsTable).go();
+  }
+}
+

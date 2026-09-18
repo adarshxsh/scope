@@ -72,3 +72,19 @@ class DailyBriefDaoManager {
         _db.dailyBriefTable,
       );
 }
+
+mixin _$GuardrailDaoMixin on DatabaseAccessor<AttentionDatabase> {
+  $GuardrailSettingsTableTable get guardrailSettingsTable =>
+      attachedDatabase.guardrailSettingsTable;
+  GuardrailDaoManager get managers => GuardrailDaoManager(this);
+}
+
+class GuardrailDaoManager {
+  final _$GuardrailDaoMixin _db;
+  GuardrailDaoManager(this._db);
+  $$GuardrailSettingsTableTableTableManager get guardrailSettingsTable =>
+      $$GuardrailSettingsTableTableTableManager(
+        _db.attachedDatabase,
+        _db.guardrailSettingsTable,
+      );
+}
