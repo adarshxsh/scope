@@ -7,6 +7,8 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/database/tables.dart';
 import 'package:scope/database/daos.dart';
 import 'package:scope/database/converters.dart';
+import 'package:scope/database/secure_key_service.dart';
+import 'package:scope/database/database_migrator.dart';
 
 part 'attention_database.g.dart';
 
@@ -25,7 +27,8 @@ part 'attention_database.g.dart';
   ],
 )
 class AttentionDatabase extends _$AttentionDatabase {
-  AttentionDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
+  AttentionDatabase([QueryExecutor? executor, SecureKeyService? keyService])
+      : super(executor ?? _openConnection(keyService));
 
   factory AttentionDatabase.inMemory() {
     return AttentionDatabase(NativeDatabase.memory());
@@ -52,10 +55,22 @@ class AttentionDatabase extends _$AttentionDatabase {
   }
 }
 
-QueryExecutor _openConnection() {
+QueryExecutor _openConnection([SecureKeyService? keyService]) {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'attention_os.db'));
-    return NativeDatabase(file);
+    final service = keyService ?? SecureKeyService();
+    final key = await service.getOrCreateDatabaseKey();
+
+    await DatabaseMigrator.migrateUnencryptedDatabaseIfNeeded(file, key);
+
+    return NativeDatabase(
+      file,
+      setup: (rawDb) {
+        final escapedKey = key.replaceAll("'", "''");
+        rawDb.execute("PRAGMA key = '$escapedKey';");
+      },
+    );
   });
 }
+
