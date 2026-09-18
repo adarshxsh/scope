@@ -42,6 +42,11 @@ class _NotificationFeedScreenState extends State<NotificationFeedScreen> {
   List<AppNotification> _notifications = [];
   bool _isListenerEnabled = false;
   bool _isLoading = true;
+  bool _isFetching = false;
+  int _consecutiveEmptyPolls = 0;
+  Duration _currentPollInterval = const Duration(seconds: 3);
+  static const Duration _basePollInterval = Duration(seconds: 3);
+  static const Duration _maxPollInterval = Duration(seconds: 30);
   Timer? _pollTimer;
 
   @override
@@ -54,10 +59,15 @@ class _NotificationFeedScreenState extends State<NotificationFeedScreen> {
 
     // Initial check + start polling
     _checkPermissionAndFetch();
-    _pollTimer = Timer.periodic(
-      const Duration(seconds: 3),
-      (_) => _fetchNotifications(),
-    );
+    _scheduleNextPoll();
+  }
+
+  void _scheduleNextPoll() {
+    _pollTimer?.cancel();
+    if (!mounted) return;
+    _pollTimer = Timer.periodic(_currentPollInterval, (_) {
+      _fetchNotifications();
+    });
   }
 
   @override
@@ -68,11 +78,16 @@ class _NotificationFeedScreenState extends State<NotificationFeedScreen> {
 
   Future<void> _checkPermissionAndFetch() async {
     final enabled = await _bridge.isListenerEnabled();
-    setState(() => _isListenerEnabled = enabled);
+    if (mounted) {
+      setState(() => _isListenerEnabled = enabled);
+    }
     await _fetchNotifications();
   }
 
   Future<void> _fetchNotifications() async {
+    if (_isFetching) return;
+    _isFetching = true;
+
     try {
       // Pull new notifications from the Android side
       final newNotifications = await _bridge.getNotifications();
@@ -87,21 +102,39 @@ class _NotificationFeedScreenState extends State<NotificationFeedScreen> {
       // Save to storage
       if (analyzedNotifications.isNotEmpty) {
         await _storage.saveAll(analyzedNotifications);
+        _consecutiveEmptyPolls = 0;
+        if (_currentPollInterval != _basePollInterval) {
+          _currentPollInterval = _basePollInterval;
+          _scheduleNextPoll();
+        }
+      } else {
+        _consecutiveEmptyPolls++;
+        final nextSecs = (_basePollInterval.inSeconds + (_consecutiveEmptyPolls * 3))
+            .clamp(3, _maxPollInterval.inSeconds);
+        final newInterval = Duration(seconds: nextSecs);
+        if (newInterval != _currentPollInterval) {
+          _currentPollInterval = newInterval;
+          _scheduleNextPoll();
+        }
       }
 
       // Get all stored (sorted newest first)
       final all = await _storage.getAll();
 
       if (mounted) {
-        setState(() {
-          _notifications = all;
-          _isLoading = false;
-        });
+        if (analyzedNotifications.isNotEmpty || _isLoading || _notifications.length != all.length) {
+          setState(() {
+            _notifications = all;
+            _isLoading = false;
+          });
+        }
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && _isLoading) {
         setState(() => _isLoading = false);
       }
+    } finally {
+      _isFetching = false;
     }
   }
 
