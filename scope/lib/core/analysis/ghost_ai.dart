@@ -4,6 +4,8 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
+import 'package:scope/core/analysis/score_fusion.dart';
+import 'package:scope/core/analysis/metadata_analyzer.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -112,25 +114,16 @@ class GhostAI {
     final ruleMatch = _ruleEngine.match(notification);
     double? ruleScore;
     if (ruleMatch != null) {
-      switch (ruleMatch.priority) {
-        case 'critical':
-          ruleScore = 1.0;
-          break;
-        case 'high':
-          ruleScore = 0.85;
-          break;
-        case 'medium':
-          ruleScore = 0.50;
-          break;
-        case 'low':
-        default:
-          ruleScore = 0.15;
-          break;
-      }
+      ruleScore = ScoreFusion.rulePriorityToScore(ruleMatch.priority);
     }
 
-    // 4. Score Fusion (rules + predictions)
-    double finalScore = predictedScore;
+    final category = ruleMatch?.category ?? MetadataAnalyzer.getCategoryHint(notification) ?? 'default';
+
+    // Calibrate raw model score via Platt sigmoidal transformation
+    final calibratedModelScore = ScoreFusion.calibrateModelScore(predictedScore, category);
+
+    // 4. Score Fusion (rules + predictions using dynamic category precision weights)
+    double finalScore = calibratedModelScore;
     if (ruleScore != null && ruleMatch != null) {
       // Immediate critical bypass triggers
       final isCriticalBypass = ruleMatch.priority == 'critical' ||
@@ -141,8 +134,12 @@ class GhostAI {
       if (isCriticalBypass) {
         finalScore = 1.0;
       } else {
-        // Average rule score and predicted score
-        finalScore = (predictedScore + ruleScore) / 2.0;
+        // Dynamic precision weighted score fusion
+        finalScore = ScoreFusion.fuseRawScores(
+          calibratedModelScore: calibratedModelScore,
+          ruleScore: ruleScore,
+          category: category,
+        );
       }
     }
 
