@@ -1,0 +1,18 @@
+{
+  "version": "1.0",
+  "generated_at": "2026-09-10T22:26:59.785536Z",
+  "assets": {
+    "assets/model.tflite": {
+      "sha256": "63b815ce62f895e48347b9f775c7f529ca56a86733bb3d2601e50889b73d87c6",
+      "length": 77184
+    },
+    "assets/vocab.txt": {
+      "sha256": "6229da7b5527533c901e57b32dafc3c6fd701114a407d1fe4f5da60af3b062c5",
+      "length": 150
+    },
+    "assets/rules.json": {
+      "sha256": "547e8f356667e6437c101c874cc4a1fd085cf7554174ac5b460a801fbe571937",
+      "length": 2175
+    }
+  }
+}
