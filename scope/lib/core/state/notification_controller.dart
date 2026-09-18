@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:scope/core/analysis/feature_extractor.dart';
+import 'package:scope/core/analysis/ghost_ai.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
 import 'package:scope/core/models/notification_model.dart';
@@ -510,6 +513,33 @@ class NotificationController extends ChangeNotifier {
 
   void recordAction() {
     sessionStats.actionsCompleted++;
+    notifyListeners();
+  }
+
+  Future<void> recordRlhfFeedback({
+    required AppNotification notification,
+    required String feedbackType,
+    double? rewardValue,
+    String? correctedCategory,
+    String? correctedPriority,
+  }) async {
+    final featureVector = FeatureExtractor.extractFromAppNotification(notification);
+    final db = _container.read(databaseProvider);
+    await db.rlhfFeedbackDao.insertFeedback(
+      RlhfFeedbackEventsTableCompanion.insert(
+        notificationId: Value(notification.id),
+        featureVectorJson: jsonEncode(featureVector),
+        feedbackType: feedbackType,
+        rewardValue: Value(rewardValue),
+        originalCategory: Value(notification.classifiedCategory),
+        originalPriority: Value(notification.priority),
+        correctedCategory: Value(correctedCategory),
+        correctedPriority: Value(correctedPriority),
+        activeModelVersion: Value(GhostAI.instance.modelVersion),
+        timestamp: Value(DateTime.now()),
+        isSynced: const Value(false),
+      ),
+    );
     notifyListeners();
   }
 
