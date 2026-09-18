@@ -65,3 +65,18 @@ class DailyBriefTable extends Table {
   IntColumn get remindersCreated => integer().withDefault(const Constant(0))();
   IntColumn get archivedCount => integer().withDefault(const Constant(0))();
 }
+
+@DataClassName('MlFeedbackEntry')
+class MlFeedbackTable extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get notificationId => text()();
+  TextColumn get packageName => text()();
+  TextColumn get title => text()();
+  TextColumn get content => text()();
+  IntColumn get timestamp => integer()();
+  TextColumn get featureVector => text()();
+  RealColumn get rewardScore => real()();
+  TextColumn get targetCategory => text()();
+  TextColumn get targetPriority => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
