@@ -50,5 +50,78 @@ void main() {
       expect(ids[0], equals(2)); // [CLS]
       expect(ids[7], equals(3)); // [SEP]
     });
+
+    test('throws VocabularyValidationException when mandatory special token is missing', () {
+      final invalidVocab = <String, int>{
+        '[PAD]': 0,
+        '[UNK]': 1,
+        '[CLS]': 2,
+        // missing [SEP]
+      };
+      expect(
+        () => WordPieceTokenizer(invalidVocab),
+        throwsA(isA<VocabularyValidationException>()),
+      );
+    });
+
+    test('throws VocabularyValidationException when special token ID is out of bounds', () {
+      final invalidVocab = <String, int>{
+        '[PAD]': 0,
+        '[UNK]': 1,
+        '[CLS]': 2,
+        '[SEP]': 102, // out of bounds since vocab length is 4
+      };
+      expect(
+        () => WordPieceTokenizer(invalidVocab),
+        throwsA(isA<VocabularyValidationException>()),
+      );
+    });
+
+    test('throws VocabularyValidationException when fromLines encounters an empty line within vocabulary', () {
+      final lines = ['[PAD]', '[UNK]', '', '[CLS]', '[SEP]'];
+      expect(
+        () => WordPieceTokenizer.fromLines(lines),
+        throwsA(isA<VocabularyValidationException>()),
+      );
+    });
+
+    test('fromLines verifies SHA-256 digest when expectedSha256 is provided', () {
+      final lines = ['[PAD]', '[UNK]', '[CLS]', '[SEP]', 'bank'];
+      const correctHash = '83b29afefcbf61d997712734a9c203d4cc988ae51bb5af43a5e4733561e53877';
+      
+      final tok = WordPieceTokenizer.fromLines(lines, expectedSha256: correctHash);
+      expect(tok.vocab.length, equals(5));
+
+      expect(
+        () => WordPieceTokenizer.fromLines(lines, expectedSha256: 'invalidsha256hash'),
+        throwsA(isA<VocabularyValidationException>()),
+      );
+    });
+
+    test('uses dynamic special token indices and verifies all token IDs are in bounds 0 <= id < vocab.length', () {
+      final dynamicVocab = <String, int>{
+        '[SEP]': 0,
+        '[CLS]': 1,
+        '[UNK]': 2,
+        '[PAD]': 3,
+        'hello': 4,
+      };
+
+      final customTokenizer = WordPieceTokenizer(dynamicVocab, maxSeqLength: 6);
+      final ids = customTokenizer.tokenize('hello world');
+
+      expect(ids.length, equals(6));
+      expect(ids[0], equals(1)); // [CLS] at index 1
+      expect(ids[1], equals(4)); // hello at index 4
+      expect(ids[2], equals(2)); // world -> [UNK] at index 2
+      expect(ids[3], equals(0)); // [SEP] at index 0
+      expect(ids[4], equals(3)); // [PAD] at index 3
+      expect(ids[5], equals(3)); // [PAD] at index 3
+
+      for (final id in ids) {
+        expect(id, greaterThanOrEqualTo(0));
+        expect(id, lessThan(dynamicVocab.length));
+      }
+    });
   });
 }

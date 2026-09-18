@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'dart:math' as math;
+import 'package:crypto/crypto.dart';
 import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
@@ -8,36 +10,48 @@ import 'package:scope/core/analysis/wordpiece_tokenizer.dart';
 
 /// Classifier using LiteRT (TensorFlow Lite) to classify text categories.
 class LiteRtClassifier implements NotificationAnalyzer {
+  static const String defaultExpectedVocabSha256 =
+      '6229da7b5527533c901e57b32dafc3c6fd701114a407d1fe4f5da60af3b062c5';
+
   Interpreter? _interpreter;
   WordPieceTokenizer? _tokenizer;
   bool _isModelLoaded = false;
+  final String expectedVocabSha256;
 
-  LiteRtClassifier() {
+  LiteRtClassifier({
+    this.expectedVocabSha256 = defaultExpectedVocabSha256,
+  }) {
     _initialize();
   }
 
   Future<void> _initialize() async {
     try {
-      // 1. Load Vocab
+      // 1. Load Vocab Asset
       final vocabStr = await rootBundle.loadString('assets/vocab.txt');
-      final lines = vocabStr.split('\n');
-      _tokenizer = WordPieceTokenizer.fromLines(lines);
 
-      // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
+      // 2. Cryptographic SHA-256 Digest Validation
+      final digest = sha256.convert(utf8.encode(vocabStr)).toString();
+      if (digest.toLowerCase() != expectedVocabSha256.toLowerCase()) {
+        throw VocabularyValidationException(
+          'Vocabulary SHA-256 digest mismatch. Expected $expectedVocabSha256, got $digest',
+        );
+      }
+
+      // 3. Parse and Validate Vocabulary via WordPieceTokenizer
+      final lines = vocabStr.split('\n');
+      _tokenizer = WordPieceTokenizer.fromLines(
+        lines,
+        expectedSha256: expectedVocabSha256,
+      );
+
+      // 4. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
       _isModelLoaded = false;
     } catch (e) {
       // Graceful degradation: Log and set flags so analyze runs in fallback mode
       // ignore: avoid_print
       print('LiteRtClassifier failed to initialize: $e');
+      _tokenizer = null;
       _isModelLoaded = false;
-
-      // Ensure tokenizer is loaded even if interpreter fails (so we can test tokenization in fallback)
-      if (_tokenizer == null) {
-        try {
-          final vocabStr = await rootBundle.loadString('assets/vocab.txt');
-          _tokenizer = WordPieceTokenizer.fromLines(vocabStr.split('\n'));
-        } catch (_) {}
-      }
     }
   }
 
@@ -54,7 +68,19 @@ class LiteRtClassifier implements NotificationAnalyzer {
       await _initialize();
     }
 
-    final tokenIds = _tokenizer?.tokenize(combinedText) ?? List<int>.filled(64, 0);
+    List<int> tokenIds;
+    try {
+      if (_tokenizer != null) {
+        tokenIds = _tokenizer!.tokenize(combinedText);
+      } else {
+        tokenIds = List<int>.filled(64, 0);
+      }
+    } catch (e) {
+      // Catch tokenization error and fall back cleanly without unhandled exceptions
+      // ignore: avoid_print
+      print('Tokenization error in LiteRtClassifier: $e');
+      tokenIds = List<int>.filled(64, 0);
+    }
 
     if (!_isModelLoaded || _interpreter == null) {
       // Graceful fallback heuristic classifier
