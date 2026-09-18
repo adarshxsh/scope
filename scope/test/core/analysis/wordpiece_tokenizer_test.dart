@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:scope/core/analysis/vocab_validator.dart';
 import 'package:scope/core/analysis/wordpiece_tokenizer.dart';
 
 void main() {
@@ -8,6 +9,7 @@ void main() {
       '[UNK]': 1,
       '[CLS]': 2,
       '[SEP]': 3,
+      '[MASK]': 10,
       'bank': 4,
       '##ing': 5,
       'alert': 6,
@@ -49,6 +51,27 @@ void main() {
       expect(ids.length, equals(8));
       expect(ids[0], equals(2)); // [CLS]
       expect(ids[7], equals(3)); // [SEP]
+    });
+
+    test('throws VocabularyValidationException when mandatory special tokens are missing from lines', () {
+      final corruptedLines = ['word1', 'word2', 'word3'];
+      expect(
+        () => WordPieceTokenizer.fromLines(corruptedLines),
+        throwsA(isA<VocabularyValidationException>()),
+      );
+    });
+
+    test('throws VocabularyValidationException when mandatory special tokens are missing from vocab map', () {
+      final incompleteVocab = {
+        '[PAD]': 0,
+        '[CLS]': 1,
+        '[SEP]': 2,
+        // [UNK] and [MASK] missing
+      };
+      expect(
+        () => WordPieceTokenizer(incompleteVocab),
+        throwsA(isA<VocabularyValidationException>()),
+      );
     });
   });
 }
