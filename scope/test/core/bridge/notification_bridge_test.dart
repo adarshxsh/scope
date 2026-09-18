@@ -11,7 +11,10 @@ void main() {
 
   setUp(() {
     channel = const MethodChannel('com.scope.notifications.test');
-    bridge = NotificationBridge(channel: channel);
+    bridge = NotificationBridge(
+      channel: channel,
+      sessionToken: 'test-session-token',
+    );
     log = [];
   });
 
@@ -31,28 +34,32 @@ void main() {
 
   group('NotificationBridge', () {
     group('getNotifications', () {
-      test('returns parsed notifications from channel', () async {
+      test('returns parsed notifications from channel map with batchId', () async {
         mockHandler((call) async {
-          return [
-            {
-              'id': 'n1',
-              'packageName': 'com.test.app',
-              'title': 'Hello',
-              'content': 'World',
-              'timestamp': 1700000000000,
-              'category': 'msg',
-              'isOngoing': false,
-            },
-            {
-              'id': 'n2',
-              'packageName': 'com.test.app2',
-              'title': 'Title 2',
-              'content': 'Content 2',
-              'timestamp': 1700000001000,
-              'category': null,
-              'isOngoing': true,
-            },
-          ];
+          expect(call.arguments['token'], 'test-session-token');
+          return {
+            'batchId': 'batch_123',
+            'notifications': [
+              {
+                'id': 'n1',
+                'packageName': 'com.test.app',
+                'title': 'Hello',
+                'content': 'World',
+                'timestamp': 1700000000000,
+                'category': 'msg',
+                'isOngoing': false,
+              },
+              {
+                'id': 'n2',
+                'packageName': 'com.test.app2',
+                'title': 'Title 2',
+                'content': 'Content 2',
+                'timestamp': 1700000001000,
+                'category': null,
+                'isOngoing': true,
+              },
+            ],
+          };
         });
 
         final notifications = await bridge.getNotifications();
@@ -61,7 +68,29 @@ void main() {
         expect(notifications[0].title, 'Hello');
         expect(notifications[1].id, 'n2');
         expect(notifications[1].isOngoing, true);
+        expect(bridge.lastBatchId, 'batch_123');
         expect(log.single.method, 'getNotifications');
+      });
+
+      test('supports legacy list response for backward compatibility', () async {
+        mockHandler((call) async {
+          return [
+            {
+              'id': 'n1',
+              'packageName': 'com.test.app',
+              'title': 'Legacy',
+              'content': 'List',
+              'timestamp': 1700000000000,
+              'category': null,
+              'isOngoing': false,
+            },
+          ];
+        });
+
+        final notifications = await bridge.getNotifications();
+        expect(notifications.length, 1);
+        expect(notifications[0].id, 'n1');
+        expect(notifications[0].title, 'Legacy');
       });
 
       test('returns empty list when channel returns null', () async {
@@ -76,12 +105,98 @@ void main() {
         expect(notifications, isEmpty);
       });
 
-      test('returns empty list on PlatformException', () async {
+      test('returns empty list on PlatformException (e.g. UNAUTHORIZED)', () async {
         mockHandler((call) async {
-          throw PlatformException(code: 'ERROR', message: 'test error');
+          throw PlatformException(code: 'UNAUTHORIZED', message: 'Invalid session token');
         });
         final notifications = await bridge.getNotifications();
         expect(notifications, isEmpty);
+      });
+    });
+
+    group('acknowledgeNotifications', () {
+      test('sends token, notificationIds, and batchId to channel', () async {
+        mockHandler((call) async {
+          expect(call.arguments['token'], 'test-session-token');
+          expect(call.arguments['notificationIds'], ['n1', 'n2']);
+          expect(call.arguments['batchId'], 'batch_123');
+          return true;
+        });
+
+        final success = await bridge.acknowledgeNotifications(
+          ['n1', 'n2'],
+          batchId: 'batch_123',
+        );
+        expect(success, true);
+        expect(log.single.method, 'acknowledgeNotifications');
+      });
+
+      test('returns true without calling channel if notificationIds is empty', () async {
+        mockHandler((call) async => true);
+        final success = await bridge.acknowledgeNotifications([]);
+        expect(success, true);
+        expect(log, isEmpty);
+      });
+
+      test('returns false on PlatformException', () async {
+        mockHandler((call) async {
+          throw PlatformException(code: 'UNAUTHORIZED', message: 'Invalid token');
+        });
+        final success = await bridge.acknowledgeNotifications(['n1']);
+        expect(success, false);
+      });
+    });
+
+    group('peekNotifications', () {
+      test('returns notifications non-destructively', () async {
+        mockHandler((call) async {
+          expect(call.arguments['token'], 'test-session-token');
+          return [
+            {
+              'id': 'p1',
+              'packageName': 'com.peek.app',
+              'title': 'Peek Title',
+              'content': 'Peek Content',
+              'timestamp': 1700000002000,
+              'category': 'msg',
+              'isOngoing': false,
+            },
+          ];
+        });
+
+        final notifications = await bridge.peekNotifications();
+        expect(notifications.length, 1);
+        expect(notifications[0].id, 'p1');
+        expect(log.single.method, 'peekNotifications');
+      });
+
+      test('returns empty list on PlatformException', () async {
+        mockHandler((call) async {
+          throw PlatformException(code: 'ERROR', message: 'Peek error');
+        });
+        final notifications = await bridge.peekNotifications();
+        expect(notifications, isEmpty);
+      });
+    });
+
+    group('getQueueSize', () {
+      test('returns queue size from channel', () async {
+        mockHandler((call) async {
+          expect(call.arguments['token'], 'test-session-token');
+          return 42;
+        });
+
+        final count = await bridge.getQueueSize();
+        expect(count, 42);
+        expect(log.single.method, 'getQueueSize');
+      });
+
+      test('returns 0 on PlatformException', () async {
+        mockHandler((call) async {
+          throw PlatformException(code: 'ERROR');
+        });
+        final count = await bridge.getQueueSize();
+        expect(count, 0);
       });
     });
 
@@ -125,7 +240,6 @@ void main() {
         mockHandler((call) async {
           throw PlatformException(code: 'ERROR');
         });
-        // Should complete without throwing
         await bridge.openNotificationSettings();
       });
     });
