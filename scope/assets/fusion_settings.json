@@ -1,0 +1,8 @@
+{
+  "rule_weight": 0.40,
+  "ml_weight": 0.40,
+  "policy_weight": 0.20,
+  "fallback_rule_weight": 0.60,
+  "fallback_ml_weight": 0.10,
+  "fallback_policy_weight": 0.30
+}
