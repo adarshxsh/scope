@@ -189,6 +189,27 @@ class FeatureVector {
   Map<String, double> toNamedMap() => {
     for (var i = 0; i < featureNames.length; i++) featureNames[i]: values[i],
   };
+
+  /// Adapts the feature vector to a target dimension by padding with 0.0 or truncating.
+  List<double> padOrTruncate(int targetDimension) {
+    return FeatureVector.padOrTruncateVector(values, targetDimension);
+  }
+
+  /// Utility function to pad or truncate any double list to a target dimension.
+  static List<double> padOrTruncateVector(List<double> vector, int targetDimension) {
+    if (targetDimension <= 0) return const [];
+    if (vector.length == targetDimension) {
+      return List<double>.from(vector);
+    }
+    if (vector.length > targetDimension) {
+      return vector.sublist(0, targetDimension);
+    }
+    final padded = List<double>.filled(targetDimension, 0.0);
+    for (int i = 0; i < vector.length; i++) {
+      padded[i] = vector[i];
+    }
+    return padded;
+  }
 }
 
 /// Deterministic notification feature extraction for TFLite inference.
