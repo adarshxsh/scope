@@ -36,6 +36,19 @@ class DriftNotificationStorage implements NotificationStorage {
   }
 
   @override
+  Future<void> runCleanup({
+    required int cutoffTimestamp,
+    int maxRows = 500,
+    bool compact = true,
+  }) async {
+    await _db.runSetBasedCleanup(
+      cutoffTimestamp,
+      maxRows: maxRows,
+      compact: compact,
+    );
+  }
+
+  @override
   Future<void> clear() async {
     await _db.notificationDao.clearAll();
   }
