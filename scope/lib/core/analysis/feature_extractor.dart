@@ -186,6 +186,20 @@ class FeatureVector {
 
   List<double> toList() => List<double>.from(values, growable: false);
 
+  /// Adapts feature vector dimensions to match target TFLite input shape.
+  List<double> padOrTruncate(int targetDimension) {
+    if (targetDimension <= 0) return [];
+    if (values.length == targetDimension) return toList();
+    if (values.length > targetDimension) {
+      return values.take(targetDimension).toList();
+    }
+    final padded = List<double>.filled(targetDimension, 0.0);
+    for (var i = 0; i < values.length; i++) {
+      padded[i] = values[i];
+    }
+    return padded;
+  }
+
   Map<String, double> toNamedMap() => {
     for (var i = 0; i < featureNames.length; i++) featureNames[i]: values[i],
   };
