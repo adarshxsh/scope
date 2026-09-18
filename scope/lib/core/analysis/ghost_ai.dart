@@ -1,7 +1,8 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/models/model_manager.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 
@@ -56,21 +57,54 @@ class GhostAI {
   /// Returns whether the model is loaded.
   bool get isModelLoaded => _interpreter != null;
 
-  /// Initializes the TFLite interpreter and rules database once on startup.
-  Future<void> initialize() async {
-    if (_interpreter != null) return;
+  /// Reloads the model and rule database from ModelManager or optional custom parameters.
+  Future<void> reload({File? customModelFile, String? customRulesJson}) async {
     try {
-      // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
-    } catch (e) {
-      debugPrint('GhostAI: Failed to load TFLite model: $e');
+      _interpreter?.close();
+    } catch (_) {}
+    _interpreter = null;
+    await initialize(customModelFile: customModelFile, customRulesJson: customRulesJson, force: true);
+  }
+
+  /// Initializes the TFLite interpreter and rules database once on startup.
+  Future<void> initialize({File? customModelFile, String? customRulesJson, bool force = false}) async {
+    if (_interpreter != null && !force) return;
+
+    await ModelManager.instance.initialize();
+
+    // 1. Resolve model file (dynamic OTA update or custom file if available)
+    File? dynamicFile = customModelFile ?? await ModelManager.instance.getLookAgainModelFile();
+    if (dynamicFile != null) {
+      try {
+        final interpreter = Interpreter.fromFile(dynamicFile);
+        final inputShape = interpreter.getInputTensor(0).shape;
+        if (inputShape.isNotEmpty && inputShape.last == 63) {
+          _interpreter = interpreter;
+          debugPrint('GhostAI: Dynamic TFLite interpreter loaded successfully from ${dynamicFile.path}.');
+        } else {
+          debugPrint('GhostAI: Dynamic TFLite model shape mismatch ($inputShape). Falling back to static assets.');
+          interpreter.close();
+        }
+      } catch (e) {
+        debugPrint('GhostAI: Failed to load dynamic TFLite model file: $e. Falling back to static assets.');
+      }
     }
 
+    // Fallback to static asset if dynamic model was not loaded
+    if (_interpreter == null) {
+      try {
+        _interpreter = await Interpreter.fromAsset('assets/model.tflite');
+        debugPrint('GhostAI: Static asset TFLite interpreter loaded successfully.');
+      } catch (e) {
+        debugPrint('GhostAI: Failed to load static TFLite model asset: $e');
+      }
+    }
+
+    // 2. Resolve rules database
     try {
-      // 2. Load and compile rules database
-      final jsonStr = await rootBundle.loadString('assets/rules.json');
+      final jsonStr = customRulesJson ?? await ModelManager.instance.getRulesJson();
       _ruleEngine.compile(jsonStr);
+      await _ruleEngine.loadCustomRules();
       debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
     } catch (e) {
       debugPrint('GhostAI: Failed to initialize rules database: $e');
@@ -93,16 +127,21 @@ class GhostAI {
     int inferenceTimeUs = 0;
 
     if (_interpreter != null) {
-      final input = [featureVector];
-      final output = List<double>.filled(1, 0.0).reshape([1, 1]);
+      try {
+        final input = [featureVector];
+        final output = List<double>.filled(1, 0.0).reshape([1, 1]);
 
-      final inferStopwatch = Stopwatch()..start();
-      _interpreter!.run(input, output);
-      inferStopwatch.stop();
+        final inferStopwatch = Stopwatch()..start();
+        _interpreter!.run(input, output);
+        inferStopwatch.stop();
 
-      inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
-      // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
-      predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+        inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
+        // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
+        predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+      } catch (e) {
+        debugPrint('GhostAI: Inference error ($e), falling back to heuristic score.');
+        predictedScore = _heuristicLookAgainScore(featureVector);
+      }
     } else {
       // Heuristic fallback if model not loaded
       predictedScore = _heuristicLookAgainScore(featureVector);
