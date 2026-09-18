@@ -151,6 +151,30 @@ void main() {
       );
       expect(values[FeatureVector.featureNames.indexOf('person_present')], 1.0);
     });
+
+    test('clamps continuous feature values to configured maximum bounds', () {
+      final hugeTitle = 'A' * 2000;
+      final hugeBody = 'B ' * 2000;
+      final input = NotificationFeatureInput(
+        appName: 'Extreme App',
+        packageName: 'com.extreme.app',
+        title: hugeTitle,
+        body: '$hugeBody paid ₹5,000,000 in 9999 days',
+        timestampMillis: DateTime.utc(2026, 6, 26, 12).millisecondsSinceEpoch,
+      );
+
+      final vector = FeatureExtractor.extractVector(input);
+      final named = vector.toNamedMap();
+
+      expect(named['title_length'], equals(FeatureExtractor.maxTitleLength));
+      expect(named['body_length'], equals(FeatureExtractor.maxBodyLength));
+      expect(named['word_count'], equals(FeatureExtractor.maxWordCount));
+      expect(named['amount'], equals(FeatureExtractor.maxAmount));
+      expect(
+        named['deadline_minutes_remaining'],
+        equals(FeatureExtractor.maxDeadlineMinutes),
+      );
+    });
   });
 
   group('MetadataAnalyzer', () {

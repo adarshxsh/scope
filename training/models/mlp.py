@@ -65,6 +65,10 @@ def build_baseline_mlp(
     mean_const = tf.constant(mean, dtype=tf.float32, name="normalization_mean")
     stddev_const = tf.constant(stddev, dtype=tf.float32, name="normalization_stddev")
     x = (inputs - mean_const) / stddev_const
+    x = tf.keras.layers.Lambda(
+        lambda t: tf.clip_by_value(t, -5.0, 5.0),
+        name="zscore_clamping",
+    )(x)
 
     x = tf.keras.layers.Dense(128, activation="relu", name="dense_128")(x)
     x = tf.keras.layers.Dropout(0.2, name="dropout_0_2")(x)
