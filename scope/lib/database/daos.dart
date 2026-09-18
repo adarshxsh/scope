@@ -154,3 +154,28 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
     await delete(dailyBriefTable).go();
   }
 }
+
+@DriftAccessor(tables: [AppExclusionsTable])
+class AppExclusionsDao extends DatabaseAccessor<AttentionDatabase> with _$AppExclusionsDaoMixin {
+  AppExclusionsDao(super.db);
+
+  Future<void> upsertExclusion(AppExclusionEntry entry) async {
+    await into(appExclusionsTable).insert(entry, mode: InsertMode.insertOrReplace);
+  }
+
+  Future<List<AppExclusionEntry>> getAll() {
+    return select(appExclusionsTable).get();
+  }
+
+  Future<AppExclusionEntry?> getByPackage(String packageName) {
+    return (select(appExclusionsTable)..where((t) => t.packageName.equals(packageName))).getSingleOrNull();
+  }
+
+  Future<void> deleteExclusion(String packageName) {
+    return (delete(appExclusionsTable)..where((t) => t.packageName.equals(packageName))).go();
+  }
+
+  Future<void> clearAll() async {
+    await delete(appExclusionsTable).go();
+  }
+}
