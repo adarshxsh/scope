@@ -7,6 +7,8 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/database/tables.dart';
 import 'package:scope/database/daos.dart';
 import 'package:scope/database/converters.dart';
+import 'package:scope/database/secure_key_storage.dart';
+import 'package:scope/database/database_migrator.dart';
 
 part 'attention_database.g.dart';
 
@@ -25,10 +27,18 @@ part 'attention_database.g.dart';
   ],
 )
 class AttentionDatabase extends _$AttentionDatabase {
-  AttentionDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
+  AttentionDatabase([QueryExecutor? executor, SecureKeyStorage? keyStorage])
+      : super(executor ?? _openConnection(keyStorage: keyStorage));
 
-  factory AttentionDatabase.inMemory() {
-    return AttentionDatabase(NativeDatabase.memory());
+  factory AttentionDatabase.inMemory([String? passphrase]) {
+    final key = passphrase ?? 'test_in_memory_key';
+    return AttentionDatabase(
+      NativeDatabase.memory(
+        setup: (rawDb) {
+          rawDb.execute("PRAGMA key = '$key';");
+        },
+      ),
+    );
   }
 
   @override
@@ -52,10 +62,27 @@ class AttentionDatabase extends _$AttentionDatabase {
   }
 }
 
-QueryExecutor _openConnection() {
+QueryExecutor _openConnection({SecureKeyStorage? keyStorage}) {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'attention_os.db'));
-    return NativeDatabase(file);
+    final storage = keyStorage ?? SecureKeyStorage();
+    final passphrase = await storage.getOrCreatePassphrase();
+
+    // Detect legacy plaintext database and migrate if needed
+    if (await DatabaseMigrator.isPlaintextSqlite(file)) {
+      await DatabaseMigrator.migratePlaintextToEncrypted(
+        targetDbFile: file,
+        passphrase: passphrase,
+      );
+    }
+
+    return NativeDatabase(
+      file,
+      setup: (rawDb) {
+        rawDb.execute("PRAGMA key = '$passphrase';");
+      },
+    );
   });
 }
+
