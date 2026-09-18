@@ -4,7 +4,11 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.os.BatteryManager
+import android.os.PowerManager
 import android.provider.Settings
 
 /**
@@ -15,6 +19,7 @@ import android.provider.Settings
  *   - Pull captured notifications from [NotificationCollectorService]
  *   - Check if the notification listener permission is granted
  *   - Open the system notification listener settings
+ *   - Query battery state and low battery status for AI inference guardrails
  */
 class MainActivity : FlutterActivity() {
 
@@ -44,9 +49,47 @@ class MainActivity : FlutterActivity() {
                         result.success(true)
                     }
 
+                    "getBatteryState" -> {
+                        val state = getBatteryState()
+                        result.success(state)
+                    }
+
+                    "isLowBattery" -> {
+                        val isLow = (getBatteryState()["isLowBattery"] as? Boolean) ?: false
+                        result.success(isLow)
+                    }
+
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    private fun getBatteryState(): Map<String, Any> {
+        return try {
+            val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+            val batteryStatus: Intent? = registerReceiver(null, filter)
+
+            val level = batteryStatus?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+            val scale = batteryStatus?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
+            val batteryPct = if (level >= 0 && scale > 0) (level * 100 / scale.toFloat()).toInt() else 100
+
+            val powerManager = getSystemService(Context.POWER_SERVICE) as? PowerManager
+            val isPowerSaveMode = powerManager?.isPowerSaveMode ?: false
+
+            val isLowBattery = batteryPct <= 15 || isPowerSaveMode
+
+            mapOf(
+                "batteryLevel" to batteryPct,
+                "isPowerSaveMode" to isPowerSaveMode,
+                "isLowBattery" to isLowBattery
+            )
+        } catch (e: Exception) {
+            mapOf(
+                "batteryLevel" to 100,
+                "isPowerSaveMode" to false,
+                "isLowBattery" to false
+            )
+        }
     }
 
     /**
