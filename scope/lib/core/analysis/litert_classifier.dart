@@ -126,13 +126,14 @@ class LiteRtClassifier implements NotificationAnalyzer {
       final category = _runFallbackHeuristic(combinedText);
       return AnalysisResult(
         category: category,
-        score: 0.50,
+        score: 0.0,
         engineName: 'litert_model (fallback - integrity alert)',
         matchedSignals: [
           'Asset SHA-256 integrity violation detected',
           'Tokenizer parsed ${tokenIds.take(5).toList()}...'
         ],
         latencyMs: stopwatch.elapsedMilliseconds,
+        isFallback: true,
       );
     }
 

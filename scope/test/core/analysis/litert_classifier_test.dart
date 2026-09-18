@@ -82,6 +82,8 @@ void main() {
       expect(classifier.isModelLoaded, isFalse);
       expect(result.engineName, equals('litert_model (fallback - integrity alert)'));
       expect(result.category, equals('promo'));
+      expect(result.score, equals(0.0));
+      expect(result.isFallback, isTrue);
     });
 
     test('detects SHA-256 vocab hash mismatch and triggers integrity alert fallback', () async {
@@ -103,6 +105,8 @@ void main() {
       expect(classifier.isModelLoaded, isFalse);
       expect(result.engineName, equals('litert_model (fallback - integrity alert)'));
       expect(result.category, equals('finance'));
+      expect(result.score, equals(0.0));
+      expect(result.isFallback, isTrue);
     });
 
     test('executes model inference with engineName litert_model when SHA-256 verification succeeds', () async {
@@ -126,6 +130,7 @@ void main() {
       expect(result.engineName, equals('litert_model'));
       expect(result.category, equals('finance'));
       expect(result.score, greaterThan(0.3));
+      expect(result.isFallback, isFalse);
     });
   });
 }
