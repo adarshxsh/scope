@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:scope/core/models/notification_model.dart';
@@ -25,10 +26,20 @@ part 'attention_database.g.dart';
   ],
 )
 class AttentionDatabase extends _$AttentionDatabase {
-  AttentionDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
+  AttentionDatabase([QueryExecutor? executor, String? passphrase])
+      : super(executor ?? _openConnection(passphrase));
 
-  factory AttentionDatabase.inMemory() {
-    return AttentionDatabase(NativeDatabase.memory());
+  factory AttentionDatabase.inMemory({String? passphrase}) {
+    return AttentionDatabase(
+      NativeDatabase.memory(
+        setup: (db) {
+          if (passphrase != null && passphrase.isNotEmpty) {
+            db.execute("PRAGMA key = '$passphrase';");
+          }
+        },
+      ),
+      passphrase,
+    );
   }
 
   @override
@@ -52,10 +63,29 @@ class AttentionDatabase extends _$AttentionDatabase {
   }
 }
 
-QueryExecutor _openConnection() {
+/// Helper function to retrieve database passphrase from native Android com.scope.keystore channel.
+Future<String?> _getPassphraseFromChannel() async {
+  try {
+    const channel = MethodChannel('com.scope.keystore');
+    final String? passphrase = await channel.invokeMethod<String>('getDatabasePassphrase');
+    return passphrase;
+  } catch (e) {
+    return null;
+  }
+}
+
+QueryExecutor _openConnection([String? explicitPassphrase]) {
   return LazyDatabase(() async {
+    final passphrase = explicitPassphrase ?? await _getPassphraseFromChannel();
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'attention_os.db'));
-    return NativeDatabase(file);
+    return NativeDatabase(
+      file,
+      setup: (rawDb) {
+        if (passphrase != null && passphrase.isNotEmpty) {
+          rawDb.execute("PRAGMA key = '$passphrase';");
+        }
+      },
+    );
   });
 }
