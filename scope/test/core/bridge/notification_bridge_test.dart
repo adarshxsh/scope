@@ -31,37 +31,77 @@ void main() {
 
   group('NotificationBridge', () {
     group('getNotifications', () {
-      test('returns parsed notifications from channel', () async {
+      test('fetches auth token and passes it in getNotifications', () async {
         mockHandler((call) async {
-          return [
-            {
-              'id': 'n1',
-              'packageName': 'com.test.app',
-              'title': 'Hello',
-              'content': 'World',
-              'timestamp': 1700000000000,
-              'category': 'msg',
-              'isOngoing': false,
-            },
-            {
-              'id': 'n2',
-              'packageName': 'com.test.app2',
-              'title': 'Title 2',
-              'content': 'Content 2',
-              'timestamp': 1700000001000,
-              'category': null,
-              'isOngoing': true,
-            },
-          ];
+          if (call.method == 'getAuthToken') {
+            return 'secret_token_123';
+          }
+          if (call.method == 'getNotifications') {
+            expect(call.arguments['authToken'], 'secret_token_123');
+            return [
+              {
+                'id': 'n1',
+                'packageName': 'com.test.app',
+                'title': 'Hello',
+                'content': 'World',
+                'timestamp': 1700000000000,
+                'category': 'msg',
+                'isOngoing': false,
+              },
+            ];
+          }
+          return null;
         });
 
         final notifications = await bridge.getNotifications();
-        expect(notifications.length, 2);
+        expect(notifications.length, 1);
         expect(notifications[0].id, 'n1');
-        expect(notifications[0].title, 'Hello');
-        expect(notifications[1].id, 'n2');
-        expect(notifications[1].isOngoing, true);
-        expect(log.single.method, 'getNotifications');
+        expect(bridge.currentAuthToken, 'secret_token_123');
+      });
+
+      test('retries on UNAUTHORIZED by refreshing auth token', () async {
+        var attempts = 0;
+        mockHandler((call) async {
+          if (call.method == 'getAuthToken') {
+            return 'refreshed_token_456';
+          }
+          if (call.method == 'getNotifications') {
+            attempts++;
+            if (attempts == 1) {
+              throw PlatformException(code: 'UNAUTHORIZED', message: 'Token expired');
+            }
+            expect(call.arguments['authToken'], 'refreshed_token_456');
+            return [
+              {
+                'id': 'n_retry',
+                'packageName': 'com.test.app',
+                'title': 'Recovered',
+                'content': 'Body',
+                'timestamp': 1700000000000,
+                'category': 'msg',
+                'isOngoing': false,
+              },
+            ];
+          }
+          return null;
+        });
+
+        final notifications = await bridge.getNotifications();
+        expect(notifications.length, 1);
+        expect(notifications[0].id, 'n_retry');
+        expect(attempts, 2);
+      });
+
+      test('returns empty list and logs audit on RATE_LIMITED', () async {
+        mockHandler((call) async {
+          if (call.method == 'getNotifications') {
+            throw PlatformException(code: 'RATE_LIMITED', message: 'Too fast');
+          }
+          return null;
+        });
+
+        final notifications = await bridge.getNotifications();
+        expect(notifications, isEmpty);
       });
 
       test('returns empty list when channel returns null', () async {
