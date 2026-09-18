@@ -23,33 +23,33 @@ class ScoreFusion {
           engineName: 'score_fusion (rule bypass: ${ruleResult.ruleId})',
           matchedSignals: [ruleResult.matchedSignal],
           latencyMs: 0,
-          isFallback: false,
+          isFallback: modelResult.isFallback,
+          fallbackReason: modelResult.fallbackReason,
         );
       }
     }
 
-    // 2. Fallback model handling:
-    // When the model is in fallback mode (e.g., uninitialized asset or inference error),
-    // do not process the fallback score as an authentic model prediction.
+    // 2. Fallback execution handling
+    // If the ML model is in fallback mode, skip mathematical confidence blending
     if (modelResult.isFallback) {
       if (ruleResult != null) {
         return AnalysisResult(
           category: ruleResult.category,
-          score: 0.85, // Custom rule baseline without unauthentic model score blending
-          engineName: 'score_fusion (rule only, ml fallback: ${ruleResult.ruleId})',
+          score: 0.85, // Pure rule confidence, no model score blending
+          engineName: 'score_fusion (rule fallback)',
           matchedSignals: [
             'Rule matched: ${ruleResult.ruleId} (${ruleResult.matchedSignal})',
-            'ML model in fallback mode (score blending bypassed)'
+            'ML model in fallback mode: ${modelResult.fallbackReason ?? "Fallback active"}'
           ],
           latencyMs: 0,
-          isFallback: false,
+          isFallback: true,
+          fallbackReason: modelResult.fallbackReason,
         );
-      } else {
-        return modelResult;
       }
+      return modelResult;
     }
 
-    // 3. Normal score fusion with authentic model prediction
+    // 3. Normal score fusion when model is not in fallback mode
     // If no rule matches, rely on the model prediction
     if (ruleResult == null) {
       return modelResult;

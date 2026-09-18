@@ -28,6 +28,24 @@ class FakeGhostAnalysisEngine extends GhostAnalysisEngine {
   }
 }
 
+class FakeFallbackGhostAnalysisEngine extends GhostAnalysisEngine {
+  @override
+  Future<void> initialize() async {}
+
+  @override
+  Future<AppNotification> analyze(AppNotification notification) async {
+    return notification.copyWith(
+      priority: 'medium',
+      priorityScore: 0.50,
+      classifiedCategory: 'msg',
+      explanation: 'Fallback Heuristic Active (50% fallback score).\n• Fallback Reason: Model asset uninitialized',
+      latencyMs: 1,
+      isFallback: true,
+      fallbackReason: 'Model asset uninitialized',
+    );
+  }
+}
+
 void main() {
   group('DiagnosticScreen Widget Tests', () {
     late GhostAnalysisEngine mockEngine;
@@ -110,6 +128,30 @@ void main() {
       expect(find.text('CRITICAL'), findsOneWidget);
       expect(find.text('Pipeline Explanation Trace'), findsOneWidget);
       expect(find.text('Extracted Text Features'), findsOneWidget);
+    });
+
+    testWidgets('renders fallback warning badge and failure reason for fallback results',
+        (WidgetTester tester) async {
+      final fallbackEngine = FakeFallbackGhostAnalysisEngine();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: DiagnosticScreen(engine: fallbackEngine),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Trigger analysis
+      await tester.tap(find.text('ANALYZE NOTIFICATION'));
+      await tester.pumpAndSettle();
+
+      // Verify fallback warning badge and reason are displayed
+      expect(find.byKey(const Key('fallback_warning_badge')), findsOneWidget);
+      expect(find.text('Model Inference Fallback Active'), findsOneWidget);
+      expect(find.text('Reason: Model asset uninitialized'), findsOneWidget);
+      expect(find.textContaining('Fallback Active'), findsWidgets);
     });
   });
 }

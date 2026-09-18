@@ -23,6 +23,7 @@ void main() {
       expect(result.engineName, contains('fallback'));
       expect(result.score, equals(0.0));
       expect(result.isFallback, isTrue);
+      expect(result.fallbackReason, equals('Model asset uninitialized'));
     });
 
     test('fallback correctly categorizes bank alerts', () async {
