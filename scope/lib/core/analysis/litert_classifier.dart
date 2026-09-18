@@ -61,7 +61,7 @@ class LiteRtClassifier implements NotificationAnalyzer {
       final category = _runFallbackHeuristic(combinedText);
       return AnalysisResult(
         category: category,
-        score: 0.50, // Base default score for fallback
+        score: 0.0, // Zero authentic model confidence for fallback heuristic
         engineName: 'litert_model (fallback)',
         matchedSignals: [
           'Model asset invalid or uninitialized',
@@ -110,7 +110,7 @@ class LiteRtClassifier implements NotificationAnalyzer {
       final category = _runFallbackHeuristic(combinedText);
       return AnalysisResult(
         category: category,
-        score: 0.50,
+        score: 0.0, // Zero authentic model confidence on inference error
         engineName: 'litert_model (fallback on error)',
         matchedSignals: ['Inference error: $e'],
         latencyMs: stopwatch.elapsedMilliseconds,

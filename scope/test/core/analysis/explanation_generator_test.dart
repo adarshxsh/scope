@@ -23,7 +23,8 @@ void main() {
         priority: 'medium',
       );
 
-      expect(explanation, contains('• Confidence: [Fallback Execution].'));
+      expect(explanation, contains('• Status: **Fallback Heuristic (ML Inference Bypassed/Failed)**.'));
+      expect(explanation, contains('• Confidence: **N/A (Fallback)**.'));
       expect(explanation, isNot(contains('• Confidence: **50%**.')));
     });
 
@@ -46,7 +47,7 @@ void main() {
       );
 
       expect(explanation, contains('• Confidence: **92%**.'));
-      expect(explanation, isNot(contains('[Fallback Execution]')));
+      expect(explanation, isNot(contains('N/A (Fallback)')));
     });
   });
 }
