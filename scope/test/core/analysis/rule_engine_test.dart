@@ -124,5 +124,32 @@ void main() {
       expect(result.category, equals('promo'));
       expect(result.priority, equals('low'));
     });
+    test('matches package condition regardless of casing', () {
+      final notif = AppNotification(
+        id: 'case-test',
+        packageName: 'COM.WHATSAPP', // Uppercase package name
+        title: 'Mom',
+        content: 'Call me back.',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final result = engine.match(notif);
+      expect(result, isNotNull);
+      expect(result!.ruleId, equals('whatsapp_mom'));
+    });
+
+    test('matches content keywords in body separately from title keywords', () {
+      final notif = AppNotification(
+        id: 'content-test',
+        packageName: 'com.swiggy',
+        title: 'Generic Title',
+        content: 'Special discount inside!',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final result = engine.match(notif);
+      expect(result, isNotNull);
+      expect(result!.ruleId, equals('swiggy_promo'));
+    });
   });
 }

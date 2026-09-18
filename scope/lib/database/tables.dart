@@ -65,3 +65,16 @@ class DailyBriefTable extends Table {
   IntColumn get remindersCreated => integer().withDefault(const Constant(0))();
   IntColumn get archivedCount => integer().withDefault(const Constant(0))();
 }
+
+@DataClassName('FeedbackLogEntry')
+class FeedbackLogsTable extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get notificationId => text()();
+  TextColumn get feedbackType => text()(); // 'reward' or 'penalty'
+  TextColumn get originalPriority => text().nullable()();
+  TextColumn get correctedPriority => text().nullable()();
+  TextColumn get originalCategory => text().nullable()();
+  TextColumn get correctedCategory => text().nullable()();
+  DateTimeColumn get timestamp => dateTime().withDefault(currentDateAndTime)();
+}
+

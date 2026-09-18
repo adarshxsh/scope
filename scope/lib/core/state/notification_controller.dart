@@ -319,18 +319,19 @@ class NotificationController extends ChangeNotifier {
   }
 
   Future<void> _loadInitialNotifications() async {
-    if (_initialLoadCompleted) return;
+    if (_initialLoadCompleted || _isDisposed) return;
     final loaded = await _storage.getAll();
-    if (_initialLoadCompleted) return;
+    if (_initialLoadCompleted || _isDisposed) return;
 
     if (_notifications.isEmpty) {
       _notifications = loaded;
     }
-    if (_notifications.isNotEmpty) {
+    if (_notifications.isNotEmpty && !_isDisposed) {
       final notifier = _container.read(reviewQueueProvider.notifier);
       notifier.load(_notifications);
       await notifier.rescore();
     }
+    if (_isDisposed) return;
     _initialLoadCompleted = true;
     _isLoading = false;
     notifyListeners();
@@ -471,6 +472,34 @@ class NotificationController extends ChangeNotifier {
     clearFilter();
     notifyListeners();
   }
+
+  /// Record positive (reward) or negative (penalty) feedback and persist to storage.
+  Future<void> recordFeedback({
+    required String notificationId,
+    required String feedbackType,
+    String? originalPriority,
+    String? correctedPriority,
+    String? originalCategory,
+    String? correctedCategory,
+  }) async {
+    await _storage.saveFeedback(
+      notificationId: notificationId,
+      feedbackType: feedbackType,
+      originalPriority: originalPriority,
+      correctedPriority: correctedPriority,
+      originalCategory: originalCategory,
+      correctedCategory: correctedCategory,
+    );
+    await rescoreActiveQueue();
+  }
+
+  /// Triggers an immediate rescore of all pending items in the active review queue.
+  Future<void> rescoreActiveQueue() async {
+    final notifier = _container.read(reviewQueueProvider.notifier);
+    await notifier.rescore();
+    notifyListeners();
+  }
+
 
   void openNotificationSettings() => _bridge.openNotificationSettings();
 

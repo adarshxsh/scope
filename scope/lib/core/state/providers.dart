@@ -192,8 +192,15 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
       // 2. Perform re-scoring prediction via GhostAI
       final ghostResult = await GhostAI.predict(item);
 
+      final ruleMatch = GhostAI.instance.ruleEngine.match(item);
+      String updatedPriority = item.priority ?? 'low';
+      if (ruleMatch != null) {
+        updatedPriority = ruleMatch.priority;
+      }
+
       var updatedItem = item.copyWith(
         priorityScore: ghostResult.reviewScore,
+        priority: updatedPriority,
         state: currentState,
         lastUpdated: now,
       );
