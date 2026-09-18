@@ -92,6 +92,11 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     if (_selectedNotification == null) return;
 
     if (isReward) {
+      widget.controller.recordRlhfFeedback(
+        notification: _selectedNotification!,
+        feedbackType: 'reward',
+        rewardValue: 1.0,
+      );
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Reward (+1) recorded! AI model confidence reinforced.'),
@@ -99,6 +104,11 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
         ),
       );
     } else {
+      widget.controller.recordRlhfFeedback(
+        notification: _selectedNotification!,
+        feedbackType: 'penalty',
+        rewardValue: -1.0,
+      );
       setState(() {
         _showCorrectionForm = true;
       });
@@ -109,6 +119,14 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     if (_selectedNotification == null) return;
 
     final n = _selectedNotification!;
+
+    widget.controller.recordRlhfFeedback(
+      notification: n,
+      feedbackType: 'correction',
+      correctedCategory: _selectedCategory,
+      correctedPriority: _selectedPriority,
+    );
+
     // Extract defining keywords (e.g. words > 3 chars)
     final words = <String>[];
     for (final w in n.title.split(' ')) {
