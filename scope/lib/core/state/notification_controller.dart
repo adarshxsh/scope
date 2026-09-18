@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:scope/core/guardrails/ingestion_guardrails.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
 import 'package:scope/core/models/notification_model.dart';
@@ -42,11 +43,13 @@ class NotificationController extends ChangeNotifier {
     NotificationBridge? bridge,
     NotificationStorage? storage,
     GhostAnalysisEngine? engine,
+    IngestionGuardrailService? guardrails,
     ProviderContainer? container,
   })  : _bridge = bridge ?? NotificationBridge(),
         _container = container ?? providerContainer,
         _storage = storage ?? DriftNotificationStorage(container?.read(databaseProvider) ?? providerContainer.read(databaseProvider)),
-        _engine = engine ?? GhostAnalysisEngine() {
+        _engine = engine ?? GhostAnalysisEngine(),
+        _guardrails = guardrails ?? IngestionGuardrailService() {
     _engine.initialize();
 
     // Listen to changes in Riverpod's reviewQueueProvider to keep legacy notifier list in sync
@@ -62,6 +65,7 @@ class NotificationController extends ChangeNotifier {
   final NotificationBridge _bridge;
   final NotificationStorage _storage;
   final GhostAnalysisEngine _engine;
+  final IngestionGuardrailService _guardrails;
   final ProviderContainer _container;
 
   List<AppNotification> _notifications = [];
@@ -93,6 +97,7 @@ class NotificationController extends ChangeNotifier {
   bool get isListenerEnabled => _isListenerEnabled;
   bool get isLoading => _isLoading;
   GhostAnalysisEngine get engine => _engine;
+  IngestionGuardrailService get guardrails => _guardrails;
 
   bool get inFocusSession => _inFocusSession;
   List<String> get focusSessionQueueIds => List.unmodifiable(_focusSessionQueueIds);
@@ -391,20 +396,26 @@ class NotificationController extends ChangeNotifier {
         // Ignore ongoing background/system notifications (e.g. charging, media playback)
         if (raw.isOngoing) continue;
 
+        // Evaluate against guardrails (package exclusion, category exclusion, schema validation)
+        final report = _guardrails.evaluateAndSanitize(raw);
+        if (!report.isAllowed || report.notification == null) continue;
+
+        final item = report.notification!;
+
         final isDuplicate = _notifications.any((n) =>
-            n.packageName == raw.packageName &&
-            n.timestamp == raw.timestamp &&
-            n.title == raw.title &&
-            n.content == raw.content);
+            n.packageName == item.packageName &&
+            n.timestamp == item.timestamp &&
+            n.title == item.title &&
+            n.content == item.content);
 
         if (!isDuplicate) {
           final inBatch = analyzed.any((n) =>
-              n.packageName == raw.packageName &&
-              n.timestamp == raw.timestamp &&
-              n.title == raw.title &&
-              n.content == raw.content);
+              n.packageName == item.packageName &&
+              n.timestamp == item.timestamp &&
+              n.title == item.title &&
+              n.content == item.content);
           if (!inBatch) {
-            analyzed.add(await _engine.analyze(raw));
+            analyzed.add(await _engine.analyze(item));
           }
         }
       }
@@ -433,20 +444,25 @@ class NotificationController extends ChangeNotifier {
     final analyzed = <AppNotification>[];
 
     for (final raw in testNotifs) {
+      final report = _guardrails.evaluateAndSanitize(raw);
+      if (!report.isAllowed || report.notification == null) continue;
+
+      final item = report.notification!;
+
       final isDuplicate = _notifications.any((n) =>
-          n.packageName == raw.packageName &&
-          n.timestamp == raw.timestamp &&
-          n.title == raw.title &&
-          n.content == raw.content);
+          n.packageName == item.packageName &&
+          n.timestamp == item.timestamp &&
+          n.title == item.title &&
+          n.content == item.content);
 
       if (!isDuplicate) {
         final inBatch = analyzed.any((n) =>
-            n.packageName == raw.packageName &&
-            n.timestamp == raw.timestamp &&
-            n.title == raw.title &&
-            n.content == raw.content);
+            n.packageName == item.packageName &&
+            n.timestamp == item.timestamp &&
+            n.title == item.title &&
+            n.content == item.content);
         if (!inBatch) {
-          analyzed.add(await _engine.analyze(raw));
+          analyzed.add(await _engine.analyze(item));
         }
       }
     }
