@@ -2709,6 +2709,320 @@ class DailyBriefTableCompanion extends UpdateCompanion<DailyBriefEntry> {
   }
 }
 
+class $PrivacyBudgetTableTable extends PrivacyBudgetTable
+    with TableInfo<$PrivacyBudgetTableTable, PrivacyBudgetEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PrivacyBudgetTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _epochDateMeta = const VerificationMeta(
+    'epochDate',
+  );
+  @override
+  late final GeneratedColumn<String> epochDate = GeneratedColumn<String>(
+    'epoch_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _targetEpsilonMeta = const VerificationMeta(
+    'targetEpsilon',
+  );
+  @override
+  late final GeneratedColumn<double> targetEpsilon = GeneratedColumn<double>(
+    'target_epsilon',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1.0),
+  );
+  static const VerificationMeta _consumedEpsilonMeta = const VerificationMeta(
+    'consumedEpsilon',
+  );
+  @override
+  late final GeneratedColumn<double> consumedEpsilon = GeneratedColumn<double>(
+    'consumed_epsilon',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0.0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    epochDate,
+    targetEpsilon,
+    consumedEpsilon,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'privacy_budget_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PrivacyBudgetEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('epoch_date')) {
+      context.handle(
+        _epochDateMeta,
+        epochDate.isAcceptableOrUnknown(data['epoch_date']!, _epochDateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_epochDateMeta);
+    }
+    if (data.containsKey('target_epsilon')) {
+      context.handle(
+        _targetEpsilonMeta,
+        targetEpsilon.isAcceptableOrUnknown(
+          data['target_epsilon']!,
+          _targetEpsilonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('consumed_epsilon')) {
+      context.handle(
+        _consumedEpsilonMeta,
+        consumedEpsilon.isAcceptableOrUnknown(
+          data['consumed_epsilon']!,
+          _consumedEpsilonMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PrivacyBudgetEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PrivacyBudgetEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      epochDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}epoch_date'],
+      )!,
+      targetEpsilon: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}target_epsilon'],
+      )!,
+      consumedEpsilon: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}consumed_epsilon'],
+      )!,
+    );
+  }
+
+  @override
+  $PrivacyBudgetTableTable createAlias(String alias) {
+    return $PrivacyBudgetTableTable(attachedDatabase, alias);
+  }
+}
+
+class PrivacyBudgetEntry extends DataClass
+    implements Insertable<PrivacyBudgetEntry> {
+  final int id;
+  final String epochDate;
+  final double targetEpsilon;
+  final double consumedEpsilon;
+  const PrivacyBudgetEntry({
+    required this.id,
+    required this.epochDate,
+    required this.targetEpsilon,
+    required this.consumedEpsilon,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['epoch_date'] = Variable<String>(epochDate);
+    map['target_epsilon'] = Variable<double>(targetEpsilon);
+    map['consumed_epsilon'] = Variable<double>(consumedEpsilon);
+    return map;
+  }
+
+  PrivacyBudgetTableCompanion toCompanion(bool nullToAbsent) {
+    return PrivacyBudgetTableCompanion(
+      id: Value(id),
+      epochDate: Value(epochDate),
+      targetEpsilon: Value(targetEpsilon),
+      consumedEpsilon: Value(consumedEpsilon),
+    );
+  }
+
+  factory PrivacyBudgetEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PrivacyBudgetEntry(
+      id: serializer.fromJson<int>(json['id']),
+      epochDate: serializer.fromJson<String>(json['epochDate']),
+      targetEpsilon: serializer.fromJson<double>(json['targetEpsilon']),
+      consumedEpsilon: serializer.fromJson<double>(json['consumedEpsilon']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'epochDate': serializer.toJson<String>(epochDate),
+      'targetEpsilon': serializer.toJson<double>(targetEpsilon),
+      'consumedEpsilon': serializer.toJson<double>(consumedEpsilon),
+    };
+  }
+
+  PrivacyBudgetEntry copyWith({
+    int? id,
+    String? epochDate,
+    double? targetEpsilon,
+    double? consumedEpsilon,
+  }) => PrivacyBudgetEntry(
+    id: id ?? this.id,
+    epochDate: epochDate ?? this.epochDate,
+    targetEpsilon: targetEpsilon ?? this.targetEpsilon,
+    consumedEpsilon: consumedEpsilon ?? this.consumedEpsilon,
+  );
+  PrivacyBudgetEntry copyWithCompanion(PrivacyBudgetTableCompanion data) {
+    return PrivacyBudgetEntry(
+      id: data.id.present ? data.id.value : this.id,
+      epochDate: data.epochDate.present ? data.epochDate.value : this.epochDate,
+      targetEpsilon: data.targetEpsilon.present
+          ? data.targetEpsilon.value
+          : this.targetEpsilon,
+      consumedEpsilon: data.consumedEpsilon.present
+          ? data.consumedEpsilon.value
+          : this.consumedEpsilon,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PrivacyBudgetEntry(')
+          ..write('id: $id, ')
+          ..write('epochDate: $epochDate, ')
+          ..write('targetEpsilon: $targetEpsilon, ')
+          ..write('consumedEpsilon: $consumedEpsilon')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, epochDate, targetEpsilon, consumedEpsilon);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PrivacyBudgetEntry &&
+          other.id == this.id &&
+          other.epochDate == this.epochDate &&
+          other.targetEpsilon == this.targetEpsilon &&
+          other.consumedEpsilon == this.consumedEpsilon);
+}
+
+class PrivacyBudgetTableCompanion extends UpdateCompanion<PrivacyBudgetEntry> {
+  final Value<int> id;
+  final Value<String> epochDate;
+  final Value<double> targetEpsilon;
+  final Value<double> consumedEpsilon;
+  const PrivacyBudgetTableCompanion({
+    this.id = const Value.absent(),
+    this.epochDate = const Value.absent(),
+    this.targetEpsilon = const Value.absent(),
+    this.consumedEpsilon = const Value.absent(),
+  });
+  PrivacyBudgetTableCompanion.insert({
+    this.id = const Value.absent(),
+    required String epochDate,
+    this.targetEpsilon = const Value.absent(),
+    this.consumedEpsilon = const Value.absent(),
+  }) : epochDate = Value(epochDate);
+  static Insertable<PrivacyBudgetEntry> custom({
+    Expression<int>? id,
+    Expression<String>? epochDate,
+    Expression<double>? targetEpsilon,
+    Expression<double>? consumedEpsilon,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (epochDate != null) 'epoch_date': epochDate,
+      if (targetEpsilon != null) 'target_epsilon': targetEpsilon,
+      if (consumedEpsilon != null) 'consumed_epsilon': consumedEpsilon,
+    });
+  }
+
+  PrivacyBudgetTableCompanion copyWith({
+    Value<int>? id,
+    Value<String>? epochDate,
+    Value<double>? targetEpsilon,
+    Value<double>? consumedEpsilon,
+  }) {
+    return PrivacyBudgetTableCompanion(
+      id: id ?? this.id,
+      epochDate: epochDate ?? this.epochDate,
+      targetEpsilon: targetEpsilon ?? this.targetEpsilon,
+      consumedEpsilon: consumedEpsilon ?? this.consumedEpsilon,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (epochDate.present) {
+      map['epoch_date'] = Variable<String>(epochDate.value);
+    }
+    if (targetEpsilon.present) {
+      map['target_epsilon'] = Variable<double>(targetEpsilon.value);
+    }
+    if (consumedEpsilon.present) {
+      map['consumed_epsilon'] = Variable<double>(consumedEpsilon.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PrivacyBudgetTableCompanion(')
+          ..write('id: $id, ')
+          ..write('epochDate: $epochDate, ')
+          ..write('targetEpsilon: $targetEpsilon, ')
+          ..write('consumedEpsilon: $consumedEpsilon')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AttentionDatabase extends GeneratedDatabase {
   _$AttentionDatabase(QueryExecutor e) : super(e);
   $AttentionDatabaseManager get managers => $AttentionDatabaseManager(this);
@@ -2722,6 +3036,8 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final $DailyBriefTableTable dailyBriefTable = $DailyBriefTableTable(
     this,
   );
+  late final $PrivacyBudgetTableTable privacyBudgetTable =
+      $PrivacyBudgetTableTable(this);
   late final NotificationDao notificationDao = NotificationDao(
     this as AttentionDatabase,
   );
@@ -2734,6 +3050,9 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final DailyBriefDao dailyBriefDao = DailyBriefDao(
     this as AttentionDatabase,
   );
+  late final PrivacyBudgetDao privacyBudgetDao = PrivacyBudgetDao(
+    this as AttentionDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2743,6 +3062,7 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
     reviewQueueTable,
     focusSessionsTable,
     dailyBriefTable,
+    privacyBudgetTable,
   ];
 }
 
@@ -3406,7 +3726,9 @@ class $$NotificationsTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$NotificationsTableTable, NotificationEntry>(
+                    table,
+                  ),
                   $$NotificationsTableTableReferences(db, table, e),
                 ),
               )
@@ -3749,7 +4071,7 @@ class $$ReviewQueueTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$ReviewQueueTableTable, ReviewQueueEntry>(table),
                   $$ReviewQueueTableTableReferences(db, table, e),
                 ),
               )
@@ -4021,7 +4343,18 @@ class $$FocusSessionsTableTableTableManager
                 duration: duration,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$FocusSessionsTableTable, FocusSessionEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $FocusSessionsTableTable,
+                    FocusSessionEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4273,7 +4606,16 @@ class $$DailyBriefTableTableTableManager
                 archivedCount: archivedCount,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$DailyBriefTableTable, DailyBriefEntry>(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $DailyBriefTableTable,
+                    DailyBriefEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4301,6 +4643,209 @@ typedef $$DailyBriefTableTableProcessedTableManager =
       DailyBriefEntry,
       PrefetchHooks Function()
     >;
+typedef $$PrivacyBudgetTableTableCreateCompanionBuilder =
+    PrivacyBudgetTableCompanion Function({
+      Value<int> id,
+      required String epochDate,
+      Value<double> targetEpsilon,
+      Value<double> consumedEpsilon,
+    });
+typedef $$PrivacyBudgetTableTableUpdateCompanionBuilder =
+    PrivacyBudgetTableCompanion Function({
+      Value<int> id,
+      Value<String> epochDate,
+      Value<double> targetEpsilon,
+      Value<double> consumedEpsilon,
+    });
+
+class $$PrivacyBudgetTableTableFilterComposer
+    extends Composer<_$AttentionDatabase, $PrivacyBudgetTableTable> {
+  $$PrivacyBudgetTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get epochDate => $composableBuilder(
+    column: $table.epochDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get targetEpsilon => $composableBuilder(
+    column: $table.targetEpsilon,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get consumedEpsilon => $composableBuilder(
+    column: $table.consumedEpsilon,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PrivacyBudgetTableTableOrderingComposer
+    extends Composer<_$AttentionDatabase, $PrivacyBudgetTableTable> {
+  $$PrivacyBudgetTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get epochDate => $composableBuilder(
+    column: $table.epochDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get targetEpsilon => $composableBuilder(
+    column: $table.targetEpsilon,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get consumedEpsilon => $composableBuilder(
+    column: $table.consumedEpsilon,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PrivacyBudgetTableTableAnnotationComposer
+    extends Composer<_$AttentionDatabase, $PrivacyBudgetTableTable> {
+  $$PrivacyBudgetTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get epochDate =>
+      $composableBuilder(column: $table.epochDate, builder: (column) => column);
+
+  GeneratedColumn<double> get targetEpsilon => $composableBuilder(
+    column: $table.targetEpsilon,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get consumedEpsilon => $composableBuilder(
+    column: $table.consumedEpsilon,
+    builder: (column) => column,
+  );
+}
+
+class $$PrivacyBudgetTableTableTableManager
+    extends
+        RootTableManager<
+          _$AttentionDatabase,
+          $PrivacyBudgetTableTable,
+          PrivacyBudgetEntry,
+          $$PrivacyBudgetTableTableFilterComposer,
+          $$PrivacyBudgetTableTableOrderingComposer,
+          $$PrivacyBudgetTableTableAnnotationComposer,
+          $$PrivacyBudgetTableTableCreateCompanionBuilder,
+          $$PrivacyBudgetTableTableUpdateCompanionBuilder,
+          (
+            PrivacyBudgetEntry,
+            BaseReferences<
+              _$AttentionDatabase,
+              $PrivacyBudgetTableTable,
+              PrivacyBudgetEntry
+            >,
+          ),
+          PrivacyBudgetEntry,
+          PrefetchHooks Function()
+        > {
+  $$PrivacyBudgetTableTableTableManager(
+    _$AttentionDatabase db,
+    $PrivacyBudgetTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PrivacyBudgetTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PrivacyBudgetTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PrivacyBudgetTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> epochDate = const Value.absent(),
+                Value<double> targetEpsilon = const Value.absent(),
+                Value<double> consumedEpsilon = const Value.absent(),
+              }) => PrivacyBudgetTableCompanion(
+                id: id,
+                epochDate: epochDate,
+                targetEpsilon: targetEpsilon,
+                consumedEpsilon: consumedEpsilon,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String epochDate,
+                Value<double> targetEpsilon = const Value.absent(),
+                Value<double> consumedEpsilon = const Value.absent(),
+              }) => PrivacyBudgetTableCompanion.insert(
+                id: id,
+                epochDate: epochDate,
+                targetEpsilon: targetEpsilon,
+                consumedEpsilon: consumedEpsilon,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$PrivacyBudgetTableTable, PrivacyBudgetEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $PrivacyBudgetTableTable,
+                    PrivacyBudgetEntry
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PrivacyBudgetTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AttentionDatabase,
+      $PrivacyBudgetTableTable,
+      PrivacyBudgetEntry,
+      $$PrivacyBudgetTableTableFilterComposer,
+      $$PrivacyBudgetTableTableOrderingComposer,
+      $$PrivacyBudgetTableTableAnnotationComposer,
+      $$PrivacyBudgetTableTableCreateCompanionBuilder,
+      $$PrivacyBudgetTableTableUpdateCompanionBuilder,
+      (
+        PrivacyBudgetEntry,
+        BaseReferences<
+          _$AttentionDatabase,
+          $PrivacyBudgetTableTable,
+          PrivacyBudgetEntry
+        >,
+      ),
+      PrivacyBudgetEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AttentionDatabaseManager {
   final _$AttentionDatabase _db;
@@ -4313,4 +4858,6 @@ class $AttentionDatabaseManager {
       $$FocusSessionsTableTableTableManager(_db, _db.focusSessionsTable);
   $$DailyBriefTableTableTableManager get dailyBriefTable =>
       $$DailyBriefTableTableTableManager(_db, _db.dailyBriefTable);
+  $$PrivacyBudgetTableTableTableManager get privacyBudgetTable =>
+      $$PrivacyBudgetTableTableTableManager(_db, _db.privacyBudgetTable);
 }
