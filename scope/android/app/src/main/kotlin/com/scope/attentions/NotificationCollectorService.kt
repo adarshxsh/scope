@@ -3,6 +3,7 @@ package com.scope.attentions
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
+import java.security.MessageDigest
 import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
@@ -15,9 +16,9 @@ import java.util.concurrent.ConcurrentLinkedQueue
  * by [MainActivity] when Flutter requests them via MethodChannel.
  *
  * Design decisions:
- *   - Uses a static ConcurrentLinkedQueue (thread-safe, lock-free) because
- *     the service runs in a separate context from MainActivity.
- *   - No heavy processing here — just capture and queue.
+ *   - Uses a static ConcurrentLinkedQueue (thread-safe, lock-free) bounded to
+ *     [MAX_QUEUE_SIZE] to prevent background memory exhaustion.
+ *   - Enforces strict sanitization and title redaction before writing to logcat.
  *   - Skips ongoing/persistent notifications by default (configurable).
  */
 class NotificationCollectorService : NotificationListenerService() {
@@ -25,11 +26,48 @@ class NotificationCollectorService : NotificationListenerService() {
     companion object {
         private const val TAG = "NotifCollector"
 
+        /** Maximum items allowed in queue to cap background memory usage. */
+        const val MAX_QUEUE_SIZE = 500
+
         /** Thread-safe queue of captured notifications. */
         private val queue = ConcurrentLinkedQueue<NotificationData>()
 
         /** Counter for generating simple unique IDs within a session. */
         private var idCounter = 0L
+
+        /**
+         * Redacts PII / sensitive notification titles for native logcat output.
+         * Returns a non-reversible string containing length and SHA-256 fingerprint.
+         */
+        fun redactForLog(text: String?): String {
+            if (text.isNullOrEmpty()) return "[EMPTY]"
+            val len = text.length
+            val hash = try {
+                val md = MessageDigest.getInstance("SHA-256")
+                val digest = md.digest(text.toByteArray(Charsets.UTF_8))
+                digest.joinToString("") { "%02x".format(it) }.take(8)
+            } catch (e: Exception) {
+                "anon"
+            }
+            return "[REDACTED len=$len hash=$hash]"
+        }
+
+        /**
+         * Sanitizes package name for native logcat output to prevent full package PII exposure.
+         */
+        fun sanitizePackageName(pkg: String?): String {
+            if (pkg.isNullOrEmpty()) return "unknown"
+            val hash = try {
+                val md = MessageDigest.getInstance("SHA-256")
+                val digest = md.digest(pkg.toByteArray(Charsets.UTF_8))
+                digest.joinToString("") { "%02x".format(it) }.take(8)
+            } catch (e: Exception) {
+                "anon"
+            }
+            val parts = pkg.split(".")
+            val prefix = if (parts.isNotEmpty()) parts.first() else "pkg"
+            return "$prefix...#$hash"
+        }
 
         /**
          * Drains all notifications from the queue and returns them.
@@ -49,23 +87,43 @@ class NotificationCollectorService : NotificationListenerService() {
          * Returns the current queue size (for diagnostics).
          */
         fun queueSize(): Int = queue.size
+
+        /**
+         * Clears all items in the queue (for diagnostic reset/testing).
+         */
+        fun clearQueue() {
+            queue.clear()
+        }
+
+        /**
+         * Helper to add item to queue with bounding constraints (for testing & internal use).
+         */
+        fun enqueueData(data: NotificationData): Boolean {
+            val isDuplicate = queue.any {
+                it.packageName == data.packageName && it.title == data.title && it.content == data.content
+            }
+            if (isDuplicate) {
+                return false
+            }
+            while (queue.size >= MAX_QUEUE_SIZE) {
+                queue.poll()
+            }
+            return queue.add(data)
+        }
     }
 
     private fun addSbnToQueue(sbn: StatusBarNotification) {
         try {
-            val extras = sbn.notification.extras
-            val title = extras?.getCharSequence("android.title")?.toString() ?: ""
-            val text = extras?.getCharSequence("android.text")?.toString() ?: ""
+            val notification = sbn.notification ?: return
+            val extras = notification.extras
+            val rawTitle = extras?.getCharSequence("android.title")?.toString() ?: ""
+            val rawText = extras?.getCharSequence("android.text")?.toString() ?: ""
             val isOngoing = sbn.isOngoing
             val packageName = sbn.packageName ?: "unknown"
 
-            // Ignore if same package, title, and content already exist in queue
-            val isDuplicate = queue.any {
-                it.packageName == packageName && it.title == title && it.content == text
-            }
-            if (isDuplicate) {
-                return
-            }
+            // Sanitize input boundaries
+            val title = rawTitle.trim()
+            val text = rawText.trim()
 
             val data = NotificationData(
                 id = "notif_${++idCounter}",
@@ -73,14 +131,16 @@ class NotificationCollectorService : NotificationListenerService() {
                 title = title,
                 content = text,
                 timestamp = sbn.postTime,
-                category = sbn.notification.category,
+                category = notification.category,
                 isOngoing = isOngoing
             )
 
-            queue.add(data)
-            Log.d(TAG, "Captured: ${data.packageName} - ${data.title}")
+            val added = enqueueData(data)
+            if (added) {
+                Log.d(TAG, "Captured: ${sanitizePackageName(data.packageName)} - ${redactForLog(data.title)}")
+            }
         } catch (e: Exception) {
-            Log.e(TAG, "Error capturing/adding notification", e)
+            Log.e(TAG, "Error capturing notification gracefully", e)
         }
     }
 
@@ -91,8 +151,8 @@ class NotificationCollectorService : NotificationListenerService() {
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         if (sbn == null) return
-        // Log for now; future phases may track dismissed notifications
-        Log.d(TAG, "Removed: ${sbn.packageName} - ${sbn.notification.extras?.getCharSequence("android.title")}")
+        val rawTitle = sbn.notification?.extras?.getCharSequence("android.title")?.toString()
+        Log.d(TAG, "Removed: ${sanitizePackageName(sbn.packageName)} - ${redactForLog(rawTitle)}")
     }
 
     override fun onListenerConnected() {

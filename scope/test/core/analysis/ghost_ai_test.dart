@@ -233,5 +233,21 @@ void main() {
         expect(result.reviewScore, isPositive); // Not overridden
       });
     });
+
+    group('Privacy Logging Guardrails', () {
+      test('predict executes without throwing on empty or malformed PII inputs', () async {
+        final emptyNotif = AppNotification(
+          id: 'empty-1',
+          packageName: '',
+          title: '',
+          content: '',
+          timestamp: 0,
+        );
+
+        final result = await GhostAI.predict(emptyNotif);
+        expect(result, isNotNull);
+        expect(result.featureVector, isNotEmpty);
+      });
+    });
   });
 }
