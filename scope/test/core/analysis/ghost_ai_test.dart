@@ -233,5 +233,22 @@ void main() {
         expect(result.reviewScore, isPositive); // Not overridden
       });
     });
+
+    group('Sanitization Tests', () {
+      test('sanitizeText formats raw text into truncated SHA-256 and length metric', () {
+        const title = 'Your HDFC OTP is 482715';
+        final sanitized = GhostAI.sanitizeText(title);
+
+        expect(sanitized, contains('[sha256:'));
+        expect(sanitized, contains(', len:${title.length}]'));
+        expect(sanitized, isNot(contains('482715')));
+        expect(sanitized, isNot(contains('HDFC')));
+      });
+
+      test('sanitizeText handles empty string', () {
+        final sanitized = GhostAI.sanitizeText('');
+        expect(sanitized, equals('[sha256:e3b0c442, len:0]'));
+      });
+    });
   });
 }

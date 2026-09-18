@@ -3,6 +3,7 @@ package com.scope.attentions
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
+import java.security.MessageDigest
 import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
@@ -51,6 +52,15 @@ class NotificationCollectorService : NotificationListenerService() {
         fun queueSize(): Int = queue.size
     }
 
+    private fun sanitizeText(text: String?): String {
+        val input = text ?: ""
+        val md = MessageDigest.getInstance("SHA-256")
+        val digest = md.digest(input.toByteArray(Charsets.UTF_8))
+        val hex = digest.joinToString("") { "%02x".format(it) }
+        val truncated = if (hex.length >= 8) hex.substring(0, 8) else hex
+        return "[sha256:$truncated, len:${input.length}]"
+    }
+
     private fun addSbnToQueue(sbn: StatusBarNotification) {
         try {
             val extras = sbn.notification.extras
@@ -78,7 +88,7 @@ class NotificationCollectorService : NotificationListenerService() {
             )
 
             queue.add(data)
-            Log.d(TAG, "Captured: ${data.packageName} - ${data.title}")
+            Log.d(TAG, "Captured: ${data.packageName} - ${sanitizeText(data.title)}")
         } catch (e: Exception) {
             Log.e(TAG, "Error capturing/adding notification", e)
         }
@@ -92,7 +102,8 @@ class NotificationCollectorService : NotificationListenerService() {
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         if (sbn == null) return
         // Log for now; future phases may track dismissed notifications
-        Log.d(TAG, "Removed: ${sbn.packageName} - ${sbn.notification.extras?.getCharSequence("android.title")}")
+        val title = sbn.notification.extras?.getCharSequence("android.title")?.toString()
+        Log.d(TAG, "Removed: ${sbn.packageName} - ${sanitizeText(title)}")
     }
 
     override fun onListenerConnected() {
