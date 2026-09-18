@@ -4,6 +4,7 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
+import 'package:scope/core/analysis/score_fusion.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -112,21 +113,7 @@ class GhostAI {
     final ruleMatch = _ruleEngine.match(notification);
     double? ruleScore;
     if (ruleMatch != null) {
-      switch (ruleMatch.priority) {
-        case 'critical':
-          ruleScore = 1.0;
-          break;
-        case 'high':
-          ruleScore = 0.85;
-          break;
-        case 'medium':
-          ruleScore = 0.50;
-          break;
-        case 'low':
-        default:
-          ruleScore = 0.15;
-          break;
-      }
+      ruleScore = ScoreFusion.rulePriorityToScore(ruleMatch.priority);
     }
 
     // 4. Score Fusion (rules + predictions)
@@ -141,8 +128,13 @@ class GhostAI {
       if (isCriticalBypass) {
         finalScore = 1.0;
       } else {
-        // Average rule score and predicted score
-        finalScore = (predictedScore + ruleScore) / 2.0;
+        final category = ruleMatch.category;
+        final calibratedModelScore = ScoreFusion.calibrateModelScore(predictedScore, category);
+        finalScore = ScoreFusion.fuseRawScores(
+          calibratedModelScore: calibratedModelScore,
+          ruleScore: ruleScore,
+          category: category,
+        );
       }
     }
 
