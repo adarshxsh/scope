@@ -2709,6 +2709,544 @@ class DailyBriefTableCompanion extends UpdateCompanion<DailyBriefEntry> {
   }
 }
 
+class $InferenceTelemetryTableTable extends InferenceTelemetryTable
+    with TableInfo<$InferenceTelemetryTableTable, InferenceTelemetryEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $InferenceTelemetryTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _timestampMeta = const VerificationMeta(
+    'timestamp',
+  );
+  @override
+  late final GeneratedColumn<int> timestamp = GeneratedColumn<int>(
+    'timestamp',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _inferenceTimeUsMeta = const VerificationMeta(
+    'inferenceTimeUs',
+  );
+  @override
+  late final GeneratedColumn<int> inferenceTimeUs = GeneratedColumn<int>(
+    'inference_time_us',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _totalLatencyMsMeta = const VerificationMeta(
+    'totalLatencyMs',
+  );
+  @override
+  late final GeneratedColumn<int> totalLatencyMs = GeneratedColumn<int>(
+    'total_latency_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isFallbackMeta = const VerificationMeta(
+    'isFallback',
+  );
+  @override
+  late final GeneratedColumn<bool> isFallback = GeneratedColumn<bool>(
+    'is_fallback',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_fallback" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isSuccessMeta = const VerificationMeta(
+    'isSuccess',
+  );
+  @override
+  late final GeneratedColumn<bool> isSuccess = GeneratedColumn<bool>(
+    'is_success',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_success" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _modelVersionMeta = const VerificationMeta(
+    'modelVersion',
+  );
+  @override
+  late final GeneratedColumn<String> modelVersion = GeneratedColumn<String>(
+    'model_version',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _classifiedCategoryMeta =
+      const VerificationMeta('classifiedCategory');
+  @override
+  late final GeneratedColumn<String> classifiedCategory =
+      GeneratedColumn<String>(
+        'classified_category',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    timestamp,
+    inferenceTimeUs,
+    totalLatencyMs,
+    isFallback,
+    isSuccess,
+    modelVersion,
+    classifiedCategory,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'inference_telemetry_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<InferenceTelemetryEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('timestamp')) {
+      context.handle(
+        _timestampMeta,
+        timestamp.isAcceptableOrUnknown(data['timestamp']!, _timestampMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_timestampMeta);
+    }
+    if (data.containsKey('inference_time_us')) {
+      context.handle(
+        _inferenceTimeUsMeta,
+        inferenceTimeUs.isAcceptableOrUnknown(
+          data['inference_time_us']!,
+          _inferenceTimeUsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_inferenceTimeUsMeta);
+    }
+    if (data.containsKey('total_latency_ms')) {
+      context.handle(
+        _totalLatencyMsMeta,
+        totalLatencyMs.isAcceptableOrUnknown(
+          data['total_latency_ms']!,
+          _totalLatencyMsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_totalLatencyMsMeta);
+    }
+    if (data.containsKey('is_fallback')) {
+      context.handle(
+        _isFallbackMeta,
+        isFallback.isAcceptableOrUnknown(data['is_fallback']!, _isFallbackMeta),
+      );
+    }
+    if (data.containsKey('is_success')) {
+      context.handle(
+        _isSuccessMeta,
+        isSuccess.isAcceptableOrUnknown(data['is_success']!, _isSuccessMeta),
+      );
+    }
+    if (data.containsKey('model_version')) {
+      context.handle(
+        _modelVersionMeta,
+        modelVersion.isAcceptableOrUnknown(
+          data['model_version']!,
+          _modelVersionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_modelVersionMeta);
+    }
+    if (data.containsKey('classified_category')) {
+      context.handle(
+        _classifiedCategoryMeta,
+        classifiedCategory.isAcceptableOrUnknown(
+          data['classified_category']!,
+          _classifiedCategoryMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  InferenceTelemetryEntry map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return InferenceTelemetryEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      timestamp: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}timestamp'],
+      )!,
+      inferenceTimeUs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}inference_time_us'],
+      )!,
+      totalLatencyMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}total_latency_ms'],
+      )!,
+      isFallback: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_fallback'],
+      )!,
+      isSuccess: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_success'],
+      )!,
+      modelVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}model_version'],
+      )!,
+      classifiedCategory: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}classified_category'],
+      ),
+    );
+  }
+
+  @override
+  $InferenceTelemetryTableTable createAlias(String alias) {
+    return $InferenceTelemetryTableTable(attachedDatabase, alias);
+  }
+}
+
+class InferenceTelemetryEntry extends DataClass
+    implements Insertable<InferenceTelemetryEntry> {
+  final int id;
+  final int timestamp;
+  final int inferenceTimeUs;
+  final int totalLatencyMs;
+  final bool isFallback;
+  final bool isSuccess;
+  final String modelVersion;
+  final String? classifiedCategory;
+  const InferenceTelemetryEntry({
+    required this.id,
+    required this.timestamp,
+    required this.inferenceTimeUs,
+    required this.totalLatencyMs,
+    required this.isFallback,
+    required this.isSuccess,
+    required this.modelVersion,
+    this.classifiedCategory,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['timestamp'] = Variable<int>(timestamp);
+    map['inference_time_us'] = Variable<int>(inferenceTimeUs);
+    map['total_latency_ms'] = Variable<int>(totalLatencyMs);
+    map['is_fallback'] = Variable<bool>(isFallback);
+    map['is_success'] = Variable<bool>(isSuccess);
+    map['model_version'] = Variable<String>(modelVersion);
+    if (!nullToAbsent || classifiedCategory != null) {
+      map['classified_category'] = Variable<String>(classifiedCategory);
+    }
+    return map;
+  }
+
+  InferenceTelemetryTableCompanion toCompanion(bool nullToAbsent) {
+    return InferenceTelemetryTableCompanion(
+      id: Value(id),
+      timestamp: Value(timestamp),
+      inferenceTimeUs: Value(inferenceTimeUs),
+      totalLatencyMs: Value(totalLatencyMs),
+      isFallback: Value(isFallback),
+      isSuccess: Value(isSuccess),
+      modelVersion: Value(modelVersion),
+      classifiedCategory: classifiedCategory == null && nullToAbsent
+          ? const Value.absent()
+          : Value(classifiedCategory),
+    );
+  }
+
+  factory InferenceTelemetryEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return InferenceTelemetryEntry(
+      id: serializer.fromJson<int>(json['id']),
+      timestamp: serializer.fromJson<int>(json['timestamp']),
+      inferenceTimeUs: serializer.fromJson<int>(json['inferenceTimeUs']),
+      totalLatencyMs: serializer.fromJson<int>(json['totalLatencyMs']),
+      isFallback: serializer.fromJson<bool>(json['isFallback']),
+      isSuccess: serializer.fromJson<bool>(json['isSuccess']),
+      modelVersion: serializer.fromJson<String>(json['modelVersion']),
+      classifiedCategory: serializer.fromJson<String?>(
+        json['classifiedCategory'],
+      ),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'timestamp': serializer.toJson<int>(timestamp),
+      'inferenceTimeUs': serializer.toJson<int>(inferenceTimeUs),
+      'totalLatencyMs': serializer.toJson<int>(totalLatencyMs),
+      'isFallback': serializer.toJson<bool>(isFallback),
+      'isSuccess': serializer.toJson<bool>(isSuccess),
+      'modelVersion': serializer.toJson<String>(modelVersion),
+      'classifiedCategory': serializer.toJson<String?>(classifiedCategory),
+    };
+  }
+
+  InferenceTelemetryEntry copyWith({
+    int? id,
+    int? timestamp,
+    int? inferenceTimeUs,
+    int? totalLatencyMs,
+    bool? isFallback,
+    bool? isSuccess,
+    String? modelVersion,
+    Value<String?> classifiedCategory = const Value.absent(),
+  }) => InferenceTelemetryEntry(
+    id: id ?? this.id,
+    timestamp: timestamp ?? this.timestamp,
+    inferenceTimeUs: inferenceTimeUs ?? this.inferenceTimeUs,
+    totalLatencyMs: totalLatencyMs ?? this.totalLatencyMs,
+    isFallback: isFallback ?? this.isFallback,
+    isSuccess: isSuccess ?? this.isSuccess,
+    modelVersion: modelVersion ?? this.modelVersion,
+    classifiedCategory: classifiedCategory.present
+        ? classifiedCategory.value
+        : this.classifiedCategory,
+  );
+  InferenceTelemetryEntry copyWithCompanion(
+    InferenceTelemetryTableCompanion data,
+  ) {
+    return InferenceTelemetryEntry(
+      id: data.id.present ? data.id.value : this.id,
+      timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
+      inferenceTimeUs: data.inferenceTimeUs.present
+          ? data.inferenceTimeUs.value
+          : this.inferenceTimeUs,
+      totalLatencyMs: data.totalLatencyMs.present
+          ? data.totalLatencyMs.value
+          : this.totalLatencyMs,
+      isFallback: data.isFallback.present
+          ? data.isFallback.value
+          : this.isFallback,
+      isSuccess: data.isSuccess.present ? data.isSuccess.value : this.isSuccess,
+      modelVersion: data.modelVersion.present
+          ? data.modelVersion.value
+          : this.modelVersion,
+      classifiedCategory: data.classifiedCategory.present
+          ? data.classifiedCategory.value
+          : this.classifiedCategory,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InferenceTelemetryEntry(')
+          ..write('id: $id, ')
+          ..write('timestamp: $timestamp, ')
+          ..write('inferenceTimeUs: $inferenceTimeUs, ')
+          ..write('totalLatencyMs: $totalLatencyMs, ')
+          ..write('isFallback: $isFallback, ')
+          ..write('isSuccess: $isSuccess, ')
+          ..write('modelVersion: $modelVersion, ')
+          ..write('classifiedCategory: $classifiedCategory')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    timestamp,
+    inferenceTimeUs,
+    totalLatencyMs,
+    isFallback,
+    isSuccess,
+    modelVersion,
+    classifiedCategory,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is InferenceTelemetryEntry &&
+          other.id == this.id &&
+          other.timestamp == this.timestamp &&
+          other.inferenceTimeUs == this.inferenceTimeUs &&
+          other.totalLatencyMs == this.totalLatencyMs &&
+          other.isFallback == this.isFallback &&
+          other.isSuccess == this.isSuccess &&
+          other.modelVersion == this.modelVersion &&
+          other.classifiedCategory == this.classifiedCategory);
+}
+
+class InferenceTelemetryTableCompanion
+    extends UpdateCompanion<InferenceTelemetryEntry> {
+  final Value<int> id;
+  final Value<int> timestamp;
+  final Value<int> inferenceTimeUs;
+  final Value<int> totalLatencyMs;
+  final Value<bool> isFallback;
+  final Value<bool> isSuccess;
+  final Value<String> modelVersion;
+  final Value<String?> classifiedCategory;
+  const InferenceTelemetryTableCompanion({
+    this.id = const Value.absent(),
+    this.timestamp = const Value.absent(),
+    this.inferenceTimeUs = const Value.absent(),
+    this.totalLatencyMs = const Value.absent(),
+    this.isFallback = const Value.absent(),
+    this.isSuccess = const Value.absent(),
+    this.modelVersion = const Value.absent(),
+    this.classifiedCategory = const Value.absent(),
+  });
+  InferenceTelemetryTableCompanion.insert({
+    this.id = const Value.absent(),
+    required int timestamp,
+    required int inferenceTimeUs,
+    required int totalLatencyMs,
+    this.isFallback = const Value.absent(),
+    this.isSuccess = const Value.absent(),
+    required String modelVersion,
+    this.classifiedCategory = const Value.absent(),
+  }) : timestamp = Value(timestamp),
+       inferenceTimeUs = Value(inferenceTimeUs),
+       totalLatencyMs = Value(totalLatencyMs),
+       modelVersion = Value(modelVersion);
+  static Insertable<InferenceTelemetryEntry> custom({
+    Expression<int>? id,
+    Expression<int>? timestamp,
+    Expression<int>? inferenceTimeUs,
+    Expression<int>? totalLatencyMs,
+    Expression<bool>? isFallback,
+    Expression<bool>? isSuccess,
+    Expression<String>? modelVersion,
+    Expression<String>? classifiedCategory,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (timestamp != null) 'timestamp': timestamp,
+      if (inferenceTimeUs != null) 'inference_time_us': inferenceTimeUs,
+      if (totalLatencyMs != null) 'total_latency_ms': totalLatencyMs,
+      if (isFallback != null) 'is_fallback': isFallback,
+      if (isSuccess != null) 'is_success': isSuccess,
+      if (modelVersion != null) 'model_version': modelVersion,
+      if (classifiedCategory != null) 'classified_category': classifiedCategory,
+    });
+  }
+
+  InferenceTelemetryTableCompanion copyWith({
+    Value<int>? id,
+    Value<int>? timestamp,
+    Value<int>? inferenceTimeUs,
+    Value<int>? totalLatencyMs,
+    Value<bool>? isFallback,
+    Value<bool>? isSuccess,
+    Value<String>? modelVersion,
+    Value<String?>? classifiedCategory,
+  }) {
+    return InferenceTelemetryTableCompanion(
+      id: id ?? this.id,
+      timestamp: timestamp ?? this.timestamp,
+      inferenceTimeUs: inferenceTimeUs ?? this.inferenceTimeUs,
+      totalLatencyMs: totalLatencyMs ?? this.totalLatencyMs,
+      isFallback: isFallback ?? this.isFallback,
+      isSuccess: isSuccess ?? this.isSuccess,
+      modelVersion: modelVersion ?? this.modelVersion,
+      classifiedCategory: classifiedCategory ?? this.classifiedCategory,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (timestamp.present) {
+      map['timestamp'] = Variable<int>(timestamp.value);
+    }
+    if (inferenceTimeUs.present) {
+      map['inference_time_us'] = Variable<int>(inferenceTimeUs.value);
+    }
+    if (totalLatencyMs.present) {
+      map['total_latency_ms'] = Variable<int>(totalLatencyMs.value);
+    }
+    if (isFallback.present) {
+      map['is_fallback'] = Variable<bool>(isFallback.value);
+    }
+    if (isSuccess.present) {
+      map['is_success'] = Variable<bool>(isSuccess.value);
+    }
+    if (modelVersion.present) {
+      map['model_version'] = Variable<String>(modelVersion.value);
+    }
+    if (classifiedCategory.present) {
+      map['classified_category'] = Variable<String>(classifiedCategory.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InferenceTelemetryTableCompanion(')
+          ..write('id: $id, ')
+          ..write('timestamp: $timestamp, ')
+          ..write('inferenceTimeUs: $inferenceTimeUs, ')
+          ..write('totalLatencyMs: $totalLatencyMs, ')
+          ..write('isFallback: $isFallback, ')
+          ..write('isSuccess: $isSuccess, ')
+          ..write('modelVersion: $modelVersion, ')
+          ..write('classifiedCategory: $classifiedCategory')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AttentionDatabase extends GeneratedDatabase {
   _$AttentionDatabase(QueryExecutor e) : super(e);
   $AttentionDatabaseManager get managers => $AttentionDatabaseManager(this);
@@ -2722,6 +3260,8 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final $DailyBriefTableTable dailyBriefTable = $DailyBriefTableTable(
     this,
   );
+  late final $InferenceTelemetryTableTable inferenceTelemetryTable =
+      $InferenceTelemetryTableTable(this);
   late final NotificationDao notificationDao = NotificationDao(
     this as AttentionDatabase,
   );
@@ -2734,6 +3274,8 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final DailyBriefDao dailyBriefDao = DailyBriefDao(
     this as AttentionDatabase,
   );
+  late final InferenceTelemetryDao inferenceTelemetryDao =
+      InferenceTelemetryDao(this as AttentionDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2743,6 +3285,7 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
     reviewQueueTable,
     focusSessionsTable,
     dailyBriefTable,
+    inferenceTelemetryTable,
   ];
 }
 
@@ -3406,7 +3949,9 @@ class $$NotificationsTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$NotificationsTableTable, NotificationEntry>(
+                    table,
+                  ),
                   $$NotificationsTableTableReferences(db, table, e),
                 ),
               )
@@ -3749,7 +4294,7 @@ class $$ReviewQueueTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$ReviewQueueTableTable, ReviewQueueEntry>(table),
                   $$ReviewQueueTableTableReferences(db, table, e),
                 ),
               )
@@ -4021,7 +4566,18 @@ class $$FocusSessionsTableTableTableManager
                 duration: duration,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$FocusSessionsTableTable, FocusSessionEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $FocusSessionsTableTable,
+                    FocusSessionEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4273,7 +4829,16 @@ class $$DailyBriefTableTableTableManager
                 archivedCount: archivedCount,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$DailyBriefTableTable, DailyBriefEntry>(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $DailyBriefTableTable,
+                    DailyBriefEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4301,6 +4866,298 @@ typedef $$DailyBriefTableTableProcessedTableManager =
       DailyBriefEntry,
       PrefetchHooks Function()
     >;
+typedef $$InferenceTelemetryTableTableCreateCompanionBuilder =
+    InferenceTelemetryTableCompanion Function({
+      Value<int> id,
+      required int timestamp,
+      required int inferenceTimeUs,
+      required int totalLatencyMs,
+      Value<bool> isFallback,
+      Value<bool> isSuccess,
+      required String modelVersion,
+      Value<String?> classifiedCategory,
+    });
+typedef $$InferenceTelemetryTableTableUpdateCompanionBuilder =
+    InferenceTelemetryTableCompanion Function({
+      Value<int> id,
+      Value<int> timestamp,
+      Value<int> inferenceTimeUs,
+      Value<int> totalLatencyMs,
+      Value<bool> isFallback,
+      Value<bool> isSuccess,
+      Value<String> modelVersion,
+      Value<String?> classifiedCategory,
+    });
+
+class $$InferenceTelemetryTableTableFilterComposer
+    extends Composer<_$AttentionDatabase, $InferenceTelemetryTableTable> {
+  $$InferenceTelemetryTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get inferenceTimeUs => $composableBuilder(
+    column: $table.inferenceTimeUs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get totalLatencyMs => $composableBuilder(
+    column: $table.totalLatencyMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isFallback => $composableBuilder(
+    column: $table.isFallback,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSuccess => $composableBuilder(
+    column: $table.isSuccess,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get modelVersion => $composableBuilder(
+    column: $table.modelVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get classifiedCategory => $composableBuilder(
+    column: $table.classifiedCategory,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$InferenceTelemetryTableTableOrderingComposer
+    extends Composer<_$AttentionDatabase, $InferenceTelemetryTableTable> {
+  $$InferenceTelemetryTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get inferenceTimeUs => $composableBuilder(
+    column: $table.inferenceTimeUs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get totalLatencyMs => $composableBuilder(
+    column: $table.totalLatencyMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isFallback => $composableBuilder(
+    column: $table.isFallback,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isSuccess => $composableBuilder(
+    column: $table.isSuccess,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get modelVersion => $composableBuilder(
+    column: $table.modelVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get classifiedCategory => $composableBuilder(
+    column: $table.classifiedCategory,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$InferenceTelemetryTableTableAnnotationComposer
+    extends Composer<_$AttentionDatabase, $InferenceTelemetryTableTable> {
+  $$InferenceTelemetryTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get timestamp =>
+      $composableBuilder(column: $table.timestamp, builder: (column) => column);
+
+  GeneratedColumn<int> get inferenceTimeUs => $composableBuilder(
+    column: $table.inferenceTimeUs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get totalLatencyMs => $composableBuilder(
+    column: $table.totalLatencyMs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isFallback => $composableBuilder(
+    column: $table.isFallback,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isSuccess =>
+      $composableBuilder(column: $table.isSuccess, builder: (column) => column);
+
+  GeneratedColumn<String> get modelVersion => $composableBuilder(
+    column: $table.modelVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get classifiedCategory => $composableBuilder(
+    column: $table.classifiedCategory,
+    builder: (column) => column,
+  );
+}
+
+class $$InferenceTelemetryTableTableTableManager
+    extends
+        RootTableManager<
+          _$AttentionDatabase,
+          $InferenceTelemetryTableTable,
+          InferenceTelemetryEntry,
+          $$InferenceTelemetryTableTableFilterComposer,
+          $$InferenceTelemetryTableTableOrderingComposer,
+          $$InferenceTelemetryTableTableAnnotationComposer,
+          $$InferenceTelemetryTableTableCreateCompanionBuilder,
+          $$InferenceTelemetryTableTableUpdateCompanionBuilder,
+          (
+            InferenceTelemetryEntry,
+            BaseReferences<
+              _$AttentionDatabase,
+              $InferenceTelemetryTableTable,
+              InferenceTelemetryEntry
+            >,
+          ),
+          InferenceTelemetryEntry,
+          PrefetchHooks Function()
+        > {
+  $$InferenceTelemetryTableTableTableManager(
+    _$AttentionDatabase db,
+    $InferenceTelemetryTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$InferenceTelemetryTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$InferenceTelemetryTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$InferenceTelemetryTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> timestamp = const Value.absent(),
+                Value<int> inferenceTimeUs = const Value.absent(),
+                Value<int> totalLatencyMs = const Value.absent(),
+                Value<bool> isFallback = const Value.absent(),
+                Value<bool> isSuccess = const Value.absent(),
+                Value<String> modelVersion = const Value.absent(),
+                Value<String?> classifiedCategory = const Value.absent(),
+              }) => InferenceTelemetryTableCompanion(
+                id: id,
+                timestamp: timestamp,
+                inferenceTimeUs: inferenceTimeUs,
+                totalLatencyMs: totalLatencyMs,
+                isFallback: isFallback,
+                isSuccess: isSuccess,
+                modelVersion: modelVersion,
+                classifiedCategory: classifiedCategory,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int timestamp,
+                required int inferenceTimeUs,
+                required int totalLatencyMs,
+                Value<bool> isFallback = const Value.absent(),
+                Value<bool> isSuccess = const Value.absent(),
+                required String modelVersion,
+                Value<String?> classifiedCategory = const Value.absent(),
+              }) => InferenceTelemetryTableCompanion.insert(
+                id: id,
+                timestamp: timestamp,
+                inferenceTimeUs: inferenceTimeUs,
+                totalLatencyMs: totalLatencyMs,
+                isFallback: isFallback,
+                isSuccess: isSuccess,
+                modelVersion: modelVersion,
+                classifiedCategory: classifiedCategory,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $InferenceTelemetryTableTable,
+                    InferenceTelemetryEntry
+                  >(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $InferenceTelemetryTableTable,
+                    InferenceTelemetryEntry
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$InferenceTelemetryTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AttentionDatabase,
+      $InferenceTelemetryTableTable,
+      InferenceTelemetryEntry,
+      $$InferenceTelemetryTableTableFilterComposer,
+      $$InferenceTelemetryTableTableOrderingComposer,
+      $$InferenceTelemetryTableTableAnnotationComposer,
+      $$InferenceTelemetryTableTableCreateCompanionBuilder,
+      $$InferenceTelemetryTableTableUpdateCompanionBuilder,
+      (
+        InferenceTelemetryEntry,
+        BaseReferences<
+          _$AttentionDatabase,
+          $InferenceTelemetryTableTable,
+          InferenceTelemetryEntry
+        >,
+      ),
+      InferenceTelemetryEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AttentionDatabaseManager {
   final _$AttentionDatabase _db;
@@ -4313,4 +5170,9 @@ class $AttentionDatabaseManager {
       $$FocusSessionsTableTableTableManager(_db, _db.focusSessionsTable);
   $$DailyBriefTableTableTableManager get dailyBriefTable =>
       $$DailyBriefTableTableTableManager(_db, _db.dailyBriefTable);
+  $$InferenceTelemetryTableTableTableManager get inferenceTelemetryTable =>
+      $$InferenceTelemetryTableTableTableManager(
+        _db,
+        _db.inferenceTelemetryTable,
+      );
 }

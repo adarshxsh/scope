@@ -154,3 +154,55 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
     await delete(dailyBriefTable).go();
   }
 }
+
+@DriftAccessor(tables: [InferenceTelemetryTable])
+class InferenceTelemetryDao extends DatabaseAccessor<AttentionDatabase> with _$InferenceTelemetryDaoMixin {
+  InferenceTelemetryDao(super.db);
+
+  static const int _maxTelemetryRows = 500;
+
+  Future<void> insertRecord(InferenceTelemetryEntry entry) async {
+    await insertCompanion(InferenceTelemetryTableCompanion.insert(
+      timestamp: entry.timestamp,
+      inferenceTimeUs: entry.inferenceTimeUs,
+      totalLatencyMs: entry.totalLatencyMs,
+      isFallback: Value(entry.isFallback),
+      isSuccess: Value(entry.isSuccess),
+      modelVersion: entry.modelVersion,
+      classifiedCategory: Value(entry.classifiedCategory),
+    ));
+  }
+
+  Future<void> insertCompanion(InferenceTelemetryTableCompanion companion) async {
+    await transaction(() async {
+      await into(inferenceTelemetryTable).insert(companion);
+
+      // Enforce FIFO capping to keep max 500 records
+      final countExpr = inferenceTelemetryTable.id.count();
+      final query = selectOnly(inferenceTelemetryTable)..addColumns([countExpr]);
+      final row = await query.getSingle();
+      final total = row.read(countExpr) ?? 0;
+
+      if (total > _maxTelemetryRows) {
+        final deleteCount = total - _maxTelemetryRows;
+        final oldestRows = await (select(inferenceTelemetryTable)
+              ..orderBy([(t) => OrderingTerm(expression: t.timestamp, mode: OrderingMode.asc)])
+              ..limit(deleteCount))
+            .get();
+        final idsToDelete = oldestRows.map((r) => r.id).toList();
+        await (delete(inferenceTelemetryTable)..where((t) => t.id.isIn(idsToDelete))).go();
+      }
+    });
+  }
+
+  Future<List<InferenceTelemetryEntry>> getAll() {
+    return (select(inferenceTelemetryTable)
+          ..orderBy([(t) => OrderingTerm(expression: t.timestamp, mode: OrderingMode.desc)]))
+        .get();
+  }
+
+  Future<void> clearAll() async {
+    await delete(inferenceTelemetryTable).go();
+  }
+}
+
