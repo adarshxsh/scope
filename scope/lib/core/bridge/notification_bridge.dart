@@ -19,8 +19,29 @@ class NotificationBridge {
   /// The MethodChannel name must match the one registered in MainActivity.kt
   final MethodChannel _channel;
 
-  NotificationBridge({MethodChannel? channel})
-    : _channel = channel ?? const MethodChannel('com.scope.notifications');
+  /// The EventChannel name must match the one registered in MainActivity.kt
+  final EventChannel _eventChannel;
+
+  /// Injected custom stream for testing and mocking
+  final Stream<dynamic>? _customNotificationStream;
+
+  NotificationBridge({
+    MethodChannel? channel,
+    EventChannel? eventChannel,
+    Stream<dynamic>? notificationStream,
+  })  : _channel = channel ?? const MethodChannel('com.scope.notifications'),
+        _eventChannel = eventChannel ?? const EventChannel('com.scope.notifications/stream'),
+        _customNotificationStream = notificationStream;
+
+  /// Stream emitting event signals whenever native notifications arrive.
+  Stream<dynamic> get notificationStream {
+    if (_customNotificationStream != null) {
+      return _customNotificationStream;
+    }
+    return _eventChannel.receiveBroadcastStream().handleError((error) {
+      // Ignore errors when running on non-Android platforms or in unit tests
+    });
+  }
 
   /// Drains the notification queue from the Android side.
   ///
