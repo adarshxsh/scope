@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
@@ -21,18 +22,22 @@ void main() {
 
   late NotificationController controller;
   late GhostAnalysisEngine mockEngine;
+  late ProviderContainer container;
 
   setUp(() {
     mockEngine = FakeGhostAnalysisEngine();
+    container = ProviderContainer();
     controller = NotificationController(
       bridge: NotificationBridge(),
       storage: InMemoryNotificationStorage(),
       engine: mockEngine,
+      container: container,
     );
   });
 
   tearDown(() {
     controller.dispose();
+    container.dispose();
   });
 
   group('Build Mode Gating Tests', () {
