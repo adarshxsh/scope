@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
+import 'package:scope/core/analysis/model_path_resolver.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
@@ -39,6 +40,8 @@ class GhostAIResult {
 class GhostAI {
   static GhostAI? _instance;
   Interpreter? _interpreter;
+  ModelSource _modelSource = ModelSource.none;
+  ModelPathResolver _modelResolver = ModelPathResolver();
   final RuleEngine _ruleEngine = RuleEngine();
 
   // Slide-cache for duplicate detection
@@ -56,13 +59,38 @@ class GhostAI {
   /// Returns whether the model is loaded.
   bool get isModelLoaded => _interpreter != null;
 
+  /// Returns the source of the loaded model (local, asset, or none).
+  ModelSource get modelSource => _modelSource;
+
+  /// Returns whether an updated model file was loaded from persistent local storage.
+  bool get isLocalModelLoaded => _modelSource == ModelSource.local;
+
+  /// Resets instance state (for testing purposes).
+  @visibleForTesting
+  void resetForTesting() {
+    _interpreter = null;
+    _modelSource = ModelSource.none;
+    _modelResolver = ModelPathResolver();
+  }
+
   /// Initializes the TFLite interpreter and rules database once on startup.
-  Future<void> initialize() async {
-    if (_interpreter != null) return;
+  Future<void> initialize({ModelPathResolver? resolver, bool forceReload = false}) async {
+    if (_interpreter != null && !forceReload) return;
+    if (resolver != null) {
+      _modelResolver = resolver;
+    }
+
     try {
-      // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      // 1. Resolve model path and load interpreter (local storage lookup first, fallback to asset)
+      final loadResult = await _modelResolver.resolveAndLoad();
+      _interpreter = loadResult.interpreter;
+      _modelSource = loadResult.source;
+
+      if (_interpreter != null) {
+        debugPrint('GhostAI: TFLite interpreter loaded successfully from source: $_modelSource (${loadResult.filePath}).');
+      } else {
+        debugPrint('GhostAI: Failed to load TFLite model: ${loadResult.errorMessage}');
+      }
     } catch (e) {
       debugPrint('GhostAI: Failed to load TFLite model: $e');
     }
