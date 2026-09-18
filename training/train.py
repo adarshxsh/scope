@@ -65,6 +65,12 @@ def parse_args() -> argparse.Namespace:
         "--learning-rate", type=float, default=TrainingConfig.learning_rate
     )
     parser.add_argument("--seed", type=int, default=RANDOM_SEED)
+    parser.add_argument(
+        "--feature-vector-size",
+        type=int,
+        default=128,
+        help="Feature vector dimension size (default: 128).",
+    )
     return parser.parse_args()
 
 
@@ -80,9 +86,23 @@ def main() -> None:
     dataset = build_dataset(records)
     splits = split_dataset(dataset.features, dataset.target, SplitConfig(), args.seed)
 
+    x_train = splits.x_train
+    x_val = splits.x_val
+    x_test = splits.x_test
+
+    if args.feature_vector_size > x_train.shape[1]:
+        pad_width = args.feature_vector_size - x_train.shape[1]
+        x_train = np.pad(x_train, ((0, 0), (0, pad_width)), mode="constant")
+        x_val = np.pad(x_val, ((0, 0), (0, pad_width)), mode="constant")
+        x_test = np.pad(x_test, ((0, 0), (0, pad_width)), mode="constant")
+    elif args.feature_vector_size < x_train.shape[1]:
+        x_train = x_train[:, :args.feature_vector_size]
+        x_val = x_val[:, :args.feature_vector_size]
+        x_test = x_test[:, :args.feature_vector_size]
+
     # Calculate mean and variance using numpy to perform direct graph-level normalization
-    mean_val = np.mean(splits.x_train, axis=0)
-    variance_val = np.var(splits.x_train, axis=0)
+    mean_val = np.mean(x_train, axis=0)
+    variance_val = np.var(x_train, axis=0)
     # Avoid division-by-zero overflow in constant folding
     safe_variance = np.where(variance_val < 1e-5, 1.0, variance_val)
     stddev_val = np.sqrt(safe_variance)
@@ -96,6 +116,7 @@ def main() -> None:
         mean=mean_val.tolist(),
         stddev=stddev_val.tolist(),
         learning_rate=config.learning_rate,
+        feature_vector_size=args.feature_vector_size,
     )
 
     callbacks = [
@@ -114,22 +135,68 @@ def main() -> None:
     ]
 
     history = model.fit(
-        splits.x_train,
+        x_train,
         splits.y_train,
-        validation_data=(splits.x_val, splits.y_val),
+        validation_data=(x_val, splits.y_val),
         epochs=config.epochs,
         batch_size=config.batch_size,
         callbacks=callbacks,
         verbose=2,
     )
 
-    predictions = model.predict(splits.x_test, batch_size=config.batch_size)
+    predictions = model.predict(x_test, batch_size=config.batch_size)
     metrics = regression_metrics(splits.y_test, predictions)
+
+    label_encoder_path = output_dir / "label_encoder.json"
+
+    metadata = {
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "dataset_path": str(args.data),
+        "sample_count": len(records),
+        "feature_vector_size": args.feature_vector_size,
+        "input_vector_dimension": args.feature_vector_size,
+        "feature_source": "Flutter deterministic FeatureExtractor",
+        "python_feature_generation": False,
+        "target": "look_again_score",
+        "architecture": [
+            f"Input({args.feature_vector_size})",
+            "Normalization",
+            "Dense(128, relu)",
+            "Dropout(0.2)",
+            "Dense(64, relu)",
+            "Dense(32, relu)",
+            "Dense(1, look_again_score)",
+        ],
+        "splits": {
+            "train": int(len(x_train)),
+            "validation": int(len(x_val)),
+            "test": int(len(x_test)),
+            "seed": args.seed,
+        },
+        "normalization": normalization_stats(x_train),
+        "metrics": metrics,
+        "artifacts": {
+            "saved_model": str(export_dir / "saved_model"),
+            "quantized_tflite": str(export_dir / "ghost_ai.tflite"),
+            "label_encoder": str(label_encoder_path),
+            "history_csv": str(output_dir / "history.csv"),
+            "evaluation_dir": str(evaluation_dir),
+        },
+        "flutter": {
+            "input_dtype": "float32",
+            "input_shape": [1, args.feature_vector_size],
+            "input_vector_dimension": args.feature_vector_size,
+            "output_dtype": "float32",
+            "output_shape": [1, 1],
+            "output_name": "look_again_score",
+        },
+    }
 
     saved_model_dir = export_saved_model(model, export_dir / "saved_model")
     tflite_path = export_float32_tflite(
         saved_model_dir,
         export_dir / "ghost_ai.tflite",
+        metadata=metadata,
     )
 
     write_history_csv(history, output_dir / "history.csv")
@@ -148,49 +215,7 @@ def main() -> None:
         output_dir=evaluation_dir / "confusion_reports",
     )
 
-    label_encoder_path = output_dir / "label_encoder.json"
     write_json(label_encoder_path, dataset.label_encoders)
-
-    metadata = {
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "dataset_path": str(args.data),
-        "sample_count": len(records),
-        "feature_vector_size": FEATURE_VECTOR_SIZE,
-        "feature_source": "Flutter deterministic FeatureExtractor",
-        "python_feature_generation": False,
-        "target": "look_again_score",
-        "architecture": [
-            "Input(63)",
-            "Normalization",
-            "Dense(128, relu)",
-            "Dropout(0.2)",
-            "Dense(64, relu)",
-            "Dense(32, relu)",
-            "Dense(1, look_again_score)",
-        ],
-        "splits": {
-            "train": int(len(splits.x_train)),
-            "validation": int(len(splits.x_val)),
-            "test": int(len(splits.x_test)),
-            "seed": args.seed,
-        },
-        "normalization": normalization_stats(splits.x_train),
-        "metrics": metrics,
-        "artifacts": {
-            "saved_model": str(saved_model_dir),
-            "quantized_tflite": str(tflite_path),
-            "label_encoder": str(label_encoder_path),
-            "history_csv": str(output_dir / "history.csv"),
-            "evaluation_dir": str(evaluation_dir),
-        },
-        "flutter": {
-            "input_dtype": "float32",
-            "input_shape": [1, FEATURE_VECTOR_SIZE],
-            "output_dtype": "float32",
-            "output_shape": [1, 1],
-            "output_name": "look_again_score",
-        },
-    }
     write_json(output_dir / "metadata.json", metadata)
 
     print(f"SavedModel: {saved_model_dir}")
