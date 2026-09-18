@@ -11,6 +11,11 @@ void main() {
       GhostAI.instance.clearCache();
     });
 
+    tearDown(() {
+      GhostAI.instance.clearCache();
+      GhostAI.instance.setInterpreterContractForTest(null, isValid: false);
+    });
+
     test('initialization handles missing assets and falls back gracefully', () async {
       // Should not throw, should log and proceed with isModelLoaded = false
       await GhostAI.instance.initialize();
@@ -231,6 +236,26 @@ void main() {
 
         final result = await GhostAI.predict(activeTask);
         expect(result.reviewScore, isPositive); // Not overridden
+      });
+    });
+
+    group('Tensor Shape & Data Type Validation Tests', () {
+      test('bypasses model and degrades to heuristic when contract validation fails', () async {
+        // Set invalid contract status
+        GhostAI.instance.setInterpreterContractForTest(null, isValid: false);
+        expect(GhostAI.instance.isModelLoaded, isFalse);
+
+        final notif = AppNotification(
+          id: 'schema-mismatch-notif',
+          packageName: 'com.whatsapp',
+          title: 'WhatsApp Code',
+          content: 'Your verification code is 123456.',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        final result = await GhostAI.predict(notif);
+        expect(result, isNotNull);
+        expect(result.predictedScore, equals(1.0)); // OTP heuristic fallback
       });
     });
   });
