@@ -23,17 +23,39 @@ class ScoreFusion {
           engineName: 'score_fusion (rule bypass: ${ruleResult.ruleId})',
           matchedSignals: [ruleResult.matchedSignal],
           latencyMs: 0,
+          isFallback: false,
         );
       }
     }
 
-    // 2. Normal score fusion
+    // 2. Fallback model handling:
+    // When the model is in fallback mode (e.g., uninitialized asset or inference error),
+    // do not process the fallback score as an authentic model prediction.
+    if (modelResult.isFallback) {
+      if (ruleResult != null) {
+        return AnalysisResult(
+          category: ruleResult.category,
+          score: 0.85, // Custom rule baseline without unauthentic model score blending
+          engineName: 'score_fusion (rule only, ml fallback: ${ruleResult.ruleId})',
+          matchedSignals: [
+            'Rule matched: ${ruleResult.ruleId} (${ruleResult.matchedSignal})',
+            'ML model in fallback mode (score blending bypassed)'
+          ],
+          latencyMs: 0,
+          isFallback: false,
+        );
+      } else {
+        return modelResult;
+      }
+    }
+
+    // 3. Normal score fusion with authentic model prediction
     // If no rule matches, rely on the model prediction
     if (ruleResult == null) {
       return modelResult;
     }
 
-    // 3. Hybrid fusion: Both rule and model match
+    // 4. Hybrid fusion: Both rule and authentic model match
     final category = ruleResult.category;
     double score = 0.85; // Base high confidence for custom rule matches
 
@@ -57,6 +79,7 @@ class ScoreFusion {
         'Model predicted: ${modelResult.category} (${(modelResult.score * 100).toStringAsFixed(1)}% confidence)'
       ],
       latencyMs: 0,
+      isFallback: false,
     );
   }
 }
