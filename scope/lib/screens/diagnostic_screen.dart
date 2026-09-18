@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
+import 'package:scope/core/guardrails/ingestion_guardrails.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/widgets/scope_card.dart';
@@ -87,7 +88,23 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       isOngoing: _isOngoing,
     );
 
-    final result = await _engine.analyze(raw);
+    final guardrails = IngestionGuardrailService();
+    final report = guardrails.evaluateAndSanitize(raw);
+
+    if (!report.isAllowed || report.notification == null) {
+      if (mounted) {
+        setState(() {
+          _analyzedNotification = raw.copyWith(
+            priority: 'rejected',
+            explanation: 'REJECTED BY INGESTION GUARDRAIL: ${report.reason}',
+          );
+          _isAnalyzing = false;
+        });
+      }
+      return;
+    }
+
+    final result = await _engine.analyze(report.notification!);
 
     if (mounted) {
       setState(() {
