@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
+import 'package:scope/core/analysis/model_lifecycle_manager.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -40,6 +42,8 @@ class GhostAI {
   static GhostAI? _instance;
   Interpreter? _interpreter;
   final RuleEngine _ruleEngine = RuleEngine();
+  ModelLifecycleManager? _lifecycleManager;
+  StreamSubscription<String>? _updateSubscription;
 
   // Slide-cache for duplicate detection
   final List<AppNotification> _processedNotifications = [];
@@ -56,13 +60,41 @@ class GhostAI {
   /// Returns whether the model is loaded.
   bool get isModelLoaded => _interpreter != null;
 
+  /// Directly set interpreter for custom model or testing.
+  void setInterpreter(Interpreter? interpreter) {
+    _interpreter = interpreter;
+  }
+
   /// Initializes the TFLite interpreter and rules database once on startup.
-  Future<void> initialize() async {
-    if (_interpreter != null) return;
+  Future<void> initialize({ModelLifecycleManager? lifecycleManager}) async {
+    _lifecycleManager = lifecycleManager ?? _lifecycleManager;
+    final manager = _lifecycleManager ?? ModelLifecycleManager.instance;
+
     try {
-      // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      // 1. Load interpreter dynamically from ModelLifecycleManager (with asset fallback)
+      _interpreter = await manager.getInterpreter(
+        'ghost_ai',
+        assetFallbackPath: 'assets/model.tflite',
+        expectedInputDim: 63,
+      );
+      if (_interpreter != null) {
+        debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      }
+
+      // Listen for hot-swaps
+      _updateSubscription ??= manager.onModelUpdated.listen((modelName) async {
+        if (modelName == 'ghost_ai' || modelName == 'regression') {
+          final newInterpreter = await manager.getInterpreter(
+            'ghost_ai',
+            assetFallbackPath: 'assets/model.tflite',
+            expectedInputDim: 63,
+          );
+          if (newInterpreter != null) {
+            _interpreter = newInterpreter;
+            debugPrint('GhostAI: Hot-swapped TFLite interpreter.');
+          }
+        }
+      });
     } catch (e) {
       debugPrint('GhostAI: Failed to load TFLite model: $e');
     }

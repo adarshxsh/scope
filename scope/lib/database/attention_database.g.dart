@@ -2709,6 +2709,717 @@ class DailyBriefTableCompanion extends UpdateCompanion<DailyBriefEntry> {
   }
 }
 
+class $RlhfFeedbackEventsTableTable extends RlhfFeedbackEventsTable
+    with TableInfo<$RlhfFeedbackEventsTableTable, RlhfFeedbackEventEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RlhfFeedbackEventsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _notificationIdMeta = const VerificationMeta(
+    'notificationId',
+  );
+  @override
+  late final GeneratedColumn<String> notificationId = GeneratedColumn<String>(
+    'notification_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _rewardMeta = const VerificationMeta('reward');
+  @override
+  late final GeneratedColumn<double> reward = GeneratedColumn<double>(
+    'reward',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _correctedCategoryMeta = const VerificationMeta(
+    'correctedCategory',
+  );
+  @override
+  late final GeneratedColumn<String> correctedCategory =
+      GeneratedColumn<String>(
+        'corrected_category',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _correctedPriorityMeta = const VerificationMeta(
+    'correctedPriority',
+  );
+  @override
+  late final GeneratedColumn<String> correctedPriority =
+      GeneratedColumn<String>(
+        'corrected_priority',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  @override
+  late final GeneratedColumnWithTypeConverter<List<dynamic>, String>
+  featureVector =
+      GeneratedColumn<String>(
+        'feature_vector',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<List<dynamic>>(
+        $RlhfFeedbackEventsTableTable.$converterfeatureVector,
+      );
+  @override
+  late final GeneratedColumnWithTypeConverter<List<dynamic>?, String> tokenIds =
+      GeneratedColumn<String>(
+        'token_ids',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      ).withConverter<List<dynamic>?>(
+        $RlhfFeedbackEventsTableTable.$convertertokenIdsn,
+      );
+  static const VerificationMeta _hashedTitleMeta = const VerificationMeta(
+    'hashedTitle',
+  );
+  @override
+  late final GeneratedColumn<String> hashedTitle = GeneratedColumn<String>(
+    'hashed_title',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _hashedContentMeta = const VerificationMeta(
+    'hashedContent',
+  );
+  @override
+  late final GeneratedColumn<String> hashedContent = GeneratedColumn<String>(
+    'hashed_content',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _timestampMeta = const VerificationMeta(
+    'timestamp',
+  );
+  @override
+  late final GeneratedColumn<int> timestamp = GeneratedColumn<int>(
+    'timestamp',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _modelVersionMeta = const VerificationMeta(
+    'modelVersion',
+  );
+  @override
+  late final GeneratedColumn<String> modelVersion = GeneratedColumn<String>(
+    'model_version',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    notificationId,
+    reward,
+    correctedCategory,
+    correctedPriority,
+    featureVector,
+    tokenIds,
+    hashedTitle,
+    hashedContent,
+    timestamp,
+    modelVersion,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'rlhf_feedback_events_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RlhfFeedbackEventEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('notification_id')) {
+      context.handle(
+        _notificationIdMeta,
+        notificationId.isAcceptableOrUnknown(
+          data['notification_id']!,
+          _notificationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_notificationIdMeta);
+    }
+    if (data.containsKey('reward')) {
+      context.handle(
+        _rewardMeta,
+        reward.isAcceptableOrUnknown(data['reward']!, _rewardMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_rewardMeta);
+    }
+    if (data.containsKey('corrected_category')) {
+      context.handle(
+        _correctedCategoryMeta,
+        correctedCategory.isAcceptableOrUnknown(
+          data['corrected_category']!,
+          _correctedCategoryMeta,
+        ),
+      );
+    }
+    if (data.containsKey('corrected_priority')) {
+      context.handle(
+        _correctedPriorityMeta,
+        correctedPriority.isAcceptableOrUnknown(
+          data['corrected_priority']!,
+          _correctedPriorityMeta,
+        ),
+      );
+    }
+    if (data.containsKey('hashed_title')) {
+      context.handle(
+        _hashedTitleMeta,
+        hashedTitle.isAcceptableOrUnknown(
+          data['hashed_title']!,
+          _hashedTitleMeta,
+        ),
+      );
+    }
+    if (data.containsKey('hashed_content')) {
+      context.handle(
+        _hashedContentMeta,
+        hashedContent.isAcceptableOrUnknown(
+          data['hashed_content']!,
+          _hashedContentMeta,
+        ),
+      );
+    }
+    if (data.containsKey('timestamp')) {
+      context.handle(
+        _timestampMeta,
+        timestamp.isAcceptableOrUnknown(data['timestamp']!, _timestampMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_timestampMeta);
+    }
+    if (data.containsKey('model_version')) {
+      context.handle(
+        _modelVersionMeta,
+        modelVersion.isAcceptableOrUnknown(
+          data['model_version']!,
+          _modelVersionMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  RlhfFeedbackEventEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RlhfFeedbackEventEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      notificationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notification_id'],
+      )!,
+      reward: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}reward'],
+      )!,
+      correctedCategory: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}corrected_category'],
+      ),
+      correctedPriority: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}corrected_priority'],
+      ),
+      featureVector: $RlhfFeedbackEventsTableTable.$converterfeatureVector
+          .fromSql(
+            attachedDatabase.typeMapping.read(
+              DriftSqlType.string,
+              data['${effectivePrefix}feature_vector'],
+            )!,
+          ),
+      tokenIds: $RlhfFeedbackEventsTableTable.$convertertokenIdsn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}token_ids'],
+        ),
+      ),
+      hashedTitle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}hashed_title'],
+      ),
+      hashedContent: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}hashed_content'],
+      ),
+      timestamp: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}timestamp'],
+      )!,
+      modelVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}model_version'],
+      ),
+    );
+  }
+
+  @override
+  $RlhfFeedbackEventsTableTable createAlias(String alias) {
+    return $RlhfFeedbackEventsTableTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<List<dynamic>, String> $converterfeatureVector =
+      const JsonListConverter();
+  static TypeConverter<List<dynamic>, String> $convertertokenIds =
+      const JsonListConverter();
+  static TypeConverter<List<dynamic>?, String?> $convertertokenIdsn =
+      NullAwareTypeConverter.wrap($convertertokenIds);
+}
+
+class RlhfFeedbackEventEntry extends DataClass
+    implements Insertable<RlhfFeedbackEventEntry> {
+  final int id;
+  final String notificationId;
+  final double reward;
+  final String? correctedCategory;
+  final String? correctedPriority;
+  final List<dynamic> featureVector;
+  final List<dynamic>? tokenIds;
+  final String? hashedTitle;
+  final String? hashedContent;
+  final int timestamp;
+  final String? modelVersion;
+  const RlhfFeedbackEventEntry({
+    required this.id,
+    required this.notificationId,
+    required this.reward,
+    this.correctedCategory,
+    this.correctedPriority,
+    required this.featureVector,
+    this.tokenIds,
+    this.hashedTitle,
+    this.hashedContent,
+    required this.timestamp,
+    this.modelVersion,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['notification_id'] = Variable<String>(notificationId);
+    map['reward'] = Variable<double>(reward);
+    if (!nullToAbsent || correctedCategory != null) {
+      map['corrected_category'] = Variable<String>(correctedCategory);
+    }
+    if (!nullToAbsent || correctedPriority != null) {
+      map['corrected_priority'] = Variable<String>(correctedPriority);
+    }
+    {
+      map['feature_vector'] = Variable<String>(
+        $RlhfFeedbackEventsTableTable.$converterfeatureVector.toSql(
+          featureVector,
+        ),
+      );
+    }
+    if (!nullToAbsent || tokenIds != null) {
+      map['token_ids'] = Variable<String>(
+        $RlhfFeedbackEventsTableTable.$convertertokenIdsn.toSql(tokenIds),
+      );
+    }
+    if (!nullToAbsent || hashedTitle != null) {
+      map['hashed_title'] = Variable<String>(hashedTitle);
+    }
+    if (!nullToAbsent || hashedContent != null) {
+      map['hashed_content'] = Variable<String>(hashedContent);
+    }
+    map['timestamp'] = Variable<int>(timestamp);
+    if (!nullToAbsent || modelVersion != null) {
+      map['model_version'] = Variable<String>(modelVersion);
+    }
+    return map;
+  }
+
+  RlhfFeedbackEventsTableCompanion toCompanion(bool nullToAbsent) {
+    return RlhfFeedbackEventsTableCompanion(
+      id: Value(id),
+      notificationId: Value(notificationId),
+      reward: Value(reward),
+      correctedCategory: correctedCategory == null && nullToAbsent
+          ? const Value.absent()
+          : Value(correctedCategory),
+      correctedPriority: correctedPriority == null && nullToAbsent
+          ? const Value.absent()
+          : Value(correctedPriority),
+      featureVector: Value(featureVector),
+      tokenIds: tokenIds == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tokenIds),
+      hashedTitle: hashedTitle == null && nullToAbsent
+          ? const Value.absent()
+          : Value(hashedTitle),
+      hashedContent: hashedContent == null && nullToAbsent
+          ? const Value.absent()
+          : Value(hashedContent),
+      timestamp: Value(timestamp),
+      modelVersion: modelVersion == null && nullToAbsent
+          ? const Value.absent()
+          : Value(modelVersion),
+    );
+  }
+
+  factory RlhfFeedbackEventEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RlhfFeedbackEventEntry(
+      id: serializer.fromJson<int>(json['id']),
+      notificationId: serializer.fromJson<String>(json['notificationId']),
+      reward: serializer.fromJson<double>(json['reward']),
+      correctedCategory: serializer.fromJson<String?>(
+        json['correctedCategory'],
+      ),
+      correctedPriority: serializer.fromJson<String?>(
+        json['correctedPriority'],
+      ),
+      featureVector: serializer.fromJson<List<dynamic>>(json['featureVector']),
+      tokenIds: serializer.fromJson<List<dynamic>?>(json['tokenIds']),
+      hashedTitle: serializer.fromJson<String?>(json['hashedTitle']),
+      hashedContent: serializer.fromJson<String?>(json['hashedContent']),
+      timestamp: serializer.fromJson<int>(json['timestamp']),
+      modelVersion: serializer.fromJson<String?>(json['modelVersion']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'notificationId': serializer.toJson<String>(notificationId),
+      'reward': serializer.toJson<double>(reward),
+      'correctedCategory': serializer.toJson<String?>(correctedCategory),
+      'correctedPriority': serializer.toJson<String?>(correctedPriority),
+      'featureVector': serializer.toJson<List<dynamic>>(featureVector),
+      'tokenIds': serializer.toJson<List<dynamic>?>(tokenIds),
+      'hashedTitle': serializer.toJson<String?>(hashedTitle),
+      'hashedContent': serializer.toJson<String?>(hashedContent),
+      'timestamp': serializer.toJson<int>(timestamp),
+      'modelVersion': serializer.toJson<String?>(modelVersion),
+    };
+  }
+
+  RlhfFeedbackEventEntry copyWith({
+    int? id,
+    String? notificationId,
+    double? reward,
+    Value<String?> correctedCategory = const Value.absent(),
+    Value<String?> correctedPriority = const Value.absent(),
+    List<dynamic>? featureVector,
+    Value<List<dynamic>?> tokenIds = const Value.absent(),
+    Value<String?> hashedTitle = const Value.absent(),
+    Value<String?> hashedContent = const Value.absent(),
+    int? timestamp,
+    Value<String?> modelVersion = const Value.absent(),
+  }) => RlhfFeedbackEventEntry(
+    id: id ?? this.id,
+    notificationId: notificationId ?? this.notificationId,
+    reward: reward ?? this.reward,
+    correctedCategory: correctedCategory.present
+        ? correctedCategory.value
+        : this.correctedCategory,
+    correctedPriority: correctedPriority.present
+        ? correctedPriority.value
+        : this.correctedPriority,
+    featureVector: featureVector ?? this.featureVector,
+    tokenIds: tokenIds.present ? tokenIds.value : this.tokenIds,
+    hashedTitle: hashedTitle.present ? hashedTitle.value : this.hashedTitle,
+    hashedContent: hashedContent.present
+        ? hashedContent.value
+        : this.hashedContent,
+    timestamp: timestamp ?? this.timestamp,
+    modelVersion: modelVersion.present ? modelVersion.value : this.modelVersion,
+  );
+  RlhfFeedbackEventEntry copyWithCompanion(
+    RlhfFeedbackEventsTableCompanion data,
+  ) {
+    return RlhfFeedbackEventEntry(
+      id: data.id.present ? data.id.value : this.id,
+      notificationId: data.notificationId.present
+          ? data.notificationId.value
+          : this.notificationId,
+      reward: data.reward.present ? data.reward.value : this.reward,
+      correctedCategory: data.correctedCategory.present
+          ? data.correctedCategory.value
+          : this.correctedCategory,
+      correctedPriority: data.correctedPriority.present
+          ? data.correctedPriority.value
+          : this.correctedPriority,
+      featureVector: data.featureVector.present
+          ? data.featureVector.value
+          : this.featureVector,
+      tokenIds: data.tokenIds.present ? data.tokenIds.value : this.tokenIds,
+      hashedTitle: data.hashedTitle.present
+          ? data.hashedTitle.value
+          : this.hashedTitle,
+      hashedContent: data.hashedContent.present
+          ? data.hashedContent.value
+          : this.hashedContent,
+      timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
+      modelVersion: data.modelVersion.present
+          ? data.modelVersion.value
+          : this.modelVersion,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RlhfFeedbackEventEntry(')
+          ..write('id: $id, ')
+          ..write('notificationId: $notificationId, ')
+          ..write('reward: $reward, ')
+          ..write('correctedCategory: $correctedCategory, ')
+          ..write('correctedPriority: $correctedPriority, ')
+          ..write('featureVector: $featureVector, ')
+          ..write('tokenIds: $tokenIds, ')
+          ..write('hashedTitle: $hashedTitle, ')
+          ..write('hashedContent: $hashedContent, ')
+          ..write('timestamp: $timestamp, ')
+          ..write('modelVersion: $modelVersion')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    notificationId,
+    reward,
+    correctedCategory,
+    correctedPriority,
+    featureVector,
+    tokenIds,
+    hashedTitle,
+    hashedContent,
+    timestamp,
+    modelVersion,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RlhfFeedbackEventEntry &&
+          other.id == this.id &&
+          other.notificationId == this.notificationId &&
+          other.reward == this.reward &&
+          other.correctedCategory == this.correctedCategory &&
+          other.correctedPriority == this.correctedPriority &&
+          other.featureVector == this.featureVector &&
+          other.tokenIds == this.tokenIds &&
+          other.hashedTitle == this.hashedTitle &&
+          other.hashedContent == this.hashedContent &&
+          other.timestamp == this.timestamp &&
+          other.modelVersion == this.modelVersion);
+}
+
+class RlhfFeedbackEventsTableCompanion
+    extends UpdateCompanion<RlhfFeedbackEventEntry> {
+  final Value<int> id;
+  final Value<String> notificationId;
+  final Value<double> reward;
+  final Value<String?> correctedCategory;
+  final Value<String?> correctedPriority;
+  final Value<List<dynamic>> featureVector;
+  final Value<List<dynamic>?> tokenIds;
+  final Value<String?> hashedTitle;
+  final Value<String?> hashedContent;
+  final Value<int> timestamp;
+  final Value<String?> modelVersion;
+  const RlhfFeedbackEventsTableCompanion({
+    this.id = const Value.absent(),
+    this.notificationId = const Value.absent(),
+    this.reward = const Value.absent(),
+    this.correctedCategory = const Value.absent(),
+    this.correctedPriority = const Value.absent(),
+    this.featureVector = const Value.absent(),
+    this.tokenIds = const Value.absent(),
+    this.hashedTitle = const Value.absent(),
+    this.hashedContent = const Value.absent(),
+    this.timestamp = const Value.absent(),
+    this.modelVersion = const Value.absent(),
+  });
+  RlhfFeedbackEventsTableCompanion.insert({
+    this.id = const Value.absent(),
+    required String notificationId,
+    required double reward,
+    this.correctedCategory = const Value.absent(),
+    this.correctedPriority = const Value.absent(),
+    required List<dynamic> featureVector,
+    this.tokenIds = const Value.absent(),
+    this.hashedTitle = const Value.absent(),
+    this.hashedContent = const Value.absent(),
+    required int timestamp,
+    this.modelVersion = const Value.absent(),
+  }) : notificationId = Value(notificationId),
+       reward = Value(reward),
+       featureVector = Value(featureVector),
+       timestamp = Value(timestamp);
+  static Insertable<RlhfFeedbackEventEntry> custom({
+    Expression<int>? id,
+    Expression<String>? notificationId,
+    Expression<double>? reward,
+    Expression<String>? correctedCategory,
+    Expression<String>? correctedPriority,
+    Expression<String>? featureVector,
+    Expression<String>? tokenIds,
+    Expression<String>? hashedTitle,
+    Expression<String>? hashedContent,
+    Expression<int>? timestamp,
+    Expression<String>? modelVersion,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (notificationId != null) 'notification_id': notificationId,
+      if (reward != null) 'reward': reward,
+      if (correctedCategory != null) 'corrected_category': correctedCategory,
+      if (correctedPriority != null) 'corrected_priority': correctedPriority,
+      if (featureVector != null) 'feature_vector': featureVector,
+      if (tokenIds != null) 'token_ids': tokenIds,
+      if (hashedTitle != null) 'hashed_title': hashedTitle,
+      if (hashedContent != null) 'hashed_content': hashedContent,
+      if (timestamp != null) 'timestamp': timestamp,
+      if (modelVersion != null) 'model_version': modelVersion,
+    });
+  }
+
+  RlhfFeedbackEventsTableCompanion copyWith({
+    Value<int>? id,
+    Value<String>? notificationId,
+    Value<double>? reward,
+    Value<String?>? correctedCategory,
+    Value<String?>? correctedPriority,
+    Value<List<dynamic>>? featureVector,
+    Value<List<dynamic>?>? tokenIds,
+    Value<String?>? hashedTitle,
+    Value<String?>? hashedContent,
+    Value<int>? timestamp,
+    Value<String?>? modelVersion,
+  }) {
+    return RlhfFeedbackEventsTableCompanion(
+      id: id ?? this.id,
+      notificationId: notificationId ?? this.notificationId,
+      reward: reward ?? this.reward,
+      correctedCategory: correctedCategory ?? this.correctedCategory,
+      correctedPriority: correctedPriority ?? this.correctedPriority,
+      featureVector: featureVector ?? this.featureVector,
+      tokenIds: tokenIds ?? this.tokenIds,
+      hashedTitle: hashedTitle ?? this.hashedTitle,
+      hashedContent: hashedContent ?? this.hashedContent,
+      timestamp: timestamp ?? this.timestamp,
+      modelVersion: modelVersion ?? this.modelVersion,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (notificationId.present) {
+      map['notification_id'] = Variable<String>(notificationId.value);
+    }
+    if (reward.present) {
+      map['reward'] = Variable<double>(reward.value);
+    }
+    if (correctedCategory.present) {
+      map['corrected_category'] = Variable<String>(correctedCategory.value);
+    }
+    if (correctedPriority.present) {
+      map['corrected_priority'] = Variable<String>(correctedPriority.value);
+    }
+    if (featureVector.present) {
+      map['feature_vector'] = Variable<String>(
+        $RlhfFeedbackEventsTableTable.$converterfeatureVector.toSql(
+          featureVector.value,
+        ),
+      );
+    }
+    if (tokenIds.present) {
+      map['token_ids'] = Variable<String>(
+        $RlhfFeedbackEventsTableTable.$convertertokenIdsn.toSql(tokenIds.value),
+      );
+    }
+    if (hashedTitle.present) {
+      map['hashed_title'] = Variable<String>(hashedTitle.value);
+    }
+    if (hashedContent.present) {
+      map['hashed_content'] = Variable<String>(hashedContent.value);
+    }
+    if (timestamp.present) {
+      map['timestamp'] = Variable<int>(timestamp.value);
+    }
+    if (modelVersion.present) {
+      map['model_version'] = Variable<String>(modelVersion.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RlhfFeedbackEventsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('notificationId: $notificationId, ')
+          ..write('reward: $reward, ')
+          ..write('correctedCategory: $correctedCategory, ')
+          ..write('correctedPriority: $correctedPriority, ')
+          ..write('featureVector: $featureVector, ')
+          ..write('tokenIds: $tokenIds, ')
+          ..write('hashedTitle: $hashedTitle, ')
+          ..write('hashedContent: $hashedContent, ')
+          ..write('timestamp: $timestamp, ')
+          ..write('modelVersion: $modelVersion')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AttentionDatabase extends GeneratedDatabase {
   _$AttentionDatabase(QueryExecutor e) : super(e);
   $AttentionDatabaseManager get managers => $AttentionDatabaseManager(this);
@@ -2722,6 +3433,8 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final $DailyBriefTableTable dailyBriefTable = $DailyBriefTableTable(
     this,
   );
+  late final $RlhfFeedbackEventsTableTable rlhfFeedbackEventsTable =
+      $RlhfFeedbackEventsTableTable(this);
   late final NotificationDao notificationDao = NotificationDao(
     this as AttentionDatabase,
   );
@@ -2734,6 +3447,9 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final DailyBriefDao dailyBriefDao = DailyBriefDao(
     this as AttentionDatabase,
   );
+  late final RlhfFeedbackDao rlhfFeedbackDao = RlhfFeedbackDao(
+    this as AttentionDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2743,6 +3459,7 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
     reviewQueueTable,
     focusSessionsTable,
     dailyBriefTable,
+    rlhfFeedbackEventsTable,
   ];
 }
 
@@ -3406,7 +4123,9 @@ class $$NotificationsTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$NotificationsTableTable, NotificationEntry>(
+                    table,
+                  ),
                   $$NotificationsTableTableReferences(db, table, e),
                 ),
               )
@@ -3749,7 +4468,7 @@ class $$ReviewQueueTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$ReviewQueueTableTable, ReviewQueueEntry>(table),
                   $$ReviewQueueTableTableReferences(db, table, e),
                 ),
               )
@@ -4021,7 +4740,18 @@ class $$FocusSessionsTableTableTableManager
                 duration: duration,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$FocusSessionsTableTable, FocusSessionEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $FocusSessionsTableTable,
+                    FocusSessionEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4273,7 +5003,16 @@ class $$DailyBriefTableTableTableManager
                 archivedCount: archivedCount,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$DailyBriefTableTable, DailyBriefEntry>(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $DailyBriefTableTable,
+                    DailyBriefEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4301,6 +5040,362 @@ typedef $$DailyBriefTableTableProcessedTableManager =
       DailyBriefEntry,
       PrefetchHooks Function()
     >;
+typedef $$RlhfFeedbackEventsTableTableCreateCompanionBuilder =
+    RlhfFeedbackEventsTableCompanion Function({
+      Value<int> id,
+      required String notificationId,
+      required double reward,
+      Value<String?> correctedCategory,
+      Value<String?> correctedPriority,
+      required List<dynamic> featureVector,
+      Value<List<dynamic>?> tokenIds,
+      Value<String?> hashedTitle,
+      Value<String?> hashedContent,
+      required int timestamp,
+      Value<String?> modelVersion,
+    });
+typedef $$RlhfFeedbackEventsTableTableUpdateCompanionBuilder =
+    RlhfFeedbackEventsTableCompanion Function({
+      Value<int> id,
+      Value<String> notificationId,
+      Value<double> reward,
+      Value<String?> correctedCategory,
+      Value<String?> correctedPriority,
+      Value<List<dynamic>> featureVector,
+      Value<List<dynamic>?> tokenIds,
+      Value<String?> hashedTitle,
+      Value<String?> hashedContent,
+      Value<int> timestamp,
+      Value<String?> modelVersion,
+    });
+
+class $$RlhfFeedbackEventsTableTableFilterComposer
+    extends Composer<_$AttentionDatabase, $RlhfFeedbackEventsTableTable> {
+  $$RlhfFeedbackEventsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get reward => $composableBuilder(
+    column: $table.reward,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get correctedCategory => $composableBuilder(
+    column: $table.correctedCategory,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get correctedPriority => $composableBuilder(
+    column: $table.correctedPriority,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<List<dynamic>, List<dynamic>, String>
+  get featureVector => $composableBuilder(
+    column: $table.featureVector,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<List<dynamic>?, List<dynamic>, String>
+  get tokenIds => $composableBuilder(
+    column: $table.tokenIds,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<String> get hashedTitle => $composableBuilder(
+    column: $table.hashedTitle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get hashedContent => $composableBuilder(
+    column: $table.hashedContent,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get modelVersion => $composableBuilder(
+    column: $table.modelVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RlhfFeedbackEventsTableTableOrderingComposer
+    extends Composer<_$AttentionDatabase, $RlhfFeedbackEventsTableTable> {
+  $$RlhfFeedbackEventsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get reward => $composableBuilder(
+    column: $table.reward,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get correctedCategory => $composableBuilder(
+    column: $table.correctedCategory,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get correctedPriority => $composableBuilder(
+    column: $table.correctedPriority,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get featureVector => $composableBuilder(
+    column: $table.featureVector,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tokenIds => $composableBuilder(
+    column: $table.tokenIds,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get hashedTitle => $composableBuilder(
+    column: $table.hashedTitle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get hashedContent => $composableBuilder(
+    column: $table.hashedContent,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get modelVersion => $composableBuilder(
+    column: $table.modelVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RlhfFeedbackEventsTableTableAnnotationComposer
+    extends Composer<_$AttentionDatabase, $RlhfFeedbackEventsTableTable> {
+  $$RlhfFeedbackEventsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get reward =>
+      $composableBuilder(column: $table.reward, builder: (column) => column);
+
+  GeneratedColumn<String> get correctedCategory => $composableBuilder(
+    column: $table.correctedCategory,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get correctedPriority => $composableBuilder(
+    column: $table.correctedPriority,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<List<dynamic>, String> get featureVector =>
+      $composableBuilder(
+        column: $table.featureVector,
+        builder: (column) => column,
+      );
+
+  GeneratedColumnWithTypeConverter<List<dynamic>?, String> get tokenIds =>
+      $composableBuilder(column: $table.tokenIds, builder: (column) => column);
+
+  GeneratedColumn<String> get hashedTitle => $composableBuilder(
+    column: $table.hashedTitle,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get hashedContent => $composableBuilder(
+    column: $table.hashedContent,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get timestamp =>
+      $composableBuilder(column: $table.timestamp, builder: (column) => column);
+
+  GeneratedColumn<String> get modelVersion => $composableBuilder(
+    column: $table.modelVersion,
+    builder: (column) => column,
+  );
+}
+
+class $$RlhfFeedbackEventsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AttentionDatabase,
+          $RlhfFeedbackEventsTableTable,
+          RlhfFeedbackEventEntry,
+          $$RlhfFeedbackEventsTableTableFilterComposer,
+          $$RlhfFeedbackEventsTableTableOrderingComposer,
+          $$RlhfFeedbackEventsTableTableAnnotationComposer,
+          $$RlhfFeedbackEventsTableTableCreateCompanionBuilder,
+          $$RlhfFeedbackEventsTableTableUpdateCompanionBuilder,
+          (
+            RlhfFeedbackEventEntry,
+            BaseReferences<
+              _$AttentionDatabase,
+              $RlhfFeedbackEventsTableTable,
+              RlhfFeedbackEventEntry
+            >,
+          ),
+          RlhfFeedbackEventEntry,
+          PrefetchHooks Function()
+        > {
+  $$RlhfFeedbackEventsTableTableTableManager(
+    _$AttentionDatabase db,
+    $RlhfFeedbackEventsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RlhfFeedbackEventsTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$RlhfFeedbackEventsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$RlhfFeedbackEventsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> notificationId = const Value.absent(),
+                Value<double> reward = const Value.absent(),
+                Value<String?> correctedCategory = const Value.absent(),
+                Value<String?> correctedPriority = const Value.absent(),
+                Value<List<dynamic>> featureVector = const Value.absent(),
+                Value<List<dynamic>?> tokenIds = const Value.absent(),
+                Value<String?> hashedTitle = const Value.absent(),
+                Value<String?> hashedContent = const Value.absent(),
+                Value<int> timestamp = const Value.absent(),
+                Value<String?> modelVersion = const Value.absent(),
+              }) => RlhfFeedbackEventsTableCompanion(
+                id: id,
+                notificationId: notificationId,
+                reward: reward,
+                correctedCategory: correctedCategory,
+                correctedPriority: correctedPriority,
+                featureVector: featureVector,
+                tokenIds: tokenIds,
+                hashedTitle: hashedTitle,
+                hashedContent: hashedContent,
+                timestamp: timestamp,
+                modelVersion: modelVersion,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String notificationId,
+                required double reward,
+                Value<String?> correctedCategory = const Value.absent(),
+                Value<String?> correctedPriority = const Value.absent(),
+                required List<dynamic> featureVector,
+                Value<List<dynamic>?> tokenIds = const Value.absent(),
+                Value<String?> hashedTitle = const Value.absent(),
+                Value<String?> hashedContent = const Value.absent(),
+                required int timestamp,
+                Value<String?> modelVersion = const Value.absent(),
+              }) => RlhfFeedbackEventsTableCompanion.insert(
+                id: id,
+                notificationId: notificationId,
+                reward: reward,
+                correctedCategory: correctedCategory,
+                correctedPriority: correctedPriority,
+                featureVector: featureVector,
+                tokenIds: tokenIds,
+                hashedTitle: hashedTitle,
+                hashedContent: hashedContent,
+                timestamp: timestamp,
+                modelVersion: modelVersion,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $RlhfFeedbackEventsTableTable,
+                    RlhfFeedbackEventEntry
+                  >(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $RlhfFeedbackEventsTableTable,
+                    RlhfFeedbackEventEntry
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RlhfFeedbackEventsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AttentionDatabase,
+      $RlhfFeedbackEventsTableTable,
+      RlhfFeedbackEventEntry,
+      $$RlhfFeedbackEventsTableTableFilterComposer,
+      $$RlhfFeedbackEventsTableTableOrderingComposer,
+      $$RlhfFeedbackEventsTableTableAnnotationComposer,
+      $$RlhfFeedbackEventsTableTableCreateCompanionBuilder,
+      $$RlhfFeedbackEventsTableTableUpdateCompanionBuilder,
+      (
+        RlhfFeedbackEventEntry,
+        BaseReferences<
+          _$AttentionDatabase,
+          $RlhfFeedbackEventsTableTable,
+          RlhfFeedbackEventEntry
+        >,
+      ),
+      RlhfFeedbackEventEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AttentionDatabaseManager {
   final _$AttentionDatabase _db;
@@ -4313,4 +5408,9 @@ class $AttentionDatabaseManager {
       $$FocusSessionsTableTableTableManager(_db, _db.focusSessionsTable);
   $$DailyBriefTableTableTableManager get dailyBriefTable =>
       $$DailyBriefTableTableTableManager(_db, _db.dailyBriefTable);
+  $$RlhfFeedbackEventsTableTableTableManager get rlhfFeedbackEventsTable =>
+      $$RlhfFeedbackEventsTableTableTableManager(
+        _db,
+        _db.rlhfFeedbackEventsTable,
+      );
 }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
@@ -5,26 +6,45 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/analysis_result.dart';
 import 'package:scope/core/analysis/notification_analyzer.dart';
 import 'package:scope/core/analysis/wordpiece_tokenizer.dart';
+import 'package:scope/core/analysis/model_lifecycle_manager.dart';
 
 /// Classifier using LiteRT (TensorFlow Lite) to classify text categories.
 class LiteRtClassifier implements NotificationAnalyzer {
   Interpreter? _interpreter;
   WordPieceTokenizer? _tokenizer;
   bool _isModelLoaded = false;
+  final ModelLifecycleManager? _lifecycleManager;
+  StreamSubscription<String>? _updateSubscription;
 
-  LiteRtClassifier() {
+  LiteRtClassifier({ModelLifecycleManager? lifecycleManager})
+      : _lifecycleManager = lifecycleManager {
     _initialize();
   }
 
   Future<void> _initialize() async {
     try {
       // 1. Load Vocab
-      final vocabStr = await rootBundle.loadString('assets/vocab.txt');
-      final lines = vocabStr.split('\n');
-      _tokenizer = WordPieceTokenizer.fromLines(lines);
+      if (_tokenizer == null) {
+        final vocabStr = await rootBundle.loadString('assets/vocab.txt');
+        final lines = vocabStr.split('\n');
+        _tokenizer = WordPieceTokenizer.fromLines(lines);
+      }
 
-      // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
-      _isModelLoaded = false;
+      // 2. Load Interpreter dynamically via ModelLifecycleManager
+      final manager = _lifecycleManager ?? ModelLifecycleManager.instance;
+      _interpreter = await manager.getInterpreter(
+        'litert_classifier',
+        assetFallbackPath: 'assets/litert_classifier.tflite',
+        expectedInputDim: 64,
+      );
+
+      _isModelLoaded = _interpreter != null;
+
+      _updateSubscription ??= manager.onModelUpdated.listen((modelName) {
+        if (modelName == 'litert_classifier' || modelName == 'classification') {
+          _initialize();
+        }
+      });
     } catch (e) {
       // Graceful degradation: Log and set flags so analyze runs in fallback mode
       // ignore: avoid_print
@@ -39,6 +59,12 @@ class LiteRtClassifier implements NotificationAnalyzer {
         } catch (_) {}
       }
     }
+  }
+
+  /// Explicitly set interpreter for custom model or testing
+  void setInterpreter(Interpreter? interpreter) {
+    _interpreter = interpreter;
+    _isModelLoaded = interpreter != null;
   }
 
   /// Expose model loading status for diagnostics screen.
