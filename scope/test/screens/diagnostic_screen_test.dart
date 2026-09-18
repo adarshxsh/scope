@@ -111,5 +111,41 @@ void main() {
       expect(find.text('Pipeline Explanation Trace'), findsOneWidget);
       expect(find.text('Extracted Text Features'), findsOneWidget);
     });
+
+    testWidgets('displays fallback badge when model is in fallback mode', (WidgetTester tester) async {
+      final fallbackEngine = _FallbackFakeEngine();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: DiagnosticScreen(engine: fallbackEngine),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Click analyze
+      await tester.tap(find.text('ANALYZE NOTIFICATION'));
+      await tester.pumpAndSettle();
+
+      // Verify fallback badge is displayed
+      expect(find.text('Fallback Heuristic (Model Offline)'), findsOneWidget);
+    });
   });
+}
+
+class _FallbackFakeEngine extends GhostAnalysisEngine {
+  @override
+  Future<void> initialize() async {}
+
+  @override
+  Future<AppNotification> analyze(AppNotification notification) async {
+    return notification.copyWith(
+      priority: 'medium',
+      classifiedCategory: 'msg',
+      explanation: 'Priority resolved: MEDIUM\n• Category: Inferred semantic category is msg.\n• Source: Handled by litert_model (fallback).\n• Confidence: [Fallback Execution].',
+      modelVersion: 'fallback-heuristics',
+      latencyMs: 1,
+    );
+  }
 }
