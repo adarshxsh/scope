@@ -273,5 +273,65 @@ void main() {
       // Missing one deleted due to being orphaned
       expect(queueItems.first.notificationId, equals('n-new'));
     });
+
+    test('runSetBasedCleanup enforces row cap (maxRows)', () async {
+      final now = DateTime.now();
+
+      // Insert 10 notifications with increasing timestamps
+      for (int i = 0; i < 10; i++) {
+        await db.notificationDao.insertNotification(NotificationEntry(
+          id: 'n-cap-$i',
+          packageName: 'app',
+          title: 'Title $i',
+          content: 'Content $i',
+          timestamp: now.millisecondsSinceEpoch + i * 1000,
+          state: ReviewState.ACTIVE,
+          reviewed: false,
+          dismissed: false,
+          isOngoing: false,
+          createdAt: now,
+        ));
+      }
+
+      final countBefore = await db.notificationDao.getCount();
+      expect(countBefore, equals(10));
+
+      // Run cleanup with maxRows = 5
+      final cutoff = now.subtract(const Duration(days: 100)).millisecondsSinceEpoch;
+      await db.runSetBasedCleanup(cutoff, maxRows: 5);
+
+      final countAfter = await db.notificationDao.getCount();
+      expect(countAfter, equals(5));
+
+      final remaining = await db.notificationDao.getAll();
+      // Should preserve the newest 5 (i = 5..9)
+      expect(remaining.map((n) => n.id).toList(), containsAll(['n-cap-5', 'n-cap-6', 'n-cap-7', 'n-cap-8', 'n-cap-9']));
+    });
+
+    test('runSetBasedCleanup enforces byte quota ceiling', () async {
+      final now = DateTime.now();
+
+      for (int i = 0; i < 10; i++) {
+        await db.notificationDao.insertNotification(NotificationEntry(
+          id: 'n-quota-$i',
+          packageName: 'app',
+          title: 'Title $i',
+          content: 'Content $i',
+          timestamp: now.millisecondsSinceEpoch + i * 1000,
+          state: ReviewState.ACTIVE,
+          reviewed: false,
+          dismissed: false,
+          isOngoing: false,
+          createdAt: now,
+        ));
+      }
+
+      final cutoff = now.subtract(const Duration(days: 100)).millisecondsSinceEpoch;
+      // Set maxFileSizeBytes to 1 byte to trigger quota cleanup
+      await db.runSetBasedCleanup(cutoff, maxRows: 100, maxFileSizeBytes: 1, targetFileSizeBytes: 1);
+
+      final countAfter = await db.notificationDao.getCount();
+      expect(countAfter, lessThan(10));
+    });
   });
 }
