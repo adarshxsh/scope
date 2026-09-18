@@ -11,20 +11,48 @@ class LiteRtClassifier implements NotificationAnalyzer {
   Interpreter? _interpreter;
   WordPieceTokenizer? _tokenizer;
   bool _isModelLoaded = false;
+  Future<void>? _initFuture;
 
-  LiteRtClassifier() {
-    _initialize();
+  /// Optional custom interpreter runner for unit tests or custom inference invocation.
+  final void Function(Object input, Object output)? _interpreterRunner;
+
+  LiteRtClassifier({
+    Interpreter? interpreter,
+    WordPieceTokenizer? tokenizer,
+    void Function(Object input, Object output)? interpreterRunner,
+  })  : _interpreter = interpreter,
+        _tokenizer = tokenizer,
+        _interpreterRunner = interpreterRunner {
+    if (interpreter != null || interpreterRunner != null) {
+      _isModelLoaded = true;
+    }
+    _initFuture = _initialize();
   }
 
   Future<void> _initialize() async {
     try {
       // 1. Load Vocab
-      final vocabStr = await rootBundle.loadString('assets/vocab.txt');
-      final lines = vocabStr.split('\n');
-      _tokenizer = WordPieceTokenizer.fromLines(lines);
+      if (_tokenizer == null) {
+        final vocabStr = await rootBundle.loadString('assets/vocab.txt');
+        final lines = vocabStr.split('\n');
+        _tokenizer = WordPieceTokenizer.fromLines(lines);
+      }
 
-      // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
-      _isModelLoaded = false;
+      // 2. Load Interpreter asynchronously
+      if (_interpreter == null && _interpreterRunner == null) {
+        try {
+          _interpreter = await Interpreter.fromAsset('assets/litert_classifier.tflite');
+          _isModelLoaded = true;
+        } catch (_) {
+          // Fallback to assets/model.tflite if litert_classifier.tflite is absent
+          try {
+            _interpreter = await Interpreter.fromAsset('assets/model.tflite');
+            _isModelLoaded = true;
+          } catch (_) {
+            _isModelLoaded = false;
+          }
+        }
+      }
     } catch (e) {
       // Graceful degradation: Log and set flags so analyze runs in fallback mode
       // ignore: avoid_print
@@ -50,13 +78,15 @@ class LiteRtClassifier implements NotificationAnalyzer {
     final combinedText = '${notification.title} ${notification.content}';
 
     // Ensure initialization finished
-    if (_tokenizer == null) {
+    if (_initFuture != null) {
+      await _initFuture;
+    } else if (_tokenizer == null) {
       await _initialize();
     }
 
     final tokenIds = _tokenizer?.tokenize(combinedText) ?? List<int>.filled(64, 0);
 
-    if (!_isModelLoaded || _interpreter == null) {
+    if (!_isModelLoaded || (_interpreter == null && _interpreterRunner == null)) {
       // Graceful fallback heuristic classifier
       final category = _runFallbackHeuristic(combinedText);
       return AnalysisResult(
@@ -80,7 +110,11 @@ class LiteRtClassifier implements NotificationAnalyzer {
       // Output logit tensor shape: [1, 5] (Promo, Social, System, Message, Finance)
       final output = List<double>.filled(5, 0.0).reshape([1, 5]);
 
-      _interpreter!.run(input, output);
+      if (_interpreterRunner != null) {
+        _interpreterRunner(input, output);
+      } else {
+        _interpreter!.run(input, output);
+      }
 
       final scores = List<double>.from(output[0] as List);
       final softmaxScores = _softmax(scores);
