@@ -162,6 +162,7 @@ def main() -> None:
         "architecture": [
             "Input(63)",
             "Normalization",
+            "ClipByValue(-5.0, 5.0)",
             "Dense(128, relu)",
             "Dropout(0.2)",
             "Dense(64, relu)",
