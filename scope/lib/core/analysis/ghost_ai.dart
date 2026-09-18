@@ -1,7 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/analysis/asset_verifier.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 
@@ -60,16 +61,18 @@ class GhostAI {
   Future<void> initialize() async {
     if (_interpreter != null) return;
     try {
-      // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
+      // 1. Load and verify interpreter from assets
+      final modelBytes = await AssetVerifier.loadAndVerify('assets/model.tflite');
+      _interpreter = Interpreter.fromBuffer(modelBytes);
       debugPrint('GhostAI: TFLite interpreter loaded successfully.');
     } catch (e) {
       debugPrint('GhostAI: Failed to load TFLite model: $e');
     }
 
     try {
-      // 2. Load and compile rules database
-      final jsonStr = await rootBundle.loadString('assets/rules.json');
+      // 2. Load and verify rules database
+      final rulesBytes = await AssetVerifier.loadAndVerify('assets/rules.json');
+      final jsonStr = utf8.decode(rulesBytes);
       _ruleEngine.compile(jsonStr);
       debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
     } catch (e) {
