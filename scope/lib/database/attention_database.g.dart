@@ -2709,6 +2709,555 @@ class DailyBriefTableCompanion extends UpdateCompanion<DailyBriefEntry> {
   }
 }
 
+class $FeedbackLogsTableTable extends FeedbackLogsTable
+    with TableInfo<$FeedbackLogsTableTable, FeedbackLogEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FeedbackLogsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _notificationIdMeta = const VerificationMeta(
+    'notificationId',
+  );
+  @override
+  late final GeneratedColumn<String> notificationId = GeneratedColumn<String>(
+    'notification_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _feedbackTypeMeta = const VerificationMeta(
+    'feedbackType',
+  );
+  @override
+  late final GeneratedColumn<String> feedbackType = GeneratedColumn<String>(
+    'feedback_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _originalPriorityMeta = const VerificationMeta(
+    'originalPriority',
+  );
+  @override
+  late final GeneratedColumn<String> originalPriority = GeneratedColumn<String>(
+    'original_priority',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _correctedPriorityMeta = const VerificationMeta(
+    'correctedPriority',
+  );
+  @override
+  late final GeneratedColumn<String> correctedPriority =
+      GeneratedColumn<String>(
+        'corrected_priority',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _originalCategoryMeta = const VerificationMeta(
+    'originalCategory',
+  );
+  @override
+  late final GeneratedColumn<String> originalCategory = GeneratedColumn<String>(
+    'original_category',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _correctedCategoryMeta = const VerificationMeta(
+    'correctedCategory',
+  );
+  @override
+  late final GeneratedColumn<String> correctedCategory =
+      GeneratedColumn<String>(
+        'corrected_category',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _timestampMeta = const VerificationMeta(
+    'timestamp',
+  );
+  @override
+  late final GeneratedColumn<DateTime> timestamp = GeneratedColumn<DateTime>(
+    'timestamp',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    notificationId,
+    feedbackType,
+    originalPriority,
+    correctedPriority,
+    originalCategory,
+    correctedCategory,
+    timestamp,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'feedback_logs_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<FeedbackLogEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('notification_id')) {
+      context.handle(
+        _notificationIdMeta,
+        notificationId.isAcceptableOrUnknown(
+          data['notification_id']!,
+          _notificationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_notificationIdMeta);
+    }
+    if (data.containsKey('feedback_type')) {
+      context.handle(
+        _feedbackTypeMeta,
+        feedbackType.isAcceptableOrUnknown(
+          data['feedback_type']!,
+          _feedbackTypeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_feedbackTypeMeta);
+    }
+    if (data.containsKey('original_priority')) {
+      context.handle(
+        _originalPriorityMeta,
+        originalPriority.isAcceptableOrUnknown(
+          data['original_priority']!,
+          _originalPriorityMeta,
+        ),
+      );
+    }
+    if (data.containsKey('corrected_priority')) {
+      context.handle(
+        _correctedPriorityMeta,
+        correctedPriority.isAcceptableOrUnknown(
+          data['corrected_priority']!,
+          _correctedPriorityMeta,
+        ),
+      );
+    }
+    if (data.containsKey('original_category')) {
+      context.handle(
+        _originalCategoryMeta,
+        originalCategory.isAcceptableOrUnknown(
+          data['original_category']!,
+          _originalCategoryMeta,
+        ),
+      );
+    }
+    if (data.containsKey('corrected_category')) {
+      context.handle(
+        _correctedCategoryMeta,
+        correctedCategory.isAcceptableOrUnknown(
+          data['corrected_category']!,
+          _correctedCategoryMeta,
+        ),
+      );
+    }
+    if (data.containsKey('timestamp')) {
+      context.handle(
+        _timestampMeta,
+        timestamp.isAcceptableOrUnknown(data['timestamp']!, _timestampMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  FeedbackLogEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return FeedbackLogEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      notificationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notification_id'],
+      )!,
+      feedbackType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}feedback_type'],
+      )!,
+      originalPriority: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}original_priority'],
+      ),
+      correctedPriority: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}corrected_priority'],
+      ),
+      originalCategory: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}original_category'],
+      ),
+      correctedCategory: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}corrected_category'],
+      ),
+      timestamp: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}timestamp'],
+      )!,
+    );
+  }
+
+  @override
+  $FeedbackLogsTableTable createAlias(String alias) {
+    return $FeedbackLogsTableTable(attachedDatabase, alias);
+  }
+}
+
+class FeedbackLogEntry extends DataClass
+    implements Insertable<FeedbackLogEntry> {
+  final int id;
+  final String notificationId;
+  final String feedbackType;
+  final String? originalPriority;
+  final String? correctedPriority;
+  final String? originalCategory;
+  final String? correctedCategory;
+  final DateTime timestamp;
+  const FeedbackLogEntry({
+    required this.id,
+    required this.notificationId,
+    required this.feedbackType,
+    this.originalPriority,
+    this.correctedPriority,
+    this.originalCategory,
+    this.correctedCategory,
+    required this.timestamp,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['notification_id'] = Variable<String>(notificationId);
+    map['feedback_type'] = Variable<String>(feedbackType);
+    if (!nullToAbsent || originalPriority != null) {
+      map['original_priority'] = Variable<String>(originalPriority);
+    }
+    if (!nullToAbsent || correctedPriority != null) {
+      map['corrected_priority'] = Variable<String>(correctedPriority);
+    }
+    if (!nullToAbsent || originalCategory != null) {
+      map['original_category'] = Variable<String>(originalCategory);
+    }
+    if (!nullToAbsent || correctedCategory != null) {
+      map['corrected_category'] = Variable<String>(correctedCategory);
+    }
+    map['timestamp'] = Variable<DateTime>(timestamp);
+    return map;
+  }
+
+  FeedbackLogsTableCompanion toCompanion(bool nullToAbsent) {
+    return FeedbackLogsTableCompanion(
+      id: Value(id),
+      notificationId: Value(notificationId),
+      feedbackType: Value(feedbackType),
+      originalPriority: originalPriority == null && nullToAbsent
+          ? const Value.absent()
+          : Value(originalPriority),
+      correctedPriority: correctedPriority == null && nullToAbsent
+          ? const Value.absent()
+          : Value(correctedPriority),
+      originalCategory: originalCategory == null && nullToAbsent
+          ? const Value.absent()
+          : Value(originalCategory),
+      correctedCategory: correctedCategory == null && nullToAbsent
+          ? const Value.absent()
+          : Value(correctedCategory),
+      timestamp: Value(timestamp),
+    );
+  }
+
+  factory FeedbackLogEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return FeedbackLogEntry(
+      id: serializer.fromJson<int>(json['id']),
+      notificationId: serializer.fromJson<String>(json['notificationId']),
+      feedbackType: serializer.fromJson<String>(json['feedbackType']),
+      originalPriority: serializer.fromJson<String?>(json['originalPriority']),
+      correctedPriority: serializer.fromJson<String?>(
+        json['correctedPriority'],
+      ),
+      originalCategory: serializer.fromJson<String?>(json['originalCategory']),
+      correctedCategory: serializer.fromJson<String?>(
+        json['correctedCategory'],
+      ),
+      timestamp: serializer.fromJson<DateTime>(json['timestamp']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'notificationId': serializer.toJson<String>(notificationId),
+      'feedbackType': serializer.toJson<String>(feedbackType),
+      'originalPriority': serializer.toJson<String?>(originalPriority),
+      'correctedPriority': serializer.toJson<String?>(correctedPriority),
+      'originalCategory': serializer.toJson<String?>(originalCategory),
+      'correctedCategory': serializer.toJson<String?>(correctedCategory),
+      'timestamp': serializer.toJson<DateTime>(timestamp),
+    };
+  }
+
+  FeedbackLogEntry copyWith({
+    int? id,
+    String? notificationId,
+    String? feedbackType,
+    Value<String?> originalPriority = const Value.absent(),
+    Value<String?> correctedPriority = const Value.absent(),
+    Value<String?> originalCategory = const Value.absent(),
+    Value<String?> correctedCategory = const Value.absent(),
+    DateTime? timestamp,
+  }) => FeedbackLogEntry(
+    id: id ?? this.id,
+    notificationId: notificationId ?? this.notificationId,
+    feedbackType: feedbackType ?? this.feedbackType,
+    originalPriority: originalPriority.present
+        ? originalPriority.value
+        : this.originalPriority,
+    correctedPriority: correctedPriority.present
+        ? correctedPriority.value
+        : this.correctedPriority,
+    originalCategory: originalCategory.present
+        ? originalCategory.value
+        : this.originalCategory,
+    correctedCategory: correctedCategory.present
+        ? correctedCategory.value
+        : this.correctedCategory,
+    timestamp: timestamp ?? this.timestamp,
+  );
+  FeedbackLogEntry copyWithCompanion(FeedbackLogsTableCompanion data) {
+    return FeedbackLogEntry(
+      id: data.id.present ? data.id.value : this.id,
+      notificationId: data.notificationId.present
+          ? data.notificationId.value
+          : this.notificationId,
+      feedbackType: data.feedbackType.present
+          ? data.feedbackType.value
+          : this.feedbackType,
+      originalPriority: data.originalPriority.present
+          ? data.originalPriority.value
+          : this.originalPriority,
+      correctedPriority: data.correctedPriority.present
+          ? data.correctedPriority.value
+          : this.correctedPriority,
+      originalCategory: data.originalCategory.present
+          ? data.originalCategory.value
+          : this.originalCategory,
+      correctedCategory: data.correctedCategory.present
+          ? data.correctedCategory.value
+          : this.correctedCategory,
+      timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FeedbackLogEntry(')
+          ..write('id: $id, ')
+          ..write('notificationId: $notificationId, ')
+          ..write('feedbackType: $feedbackType, ')
+          ..write('originalPriority: $originalPriority, ')
+          ..write('correctedPriority: $correctedPriority, ')
+          ..write('originalCategory: $originalCategory, ')
+          ..write('correctedCategory: $correctedCategory, ')
+          ..write('timestamp: $timestamp')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    notificationId,
+    feedbackType,
+    originalPriority,
+    correctedPriority,
+    originalCategory,
+    correctedCategory,
+    timestamp,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FeedbackLogEntry &&
+          other.id == this.id &&
+          other.notificationId == this.notificationId &&
+          other.feedbackType == this.feedbackType &&
+          other.originalPriority == this.originalPriority &&
+          other.correctedPriority == this.correctedPriority &&
+          other.originalCategory == this.originalCategory &&
+          other.correctedCategory == this.correctedCategory &&
+          other.timestamp == this.timestamp);
+}
+
+class FeedbackLogsTableCompanion extends UpdateCompanion<FeedbackLogEntry> {
+  final Value<int> id;
+  final Value<String> notificationId;
+  final Value<String> feedbackType;
+  final Value<String?> originalPriority;
+  final Value<String?> correctedPriority;
+  final Value<String?> originalCategory;
+  final Value<String?> correctedCategory;
+  final Value<DateTime> timestamp;
+  const FeedbackLogsTableCompanion({
+    this.id = const Value.absent(),
+    this.notificationId = const Value.absent(),
+    this.feedbackType = const Value.absent(),
+    this.originalPriority = const Value.absent(),
+    this.correctedPriority = const Value.absent(),
+    this.originalCategory = const Value.absent(),
+    this.correctedCategory = const Value.absent(),
+    this.timestamp = const Value.absent(),
+  });
+  FeedbackLogsTableCompanion.insert({
+    this.id = const Value.absent(),
+    required String notificationId,
+    required String feedbackType,
+    this.originalPriority = const Value.absent(),
+    this.correctedPriority = const Value.absent(),
+    this.originalCategory = const Value.absent(),
+    this.correctedCategory = const Value.absent(),
+    this.timestamp = const Value.absent(),
+  }) : notificationId = Value(notificationId),
+       feedbackType = Value(feedbackType);
+  static Insertable<FeedbackLogEntry> custom({
+    Expression<int>? id,
+    Expression<String>? notificationId,
+    Expression<String>? feedbackType,
+    Expression<String>? originalPriority,
+    Expression<String>? correctedPriority,
+    Expression<String>? originalCategory,
+    Expression<String>? correctedCategory,
+    Expression<DateTime>? timestamp,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (notificationId != null) 'notification_id': notificationId,
+      if (feedbackType != null) 'feedback_type': feedbackType,
+      if (originalPriority != null) 'original_priority': originalPriority,
+      if (correctedPriority != null) 'corrected_priority': correctedPriority,
+      if (originalCategory != null) 'original_category': originalCategory,
+      if (correctedCategory != null) 'corrected_category': correctedCategory,
+      if (timestamp != null) 'timestamp': timestamp,
+    });
+  }
+
+  FeedbackLogsTableCompanion copyWith({
+    Value<int>? id,
+    Value<String>? notificationId,
+    Value<String>? feedbackType,
+    Value<String?>? originalPriority,
+    Value<String?>? correctedPriority,
+    Value<String?>? originalCategory,
+    Value<String?>? correctedCategory,
+    Value<DateTime>? timestamp,
+  }) {
+    return FeedbackLogsTableCompanion(
+      id: id ?? this.id,
+      notificationId: notificationId ?? this.notificationId,
+      feedbackType: feedbackType ?? this.feedbackType,
+      originalPriority: originalPriority ?? this.originalPriority,
+      correctedPriority: correctedPriority ?? this.correctedPriority,
+      originalCategory: originalCategory ?? this.originalCategory,
+      correctedCategory: correctedCategory ?? this.correctedCategory,
+      timestamp: timestamp ?? this.timestamp,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (notificationId.present) {
+      map['notification_id'] = Variable<String>(notificationId.value);
+    }
+    if (feedbackType.present) {
+      map['feedback_type'] = Variable<String>(feedbackType.value);
+    }
+    if (originalPriority.present) {
+      map['original_priority'] = Variable<String>(originalPriority.value);
+    }
+    if (correctedPriority.present) {
+      map['corrected_priority'] = Variable<String>(correctedPriority.value);
+    }
+    if (originalCategory.present) {
+      map['original_category'] = Variable<String>(originalCategory.value);
+    }
+    if (correctedCategory.present) {
+      map['corrected_category'] = Variable<String>(correctedCategory.value);
+    }
+    if (timestamp.present) {
+      map['timestamp'] = Variable<DateTime>(timestamp.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FeedbackLogsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('notificationId: $notificationId, ')
+          ..write('feedbackType: $feedbackType, ')
+          ..write('originalPriority: $originalPriority, ')
+          ..write('correctedPriority: $correctedPriority, ')
+          ..write('originalCategory: $originalCategory, ')
+          ..write('correctedCategory: $correctedCategory, ')
+          ..write('timestamp: $timestamp')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AttentionDatabase extends GeneratedDatabase {
   _$AttentionDatabase(QueryExecutor e) : super(e);
   $AttentionDatabaseManager get managers => $AttentionDatabaseManager(this);
@@ -2722,6 +3271,8 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final $DailyBriefTableTable dailyBriefTable = $DailyBriefTableTable(
     this,
   );
+  late final $FeedbackLogsTableTable feedbackLogsTable =
+      $FeedbackLogsTableTable(this);
   late final NotificationDao notificationDao = NotificationDao(
     this as AttentionDatabase,
   );
@@ -2734,6 +3285,9 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final DailyBriefDao dailyBriefDao = DailyBriefDao(
     this as AttentionDatabase,
   );
+  late final FeedbackLogDao feedbackLogDao = FeedbackLogDao(
+    this as AttentionDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2743,6 +3297,7 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
     reviewQueueTable,
     focusSessionsTable,
     dailyBriefTable,
+    feedbackLogsTable,
   ];
 }
 
@@ -3406,7 +3961,9 @@ class $$NotificationsTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$NotificationsTableTable, NotificationEntry>(
+                    table,
+                  ),
                   $$NotificationsTableTableReferences(db, table, e),
                 ),
               )
@@ -3749,7 +4306,7 @@ class $$ReviewQueueTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$ReviewQueueTableTable, ReviewQueueEntry>(table),
                   $$ReviewQueueTableTableReferences(db, table, e),
                 ),
               )
@@ -4021,7 +4578,18 @@ class $$FocusSessionsTableTableTableManager
                 duration: duration,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$FocusSessionsTableTable, FocusSessionEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $FocusSessionsTableTable,
+                    FocusSessionEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4273,7 +4841,16 @@ class $$DailyBriefTableTableTableManager
                 archivedCount: archivedCount,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$DailyBriefTableTable, DailyBriefEntry>(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $DailyBriefTableTable,
+                    DailyBriefEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4301,6 +4878,291 @@ typedef $$DailyBriefTableTableProcessedTableManager =
       DailyBriefEntry,
       PrefetchHooks Function()
     >;
+typedef $$FeedbackLogsTableTableCreateCompanionBuilder =
+    FeedbackLogsTableCompanion Function({
+      Value<int> id,
+      required String notificationId,
+      required String feedbackType,
+      Value<String?> originalPriority,
+      Value<String?> correctedPriority,
+      Value<String?> originalCategory,
+      Value<String?> correctedCategory,
+      Value<DateTime> timestamp,
+    });
+typedef $$FeedbackLogsTableTableUpdateCompanionBuilder =
+    FeedbackLogsTableCompanion Function({
+      Value<int> id,
+      Value<String> notificationId,
+      Value<String> feedbackType,
+      Value<String?> originalPriority,
+      Value<String?> correctedPriority,
+      Value<String?> originalCategory,
+      Value<String?> correctedCategory,
+      Value<DateTime> timestamp,
+    });
+
+class $$FeedbackLogsTableTableFilterComposer
+    extends Composer<_$AttentionDatabase, $FeedbackLogsTableTable> {
+  $$FeedbackLogsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get feedbackType => $composableBuilder(
+    column: $table.feedbackType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get originalPriority => $composableBuilder(
+    column: $table.originalPriority,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get correctedPriority => $composableBuilder(
+    column: $table.correctedPriority,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get originalCategory => $composableBuilder(
+    column: $table.originalCategory,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get correctedCategory => $composableBuilder(
+    column: $table.correctedCategory,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$FeedbackLogsTableTableOrderingComposer
+    extends Composer<_$AttentionDatabase, $FeedbackLogsTableTable> {
+  $$FeedbackLogsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get feedbackType => $composableBuilder(
+    column: $table.feedbackType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get originalPriority => $composableBuilder(
+    column: $table.originalPriority,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get correctedPriority => $composableBuilder(
+    column: $table.correctedPriority,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get originalCategory => $composableBuilder(
+    column: $table.originalCategory,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get correctedCategory => $composableBuilder(
+    column: $table.correctedCategory,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$FeedbackLogsTableTableAnnotationComposer
+    extends Composer<_$AttentionDatabase, $FeedbackLogsTableTable> {
+  $$FeedbackLogsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get feedbackType => $composableBuilder(
+    column: $table.feedbackType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get originalPriority => $composableBuilder(
+    column: $table.originalPriority,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get correctedPriority => $composableBuilder(
+    column: $table.correctedPriority,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get originalCategory => $composableBuilder(
+    column: $table.originalCategory,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get correctedCategory => $composableBuilder(
+    column: $table.correctedCategory,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get timestamp =>
+      $composableBuilder(column: $table.timestamp, builder: (column) => column);
+}
+
+class $$FeedbackLogsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AttentionDatabase,
+          $FeedbackLogsTableTable,
+          FeedbackLogEntry,
+          $$FeedbackLogsTableTableFilterComposer,
+          $$FeedbackLogsTableTableOrderingComposer,
+          $$FeedbackLogsTableTableAnnotationComposer,
+          $$FeedbackLogsTableTableCreateCompanionBuilder,
+          $$FeedbackLogsTableTableUpdateCompanionBuilder,
+          (
+            FeedbackLogEntry,
+            BaseReferences<
+              _$AttentionDatabase,
+              $FeedbackLogsTableTable,
+              FeedbackLogEntry
+            >,
+          ),
+          FeedbackLogEntry,
+          PrefetchHooks Function()
+        > {
+  $$FeedbackLogsTableTableTableManager(
+    _$AttentionDatabase db,
+    $FeedbackLogsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FeedbackLogsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$FeedbackLogsTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$FeedbackLogsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> notificationId = const Value.absent(),
+                Value<String> feedbackType = const Value.absent(),
+                Value<String?> originalPriority = const Value.absent(),
+                Value<String?> correctedPriority = const Value.absent(),
+                Value<String?> originalCategory = const Value.absent(),
+                Value<String?> correctedCategory = const Value.absent(),
+                Value<DateTime> timestamp = const Value.absent(),
+              }) => FeedbackLogsTableCompanion(
+                id: id,
+                notificationId: notificationId,
+                feedbackType: feedbackType,
+                originalPriority: originalPriority,
+                correctedPriority: correctedPriority,
+                originalCategory: originalCategory,
+                correctedCategory: correctedCategory,
+                timestamp: timestamp,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String notificationId,
+                required String feedbackType,
+                Value<String?> originalPriority = const Value.absent(),
+                Value<String?> correctedPriority = const Value.absent(),
+                Value<String?> originalCategory = const Value.absent(),
+                Value<String?> correctedCategory = const Value.absent(),
+                Value<DateTime> timestamp = const Value.absent(),
+              }) => FeedbackLogsTableCompanion.insert(
+                id: id,
+                notificationId: notificationId,
+                feedbackType: feedbackType,
+                originalPriority: originalPriority,
+                correctedPriority: correctedPriority,
+                originalCategory: originalCategory,
+                correctedCategory: correctedCategory,
+                timestamp: timestamp,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$FeedbackLogsTableTable, FeedbackLogEntry>(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $FeedbackLogsTableTable,
+                    FeedbackLogEntry
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$FeedbackLogsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AttentionDatabase,
+      $FeedbackLogsTableTable,
+      FeedbackLogEntry,
+      $$FeedbackLogsTableTableFilterComposer,
+      $$FeedbackLogsTableTableOrderingComposer,
+      $$FeedbackLogsTableTableAnnotationComposer,
+      $$FeedbackLogsTableTableCreateCompanionBuilder,
+      $$FeedbackLogsTableTableUpdateCompanionBuilder,
+      (
+        FeedbackLogEntry,
+        BaseReferences<
+          _$AttentionDatabase,
+          $FeedbackLogsTableTable,
+          FeedbackLogEntry
+        >,
+      ),
+      FeedbackLogEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AttentionDatabaseManager {
   final _$AttentionDatabase _db;
@@ -4313,4 +5175,6 @@ class $AttentionDatabaseManager {
       $$FocusSessionsTableTableTableManager(_db, _db.focusSessionsTable);
   $$DailyBriefTableTableTableManager get dailyBriefTable =>
       $$DailyBriefTableTableTableManager(_db, _db.dailyBriefTable);
+  $$FeedbackLogsTableTableTableManager get feedbackLogsTable =>
+      $$FeedbackLogsTableTableTableManager(_db, _db.feedbackLogsTable);
 }
