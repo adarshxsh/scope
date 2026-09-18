@@ -205,8 +205,9 @@ class PrivacyLedgerDao extends DatabaseAccessor<AttentionDatabase> with _$Privac
   PrivacyLedgerDao(super.db);
 
   Future<void> recordQueryConsumption(String date, double epsilon, double delta) async {
-    final existing = await (select(privacyLedgerTable)..where((t) => t.date.equals(date))).getSingleOrNull();
-    if (existing != null) {
+    final existingList = await (select(privacyLedgerTable)..where((t) => t.date.equals(date))).get();
+    if (existingList.isNotEmpty) {
+      final existing = existingList.first;
       await update(privacyLedgerTable).replace(existing.copyWith(
         epsilonSpent: existing.epsilonSpent + epsilon,
         deltaSpent: existing.deltaSpent + delta,
@@ -214,13 +215,12 @@ class PrivacyLedgerDao extends DatabaseAccessor<AttentionDatabase> with _$Privac
         lastUpdated: DateTime.now(),
       ));
     } else {
-      await into(privacyLedgerTable).insert(PrivacyLedgerEntry(
-        id: 0,
+      await into(privacyLedgerTable).insert(PrivacyLedgerTableCompanion.insert(
         date: date,
-        epsilonSpent: epsilon,
-        deltaSpent: delta,
-        queryCount: 1,
-        lastUpdated: DateTime.now(),
+        epsilonSpent: Value(epsilon),
+        deltaSpent: Value(delta),
+        queryCount: const Value(1),
+        lastUpdated: Value(DateTime.now()),
       ));
     }
   }
@@ -230,8 +230,9 @@ class PrivacyLedgerDao extends DatabaseAccessor<AttentionDatabase> with _$Privac
   }
 
   Future<double> getEpsilonSpentForDate(String date) async {
-    final entry = await (select(privacyLedgerTable)..where((t) => t.date.equals(date))).getSingleOrNull();
-    return entry?.epsilonSpent ?? 0.0;
+    final query = select(privacyLedgerTable)..where((t) => t.date.equals(date));
+    final rows = await query.get();
+    return rows.fold<double>(0.0, (sum, row) => sum + row.epsilonSpent);
   }
 
   Future<double> getEpsilonSpentForMonth(String monthPrefix) async {
