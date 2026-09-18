@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="database" path="attention_os.db" />
+        <exclude domain="database" path="attention_os.db-journal" />
+        <exclude domain="database" path="attention_os.db-shm" />
+        <exclude domain="database" path="attention_os.db-wal" />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="root" path="." />
+        <exclude domain="external" path="." />
+    </cloud-backup>
+    <device-to-device-backup>
+        <exclude domain="database" path="attention_os.db" />
+        <exclude domain="database" path="attention_os.db-journal" />
+        <exclude domain="database" path="attention_os.db-shm" />
+        <exclude domain="database" path="attention_os.db-wal" />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="root" path="." />
+        <exclude domain="external" path="." />
+    </device-to-device-backup>
+</data-extraction-rules>
