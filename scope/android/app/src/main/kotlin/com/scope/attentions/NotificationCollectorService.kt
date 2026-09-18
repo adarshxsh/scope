@@ -3,7 +3,7 @@ package com.scope.attentions
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
-import java.util.concurrent.ConcurrentLinkedQueue
+import java.security.MessageDigest
 
 /**
  * Android service that captures all incoming notifications.
@@ -11,25 +11,33 @@ import java.util.concurrent.ConcurrentLinkedQueue
  * Extends [NotificationListenerService] which requires the user to manually
  * grant "Notification access" in system Settings.
  *
- * Captured notifications are placed in a static [queue] which is drained
- * by [MainActivity] when Flutter requests them via MethodChannel.
- *
- * Design decisions:
- *   - Uses a static ConcurrentLinkedQueue (thread-safe, lock-free) because
- *     the service runs in a separate context from MainActivity.
- *   - No heavy processing here — just capture and queue.
- *   - Skips ongoing/persistent notifications by default (configurable).
+ * Captured notifications are redacted for sensitive PII/OTPs and placed in a
+ * bounded static queue (capacity 100) which is drained by [MainActivity]
+ * when Flutter requests them via MethodChannel.
  */
 class NotificationCollectorService : NotificationListenerService() {
 
     companion object {
-        private const val TAG = "NotifCollector"
+        private const val TAG = "NotificationCollector"
 
-        /** Thread-safe queue of captured notifications. */
-        private val queue = ConcurrentLinkedQueue<NotificationData>()
+        /** Thread-safe bounded queue of captured notifications (capacity 100). */
+        private val queue = BoundedNotificationQueue<NotificationData>(100)
 
         /** Counter for generating simple unique IDs within a session. */
         private var idCounter = 0L
+
+        /**
+         * Computes a SHA-256 hash digest of package name for secure diagnostic logging.
+         */
+        private fun hashPackage(packageName: String): String {
+            return try {
+                val digest = MessageDigest.getInstance("SHA-256")
+                val hashBytes = digest.digest(packageName.toByteArray(Charsets.UTF_8))
+                hashBytes.joinToString("") { "%02x".format(it) }.take(8)
+            } catch (e: Exception) {
+                packageName.hashCode().toString()
+            }
+        }
 
         /**
          * Drains all notifications from the queue and returns them.
@@ -37,12 +45,7 @@ class NotificationCollectorService : NotificationListenerService() {
          * After this call, the queue is empty.
          */
         fun drainQueue(): List<NotificationData> {
-            val result = mutableListOf<NotificationData>()
-            while (true) {
-                val item = queue.poll() ?: break
-                result.add(item)
-            }
-            return result
+            return queue.drainQueue()
         }
 
         /**
@@ -54,12 +57,16 @@ class NotificationCollectorService : NotificationListenerService() {
     private fun addSbnToQueue(sbn: StatusBarNotification) {
         try {
             val extras = sbn.notification.extras
-            val title = extras?.getCharSequence("android.title")?.toString() ?: ""
-            val text = extras?.getCharSequence("android.text")?.toString() ?: ""
+            val rawTitle = extras?.getCharSequence("android.title")?.toString() ?: ""
+            val rawText = extras?.getCharSequence("android.text")?.toString() ?: ""
             val isOngoing = sbn.isOngoing
             val packageName = sbn.packageName ?: "unknown"
 
-            // Ignore if same package, title, and content already exist in queue
+            // Redact PII and OTP sensitive patterns prior to memory queue insertion
+            val title = NotificationRedactor.redact(rawTitle)
+            val text = NotificationRedactor.redact(rawText)
+
+            // Ignore if same package, redacted title, and content already exist in queue
             val isDuplicate = queue.any {
                 it.packageName == packageName && it.title == title && it.content == text
             }
@@ -78,7 +85,7 @@ class NotificationCollectorService : NotificationListenerService() {
             )
 
             queue.add(data)
-            Log.d(TAG, "Captured: ${data.packageName} - ${data.title}")
+            Log.d(TAG, "Notification posted from package: ${hashPackage(packageName)}")
         } catch (e: Exception) {
             Log.e(TAG, "Error capturing/adding notification", e)
         }
@@ -91,8 +98,7 @@ class NotificationCollectorService : NotificationListenerService() {
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         if (sbn == null) return
-        // Log for now; future phases may track dismissed notifications
-        Log.d(TAG, "Removed: ${sbn.packageName} - ${sbn.notification.extras?.getCharSequence("android.title")}")
+        Log.d(TAG, "Notification removed from package: ${hashPackage(sbn.packageName ?: "unknown")}")
     }
 
     override fun onListenerConnected() {
