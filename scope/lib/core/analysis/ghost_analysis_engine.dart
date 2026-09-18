@@ -39,7 +39,10 @@ class GhostAnalysisEngine {
 
   /// Executes the hybrid intelligence pipeline end-to-end.
   /// Intercepts raw notification data and resolves it into a fully decorated priority model.
-  Future<AppNotification> analyze(AppNotification notification) async {
+  Future<AppNotification> analyze(
+    AppNotification notification, {
+    int? referenceTimestamp,
+  }) async {
     final stopwatch = Stopwatch()..start();
 
     // 0. Filter out progress/download/sync status notifications to prevent unnecessary analysis
@@ -74,7 +77,10 @@ class GhostAnalysisEngine {
     );
 
     // Run unified look-again MLP model prediction
-    final ghostResult = await GhostAI.predict(notification);
+    final ghostResult = await GhostAI.predict(
+      notification,
+      referenceTimestamp: referenceTimestamp,
+    );
 
     // 5. Policy Engine (category + feature to priority levels resolution)
     final priority = PolicyEngine.resolvePriority(
