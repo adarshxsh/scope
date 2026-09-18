@@ -140,10 +140,16 @@ class LiteRtClassifier implements NotificationAnalyzer {
   }
 
   List<double> _softmax(List<double> logits) {
+    if (logits.isEmpty || logits.any((x) => x.isNaN || x.isInfinite)) {
+      final len = logits.isEmpty ? 5 : logits.length;
+      return List<double>.filled(len, 1.0 / len);
+    }
     double max = logits.reduce((curr, next) => curr > next ? curr : next);
     List<double> exps = logits.map((x) => math.exp(x - max)).toList();
     final sum = exps.reduce((curr, next) => curr + next);
-    if (sum == 0.0) return List<double>.filled(logits.length, 1.0 / logits.length);
+    if (sum == 0.0 || sum.isNaN || sum.isInfinite) {
+      return List<double>.filled(logits.length, 1.0 / logits.length);
+    }
     return exps.map((x) => x / sum).toList();
   }
 }

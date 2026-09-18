@@ -64,6 +64,7 @@ class GhostAI {
       _interpreter = await Interpreter.fromAsset('assets/model.tflite');
       debugPrint('GhostAI: TFLite interpreter loaded successfully.');
     } catch (e) {
+      _interpreter = null;
       debugPrint('GhostAI: Failed to load TFLite model: $e');
     }
 
@@ -77,9 +78,43 @@ class GhostAI {
     }
   }
 
+  /// Sets the TFLite interpreter instance for testing isolated error cases.
+  @visibleForTesting
+  void setInterpreterForTesting(Interpreter? interpreter) {
+    _interpreter = interpreter;
+  }
+
   /// Public API: resolves look-again priority score for a notification.
   static Future<GhostAIResult> predict(AppNotification notification) async {
     return instance._predict(notification);
+  }
+
+  /// Inspects expected input tensor length dynamically if available.
+  int? _getExpectedInputLength() {
+    if (_interpreter == null) return null;
+    try {
+      final shape = _interpreter!.getInputTensor(0).shape;
+      if (shape.length >= 2) {
+        return shape[1];
+      } else if (shape.isNotEmpty) {
+        return shape.last;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Adapts feature vector length to match expected input tensor shape.
+  List<double> _adaptFeatureVector(List<double> featureVector) {
+    final expectedLength = _getExpectedInputLength();
+    if (expectedLength == null || expectedLength <= 0 || featureVector.length == expectedLength) {
+      return featureVector;
+    }
+    if (featureVector.length > expectedLength) {
+      return featureVector.sublist(0, expectedLength);
+    } else {
+      return List<double>.from(featureVector)
+        ..addAll(List<double>.filled(expectedLength - featureVector.length, 0.0));
+    }
   }
 
   Future<GhostAIResult> _predict(AppNotification notification) async {
@@ -88,21 +123,39 @@ class GhostAI {
     // 1. Feature extraction using the existing FeatureExtractor
     final featureVector = FeatureExtractor.extractFromAppNotification(notification);
 
-    // 2. Model inference
+    // 2. Model inference with isolated exception handling & fallback guardrails
     double predictedScore = 0.0;
     int inferenceTimeUs = 0;
 
     if (_interpreter != null) {
-      final input = [featureVector];
-      final output = List<double>.filled(1, 0.0).reshape([1, 1]);
-
       final inferStopwatch = Stopwatch()..start();
-      _interpreter!.run(input, output);
-      inferStopwatch.stop();
+      try {
+        final adaptedVector = _adaptFeatureVector(featureVector);
+        final input = [adaptedVector];
+        final output = List<double>.filled(1, 0.0).reshape([1, 1]);
 
-      inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
-      // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
-      predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+        _interpreter!.run(input, output);
+        inferStopwatch.stop();
+        inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
+
+        final rawScore = output[0][0];
+        if (rawScore.isNaN || rawScore.isInfinite) {
+          debugPrint('GhostAI: TFLite interpreter output was invalid ($rawScore), using heuristic fallback.');
+          predictedScore = _heuristicLookAgainScore(featureVector);
+        } else {
+          // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
+          predictedScore = (rawScore / 100.0).clamp(0.0, 1.0);
+        }
+      } catch (e, stackTrace) {
+        inferStopwatch.stop();
+        inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
+        debugPrint('GhostAI: Unhandled TFLite execution error during interpreter invocation: $e');
+        if (kDebugMode) {
+          debugPrint('$stackTrace');
+        }
+        // Fallback to heuristic score on any TFLite execution or native error
+        predictedScore = _heuristicLookAgainScore(featureVector);
+      }
     } else {
       // Heuristic fallback if model not loaded
       predictedScore = _heuristicLookAgainScore(featureVector);
