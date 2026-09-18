@@ -1,5 +1,7 @@
 package com.scope.attentions
 
+import android.app.Notification
+import android.content.Context
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
@@ -17,8 +19,8 @@ import java.util.concurrent.ConcurrentLinkedQueue
  * Design decisions:
  *   - Uses a static ConcurrentLinkedQueue (thread-safe, lock-free) because
  *     the service runs in a separate context from MainActivity.
- *   - No heavy processing here — just capture and queue.
- *   - Skips ongoing/persistent notifications by default (configurable).
+ *   - Applies Layer 1 OS-level guardrails: drops ongoing events, system noise
+ *     categories, and blacklisted packages before queuing.
  */
 class NotificationCollectorService : NotificationListenerService() {
 
@@ -53,11 +55,47 @@ class NotificationCollectorService : NotificationListenerService() {
 
     private fun addSbnToQueue(sbn: StatusBarNotification) {
         try {
-            val extras = sbn.notification.extras
+            val notification = sbn.notification ?: return
+            val isOngoing = sbn.isOngoing || (notification.flags and Notification.FLAG_ONGOING_EVENT) != 0
+
+            val prefs = getSharedPreferences("scope_guardrails", Context.MODE_PRIVATE)
+            val blockOngoing = prefs.getBoolean("block_ongoing", true)
+
+            // Drop ongoing notifications at Layer 1
+            if (blockOngoing && isOngoing) {
+                Log.d(TAG, "Dropped ongoing notification at OS level: ${sbn.packageName}")
+                return
+            }
+
+            // Drop system noise categories at Layer 1
+            val category = notification.category ?: ""
+            val categoryLower = category.lowercase()
+            val noiseCategories = setOf(
+                "progress", "navigation", "service", "sys", "system", "transport", "status"
+            )
+            if (noiseCategories.contains(categoryLower)) {
+                Log.d(TAG, "Dropped system noise category at OS level: $category for ${sbn.packageName}")
+                return
+            }
+
+            // Drop user-blacklisted packages at Layer 1
+            val packageName = sbn.packageName ?: "unknown"
+            val blockedPackages = prefs.getStringSet("blocked_packages", emptySet()) ?: emptySet()
+            if (blockedPackages.map { it.lowercase() }.contains(packageName.lowercase())) {
+                Log.d(TAG, "Dropped blacklisted package at OS level: $packageName")
+                return
+            }
+
+            // Drop excluded categories at Layer 1
+            val excludedCategories = prefs.getStringSet("excluded_categories", emptySet()) ?: emptySet()
+            if (excludedCategories.map { it.lowercase() }.contains(categoryLower)) {
+                Log.d(TAG, "Dropped excluded category at OS level: $category for $packageName")
+                return
+            }
+
+            val extras = notification.extras
             val title = extras?.getCharSequence("android.title")?.toString() ?: ""
             val text = extras?.getCharSequence("android.text")?.toString() ?: ""
-            val isOngoing = sbn.isOngoing
-            val packageName = sbn.packageName ?: "unknown"
 
             // Ignore if same package, title, and content already exist in queue
             val isDuplicate = queue.any {
@@ -73,7 +111,7 @@ class NotificationCollectorService : NotificationListenerService() {
                 title = title,
                 content = text,
                 timestamp = sbn.postTime,
-                category = sbn.notification.category,
+                category = notification.category,
                 isOngoing = isOngoing
             )
 
