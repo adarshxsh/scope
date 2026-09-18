@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
@@ -5,6 +6,7 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/analysis_result.dart';
 import 'package:scope/core/analysis/notification_analyzer.dart';
 import 'package:scope/core/analysis/wordpiece_tokenizer.dart';
+import 'package:scope/core/utils/asset_verifier.dart';
 
 /// Classifier using LiteRT (TensorFlow Lite) to classify text categories.
 class LiteRtClassifier implements NotificationAnalyzer {
@@ -18,13 +20,16 @@ class LiteRtClassifier implements NotificationAnalyzer {
 
   Future<void> _initialize() async {
     try {
-      // 1. Load Vocab
-      final vocabStr = await rootBundle.loadString('assets/vocab.txt');
+      // 1. Load Vocab with SHA-256 asset verification
+      final vocabBytes = await AssetVerifier.loadAndVerifyAsset('assets/vocab.txt');
+      final vocabStr = utf8.decode(vocabBytes);
       final lines = vocabStr.split('\n');
       _tokenizer = WordPieceTokenizer.fromLines(lines);
 
-      // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
-      _isModelLoaded = false;
+      // 2. Verify model asset integrity and load Interpreter
+      await AssetVerifier.loadAndVerifyAsset('assets/model.tflite');
+      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
+      _isModelLoaded = true;
     } catch (e) {
       // Graceful degradation: Log and set flags so analyze runs in fallback mode
       // ignore: avoid_print
@@ -34,7 +39,8 @@ class LiteRtClassifier implements NotificationAnalyzer {
       // Ensure tokenizer is loaded even if interpreter fails (so we can test tokenization in fallback)
       if (_tokenizer == null) {
         try {
-          final vocabStr = await rootBundle.loadString('assets/vocab.txt');
+          final vocabBytes = await AssetVerifier.loadAndVerifyAsset('assets/vocab.txt');
+          final vocabStr = utf8.decode(vocabBytes);
           _tokenizer = WordPieceTokenizer.fromLines(vocabStr.split('\n'));
         } catch (_) {}
       }
