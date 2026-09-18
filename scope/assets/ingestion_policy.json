@@ -1,0 +1,20 @@
+{
+  "blacklistedPackages": [
+    "com.android.systemui",
+    "android"
+  ],
+  "whitelistedPackages": [],
+  "isWhitelistingEnabled": false,
+  "excludedCategories": [
+    "progress",
+    "navigation",
+    "service",
+    "sys",
+    "system",
+    "transport",
+    "status"
+  ],
+  "sensitiveCategories": [],
+  "maxTitleLength": 500,
+  "maxContentLength": 2000
+}
