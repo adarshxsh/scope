@@ -27,8 +27,12 @@ abstract class NotificationStorage {
   /// Returns the number of deleted notifications.
   Future<int> deleteOlderThan(int cutoffTimestamp);
 
+  /// Delete notifications matching the given list of IDs.
+  Future<int> deleteByIds(List<String> ids);
+
   /// Delete all stored notifications.
   Future<void> clear();
+
 
   /// Returns the current count of stored notifications.
   Future<int> get count;
@@ -81,7 +85,16 @@ class InMemoryNotificationStorage implements NotificationStorage {
   }
 
   @override
+  Future<int> deleteByIds(List<String> ids) async {
+    final idSet = ids.toSet();
+    final before = _store.length;
+    _store.removeWhere((n) => idSet.contains(n.id));
+    return before - _store.length;
+  }
+
+  @override
   Future<void> clear() async {
+
     _store.clear();
   }
 
