@@ -21,7 +21,8 @@ void main() {
       
       expect(result.category, equals('msg'));
       expect(result.engineName, contains('fallback'));
-      expect(result.score, equals(0.50));
+      expect(result.score, equals(0.0));
+      expect(result.isFallback, isTrue);
       expect(result.matchedSignals.first, contains('Model asset invalid or uninitialized'));
     });
 
@@ -40,7 +41,8 @@ void main() {
       
       expect(result.category, equals('finance'));
       expect(result.engineName, contains('fallback'));
-      expect(result.score, equals(0.50));
+      expect(result.score, equals(0.0));
+      expect(result.isFallback, isTrue);
     });
 
     test('fallback correctly categorizes promo, social, and system OTP notifications', () async {
@@ -55,7 +57,8 @@ void main() {
       );
       final promoResult = await classifier.analyze(promoNotif);
       expect(promoResult.category, equals('promo'));
-      expect(promoResult.score, equals(0.50));
+      expect(promoResult.score, equals(0.0));
+      expect(promoResult.isFallback, isTrue);
 
       final socialNotif = AppNotification(
         id: '4',
@@ -66,6 +69,8 @@ void main() {
       );
       final socialResult = await classifier.analyze(socialNotif);
       expect(socialResult.category, equals('social'));
+      expect(socialResult.score, equals(0.0));
+      expect(socialResult.isFallback, isTrue);
 
       final sysNotif = AppNotification(
         id: '5',
@@ -76,6 +81,8 @@ void main() {
       );
       final sysResult = await classifier.analyze(sysNotif);
       expect(sysResult.category, equals('sys'));
+      expect(sysResult.score, equals(0.0));
+      expect(sysResult.isFallback, isTrue);
     });
   });
 }
