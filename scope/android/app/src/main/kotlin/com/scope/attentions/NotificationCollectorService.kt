@@ -78,9 +78,16 @@ class NotificationCollectorService : NotificationListenerService() {
             )
 
             queue.add(data)
-            Log.d(TAG, "Captured: ${data.packageName} - ${data.title}")
+            HashedLogger.logNotificationCaptured(
+                TAG,
+                packageName = data.packageName,
+                title = data.title,
+                content = data.content,
+                category = data.category,
+                isOngoing = data.isOngoing
+            )
         } catch (e: Exception) {
-            Log.e(TAG, "Error capturing/adding notification", e)
+            HashedLogger.error(TAG, "Error capturing/adding notification", e)
         }
     }
 
@@ -92,27 +99,31 @@ class NotificationCollectorService : NotificationListenerService() {
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         if (sbn == null) return
         // Log for now; future phases may track dismissed notifications
-        Log.d(TAG, "Removed: ${sbn.packageName} - ${sbn.notification.extras?.getCharSequence("android.title")}")
+        HashedLogger.logNotificationRemoved(
+            TAG,
+            packageName = sbn.packageName ?: "unknown",
+            title = sbn.notification.extras?.getCharSequence("android.title")?.toString()
+        )
     }
 
     override fun onListenerConnected() {
         super.onListenerConnected()
-        Log.i(TAG, "NotificationCollectorService connected")
+        HashedLogger.info(TAG, "NotificationCollectorService connected")
         try {
             val activeNotifs = activeNotifications
             if (activeNotifs != null) {
-                Log.d(TAG, "Syncing ${activeNotifs.size} existing notifications from panel")
+                HashedLogger.debug(TAG, "Syncing ${activeNotifs.size} existing notifications from panel")
                 for (sbn in activeNotifs) {
                     addSbnToQueue(sbn)
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error fetching active notifications on connect", e)
+            HashedLogger.error(TAG, "Error fetching active notifications on connect", e)
         }
     }
 
     override fun onListenerDisconnected() {
         super.onListenerDisconnected()
-        Log.w(TAG, "NotificationCollectorService disconnected")
+        HashedLogger.warn(TAG, "NotificationCollectorService disconnected")
     }
 }
