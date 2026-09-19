@@ -17,6 +17,8 @@ import tensorflow as tf
 
 tf.config.set_visible_devices([], 'GPU')
 
+from training.config import FEATURE_VECTOR_SIZE
+from training.export.tflite_exporter import validate_tflite_export
 from training.utils.preprocessing import build_dataset
 from training.utils.io import read_jsonl, write_json
 
@@ -61,6 +63,15 @@ def main() -> None:
     y_true = dataset.target.flatten()
 
     print(f"Loading TFLite model: {args.model}")
+    validation_info = validate_tflite_export(
+        args.model,
+        expected_input_shape=(1, FEATURE_VECTOR_SIZE),
+    )
+    print(
+        f"Verified TFLite model: {validation_info['file_size_bytes']} bytes, "
+        f"input shape: {validation_info['input_shape']}, dtype: {validation_info['input_dtype']}"
+    )
+
     interpreter = tf.lite.Interpreter(model_path=str(args.model))
     interpreter.allocate_tensors()
 
