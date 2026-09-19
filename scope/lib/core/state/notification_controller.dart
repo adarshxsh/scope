@@ -9,6 +9,7 @@ import 'package:scope/core/storage/notification_storage.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/core/utils/focus_area_mapper.dart';
 import 'package:scope/core/utils/smart_actions.dart';
+import 'package:scope/core/preferences/user_preferences.dart';
 import 'package:scope/core/state/providers.dart';
 import 'package:drift/drift.dart';
 import 'package:scope/database/attention_database.dart';
@@ -345,7 +346,7 @@ class NotificationController extends ChangeNotifier {
     });
   }
 
-  /// Cleans up old notifications (older than 7 days) and orphaned review queue items.
+  /// Cleans up old notifications and enforces storage quota based on user preferences.
   Future<void> runBackgroundCleanup() async {
     if (_isCleaningUp) return;
 
@@ -358,11 +359,14 @@ class NotificationController extends ChangeNotifier {
         if (_isDisposed) return;
       }
 
-      final cutoff = DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch;
+      final prefs = _container.read(userPreferencesProvider);
       final db = _container.read(databaseProvider);
       
-      // Execute the single-step atomic transaction
-      await db.runSetBasedCleanup(cutoff);
+      // Execute dynamic cleanup pass
+      await db.runDynamicCleanup(
+        retentionDays: prefs.retentionDays,
+        storageQuotaMb: prefs.storageQuotaMb,
+      );
 
     } catch (_) {
       // Silently handle errors to not interrupt UI
@@ -370,6 +374,21 @@ class NotificationController extends ChangeNotifier {
       _isCleaningUp = false;
     }
   }
+
+  /// Returns disk space storage usage formatted string (e.g. "1.25 MB used").
+  Future<String> getFormattedStorageUsage() async {
+    final bytes = await _storage.getStorageUsageBytes();
+    if (bytes < 1024) {
+      return '$bytes B';
+    } else if (bytes < 1024 * 1024) {
+      return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    } else {
+      return '${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB';
+    }
+  }
+
+  /// Returns current storage usage in bytes.
+  Future<int> getStorageUsageBytes() => _storage.getStorageUsageBytes();
 
   Future<void> _checkPermissionAndFetch() async {
     _isListenerEnabled = await _bridge.isListenerEnabled();
