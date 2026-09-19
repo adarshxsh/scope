@@ -300,6 +300,8 @@ class NotificationController extends ChangeNotifier {
   void stopPolling() {
     _pollTimer?.cancel();
     _pollTimer = null;
+    _cleanupTimer?.cancel();
+    _cleanupTimer = null;
   }
 
   bool _isDisposed = false;
