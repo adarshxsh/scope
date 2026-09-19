@@ -51,6 +51,9 @@ class GhostAI {
 
   static GhostAI get instance => _instance ??= GhostAI._();
 
+  @visibleForTesting
+  set interpreterForTesting(Interpreter? interpreter) => _interpreter = interpreter;
+
   /// Exposes rule engine compilation version.
   String get ruleVersion => _ruleEngine.version;
 
@@ -87,23 +90,36 @@ class GhostAI {
     final stopwatch = Stopwatch()..start();
 
     // 1. Feature extraction using the existing FeatureExtractor
-    final featureVector = FeatureExtractor.extractFromAppNotification(notification);
+    final rawVector = FeatureExtractor.extractFromAppNotification(notification);
+    // Sanitize featureVector: ensure non-null finite double values (replace NaN or Infinity with 0.0)
+    final featureVector = rawVector.map((v) => v.isFinite ? v : 0.0).toList();
 
     // 2. Model inference
     double predictedScore = 0.0;
     int inferenceTimeUs = 0;
 
     if (_interpreter != null) {
-      final input = [featureVector];
-      final output = List<double>.filled(1, 0.0).reshape([1, 1]);
+      try {
+        final input = [featureVector];
+        final output = List<double>.filled(1, 0.0).reshape([1, 1]);
 
-      final inferStopwatch = Stopwatch()..start();
-      _interpreter!.run(input, output);
-      inferStopwatch.stop();
+        final inferStopwatch = Stopwatch()..start();
+        _interpreter!.run(input, output);
+        inferStopwatch.stop();
 
-      inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
-      // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
-      predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+        inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
+        final rawScore = output[0][0];
+        if (rawScore.isFinite) {
+          // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
+          predictedScore = (rawScore / 100.0).clamp(0.0, 1.0);
+        } else {
+          debugPrint('GhostAI: Model output non-finite ($rawScore), falling back to heuristics.');
+          predictedScore = _heuristicLookAgainScore(featureVector);
+        }
+      } catch (e) {
+        debugPrint('GhostAI: Interpreter execution failed ($e), falling back gracefully to heuristics.');
+        predictedScore = _heuristicLookAgainScore(featureVector);
+      }
     } else {
       // Heuristic fallback if model not loaded
       predictedScore = _heuristicLookAgainScore(featureVector);
@@ -148,8 +164,8 @@ class GhostAI {
     }
 
     // 5. Apply deterministic overrides (expired OTP, expired reminders, duplicates, completed tasks)
-    final hasOtp = featureVector[11] == 1.0; // contains_otp
-    final hasDeadline = featureVector[27] == 1.0; // contains_deadline
+    final hasOtp = featureVector.length > 11 && featureVector[11] == 1.0; // contains_otp
+    final hasDeadline = featureVector.length > 27 && featureVector[27] == 1.0; // contains_deadline
 
     if (hasOtp && _isOtpExpired(notification)) {
       finalScore = 0.0;
@@ -320,13 +336,12 @@ class GhostAI {
     return false;
   }
 
-  /// Outputs structured AI execution reports in debug mode.
+  /// Outputs structured AI execution reports in debug mode without exposing cleartext PII.
   void _logStructured(AppNotification notification, GhostAIResult result) {
     final redactedTitle = PiiRedactor.redactTitle(notification.title);
     final redactedContent = PiiRedactor.redactContent(notification.content);
     debugPrint('=== GHOST AI INFERENCE REPORT ===');
-    debugPrint('Notification: "$redactedTitle" - "$redactedContent"');
-    debugPrint('Package: ${notification.packageName}');
+    debugPrint('Notification ID: ${notification.id} | Package: ${notification.packageName} | Title: "$redactedTitle" | Content: "$redactedContent"');
     debugPrint('Feature Vector (First 15): ${result.featureVector.take(15).toList()}...');
     debugPrint('Inference Time: ${result.inferenceTimeUs} us');
     debugPrint('Raw Predicted Score: ${(result.predictedScore * 100).toStringAsFixed(2)}');
