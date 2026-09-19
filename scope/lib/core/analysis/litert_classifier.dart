@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
@@ -11,38 +12,104 @@ class LiteRtClassifier implements NotificationAnalyzer {
   Interpreter? _interpreter;
   WordPieceTokenizer? _tokenizer;
   bool _isModelLoaded = false;
+  String _diagnosticMessage = 'Uninitialized';
+  final String modelPath;
+  final String vocabPath;
 
-  LiteRtClassifier() {
-    _initialize();
+  LiteRtClassifier({
+    this.modelPath = 'assets/model.tflite',
+    this.vocabPath = 'assets/vocab.txt',
+    Interpreter? customInterpreter,
+  }) {
+    if (customInterpreter != null) {
+      _interpreter = customInterpreter;
+      _validateInterpreter();
+    } else {
+      _initialize();
+    }
   }
 
   Future<void> _initialize() async {
     try {
       // 1. Load Vocab
-      final vocabStr = await rootBundle.loadString('assets/vocab.txt');
+      final vocabStr = await rootBundle.loadString(vocabPath);
       final lines = vocabStr.split('\n');
       _tokenizer = WordPieceTokenizer.fromLines(lines);
 
-      // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
-      _isModelLoaded = false;
+      // 2. Load Interpreter
+      _interpreter = await Interpreter.fromAsset(modelPath);
+      _validateInterpreter();
     } catch (e) {
       // Graceful degradation: Log and set flags so analyze runs in fallback mode
-      // ignore: avoid_print
-      print('LiteRtClassifier failed to initialize: $e');
+      _diagnosticMessage = 'Failed to load model asset ($modelPath): $e';
+      if (kDebugMode) {
+        debugPrint('LiteRtClassifier failed to initialize: $e');
+      }
       _isModelLoaded = false;
 
       // Ensure tokenizer is loaded even if interpreter fails (so we can test tokenization in fallback)
       if (_tokenizer == null) {
         try {
-          final vocabStr = await rootBundle.loadString('assets/vocab.txt');
+          final vocabStr = await rootBundle.loadString(vocabPath);
           _tokenizer = WordPieceTokenizer.fromLines(vocabStr.split('\n'));
         } catch (_) {}
       }
     }
   }
 
+  void _validateInterpreter() {
+    if (_interpreter == null) {
+      _isModelLoaded = false;
+      _diagnosticMessage = 'Interpreter is null';
+      return;
+    }
+
+    try {
+      final inputTensors = _interpreter!.getInputTensors();
+      final outputTensors = _interpreter!.getOutputTensors();
+
+      if (inputTensors.isEmpty || outputTensors.isEmpty) {
+        _isModelLoaded = false;
+        _diagnosticMessage = 'Interpreter has no input/output tensors';
+        _closeInterpreter();
+        return;
+      }
+
+      final outputShape = outputTensors.first.shape;
+      // Expect output shape [1, 5] for category classification logits
+      // If outputShape is [1, 1] or not matching category classification, it's a regression model or incompatible tensor
+      if (outputShape.length != 2 || outputShape[1] != 5) {
+        _isModelLoaded = false;
+        _diagnosticMessage =
+            'Model tensor shape mismatch: expected classification output [1, 5], got $outputShape. Bypassing ML model for fallback heuristics.';
+        if (kDebugMode) {
+          debugPrint('LiteRtClassifier: $_diagnosticMessage');
+        }
+        _closeInterpreter();
+        return;
+      }
+
+      _isModelLoaded = true;
+      _diagnosticMessage = 'Classifier model loaded and validated successfully.';
+    } catch (e) {
+      _isModelLoaded = false;
+      _diagnosticMessage = 'Tensor validation error: $e';
+      _closeInterpreter();
+    }
+  }
+
+  void _closeInterpreter() {
+    try {
+      _interpreter?.close();
+    } catch (_) {}
+    _interpreter = null;
+  }
+
   /// Expose model loading status for diagnostics screen.
   bool get isModelLoaded => _isModelLoaded;
+
+  /// Expose diagnostic message for auditing system state.
+  String get diagnosticMessage => _diagnosticMessage;
 
   @override
   Future<AnalysisResult> analyze(AppNotification notification) async {
@@ -64,7 +131,7 @@ class LiteRtClassifier implements NotificationAnalyzer {
         score: 0.0, // Zero authentic model confidence for fallback heuristic
         engineName: 'litert_model (fallback)',
         matchedSignals: [
-          'Model asset invalid or uninitialized',
+          'Model asset invalid or uninitialized ($_diagnosticMessage)',
           'Tokenizer parsed ${tokenIds.take(5).toList()}...'
         ],
         latencyMs: stopwatch.elapsedMilliseconds,
