@@ -7,15 +7,20 @@ import 'package:scope/core/analysis/score_fusion.dart';
 import 'package:scope/core/analysis/explanation_generator.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
+import 'package:scope/core/telemetry/telemetry_governance_service.dart';
+import 'package:scope/database/attention_database.dart';
+import 'package:scope/database/daos.dart';
 
 /// The central hub of Ghost AI coordinating all classification stages.
 class GhostAnalysisEngine {
   final RuleEngine ruleEngine;
   final LiteRtClassifier mlClassifier;
+  final InferenceTelemetryDao? telemetryDao;
 
   GhostAnalysisEngine({
     RuleEngine? ruleEngine,
     LiteRtClassifier? mlClassifier,
+    this.telemetryDao,
   })  : ruleEngine = ruleEngine ?? RuleEngine(),
         mlClassifier = mlClassifier ?? LiteRtClassifier();
 
@@ -45,7 +50,7 @@ class GhostAnalysisEngine {
     // 0. Filter out progress/download/sync status notifications to prevent unnecessary analysis
     if (_isStatusOrProgressNotification(notification)) {
       stopwatch.stop();
-      return notification.copyWith(
+      final statusResult = notification.copyWith(
         priority: 'low',
         priorityScore: 0.0,
         classifiedCategory: 'system_status',
@@ -53,6 +58,8 @@ class GhostAnalysisEngine {
         latencyMs: stopwatch.elapsedMilliseconds,
         engineVersion: '2.0.0-hybrid',
       );
+      await _logTelemetry(statusResult, isFallback: false);
+      return statusResult;
     }
 
     // 1. Structured Feature Extraction
@@ -93,7 +100,7 @@ class GhostAnalysisEngine {
 
     stopwatch.stop();
 
-    return notification.copyWith(
+    final result = notification.copyWith(
       priority: priority,
       priorityScore: ghostResult.reviewScore,
       classifiedCategory: fusedResult.category,
@@ -104,9 +111,44 @@ class GhostAnalysisEngine {
       engineVersion: fusedResult.isFallback ? '2.0.0-hybrid (fallback)' : '2.0.0-hybrid',
       extractedFeatures: features.toMap(),
     );
+
+    await _logTelemetry(result, isFallback: mlResult.isFallback);
+
+    return result;
+  }
+
+  Future<void> _logTelemetry(AppNotification notification, {required bool isFallback}) async {
+    if (telemetryDao == null) return;
+    try {
+      final notifTimestamp = notification.timestamp > 0
+          ? notification.timestamp
+          : DateTime.now().millisecondsSinceEpoch;
+      final quantizedTime = TelemetryGovernanceService.quantizeTimestamp(notifTimestamp);
+
+      await telemetryDao!.insertTelemetry(
+        InferenceTelemetryEntry(
+          id: 0,
+          notificationId: notification.id,
+          quantizedTimestamp: quantizedTime,
+          latencyMs: notification.latencyMs ?? 0,
+          modelVersion: notification.modelVersion,
+          ruleVersion: notification.ruleVersion,
+          engineVersion: notification.engineVersion,
+          isFallback: isFallback,
+          priorityScore: notification.priorityScore ?? 0.0,
+          priorityLevel: notification.priority,
+          createdAt: DateTime.now(),
+        ),
+      );
+    } catch (e) {
+      // Fallback error recovery path
+      // ignore: avoid_print
+      print('GhostAnalysisEngine failed to log telemetry: $e');
+    }
   }
 
   bool _isStatusOrProgressNotification(AppNotification notification) {
+
     if (notification.category == 'progress' || notification.category == 'status') {
       return true;
     }
