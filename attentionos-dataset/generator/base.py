@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+import logging
 import random
 import re
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any, Callable, Iterable
 from urllib import request
 from urllib.error import URLError
@@ -13,9 +15,17 @@ from urllib.error import URLError
 from faker import Faker
 from jinja2 import Template
 
+from generator.sanitizer import (
+    redact_pii,
+    sanitize_context,
+    sanitize_prompt_input,
+    validate_and_clean_output,
+)
 from policy.scoring import score_notification
 from validator.duplicate import text_fingerprint
 from validator.schema import validate_record
+
+logger = logging.getLogger("attentionos_dataset")
 
 
 @dataclass(frozen=True)
@@ -170,6 +180,14 @@ class NotificationDatasetGenerator:
         self._weighted_scenarios = [scenario for scenario in SCENARIOS for _ in range(scenario.weight)]
         self._seen_text: set[str] = set()
 
+        self._ollama_prompt_template: Template | None = None
+        prompt_file = Path(__file__).resolve().parent.parent / "templates" / "ollama_prompt.txt"
+        if prompt_file.exists():
+            try:
+                self._ollama_prompt_template = Template(prompt_file.read_text(encoding="utf-8"))
+            except Exception as exc:
+                logger.warning("Failed to load prompt template from %s: %s", prompt_file, redact_pii(str(exc)))
+
     def generate(self, count: int) -> Iterable[dict[str, Any]]:
         produced = 0
         attempts = 0
@@ -269,40 +287,74 @@ class NotificationDatasetGenerator:
         return self.random.choice(category_matches or subcategory_matches or list(POPULAR_APPS))
 
     def _render_notification(self, scenario: Scenario, ctx: dict[str, Any]) -> tuple[str, str]:
+        sanitized_ctx = sanitize_context(ctx)
         if self.use_ollama and self.random.random() < 0.2:
-            generated = self._ollama_notification(scenario, ctx)
+            generated = self._ollama_notification(scenario, sanitized_ctx)
             if generated:
                 return generated
-        title = Template(self.random.choice(scenario.title_templates)).render(**ctx)
-        body = Template(self.random.choice(scenario.body_templates)).render(**ctx)
+        title = Template(self.random.choice(scenario.title_templates)).render(**sanitized_ctx)
+        body = Template(self.random.choice(scenario.body_templates)).render(**sanitized_ctx)
+        validated = validate_and_clean_output(title, body)
+        if validated:
+            title, body = validated
         return self._clip(title, 50), self._clip(body, 140)
 
     def _ollama_notification(self, scenario: Scenario, ctx: dict[str, Any]) -> tuple[str, str] | None:
-        prompt = (
-            "Return only JSON with exactly title and body. "
-            "Make a realistic Android notification. "
-            f"App: {ctx['app_context']}. Type: {scenario.notification_type}. "
-            f"Intent: {scenario.intent}. Keep title <= 50 chars and body <= 140 chars. "
-            "No real personal data."
-        )
+        sanitized_ctx = sanitize_context(ctx)
+        sanitized_type = sanitize_prompt_input(scenario.notification_type)
+        sanitized_intent = sanitize_prompt_input(scenario.intent)
+
+        try:
+            if self._ollama_prompt_template:
+                prompt = self._ollama_prompt_template.render(
+                    app_context=sanitized_ctx.get("app_context", ""),
+                    notification_type=sanitized_type,
+                    intent=sanitized_intent,
+                    entities=self._entities(sanitized_ctx, scenario),
+                )
+            else:
+                prompt = (
+                    "Return only JSON with exactly title and body. "
+                    "Make a realistic Android notification. "
+                    f"App: {sanitized_ctx.get('app_context', '')}. Type: {sanitized_type}. "
+                    f"Intent: {sanitized_intent}. Keep title <= 50 chars and body <= 140 chars. "
+                    "No real personal data."
+                )
+        except Exception as exc:
+            logger.warning("Error rendering Ollama prompt template: %s", redact_pii(str(exc)))
+            return None
+
         payload = json.dumps({"model": self.ollama_model, "prompt": prompt, "stream": False}).encode("utf-8")
         try:
             req = request.Request("http://localhost:11434/api/generate", data=payload, headers={"Content-Type": "application/json"})
             with request.urlopen(req, timeout=20) as response:
-                raw = json.loads(response.read().decode("utf-8")).get("response", "{}")
-        except (URLError, TimeoutError, json.JSONDecodeError):
+                raw_resp = response.read().decode("utf-8")
+                raw = json.loads(raw_resp).get("response", "{}")
+        except Exception as exc:
+            logger.info("Ollama inference skipped/failed (falling back to offline template): %s", redact_pii(str(exc)))
             return None
+
         try:
             parsed = json.loads(raw)
         except json.JSONDecodeError:
             match = re.search(r"\{.*\}", raw, flags=re.S)
             if not match:
+                logger.warning("Ollama response contained no valid JSON object.")
                 return None
-            parsed = json.loads(match.group(0))
-        title = str(parsed.get("title", "")).strip()
-        body = str(parsed.get("body", "")).strip()
-        if not title or not body:
+            try:
+                parsed = json.loads(match.group(0))
+            except json.JSONDecodeError:
+                logger.warning("Failed to parse extracted JSON object from Ollama response.")
+                return None
+
+        raw_title = str(parsed.get("title", ""))
+        raw_body = str(parsed.get("body", ""))
+        validated = validate_and_clean_output(raw_title, raw_body)
+        if not validated:
+            logger.warning("Ollama generated output failed schema/sanitization validation.")
             return None
+
+        title, body = validated
         return self._clip(title, 50), self._clip(body, 140)
 
     def _context(self, app: AppProfile, scenario: Scenario, timestamp: datetime) -> dict[str, Any]:
