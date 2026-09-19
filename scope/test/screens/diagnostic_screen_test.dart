@@ -102,6 +102,7 @@ void main() {
       await tester.enterText(packageFieldFinder, 'com.whatsapp');
 
       // Click analyze
+      await tester.ensureVisible(find.text('ANALYZE NOTIFICATION'));
       await tester.tap(find.text('ANALYZE NOTIFICATION'));
       await tester.pumpAndSettle();
 
