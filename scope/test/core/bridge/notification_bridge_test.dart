@@ -129,5 +129,23 @@ void main() {
         await bridge.openNotificationSettings();
       });
     });
+
+    group('launchUrl and launchApp', () {
+      test('launchUrl invokes launchUrl with url argument', () async {
+        mockHandler((call) async => true);
+        final result = await bridge.launchUrl('https://example.com');
+        expect(result, isTrue);
+        expect(log.single.method, 'launchUrl');
+        expect(log.single.arguments, equals({'url': 'https://example.com'}));
+      });
+
+      test('launchApp invokes launchApp with packageName argument', () async {
+        mockHandler((call) async => true);
+        final result = await bridge.launchApp('com.example.app');
+        expect(result, isTrue);
+        expect(log.single.method, 'launchApp');
+        expect(log.single.arguments, equals({'packageName': 'com.example.app'}));
+      });
+    });
   });
 }
