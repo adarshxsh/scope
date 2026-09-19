@@ -5,8 +5,8 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
+import 'package:scope/core/utils/pii_redactor.dart';
 import 'package:scope/core/utils/privacy_sanitizer.dart';
-
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
