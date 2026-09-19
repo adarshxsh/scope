@@ -70,6 +70,12 @@ def main() -> None:
     input_index = input_details[0]["index"]
     output_index = output_details[0]["index"]
 
+    input_shape = input_details[0]["shape"]
+    output_shape = output_details[0]["shape"]
+    print(f"Model Input Shape: {input_shape}, Output Shape: {output_shape}")
+    if input_shape[-1] != 63:
+        raise ValueError(f"Incompatible model input feature shape: expected 63, got {input_shape[-1]}")
+
     print("Running inference and measuring latency...")
     latencies = []
     y_pred = []
