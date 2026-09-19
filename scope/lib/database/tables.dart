@@ -65,3 +65,13 @@ class DailyBriefTable extends Table {
   IntColumn get remindersCreated => integer().withDefault(const Constant(0))();
   IntColumn get archivedCount => integer().withDefault(const Constant(0))();
 }
+
+@DataClassName('AppSettingsEntry')
+class AppSettingsTable extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  BoolColumn get telemetryEnabled => boolean().withDefault(const Constant(true))();
+  IntColumn get retentionDays => integer().withDefault(const Constant(7))();
+  IntColumn get maxNotificationQuota => integer().withDefault(const Constant(1000))();
+  DateTimeColumn get lastUpdated => dateTime().nullable()();
+}
+
