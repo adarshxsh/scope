@@ -156,5 +156,25 @@ void main() {
         expect(await storage.count, 2); // upsert, not a new entry
       });
     });
+
+    group('maxCapacity', () {
+      test('defaults to 5000', () {
+        expect(storage.maxCapacity, equals(5000));
+      });
+
+      test('prunes excess notifications when maxCapacity is set lower', () async {
+        await storage.saveAll([
+          makeNotification(id: 'n1', timestamp: 1000),
+          makeNotification(id: 'n2', timestamp: 2000),
+          makeNotification(id: 'n3', timestamp: 3000),
+        ]);
+        expect(await storage.count, 3);
+
+        storage.maxCapacity = 2;
+        expect(await storage.count, 2);
+        final all = await storage.getAll();
+        expect(all.map((n) => n.id).toList(), equals(['n3', 'n2']));
+      });
+    });
   });
 }
