@@ -47,6 +47,9 @@ class GhostAI {
   static const int _maxCacheSize = 100;
   static const int _duplicateWindowMs = 300000; // 5 minutes
 
+  /// Controls whether telemetry event logging is enabled.
+  bool isTelemetryLoggingEnabled = true;
+
   GhostAI._();
 
   static GhostAI get instance => _instance ??= GhostAI._();
@@ -176,7 +179,7 @@ class GhostAI {
     );
 
     // Structured logging in debug mode
-    if (kDebugMode) {
+    if (kDebugMode && isTelemetryLoggingEnabled) {
       _logStructured(notification, result);
     }
 

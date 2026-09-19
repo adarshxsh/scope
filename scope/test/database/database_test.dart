@@ -273,5 +273,51 @@ void main() {
       // Missing one deleted due to being orphaned
       expect(queueItems.first.notificationId, equals('n-new'));
     });
+
+    test('runSetBasedCleanup enforces maxQuota cap and purges oldest notifications and orphaned queue items atomically', () async {
+      final now = DateTime.now().millisecondsSinceEpoch;
+
+      // Insert 5 notifications with increasing timestamps
+      for (int i = 1; i <= 5; i++) {
+        await db.notificationDao.insertNotification(NotificationEntry(
+          id: 'notif-$i',
+          packageName: 'app',
+          title: 'Notif $i',
+          content: 'Body $i',
+          timestamp: now + i * 1000,
+          state: ReviewState.ACTIVE,
+          reviewed: false,
+          dismissed: false,
+          isOngoing: false,
+          createdAt: DateTime.now(),
+        ));
+
+        await db.reviewQueueDao.insertItem(ReviewQueueEntry(
+          id: i,
+          notificationId: 'notif-$i',
+          priority: 'medium',
+          enqueueTime: DateTime.now(),
+          status: ReviewState.ACTIVE,
+        ));
+      }
+
+      // Enforce maxQuota cap of 3 (should purge notif-1 and notif-2)
+      final cutoff = DateTime.now().subtract(const Duration(days: 30)).millisecondsSinceEpoch;
+      await db.runSetBasedCleanup(cutoff, maxQuota: 3);
+
+      final notifications = await db.notificationDao.getAll();
+      expect(notifications.length, equals(3));
+      final remainingIds = notifications.map((n) => n.id).toList();
+      expect(remainingIds, containsAll(['notif-3', 'notif-4', 'notif-5']));
+      expect(remainingIds, isNot(contains('notif-1')));
+      expect(remainingIds, isNot(contains('notif-2')));
+
+      final queueItems = await db.reviewQueueDao.getAll();
+      expect(queueItems.length, equals(3));
+      final remainingQueueNotifIds = queueItems.map((q) => q.notificationId).toList();
+      expect(remainingQueueNotifIds, containsAll(['notif-3', 'notif-4', 'notif-5']));
+      expect(remainingQueueNotifIds, isNot(contains('notif-1')));
+      expect(remainingQueueNotifIds, isNot(contains('notif-2')));
+    });
   });
 }
