@@ -5,18 +5,68 @@ import 'package:scope/database/tables.dart';
 
 part 'daos.g.dart';
 
-@DriftAccessor(tables: [NotificationsTable])
+const int defaultMaxNotificationCapacity = 1000;
+
+@DriftAccessor(tables: [NotificationsTable, ReviewQueueTable])
 class NotificationDao extends DatabaseAccessor<AttentionDatabase> with _$NotificationDaoMixin {
-  NotificationDao(super.db);
+  final int maxCapacity;
+  int? _cachedCount;
+
+  NotificationDao(super.db, {this.maxCapacity = defaultMaxNotificationCapacity});
 
   Future<void> insertNotification(NotificationEntry entry) async {
     await into(notificationsTable).insert(entry, mode: InsertMode.insertOrReplace);
+    _cachedCount = (_cachedCount ?? 0) + 1;
+
+    if (_cachedCount! > maxCapacity) {
+      await enforceCapacityLimit();
+    }
   }
 
   Future<void> insertAll(List<NotificationEntry> entries) async {
+    if (entries.isEmpty) return;
     await batch((b) {
       b.insertAll(notificationsTable, entries, mode: InsertMode.insertOrReplace);
     });
+    _cachedCount = (_cachedCount ?? 0) + entries.length;
+
+    if (_cachedCount! > maxCapacity) {
+      await enforceCapacityLimit();
+    }
+  }
+
+  /// Verifies table entry counts and executes an immediate set-based FIFO eviction
+  /// of the oldest entries ordered by timestamp if capacity is exceeded.
+  /// Also deletes orphaned review queue records in the same transaction.
+  Future<void> enforceCapacityLimit() async {
+    final count = await getCount();
+    _cachedCount = count;
+    if (count > maxCapacity) {
+      final excess = count - maxCapacity;
+      await db.transaction(() async {
+        // Select IDs of the oldest entries exceeding capacity ceiling
+        final oldestSubquery = selectOnly(notificationsTable)
+          ..addColumns([notificationsTable.id])
+          ..orderBy([
+            OrderingTerm(expression: notificationsTable.timestamp, mode: OrderingMode.asc),
+            OrderingTerm(expression: notificationsTable.id, mode: OrderingMode.asc),
+          ])
+          ..limit(excess);
+
+        // Set-based FIFO deletion of the oldest entries
+        await (delete(notificationsTable)
+              ..where((t) => t.id.isInQuery(oldestSubquery)))
+            .go();
+
+        // Set-based cleanup of orphaned review queue items in the same write transaction
+        final hasNotification = selectOnly(notificationsTable)
+          ..addColumns([notificationsTable.id]);
+        await (db.delete(db.reviewQueueTable)
+              ..where((t) => t.notificationId.isNotInQuery(hasNotification)))
+            .go();
+      });
+      _cachedCount = maxCapacity;
+    }
   }
 
   Future<NotificationEntry?> getById(String id) {
