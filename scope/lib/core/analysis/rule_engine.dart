@@ -151,8 +151,8 @@ class RuleEngine {
 
     for (final rule in _rules) {
       // 1. Package match constraint
-      final packageConditionMatches =
-          rule.conditions.packages.isEmpty || rule.conditions.packages.contains(package);
+      final packageConditionMatches = rule.conditions.packages.isEmpty ||
+          rule.conditions.packages.any((p) => p.toLowerCase() == package);
 
       if (!packageConditionMatches) continue;
 

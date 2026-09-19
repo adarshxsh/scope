@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/storage/notification_storage.dart';
 import 'package:scope/database/attention_database.dart';
@@ -44,6 +45,47 @@ class DriftNotificationStorage implements NotificationStorage {
   Future<int> get count async {
     return await _db.notificationDao.getCount();
   }
+
+  @override
+  Future<void> saveFeedback({
+    required String notificationId,
+    required String feedbackType,
+    String? originalPriority,
+    String? correctedPriority,
+    String? originalCategory,
+    String? correctedCategory,
+  }) async {
+    await _db.feedbackLogDao.insertFeedback(
+      FeedbackLogsTableCompanion.insert(
+        notificationId: notificationId,
+        feedbackType: feedbackType,
+        originalPriority: Value(originalPriority),
+        correctedPriority: Value(correctedPriority),
+        originalCategory: Value(originalCategory),
+        correctedCategory: Value(correctedCategory),
+        timestamp: Value(DateTime.now()),
+      ),
+    );
+  }
+
+
+  @override
+  Future<List<Map<String, dynamic>>> getFeedbackLogs() async {
+    final entries = await _db.feedbackLogDao.getAll();
+    return entries
+        .map((e) => {
+              'id': e.id,
+              'notificationId': e.notificationId,
+              'feedbackType': e.feedbackType,
+              'originalPriority': e.originalPriority,
+              'correctedPriority': e.correctedPriority,
+              'originalCategory': e.originalCategory,
+              'correctedCategory': e.correctedCategory,
+              'timestamp': e.timestamp.toIso8601String(),
+            })
+        .toList();
+  }
+
 
   NotificationEntry _toEntry(AppNotification n) {
     return NotificationEntry(
