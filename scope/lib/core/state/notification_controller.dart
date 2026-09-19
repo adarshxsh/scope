@@ -6,6 +6,7 @@ import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/storage/notification_storage.dart';
+import 'package:scope/core/telemetry/telemetry_governance_service.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/core/utils/focus_area_mapper.dart';
 import 'package:scope/core/utils/smart_actions.dart';
@@ -43,10 +44,12 @@ class NotificationController extends ChangeNotifier {
     NotificationStorage? storage,
     GhostAnalysisEngine? engine,
     ProviderContainer? container,
+    TelemetryGovernanceService? governanceService,
   })  : _bridge = bridge ?? NotificationBridge(),
         _container = container ?? providerContainer,
         _storage = storage ?? DriftNotificationStorage(container?.read(databaseProvider) ?? providerContainer.read(databaseProvider)),
-        _engine = engine ?? GhostAnalysisEngine() {
+        _engine = engine ?? GhostAnalysisEngine(),
+        _governanceService = governanceService ?? TelemetryGovernanceService() {
     _engine.initialize();
 
     // Listen to changes in Riverpod's reviewQueueProvider to keep legacy notifier list in sync
@@ -63,6 +66,7 @@ class NotificationController extends ChangeNotifier {
   final NotificationStorage _storage;
   final GhostAnalysisEngine _engine;
   final ProviderContainer _container;
+  final TelemetryGovernanceService _governanceService;
 
   List<AppNotification> _notifications = [];
   bool _isListenerEnabled = false;
@@ -93,6 +97,7 @@ class NotificationController extends ChangeNotifier {
   bool get isListenerEnabled => _isListenerEnabled;
   bool get isLoading => _isLoading;
   GhostAnalysisEngine get engine => _engine;
+  TelemetryGovernanceService get governanceService => _governanceService;
 
   bool get inFocusSession => _inFocusSession;
   List<String> get focusSessionQueueIds => List.unmodifiable(_focusSessionQueueIds);
@@ -237,6 +242,22 @@ class NotificationController extends ChangeNotifier {
         ));
       }
     });
+
+    final todayStr = now.toIso8601String().split('T').first;
+    if (sessionStats.notificationsReviewed > 0 ||
+        sessionStats.actionsCompleted > 0 ||
+        sessionStats.calendarEventsCreated > 0 ||
+        sessionStats.remindersCreated > 0 ||
+        sessionStats.archived > 0) {
+      db.dailyBriefDao.incrementStats(
+        todayStr,
+        reviewed: sessionStats.notificationsReviewed,
+        completed: sessionStats.actionsCompleted,
+        calendar: sessionStats.calendarEventsCreated,
+        reminders: sessionStats.remindersCreated,
+        archived: sessionStats.archived,
+      );
+    }
 
     _focusSessionQueueIds.clear();
     clearFilter();
