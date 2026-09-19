@@ -25,6 +25,9 @@ class NotificationCollectorService : NotificationListenerService() {
     companion object {
         private const val TAG = "NotifCollector"
 
+        /** Maximum capacity for in-memory notification queue to prevent memory leaks. */
+        const val MAX_QUEUE_SIZE = 500
+
         /** Thread-safe queue of captured notifications. */
         private val queue = ConcurrentLinkedQueue<NotificationData>()
 
@@ -38,9 +41,13 @@ class NotificationCollectorService : NotificationListenerService() {
          */
         fun drainQueue(): List<NotificationData> {
             val result = mutableListOf<NotificationData>()
-            while (true) {
-                val item = queue.poll() ?: break
-                result.add(item)
+            try {
+                while (true) {
+                    val item = queue.poll() ?: break
+                    result.add(item)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error draining notification queue", e)
             }
             return result
         }
@@ -65,6 +72,16 @@ class NotificationCollectorService : NotificationListenerService() {
             }
             if (isDuplicate) {
                 return
+            }
+
+            // Enforce max capacity cap to prevent memory leaks
+            while (queue.size >= MAX_QUEUE_SIZE) {
+                val evicted = queue.poll()
+                if (evicted != null) {
+                    Log.w(TAG, "Queue capacity ($MAX_QUEUE_SIZE) reached. Evicted oldest notification from package: ${evicted.packageName}")
+                } else {
+                    break
+                }
             }
 
             val data = NotificationData(
