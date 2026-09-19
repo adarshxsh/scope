@@ -44,6 +44,18 @@ class MainActivity : FlutterActivity() {
                         result.success(true)
                     }
 
+                    "launchUrl" -> {
+                        val url = call.argument<String>("url")
+                        val success = launchUrlIntent(url)
+                        result.success(success)
+                    }
+
+                    "launchApp" -> {
+                        val packageName = call.argument<String>("packageName")
+                        val success = launchAppIntent(packageName)
+                        result.success(success)
+                    }
+
                     else -> result.notImplemented()
                 }
             }
@@ -68,5 +80,46 @@ class MainActivity : FlutterActivity() {
     private fun openNotificationListenerSettings() {
         val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
         startActivity(intent)
+    }
+
+    /**
+     * Safely launches an ACTION_VIEW intent for a validated URL scheme.
+     */
+    private fun launchUrlIntent(url: String?): Boolean {
+        if (url.isNullOrBlank()) return false
+        return try {
+            val uri = android.net.Uri.parse(url)
+            val scheme = uri.scheme?.lowercase() ?: return false
+            val blockedSchemes = setOf("file", "javascript", "data", "content", "intent", "chrome", "about", "blob")
+            if (blockedSchemes.contains(scheme)) return false
+
+            val intent = Intent(Intent.ACTION_VIEW, uri).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(intent)
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Safely launches an external application by package name.
+     */
+    private fun launchAppIntent(packageName: String?): Boolean {
+        if (packageName.isNullOrBlank()) return false
+        return try {
+            val intent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            if (intent != null) {
+                startActivity(intent)
+                true
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            false
+        }
     }
 }
