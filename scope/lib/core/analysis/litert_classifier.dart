@@ -45,7 +45,10 @@ class LiteRtClassifier implements NotificationAnalyzer {
   bool get isModelLoaded => _isModelLoaded;
 
   @override
-  Future<AnalysisResult> analyze(AppNotification notification) async {
+  Future<AnalysisResult> analyze(
+    AppNotification notification, {
+    bool bypassTFLite = false,
+  }) async {
     final stopwatch = Stopwatch()..start();
     final combinedText = '${notification.title} ${notification.content}';
 
@@ -56,15 +59,15 @@ class LiteRtClassifier implements NotificationAnalyzer {
 
     final tokenIds = _tokenizer?.tokenize(combinedText) ?? List<int>.filled(64, 0);
 
-    if (!_isModelLoaded || _interpreter == null) {
+    if (bypassTFLite || !_isModelLoaded || _interpreter == null) {
       // Graceful fallback heuristic classifier
       final category = _runFallbackHeuristic(combinedText);
       return AnalysisResult(
         category: category,
         score: 0.0, // Zero authentic model confidence for fallback heuristic
-        engineName: 'litert_model (fallback)',
+        engineName: bypassTFLite ? 'litert_model (thermal-fallback)' : 'litert_model (fallback)',
         matchedSignals: [
-          'Model asset invalid or uninitialized',
+          bypassTFLite ? 'Bypassed TFLite inference due to thermal/battery pressure' : 'Model asset invalid or uninitialized',
           'Tokenizer parsed ${tokenIds.take(5).toList()}...'
         ],
         latencyMs: stopwatch.elapsedMilliseconds,

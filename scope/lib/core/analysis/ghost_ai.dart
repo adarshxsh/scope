@@ -4,6 +4,7 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
+import 'package:scope/core/state/resource_state_controller.dart';
 import 'package:scope/core/utils/pii_redactor.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
@@ -79,11 +80,17 @@ class GhostAI {
   }
 
   /// Public API: resolves look-again priority score for a notification.
-  static Future<GhostAIResult> predict(AppNotification notification) async {
-    return instance._predict(notification);
+  static Future<GhostAIResult> predict(
+    AppNotification notification, {
+    bool bypassTFLite = false,
+  }) async {
+    return instance._predict(notification, bypassTFLite: bypassTFLite);
   }
 
-  Future<GhostAIResult> _predict(AppNotification notification) async {
+  Future<GhostAIResult> _predict(
+    AppNotification notification, {
+    bool bypassTFLite = false,
+  }) async {
     final stopwatch = Stopwatch()..start();
 
     // 1. Feature extraction using the existing FeatureExtractor
@@ -93,7 +100,9 @@ class GhostAI {
     double predictedScore = 0.0;
     int inferenceTimeUs = 0;
 
-    if (_interpreter != null) {
+    final shouldBypass = bypassTFLite || ResourceStateController.instance.shouldBypassTFLite;
+
+    if (_interpreter != null && !shouldBypass) {
       final input = [featureVector];
       final output = List<double>.filled(1, 0.0).reshape([1, 1]);
 
@@ -105,7 +114,7 @@ class GhostAI {
       // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
       predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
     } else {
-      // Heuristic fallback if model not loaded
+      // Heuristic fallback if model not loaded or bypassed under resource pressure
       predictedScore = _heuristicLookAgainScore(featureVector);
     }
 
