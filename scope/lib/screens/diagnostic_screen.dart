@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
+import 'package:scope/core/analysis/ghost_ai.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/widgets/scope_card.dart';
@@ -139,6 +140,8 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
             _buildInputFormCard(),
             const SizedBox(height: 16),
             _buildActionSection(),
+            const SizedBox(height: 16),
+            _buildModelDiagnosticsCard(),
             const SizedBox(height: 20),
             if (_analyzedNotification != null) ...[
               _buildResultsDashboard(),
@@ -146,6 +149,49 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildModelDiagnosticsCard() {
+    final ghostAI = GhostAI.instance;
+    final sourceName = ghostAI.modelSource.name.toUpperCase();
+    final version = ghostAI.modelVersion;
+    final path = ghostAI.modelPath ?? 'N/A (Heuristic Fallback)';
+
+    return ScopeCard(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.memory, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                'ML Model Status & Management',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+            ],
+          ),
+          const Divider(height: 20),
+          _buildFeatureRow('Model Source', sourceName),
+          _buildFeatureRow('Model Version', version),
+          _buildFeatureRow('Active Model Path', path),
+          if (ghostAI.isDynamicModel) ...[
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () async {
+                await ghostAI.resetToAssetModel();
+                setState(() {});
+              },
+              icon: const Icon(Icons.restore),
+              label: const Text('Reset to Static Asset Model'),
+            ),
+          ],
+        ],
       ),
     );
   }
