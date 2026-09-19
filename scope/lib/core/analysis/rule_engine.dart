@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:scope/core/models/notification_model.dart';
 
@@ -9,17 +10,27 @@ class RuleCondition {
   final List<String> keywords;
   final List<String> titleKeywords;
 
-  const RuleCondition({
-    this.packages = const [],
-    this.keywords = const [],
-    this.titleKeywords = const [],
-  });
+  RuleCondition({
+    List<String> packages = const [],
+    List<String> keywords = const [],
+    List<String> titleKeywords = const [],
+  })  : packages = sanitizeList(packages),
+        keywords = sanitizeList(keywords),
+        titleKeywords = sanitizeList(titleKeywords);
+
+  static List<String> sanitizeList(dynamic raw) {
+    if (raw is! Iterable) return const [];
+    return raw
+        .map((e) => e?.toString().trim() ?? '')
+        .where((e) => e.isNotEmpty)
+        .toList();
+  }
 
   factory RuleCondition.fromMap(Map<String, dynamic> map) {
     return RuleCondition(
-      packages: List<String>.from(map['packages'] as Iterable? ?? const []),
-      keywords: List<String>.from(map['keywords'] as Iterable? ?? const []),
-      titleKeywords: List<String>.from(map['title_keywords'] as Iterable? ?? const []),
+      packages: sanitizeList(map['packages']),
+      keywords: sanitizeList(map['keywords']),
+      titleKeywords: sanitizeList(map['title_keywords']),
     );
   }
 
@@ -39,18 +50,28 @@ class NotificationRule {
   final String priority;
   final RuleCondition conditions;
 
-  const NotificationRule({
-    required this.id,
-    required this.category,
-    required this.priority,
+  NotificationRule({
+    required String id,
+    required String category,
+    required String priority,
     required this.conditions,
-  });
+  })  : id = id.trim().isNotEmpty
+            ? id.trim()
+            : 'rlhf-${DateTime.now().millisecondsSinceEpoch}',
+        category =
+            category.trim().isNotEmpty ? category.trim() : 'uncategorized',
+        priority = priority.trim().isNotEmpty ? priority.trim() : 'low';
 
   factory NotificationRule.fromMap(Map<String, dynamic> map) {
+    final rawId = map['id']?.toString().trim() ?? '';
+    final sanitizedId = rawId.isNotEmpty
+        ? rawId
+        : 'rlhf-${DateTime.now().millisecondsSinceEpoch}';
+
     return NotificationRule(
-      id: map['id'] as String? ?? '',
-      category: map['category'] as String? ?? '',
-      priority: map['priority'] as String? ?? '',
+      id: sanitizedId,
+      category: map['category']?.toString().trim() ?? 'uncategorized',
+      priority: map['priority']?.toString().trim() ?? 'low',
       conditions: RuleCondition.fromMap(
         Map<String, dynamic>.from(map['conditions'] as Map? ?? const {}),
       ),
@@ -88,23 +109,90 @@ class MatchedRuleResult {
 
 /// Compiled rule engine matching raw notifications against in-memory patterns.
 class RuleEngine {
+  /// Maximum allowed custom RLHF rules in memory and on disk to bound memory consumption.
+  static const int maxCustomRules = 100;
+
   String version = '0.0.0';
   List<NotificationRule> _rules = [];
 
+  /// Getters for inspection and diagnostic telemetry
+  List<NotificationRule> get rules => List.unmodifiable(_rules);
+  int get ruleCount => _rules.length;
+  int get customRuleCount =>
+      _rules.where((r) => r.id.startsWith('rlhf-')).length;
+
+  /// Returns structured diagnostic information without exposing cleartext PII.
+  Map<String, dynamic> getDiagnostics() {
+    final seen = <String>{};
+    bool duplicateFound = false;
+    for (final r in _rules) {
+      if (!seen.add(r.id)) {
+        duplicateFound = true;
+        break;
+      }
+    }
+
+    return {
+      'version': version,
+      'totalRules': _rules.length,
+      'customRules': customRuleCount,
+      'baseRules': _rules.length - customRuleCount,
+      'hasDuplicates': duplicateFound,
+    };
+  }
+
+  /// Helper to deduplicate a rule list preserving order (first occurrence wins).
+  List<NotificationRule> _deduplicateRules(List<NotificationRule> rules) {
+    final seenIds = <String>{};
+    final unique = <NotificationRule>[];
+    for (final r in rules) {
+      if (seenIds.add(r.id)) {
+        unique.add(r);
+      }
+    }
+    return unique;
+  }
+
   /// Compiles a raw JSON rules database into compiled memory structures.
   void compile(String jsonStr) {
-    final parsed = json.decode(jsonStr) as Map<String, dynamic>;
-    version = parsed['version'] as String? ?? '0.0.0';
-    final rawRules = parsed['rules'] as List<dynamic>? ?? const [];
-    
-    _rules = rawRules
-        .map((r) => NotificationRule.fromMap(Map<String, dynamic>.from(r as Map)))
-        .toList();
+    try {
+      final parsed = json.decode(jsonStr) as Map<String, dynamic>;
+      version = parsed['version'] as String? ?? '0.0.0';
+      final rawRules = parsed['rules'] as List<dynamic>? ?? const [];
+
+      final compiledBaseRules = rawRules
+          .map((r) =>
+              NotificationRule.fromMap(Map<String, dynamic>.from(r as Map)))
+          .toList();
+
+      _rules = _deduplicateRules(compiledBaseRules);
+    } catch (e) {
+      debugPrint('RuleEngine: Error compiling base rules: $e');
+    }
   }
 
   /// Prepends a user-defined reinforcement learning rule to the top of the evaluation chain.
   void addReinforcementRule(NotificationRule rule) {
-    _rules.insert(0, rule);
+    final sanitizedId = rule.id.trim().isNotEmpty
+        ? rule.id.trim()
+        : 'rlhf-${DateTime.now().millisecondsSinceEpoch}';
+
+    final sanitizedRule = NotificationRule(
+      id: sanitizedId,
+      category: rule.category.trim(),
+      priority: rule.priority.trim(),
+      conditions: rule.conditions,
+    );
+
+    // Remove any existing rule with identical identifier to prevent duplicate object accumulation
+    _rules.removeWhere((r) => r.id == sanitizedRule.id);
+
+    // Prepend rule to top of chain
+    _rules.insert(0, sanitizedRule);
+
+    // Enforce maximum custom rule count threshold
+    _enforceCustomRuleBounds();
+
     _saveCustomRules();
   }
 
@@ -115,30 +203,72 @@ class RuleEngine {
       final file = File('${dir.path}/rlhf_rules.json');
       if (await file.exists()) {
         final content = await file.readAsString();
-        final list = json.decode(content) as List<dynamic>;
-        final customRules = list.map((r) => NotificationRule.fromMap(Map<String, dynamic>.from(r))).toList();
+        final list = json.decode(content);
+
+        if (list is! List) {
+          debugPrint('RuleEngine: Malformed custom rules file, skipping.');
+          return;
+        }
+
+        final loadedRules = list
+            .map((r) => NotificationRule.fromMap(
+                Map<String, dynamic>.from(r as Map)))
+            .toList();
+
+        // Deduplicate loaded rules among themselves
+        final uniqueLoadedRules = _deduplicateRules(loadedRules);
+
+        // Remove existing custom rules from _rules to avoid accumulating duplicates on reload
+        final loadedIds = uniqueLoadedRules.map((r) => r.id).toSet();
+        _rules.removeWhere((r) => loadedIds.contains(r.id) || r.id.startsWith('rlhf-'));
+
         // Insert custom rules at the top
-        _rules.insertAll(0, customRules);
+        _rules.insertAll(0, uniqueLoadedRules);
+
+        // Enforce maximum custom rule bounds
+        _enforceCustomRuleBounds();
+
+        debugPrint(
+            'RuleEngine: Loaded ${uniqueLoadedRules.length} custom RLHF rules without duplicates.');
       }
     } catch (e) {
-      // ignore: avoid_print
-      print('Failed to load custom RLHF rules: $e');
+      debugPrint('RuleEngine: Failed to load custom RLHF rules: $e');
+    }
+  }
+
+  /// Bounds custom RLHF rules to [maxCustomRules] items.
+  void _enforceCustomRuleBounds() {
+    final customRules =
+        _rules.where((r) => r.id.startsWith('rlhf-')).toList();
+
+    if (customRules.length > maxCustomRules) {
+      final customToKeep = customRules.take(maxCustomRules).toSet();
+      _rules.removeWhere(
+          (r) => r.id.startsWith('rlhf-') && !customToKeep.contains(r));
     }
   }
 
   /// Saves all custom RLHF rules to local storage.
   Future<void> _saveCustomRules() async {
     try {
-      // Filter out base rules (assuming base rules don't have 'rlhf-' prefix in id)
-      final customRules = _rules.where((r) => r.id.startsWith('rlhf-')).toList();
-      final list = customRules.map((r) => r.toMap()).toList();
-      
+      // Filter out base rules, keeping only custom RLHF rules
+      final customRules =
+          _rules.where((r) => r.id.startsWith('rlhf-')).toList();
+
+      final uniqueCustom = _deduplicateRules(customRules)
+          .take(maxCustomRules)
+          .toList();
+
+      final list = uniqueCustom.map((r) => r.toMap()).toList();
+
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/rlhf_rules.json');
       await file.writeAsString(json.encode(list));
+
+      debugPrint(
+          'RuleEngine: Saved ${uniqueCustom.length} custom RLHF rules to storage.');
     } catch (e) {
-      // ignore: avoid_print
-      print('Failed to save custom RLHF rules: $e');
+      debugPrint('RuleEngine: Failed to save custom RLHF rules: $e');
     }
   }
 
