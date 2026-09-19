@@ -36,6 +36,24 @@ void main() {
       expect(result.predictedScore, equals(1.0)); // Heuristic fallback score for OTP
     });
 
+    test('predict handles extreme synthetic outlier inputs with bounded scores [0.0, 1.0]', () async {
+      final outlierNotif = AppNotification(
+        id: 'outlier-1',
+        packageName: 'com.bank.app',
+        title: 'TRANSFER NOTICE ' * 500,
+        content: 'You sent \$10,000,000 to account XYZ in 999999 minutes. ' * 500,
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final result = await GhostAI.predict(outlierNotif);
+
+      expect(result.reviewScore, greaterThanOrEqualTo(0.0));
+      expect(result.reviewScore, lessThanOrEqualTo(1.0));
+      expect(result.predictedScore, greaterThanOrEqualTo(0.0));
+      expect(result.predictedScore, lessThanOrEqualTo(1.0));
+      expect(result.featureVector.every((v) => v.isFinite && !v.isNaN), isTrue);
+    });
+
     group('Expired OTP Overrides', () {
       test('does not override fresh OTPs', () async {
         final freshNotif = AppNotification(
