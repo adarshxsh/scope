@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/extracted_features.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/utils/focus_area_mapper.dart';
+import 'package:scope/core/utils/url_launcher_utils.dart';
 import 'package:scope/theme/app_colors.dart';
 
 /// A contextual action suggested for a notification.
@@ -11,6 +12,7 @@ class SmartAction {
   final SmartActionType type;
   final Color? color;
   final bool isPrimary;
+  final String? targetUrl;
 
   const SmartAction({
     required this.label,
@@ -18,6 +20,7 @@ class SmartAction {
     required this.type,
     this.color,
     this.isPrimary = false,
+    this.targetUrl,
   });
 }
 
@@ -55,6 +58,12 @@ abstract final class SmartActions {
     final features = notification.extractedFeatures != null
         ? ExtractedFeatures.fromMap(notification.extractedFeatures!)
         : const ExtractedFeatures();
+    final validUrls = features.urls
+        .map(UrlLauncherUtils.sanitizeUrl)
+        .whereType<String>()
+        .toList();
+    final firstValidUrl = validUrls.isNotEmpty ? validUrls.first : null;
+
     final text = '${notification.title} ${notification.content}'.toLowerCase();
     final pkg = notification.packageName.toLowerCase();
     final area = FocusAreaMapper.areaFor(notification);
@@ -79,6 +88,7 @@ abstract final class SmartActions {
         type: SmartActionType.openUrl,
         color: AppColors.portal,
         isPrimary: actions.isEmpty,
+        targetUrl: firstValidUrl,
       ));
     }
 
@@ -89,15 +99,17 @@ abstract final class SmartActions {
         type: SmartActionType.join,
         color: AppColors.calendar,
         isPrimary: actions.isEmpty,
+        targetUrl: firstValidUrl,
       ));
     }
 
     if (_containsAny(text, ['pdf', 'document', 'download']) || area == FocusArea.government) {
-      actions.add(const SmartAction(
+      actions.add(SmartAction(
         label: 'Download PDF',
         icon: Icons.download_outlined,
         type: SmartActionType.download,
         color: AppColors.portal,
+        targetUrl: firstValidUrl,
       ));
     }
 
@@ -109,12 +121,14 @@ abstract final class SmartActions {
         type: SmartActionType.pay,
         color: AppColors.finance,
         isPrimary: actions.isEmpty,
+        targetUrl: firstValidUrl,
       ));
-      actions.add(const SmartAction(
+      actions.add(SmartAction(
         label: 'View Statement',
         icon: Icons.receipt_long_outlined,
         type: SmartActionType.viewStatement,
         color: AppColors.finance,
+        targetUrl: firstValidUrl,
       ));
     }
 
@@ -125,6 +139,7 @@ abstract final class SmartActions {
         type: SmartActionType.track,
         color: AppColors.portal,
         isPrimary: actions.isEmpty,
+        targetUrl: firstValidUrl,
       ));
     }
 
