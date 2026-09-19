@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:path_provider/path_provider.dart';
+import 'package:scope/core/analysis/rule_crypto.dart';
 import 'package:scope/core/models/notification_model.dart';
 
 /// Condition definition for a notification classification rule.
@@ -91,54 +91,90 @@ class RuleEngine {
   String version = '0.0.0';
   List<NotificationRule> _rules = [];
 
-  /// Compiles a raw JSON rules database into compiled memory structures.
-  void compile(String jsonStr) {
-    final parsed = json.decode(jsonStr) as Map<String, dynamic>;
-    version = parsed['version'] as String? ?? '0.0.0';
-    final rawRules = parsed['rules'] as List<dynamic>? ?? const [];
-    
-    _rules = rawRules
-        .map((r) => NotificationRule.fromMap(Map<String, dynamic>.from(r as Map)))
-        .toList();
-  }
-
-  /// Prepends a user-defined reinforcement learning rule to the top of the evaluation chain.
-  void addReinforcementRule(NotificationRule rule) {
-    _rules.insert(0, rule);
-    _saveCustomRules();
-  }
-
-  /// Loads custom rules from local storage and prepends them.
-  Future<void> loadCustomRules() async {
+  /// Compiles a raw JSON rules envelope after verifying its Ed25519 author signature.
+  /// Safely rejects unverified or corrupt rules and reverts to safe defaults without crashing.
+  Future<bool> compile(String jsonStr) async {
     try {
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/rlhf_rules.json');
-      if (await file.exists()) {
-        final content = await file.readAsString();
-        final list = json.decode(content) as List<dynamic>;
-        final customRules = list.map((r) => NotificationRule.fromMap(Map<String, dynamic>.from(r))).toList();
-        // Insert custom rules at the top
-        _rules.insertAll(0, customRules);
+      final parsed = json.decode(jsonStr) as Map<String, dynamic>;
+      final payload = await RuleCrypto.verifyBaseRulesEnvelope(parsed);
+      if (payload == null) {
+        // ignore: avoid_print
+        print('RuleEngine: Base rules signature verification failed! Triggering safe fallback.');
+        _rules = [];
+        version = '0.0.0';
+        return false;
       }
+
+      version = payload['version'] as String? ?? '0.0.0';
+      final rawRules = payload['rules'] as List<dynamic>? ?? const [];
+
+      _rules = rawRules
+          .map((r) => NotificationRule.fromMap(Map<String, dynamic>.from(r as Map)))
+          .toList();
+      return true;
     } catch (e) {
       // ignore: avoid_print
-      print('Failed to load custom RLHF rules: $e');
+      print('RuleEngine: Exception during rule compilation: $e');
+      _rules = [];
+      version = '0.0.0';
+      return false;
     }
   }
 
-  /// Saves all custom RLHF rules to local storage.
-  Future<void> _saveCustomRules() async {
+  /// Prepends a user-defined reinforcement learning rule to the top of the evaluation chain.
+  Future<bool> addReinforcementRule(NotificationRule rule) async {
+    _rules.insert(0, rule);
+    return await _saveCustomRules();
+  }
+
+  /// Loads custom rules from local storage after verifying device-bound HMAC signature.
+  /// Safely rejects tampered rule files and falls back to base rules without crashing.
+  Future<bool> loadCustomRules() async {
+    try {
+      final dir = await RuleCrypto.getStorageDirectory();
+      final file = File('${dir.path}/rlhf_rules.json');
+      if (await file.exists()) {
+        final content = await file.readAsString();
+        final map = json.decode(content) as Map<String, dynamic>;
+        final verifiedRulesList = await RuleCrypto.verifyCustomRulesEnvelope(map);
+
+        if (verifiedRulesList == null) {
+          // ignore: avoid_print
+          print('RuleEngine: Dynamic user rules failed HMAC verification! Reverting safely to base rules.');
+          return false;
+        }
+
+        final customRules = verifiedRulesList
+            .map((r) => NotificationRule.fromMap(Map<String, dynamic>.from(r as Map)))
+            .toList();
+        // Insert custom rules at the top
+        _rules.insertAll(0, customRules);
+        return true;
+      }
+    } catch (e) {
+      // ignore: avoid_print
+      print('RuleEngine: Failed to load custom RLHF rules: $e');
+    }
+    return false;
+  }
+
+  /// Saves all custom RLHF rules to local storage with device-bound HMAC-SHA256 signature header.
+  Future<bool> _saveCustomRules() async {
     try {
       // Filter out base rules (assuming base rules don't have 'rlhf-' prefix in id)
       final customRules = _rules.where((r) => r.id.startsWith('rlhf-')).toList();
       final list = customRules.map((r) => r.toMap()).toList();
-      
-      final dir = await getApplicationDocumentsDirectory();
+
+      final envelope = await RuleCrypto.createSignedCustomRulesEnvelope(list);
+
+      final dir = await RuleCrypto.getStorageDirectory();
       final file = File('${dir.path}/rlhf_rules.json');
-      await file.writeAsString(json.encode(list));
+      await file.writeAsString(json.encode(envelope));
+      return true;
     } catch (e) {
       // ignore: avoid_print
-      print('Failed to save custom RLHF rules: $e');
+      print('RuleEngine: Failed to save custom RLHF rules: $e');
+      return false;
     }
   }
 
