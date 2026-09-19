@@ -5,26 +5,56 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/analysis_result.dart';
 import 'package:scope/core/analysis/notification_analyzer.dart';
 import 'package:scope/core/analysis/wordpiece_tokenizer.dart';
+import 'package:scope/core/analysis/ml_model_resolver.dart';
 
 /// Classifier using LiteRT (TensorFlow Lite) to classify text categories.
 class LiteRtClassifier implements NotificationAnalyzer {
   Interpreter? _interpreter;
   WordPieceTokenizer? _tokenizer;
   bool _isModelLoaded = false;
+  final MLModelResolver _resolver;
 
-  LiteRtClassifier() {
+  LiteRtClassifier({MLModelResolver? resolver})
+      : _resolver = resolver ?? MLModelResolver() {
     _initialize();
   }
 
   Future<void> _initialize() async {
     try {
-      // 1. Load Vocab
-      final vocabStr = await rootBundle.loadString('assets/vocab.txt');
-      final lines = vocabStr.split('\n');
-      _tokenizer = WordPieceTokenizer.fromLines(lines);
+      // 1. Load Vocab (check local file via MLModelResolver first)
+      final localVocab = await _resolver.resolveModelFile('vocab.txt');
+      if (localVocab != null) {
+        try {
+          _tokenizer = await WordPieceTokenizer.fromFile(localVocab);
+        } catch (e) {
+          // ignore: avoid_print
+          print('LiteRtClassifier failed to load local vocab.txt: $e');
+        }
+      }
 
-      // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
-      _isModelLoaded = false;
+      if (_tokenizer == null) {
+        final vocabStr = await rootBundle.loadString('assets/vocab.txt');
+        final lines = vocabStr.split('\n');
+        _tokenizer = WordPieceTokenizer.fromLines(lines);
+      }
+
+      // 2. Load Interpreter if valid local model.tflite is present
+      final localModel = await _resolver.resolveModelFile('model.tflite');
+      if (localModel != null) {
+        try {
+          _interpreter = Interpreter.fromFile(localModel);
+          _isModelLoaded = true;
+        } catch (e) {
+          // ignore: avoid_print
+          print('LiteRtClassifier failed to load local model.tflite: $e');
+          _interpreter = null;
+          _isModelLoaded = false;
+        }
+      }
+
+      if (_interpreter == null) {
+        _isModelLoaded = false;
+      }
     } catch (e) {
       // Graceful degradation: Log and set flags so analyze runs in fallback mode
       // ignore: avoid_print
