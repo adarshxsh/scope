@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/privacy/ingestion_guardrail_controller.dart';
 import 'package:scope/core/storage/notification_storage.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/core/utils/focus_area_mapper.dart';
@@ -43,10 +44,13 @@ class NotificationController extends ChangeNotifier {
     NotificationStorage? storage,
     GhostAnalysisEngine? engine,
     ProviderContainer? container,
+    IngestionGuardrailController? guardrailController,
   })  : _bridge = bridge ?? NotificationBridge(),
         _container = container ?? providerContainer,
         _storage = storage ?? DriftNotificationStorage(container?.read(databaseProvider) ?? providerContainer.read(databaseProvider)),
-        _engine = engine ?? GhostAnalysisEngine() {
+        _engine = engine ?? GhostAnalysisEngine(),
+        _guardrailController = guardrailController ??
+            IngestionGuardrailController(bridge: bridge ?? NotificationBridge()) {
     _engine.initialize();
 
     // Listen to changes in Riverpod's reviewQueueProvider to keep legacy notifier list in sync
@@ -63,6 +67,9 @@ class NotificationController extends ChangeNotifier {
   final NotificationStorage _storage;
   final GhostAnalysisEngine _engine;
   final ProviderContainer _container;
+  final IngestionGuardrailController _guardrailController;
+
+  IngestionGuardrailController get guardrailController => _guardrailController;
 
   List<AppNotification> _notifications = [];
   bool _isListenerEnabled = false;
@@ -381,16 +388,14 @@ class NotificationController extends ChangeNotifier {
   Future<void> fetchNotifications() async {
     try {
       final newNotifications = await _bridge.getNotifications();
+      final allowedNotifications = _guardrailController.filterBatch(newNotifications);
       final analyzed = <AppNotification>[];
 
       if (!_initialLoadCompleted) {
         await _loadInitialNotifications();
       }
 
-      for (final raw in newNotifications) {
-        // Ignore ongoing background/system notifications (e.g. charging, media playback)
-        if (raw.isOngoing) continue;
-
+      for (final raw in allowedNotifications) {
         final isDuplicate = _notifications.any((n) =>
             n.packageName == raw.packageName &&
             n.timestamp == raw.timestamp &&
@@ -430,9 +435,10 @@ class NotificationController extends ChangeNotifier {
     _isLoading = false;
     final generator = TestNotificationGenerator();
     final testNotifs = generator.generateAll();
+    final allowedNotifs = _guardrailController.filterBatch(testNotifs);
     final analyzed = <AppNotification>[];
 
-    for (final raw in testNotifs) {
+    for (final raw in allowedNotifs) {
       final isDuplicate = _notifications.any((n) =>
           n.packageName == raw.packageName &&
           n.timestamp == raw.timestamp &&
