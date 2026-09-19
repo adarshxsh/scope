@@ -5,18 +5,67 @@ import 'package:scope/database/tables.dart';
 
 part 'daos.g.dart';
 
-@DriftAccessor(tables: [NotificationsTable])
+@DriftAccessor(tables: [NotificationsTable, ReviewQueueTable])
 class NotificationDao extends DatabaseAccessor<AttentionDatabase> with _$NotificationDaoMixin {
   NotificationDao(super.db);
 
-  Future<void> insertNotification(NotificationEntry entry) async {
+  static const int maxNotificationLimit = 5000;
+
+  Future<void> insertNotification(NotificationEntry entry, {int maxLimit = maxNotificationLimit}) async {
     await into(notificationsTable).insert(entry, mode: InsertMode.insertOrReplace);
+    await _enforceCapacityLimit(maxLimit);
   }
 
-  Future<void> insertAll(List<NotificationEntry> entries) async {
+  Future<void> insertAll(List<NotificationEntry> entries, {int maxLimit = maxNotificationLimit}) async {
+    if (entries.isEmpty) return;
     await batch((b) {
       b.insertAll(notificationsTable, entries, mode: InsertMode.insertOrReplace);
     });
+    await _enforceCapacityLimit(maxLimit);
+  }
+
+  Future<void> _enforceCapacityLimit(int maxLimit) async {
+    try {
+      final currentCount = await getCount();
+      if (currentCount <= maxLimit) return;
+
+      final excess = currentCount - maxLimit;
+
+      final evictionTier = CustomExpression<int>(
+        "CASE "
+        "WHEN state IN ('ARCHIVED', 'REVIEWED', 'EXPIRED') OR reviewed = 1 OR dismissed = 1 THEN 0 "
+        "WHEN priority IS NULL OR priority != 'critical' THEN 1 "
+        "ELSE 2 "
+        "END",
+      );
+
+      final query = selectOnly(notificationsTable)
+        ..addColumns([notificationsTable.id])
+        ..orderBy([
+          OrderingTerm(expression: evictionTier, mode: OrderingMode.asc),
+          OrderingTerm(expression: notificationsTable.timestamp, mode: OrderingMode.asc),
+        ])
+        ..limit(excess);
+
+      final rows = await query.get();
+      final idsToDelete = rows.map((r) => r.read(notificationsTable.id)!).toList();
+
+      if (idsToDelete.isEmpty) return;
+
+      await transaction(() async {
+        for (var i = 0; i < idsToDelete.length; i += 500) {
+          final chunk = idsToDelete.sublist(
+            i,
+            i + 500 > idsToDelete.length ? idsToDelete.length : i + 500,
+          );
+          await (delete(reviewQueueTable)..where((t) => t.notificationId.isIn(chunk))).go();
+          await (delete(notificationsTable)..where((t) => t.id.isIn(chunk))).go();
+        }
+      });
+    } catch (e) {
+      if (e.toString().toLowerCase().contains('close')) return;
+      rethrow;
+    }
   }
 
   Future<NotificationEntry?> getById(String id) {
