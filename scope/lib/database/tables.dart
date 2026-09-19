@@ -35,6 +35,21 @@ class NotificationsTable extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+@DataClassName('InferenceTelemetryEntry')
+class InferenceTelemetryTable extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get timestamp => integer()();
+  IntColumn get inferenceTimeUs => integer()();
+  IntColumn get engineLatencyMs => integer().nullable()();
+  TextColumn get modelVersion => text().nullable()();
+  TextColumn get engineVersion => text().nullable()();
+  BoolColumn get isFallback => boolean().withDefault(const Constant(false))();
+  BoolColumn get isError => boolean().withDefault(const Constant(false))();
+  TextColumn get errorMessage => text().nullable()();
+  TextColumn get notificationId => text().nullable()();
+  TextColumn get category => text().nullable()();
+}
+
 @DataClassName('ReviewQueueEntry')
 class ReviewQueueTable extends Table {
   IntColumn get id => integer().autoIncrement()();

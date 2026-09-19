@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
+import 'package:scope/core/telemetry/inference_telemetry.dart';
 import 'package:scope/widgets/scope_card.dart';
 
 class DiagnosticScreen extends StatefulWidget {
@@ -402,7 +403,39 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
         ),
         const SizedBox(height: 12),
 
-        // 3. Versions and Metadata
+        // 3. Inference Telemetry Card
+        ScopeCard(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.speed, color: theme.colorScheme.tertiary),
+                  const SizedBox(width: 8),
+                  const Text('Model Inference Performance Telemetry',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                ],
+              ),
+              const Divider(height: 20),
+              Builder(builder: (context) {
+                final stats = InferenceTelemetryManager.instance.getStats();
+                return Column(
+                  children: [
+                    _buildFeatureRow('Total Inferences', '${stats.totalInferences}'),
+                    _buildFeatureRow('Avg Inference Latency', '${stats.avgInferenceTimeUs.toStringAsFixed(0)} µs (${(stats.avgInferenceTimeUs / 1000).toStringAsFixed(2)} ms)'),
+                    _buildFeatureRow('P95 Inference Latency', '${stats.p95InferenceTimeUs.toStringAsFixed(0)} µs'),
+                    _buildFeatureRow('Fallback Rate', '${(stats.fallbackRate * 100).toStringAsFixed(1)}% (${stats.fallbackCount}/${stats.totalInferences})'),
+                    _buildFeatureRow('Execution Failure Rate', '${(stats.failureRate * 100).toStringAsFixed(1)}% (${stats.failureCount}/${stats.totalInferences})'),
+                  ],
+                );
+              }),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // 4. Versions and Metadata
         ScopeCard(
           padding: const EdgeInsets.all(12.0),
           child: Row(
