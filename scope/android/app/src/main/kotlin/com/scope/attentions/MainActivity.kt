@@ -12,7 +12,10 @@ import android.provider.Settings
  *
  * Registers a MethodChannel ("com.scope.notifications") that the Flutter side
  * uses to:
- *   - Pull captured notifications from [NotificationCollectorService]
+ *   - Fetch a session authorization token ([getSessionToken])
+ *   - Pull/drain captured notifications from [NotificationCollectorService] with token authorization
+ *   - Perform two-phase notification ingestion ([peekNotifications] and [acknowledgeNotifications])
+ *   - Retrieve security telemetry audit metrics ([getAuditMetrics])
  *   - Check if the notification listener permission is granted
  *   - Open the system notification listener settings
  */
@@ -28,10 +31,59 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
+                    "getSessionToken" -> {
+                        val token = NotificationCollectorService.getSessionToken()
+                        result.success(token)
+                    }
+
                     "getNotifications" -> {
-                        val notifications = NotificationCollectorService.drainQueue()
-                        val mapList = notifications.map { it.toMap() }
-                        result.success(mapList)
+                        val token = call.argument<String>("token")
+                        if (!NotificationCollectorService.validateToken(token)) {
+                            result.error("UNAUTHORIZED", "Invalid or missing session authorization token", null)
+                            return@setMethodCallHandler
+                        }
+                        try {
+                            val notifications = NotificationCollectorService.drainQueue(token)
+                            val mapList = notifications.map { it.toMap() }
+                            result.success(mapList)
+                        } catch (e: Exception) {
+                            result.error("UNAUTHORIZED", e.message, null)
+                        }
+                    }
+
+                    "peekNotifications" -> {
+                        val token = call.argument<String>("token")
+                        if (!NotificationCollectorService.validateToken(token)) {
+                            result.error("UNAUTHORIZED", "Invalid or missing session authorization token", null)
+                            return@setMethodCallHandler
+                        }
+                        try {
+                            val notifications = NotificationCollectorService.peekQueue(token)
+                            val mapList = notifications.map { it.toMap() }
+                            result.success(mapList)
+                        } catch (e: Exception) {
+                            result.error("UNAUTHORIZED", e.message, null)
+                        }
+                    }
+
+                    "acknowledgeNotifications" -> {
+                        val token = call.argument<String>("token")
+                        val ids = call.argument<List<String>>("ids") ?: emptyList()
+                        if (!NotificationCollectorService.validateToken(token)) {
+                            result.error("UNAUTHORIZED", "Invalid or missing session authorization token", null)
+                            return@setMethodCallHandler
+                        }
+                        try {
+                            val ackIds = NotificationCollectorService.acknowledgeQueue(token, ids)
+                            result.success(ackIds)
+                        } catch (e: Exception) {
+                            result.error("UNAUTHORIZED", e.message, null)
+                        }
+                    }
+
+                    "getAuditMetrics" -> {
+                        val metrics = NotificationCollectorService.getAuditMetrics()
+                        result.success(metrics)
                     }
 
                     "isListenerEnabled" -> {
