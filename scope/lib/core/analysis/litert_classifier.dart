@@ -12,24 +12,34 @@ class LiteRtClassifier implements NotificationAnalyzer {
   WordPieceTokenizer? _tokenizer;
   bool _isModelLoaded = false;
 
-  LiteRtClassifier() {
+  LiteRtClassifier({Interpreter? interpreter, WordPieceTokenizer? tokenizer})
+      : _interpreter = interpreter,
+        _tokenizer = tokenizer,
+        _isModelLoaded = interpreter != null {
     _initialize();
   }
 
   Future<void> _initialize() async {
     try {
       // 1. Load Vocab
-      final vocabStr = await rootBundle.loadString('assets/vocab.txt');
-      final lines = vocabStr.split('\n');
-      _tokenizer = WordPieceTokenizer.fromLines(lines);
+      if (_tokenizer == null) {
+        final vocabStr = await rootBundle.loadString('assets/vocab.txt');
+        final lines = vocabStr.split('\n');
+        _tokenizer = WordPieceTokenizer.fromLines(lines);
+      }
 
-      // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
-      _isModelLoaded = false;
+      // 2. Load Interpreter
+      if (_interpreter == null) {
+        _interpreter = await Interpreter.fromAsset('assets/classifier_model.tflite');
+        _isModelLoaded = true;
+      }
     } catch (e) {
       // Graceful degradation: Log and set flags so analyze runs in fallback mode
       // ignore: avoid_print
       print('LiteRtClassifier failed to initialize: $e');
-      _isModelLoaded = false;
+      if (_interpreter == null) {
+        _isModelLoaded = false;
+      }
 
       // Ensure tokenizer is loaded even if interpreter fails (so we can test tokenization in fallback)
       if (_tokenizer == null) {
@@ -47,7 +57,18 @@ class LiteRtClassifier implements NotificationAnalyzer {
   @override
   Future<AnalysisResult> analyze(AppNotification notification) async {
     final stopwatch = Stopwatch()..start();
-    final combinedText = '${notification.title} ${notification.content}';
+    final combinedText = '${notification.title} ${notification.content}'.trim();
+
+    if (combinedText.isEmpty) {
+      stopwatch.stop();
+      return AnalysisResult(
+        category: 'msg',
+        score: 0.50,
+        engineName: 'litert_model (empty input)',
+        matchedSignals: ['Empty notification input'],
+        latencyMs: stopwatch.elapsedMilliseconds,
+      );
+    }
 
     // Ensure initialization finished
     if (_tokenizer == null) {
@@ -59,13 +80,14 @@ class LiteRtClassifier implements NotificationAnalyzer {
     if (!_isModelLoaded || _interpreter == null) {
       // Graceful fallback heuristic classifier
       final category = _runFallbackHeuristic(combinedText);
+      stopwatch.stop();
       return AnalysisResult(
         category: category,
         score: 0.0, // Zero authentic model confidence for fallback heuristic
         engineName: 'litert_model (fallback)',
         matchedSignals: [
           'Model asset invalid or uninitialized',
-          'Tokenizer parsed ${tokenIds.take(5).toList()}...'
+          'Tokenizer parsed ${tokenIds.length} tokens',
         ],
         latencyMs: stopwatch.elapsedMilliseconds,
         isFallback: true,
@@ -97,22 +119,26 @@ class LiteRtClassifier implements NotificationAnalyzer {
       final categories = ['promo', 'social', 'sys', 'msg', 'finance'];
       final predictedCategory = categories[bestIndex];
 
+      stopwatch.stop();
       return AnalysisResult(
         category: predictedCategory,
         score: maxScore,
         engineName: 'litert_model',
-        matchedSignals: ['Softmax scores: $softmaxScores'],
+        matchedSignals: [
+          'Softmax scores: ${softmaxScores.map((s) => double.parse(s.toStringAsFixed(4))).toList()}',
+        ],
         latencyMs: stopwatch.elapsedMilliseconds,
         isFallback: false,
       );
     } catch (e) {
       // Fallback on inference error
       final category = _runFallbackHeuristic(combinedText);
+      stopwatch.stop();
       return AnalysisResult(
         category: category,
         score: 0.0, // Zero authentic model confidence on inference error
         engineName: 'litert_model (fallback on error)',
-        matchedSignals: ['Inference error: $e'],
+        matchedSignals: ['Inference error: ${e.runtimeType}'],
         latencyMs: stopwatch.elapsedMilliseconds,
         isFallback: true,
       );
