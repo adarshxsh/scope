@@ -273,5 +273,137 @@ void main() {
       // Missing one deleted due to being orphaned
       expect(queueItems.first.notificationId, equals('n-new'));
     });
+
+    test('UserSettingsDao getSettings default values', () async {
+      final settings = await db.userSettingsDao.getSettings();
+      expect(settings.retentionDays, equals(7));
+      expect(settings.telemetryEnabled, isTrue);
+      expect(settings.maxRowCap, equals(5000));
+      expect(settings.maxStorageMb, equals(25));
+    });
+
+    test('UserSettingsDao updateSettings and validation guardrails', () async {
+      await db.userSettingsDao.updateSettings(
+        retentionDays: 14,
+        telemetryEnabled: false,
+        maxRowCap: 2000,
+        maxStorageMb: 50,
+      );
+
+      var settings = await db.userSettingsDao.getSettings();
+      expect(settings.retentionDays, equals(14));
+      expect(settings.telemetryEnabled, isFalse);
+      expect(settings.maxRowCap, equals(2000));
+      expect(settings.maxStorageMb, equals(50));
+
+      // Test invalid inputs triggering fallback guardrails
+      await db.userSettingsDao.updateSettings(
+        retentionDays: -5, // Invalid negative retention
+        maxRowCap: 0, // Invalid zero row cap
+        maxStorageMb: -10, // Invalid storage MB
+      );
+
+      settings = await db.userSettingsDao.getSettings();
+      expect(settings.retentionDays, equals(7)); // Fallback to 7
+      expect(settings.maxRowCap, equals(5000)); // Fallback to 5000
+      expect(settings.maxStorageMb, equals(25)); // Fallback to 25
+    });
+
+    test('runSetBasedCleanup enforces row cap limits', () async {
+      final now = DateTime.now();
+      // Insert 10 notifications with increasing timestamps
+      for (int i = 0; i < 10; i++) {
+        await db.notificationDao.insertNotification(NotificationEntry(
+          id: 'item-$i',
+          packageName: 'com.whatsapp',
+          title: 'Title $i',
+          content: 'Content $i',
+          timestamp: now.millisecondsSinceEpoch + (i * 1000),
+          state: ReviewState.ACTIVE,
+          reviewed: false,
+          dismissed: false,
+          isOngoing: false,
+          createdAt: now,
+        ));
+      }
+
+      var all = await db.notificationDao.getAll();
+      expect(all.length, equals(10));
+
+      // Run cleanup enforcing a row cap of 4 items
+      await db.runSetBasedCleanup(0, maxRowCap: 4);
+
+      all = await db.notificationDao.getAll();
+      expect(all.length, equals(4));
+      // Oldest items (0..5) should be purged, newest items (6..9) remain
+      expect(all.map((n) => n.id), containsAll(['item-6', 'item-7', 'item-8', 'item-9']));
+    });
+
+    test('runSetBasedCleanup handles unlimited retention (-1 / 0 cutoff)', () async {
+      final oldTime = DateTime.now().subtract(const Duration(days: 100)).millisecondsSinceEpoch;
+      await db.notificationDao.insertNotification(NotificationEntry(
+        id: 'ancient-item',
+        packageName: 'com.whatsapp',
+        title: 'Ancient',
+        content: 'Body',
+        timestamp: oldTime,
+        state: ReviewState.ACTIVE,
+        reviewed: false,
+        dismissed: false,
+        isOngoing: false,
+        createdAt: DateTime.now(),
+      ));
+
+      // Cutoff 0 means unlimited retention (no timestamp deletion)
+      await db.runSetBasedCleanup(0);
+
+      final all = await db.notificationDao.getAll();
+      expect(all.length, equals(1));
+      expect(all.first.id, equals('ancient-item'));
+    });
+
+    test('runSetBasedCleanup clears daily brief when clearTelemetry is true', () async {
+      await db.dailyBriefDao.insertOrUpdate(DailyBriefEntry(
+        id: 1,
+        date: '2026-09-18',
+        notificationsReviewed: 10,
+        actionsCompleted: 5,
+        calendarEventsCreated: 2,
+        remindersCreated: 1,
+        archivedCount: 3,
+      ));
+
+      var briefs = await db.dailyBriefDao.getAll();
+      expect(briefs.length, equals(1));
+
+      await db.runSetBasedCleanup(0, clearTelemetry: true);
+
+      briefs = await db.dailyBriefDao.getAll();
+      expect(briefs, isEmpty);
+    });
+
+    test('UserSettingsDao getStorageStats reports accurate counts', () async {
+      final now = DateTime.now();
+      for (int i = 0; i < 5; i++) {
+        await db.notificationDao.insertNotification(NotificationEntry(
+          id: 'n-$i',
+          packageName: 'com.whatsapp',
+          title: 'Title $i',
+          content: 'Content $i',
+          timestamp: now.millisecondsSinceEpoch + i,
+          state: ReviewState.ACTIVE,
+          reviewed: false,
+          dismissed: false,
+          isOngoing: false,
+          createdAt: now,
+        ));
+      }
+
+      final stats = await db.userSettingsDao.getStorageStats();
+      expect(stats.totalNotifications, equals(5));
+      expect(stats.maxStorageMb, equals(25));
+      expect(stats.maxRowCap, equals(5000));
+    });
   });
 }
+
