@@ -338,6 +338,7 @@ class NotificationController extends ChangeNotifier {
     // Trigger initial cleanup once on startup
     runBackgroundCleanup();
     
+    if (_isDisposed) return;
     // Set up daily cleanup timer
     _cleanupTimer?.cancel();
     _cleanupTimer = Timer.periodic(const Duration(hours: 24), (_) {

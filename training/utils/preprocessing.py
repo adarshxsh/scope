@@ -51,7 +51,7 @@ def build_dataset(records: list[dict[str, Any]]) -> EncodedDataset:
         sample_id = f"sample[{index}]"
         
         # 1. Extract or get features
-        features_val = record.get("features")
+        features_val = record.get("features") or record.get("feature_vector")
         if features_val is None or not isinstance(features_val, list):
             features_val = extract_features(record)
             
@@ -59,16 +59,27 @@ def build_dataset(records: list[dict[str, Any]]) -> EncodedDataset:
         
         # 2. Get or construct labels
         raw_labels_dict = record.get("labels") or {}
+
+        # Calculate target look_again_score (handling RLHF samples and standard datasets)
+        if "corrected_score" in record and record["corrected_score"] is not None:
+            c_score = float(record["corrected_score"])
+            target_score = c_score * 100.0 if c_score <= 1.0 else c_score
+        elif "predicted_score" in record and record.get("reward_signal") is not None:
+            p_score = float(record["predicted_score"])
+            target_score = p_score * 100.0 if p_score <= 1.0 else p_score
+        else:
+            target_score = record.get("look_again_score") or raw_labels_dict.get("look_again_score") or 0.0
+
         labels_val = {
-            "category": raw_labels_dict.get("category_class") or record.get("category") or "",
-            "intent": raw_labels_dict.get("intent") or record.get("intent") or "",
-            "urgency": raw_labels_dict.get("urgency") or record.get("urgency") or "",
+            "category": raw_labels_dict.get("category_class") or record.get("corrected_category") or record.get("predicted_category") or record.get("category") or "unknown",
+            "intent": raw_labels_dict.get("intent") or record.get("intent") or "info",
+            "urgency": raw_labels_dict.get("urgency") or record.get("corrected_priority") or record.get("predicted_priority") or record.get("urgency") or "medium",
             "requires_action": raw_labels_dict.get("requires_action") if raw_labels_dict.get("requires_action") is not None else record.get("requires_action", False),
             "is_promotion": raw_labels_dict.get("is_promotion") if raw_labels_dict.get("is_promotion") is not None else record.get("is_promotion", False),
             "is_duplicate_candidate": raw_labels_dict.get("is_duplicate_candidate") if raw_labels_dict.get("is_duplicate_candidate") is not None else record.get("is_duplicate_candidate", False),
             "is_recurring": raw_labels_dict.get("is_recurring") if raw_labels_dict.get("is_recurring") is not None else record.get("is_recurring", False),
             "look_again": raw_labels_dict.get("look_again") if raw_labels_dict.get("look_again") is not None else record.get("look_again", False),
-            "look_again_score": record.get("look_again_score") or raw_labels_dict.get("look_again_score") or 0.0
+            "look_again_score": target_score
         }
         
         labels = _validate_labels(labels_val, sample_id)

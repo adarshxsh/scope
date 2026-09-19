@@ -23,8 +23,14 @@ class LiteRtClassifier implements NotificationAnalyzer {
       final lines = vocabStr.split('\n');
       _tokenizer = WordPieceTokenizer.fromLines(lines);
 
-      // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
-      _isModelLoaded = false;
+      // 2. Load Interpreter if classifier asset is available
+      try {
+        _interpreter = await Interpreter.fromAsset('assets/classifier.tflite');
+        _isModelLoaded = true;
+      } catch (_) {
+        _interpreter = null;
+        _isModelLoaded = false;
+      }
     } catch (e) {
       // Graceful degradation: Log and set flags so analyze runs in fallback mode
       // ignore: avoid_print
