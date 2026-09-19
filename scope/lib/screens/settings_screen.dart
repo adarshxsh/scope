@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:scope/core/state/notification_controller.dart';
 import 'package:scope/screens/ai_playground_screen.dart';
@@ -56,67 +57,69 @@ class SettingsScreen extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: AppSpacing.sectionGap),
-            const SectionLabel(label: 'Developer'),
-            const SizedBox(height: AppSpacing.md),
-            ScopeSurface(
-              padding: EdgeInsets.zero,
-              elevated: false,
-              child: Column(
-                children: [
-                  _SettingsTile(
-                    icon: Icons.science_outlined,
-                    title: 'Load Test Data',
-                    subtitle: 'Generate 10 analyzed notifications',
-                    onTap: () async {
-                      await controller.generateTestData();
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Test notifications loaded'),
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                  const Divider(height: 1, indent: 56),
-                  _SettingsTile(
-                    icon: Icons.model_training_rounded,
-                    title: 'AI Playground (RLHF)',
-                    subtitle: 'Post-mortem inspect & reward model',
-                    onTap: () => ScopeNavigator.push(
-                      context,
-                      AiPlaygroundScreen(controller: controller),
+            if (kDebugMode) ...[
+              const SizedBox(height: AppSpacing.sectionGap),
+              const SectionLabel(label: 'Developer'),
+              const SizedBox(height: AppSpacing.md),
+              ScopeSurface(
+                padding: EdgeInsets.zero,
+                elevated: false,
+                child: Column(
+                  children: [
+                    _SettingsTile(
+                      icon: Icons.science_outlined,
+                      title: 'Load Test Data',
+                      subtitle: 'Generate 10 analyzed notifications',
+                      onTap: () async {
+                        await controller.generateTestData();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Test notifications loaded'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        }
+                      },
                     ),
-                  ),
-                  const Divider(height: 1, indent: 56),
-                  _SettingsTile(
-                    icon: Icons.analytics_outlined,
-                    title: 'Diagnostics',
-                    subtitle: 'Pipeline trace and templates',
-                    onTap: () => ScopeNavigator.push(
-                      context,
-                      DiagnosticScreen(engine: controller.engine),
+                    const Divider(height: 1, indent: 56),
+                    _SettingsTile(
+                      icon: Icons.model_training_rounded,
+                      title: 'AI Playground (RLHF)',
+                      subtitle: 'Post-mortem inspect & reward model',
+                      onTap: () => ScopeNavigator.push(
+                        context,
+                        AiPlaygroundScreen(controller: controller),
+                      ),
                     ),
-                  ),
-                  const Divider(height: 1, indent: 56),
-                  _SettingsTile(
-                    icon: Icons.refresh_rounded,
-                    title: 'Refresh Notifications',
-                    subtitle: 'Pull latest from device',
-                    onTap: controller.refresh,
-                  ),
-                  const Divider(height: 1, indent: 56),
-                  _SettingsTile(
-                    icon: Icons.delete_outline_rounded,
-                    title: 'Clear All Data',
-                    subtitle: 'Remove stored notifications',
-                    onTap: controller.clearAll,
-                  ),
-                ],
+                    const Divider(height: 1, indent: 56),
+                    _SettingsTile(
+                      icon: Icons.analytics_outlined,
+                      title: 'Diagnostics',
+                      subtitle: 'Pipeline trace and templates',
+                      onTap: () => ScopeNavigator.push(
+                        context,
+                        DiagnosticScreen(engine: controller.engine),
+                      ),
+                    ),
+                    const Divider(height: 1, indent: 56),
+                    _SettingsTile(
+                      icon: Icons.refresh_rounded,
+                      title: 'Refresh Notifications',
+                      subtitle: 'Pull latest from device',
+                      onTap: controller.refresh,
+                    ),
+                    const Divider(height: 1, indent: 56),
+                    _SettingsTile(
+                      icon: Icons.delete_outline_rounded,
+                      title: 'Clear All Data',
+                      subtitle: 'Remove stored notifications',
+                      onTap: controller.clearAll,
+                    ),
+                  ],
+                ),
               ),
-            ),
+            ],
             const SizedBox(height: AppSpacing.lg),
             Text(
               'Scope · AttentionOS',
