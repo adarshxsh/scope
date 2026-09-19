@@ -5,6 +5,7 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/utils/pii_redactor.dart';
+import 'package:scope/core/analysis/model_verifier.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -40,6 +41,7 @@ class GhostAIResult {
 class GhostAI {
   static GhostAI? _instance;
   Interpreter? _interpreter;
+  ModelValidationResult? _modelValidationResult;
   final RuleEngine _ruleEngine = RuleEngine();
 
   // Slide-cache for duplicate detection
@@ -57,25 +59,89 @@ class GhostAI {
   /// Returns whether the model is loaded.
   bool get isModelLoaded => _interpreter != null;
 
+  /// Returns the verification result object for the loaded model asset.
+  ModelValidationResult? get modelValidationResult => _modelValidationResult;
+
+  /// Returns whether the model asset passed header, checksum, and signature checks.
+  bool get isModelVerified => _modelValidationResult?.isValid ?? false;
+
+  /// Returns the calculated SHA-256 hash of the loaded model asset.
+  String? get modelChecksum => _modelValidationResult?.sha256Hash;
+
+  /// Returns the error reason if model verification or loading failed.
+  String? get lastVerificationError => _modelValidationResult?.errorReason;
+
   /// Initializes the TFLite interpreter and rules database once on startup.
-  Future<void> initialize() async {
+  /// Performs binary header, SHA-256 checksum, and optional signature verification.
+  Future<void> initialize({
+    AssetBundle? bundle,
+    String assetPath = 'assets/model.tflite',
+    String? expectedChecksum = ModelVerifier.defaultModelChecksum,
+    List<int>? expectedSignature,
+    List<int>? signatureKey,
+  }) async {
     if (_interpreter != null) return;
+
     try {
-      // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      final actualBundle = bundle ?? rootBundle;
+      final byteData = await actualBundle.load(assetPath);
+      final bytes = byteData.buffer.asUint8List(
+        byteData.offsetInBytes,
+        byteData.lengthInBytes,
+      );
+
+      // 1. Verify model header, checksum, and signature
+      _modelValidationResult = ModelVerifier.verifyBytes(
+        bytes,
+        expectedSha256: expectedChecksum,
+        expectedSignature: expectedSignature,
+        signatureKey: signatureKey,
+      );
+
+      if (!_modelValidationResult!.isValid) {
+        debugPrint(
+          'GhostAI: Model verification failed for "$assetPath": ${_modelValidationResult!.errorReason}',
+        );
+        _interpreter = null;
+      } else {
+        debugPrint(
+          'GhostAI: Model verified successfully (SHA-256: ${_modelValidationResult!.sha256Hash}).',
+        );
+
+        // 2. Load interpreter from verified buffer
+        try {
+          _interpreter = Interpreter.fromBuffer(bytes);
+          debugPrint('GhostAI: TFLite interpreter loaded successfully from verified buffer.');
+        } catch (e) {
+          debugPrint('GhostAI: Failed to instantiate TFLite interpreter from buffer: $e');
+          _interpreter = null;
+        }
+      }
     } catch (e) {
-      debugPrint('GhostAI: Failed to load TFLite model: $e');
+      _modelValidationResult = ModelValidationResult.invalid(
+        errorReason: 'Failed to load asset bytes for "$assetPath": $e',
+      );
+      debugPrint('GhostAI: Failed to load TFLite model asset: $e');
+      _interpreter = null;
     }
 
     try {
-      // 2. Load and compile rules database
-      final jsonStr = await rootBundle.loadString('assets/rules.json');
+      // 3. Load and compile rules database
+      final jsonStr = await (bundle ?? rootBundle).loadString('assets/rules.json');
       _ruleEngine.compile(jsonStr);
       debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
     } catch (e) {
       debugPrint('GhostAI: Failed to initialize rules database: $e');
     }
+  }
+
+  /// Reset internal state for unit testing verification edge cases.
+  @visibleForTesting
+  void resetForTesting() {
+    _interpreter?.close();
+    _interpreter = null;
+    _modelValidationResult = null;
+    _processedNotifications.clear();
   }
 
   /// Public API: resolves look-again priority score for a notification.
