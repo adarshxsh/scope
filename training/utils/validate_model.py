@@ -70,6 +70,40 @@ def main() -> None:
     input_index = input_details[0]["index"]
     output_index = output_details[0]["index"]
 
+    # Validate input tensor shape and data type against metadata.json
+    metadata_file = None
+    for candidate in [
+        args.model.parent / "metadata.json",
+        args.model.parent.parent / "metadata.json",
+    ]:
+        if candidate.exists():
+            metadata_file = candidate
+            break
+
+    if metadata_file is not None:
+        print(f"Loading metadata: {metadata_file}")
+        with open(metadata_file, "r", encoding="utf-8") as f:
+            meta = json.load(f)
+        expected_shape = list(meta.get("flutter", {}).get("input_shape", [1, 63]))
+        expected_dtype_str = meta.get("flutter", {}).get("input_dtype", "float32")
+    else:
+        expected_shape = [1, 63]
+        expected_dtype_str = "float32"
+
+    actual_shape = list(input_details[0]["shape"])
+    actual_dtype = input_details[0]["dtype"]
+
+    print(f"Validating tensor contract: shape={actual_shape}, dtype={actual_dtype.__name__}")
+    if actual_shape != expected_shape:
+        raise ValueError(
+            f"Input tensor shape mismatch: expected {expected_shape}, got {actual_shape}"
+        )
+
+    if expected_dtype_str == "float32" and actual_dtype not in (np.float32, np.int8, np.uint8):
+        raise ValueError(
+            f"Input tensor dtype mismatch: expected float32 or int8, got {actual_dtype}"
+        )
+
     print("Running inference and measuring latency...")
     latencies = []
     y_pred = []
