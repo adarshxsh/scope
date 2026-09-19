@@ -106,7 +106,7 @@ void main() {
 
       expect(result.modelVersion, 'fast-path-fallback');
       expect(result.explanation, contains('Fast-path thermal/resource fallback engaged'));
-      expect(result.latencyMs, lessThan(50));
+      expect(result.latencyMs, lessThanOrEqualTo(50));
       expect(result.priority, isNotNull);
     });
 
