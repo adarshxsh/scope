@@ -151,6 +151,50 @@ void main() {
       );
       expect(values[FeatureVector.featureNames.indexOf('person_present')], 1.0);
     });
+
+    test('supports dynamic sizing, named feature getters, and padOrTruncate', () {
+      final sampleValues = List<double>.filled(FeatureVector.size, 0.5);
+      final otpIndex = FeatureVector.featureNames.indexOf('contains_otp');
+      final deadlineIndex = FeatureVector.featureNames.indexOf('contains_deadline');
+      sampleValues[otpIndex] = 1.0;
+      sampleValues[deadlineIndex] = 0.0;
+
+      final vector = FeatureVector(sampleValues);
+
+      // Sizing assertions
+      expect(FeatureVector.size, equals(FeatureVector.featureNames.length));
+      expect(vector.values.length, equals(FeatureVector.size));
+
+      // Named getters
+      expect(vector.getNamedFeature('contains_otp'), equals(1.0));
+      expect(vector.getNamedFeature('contains_deadline'), equals(0.0));
+      expect(vector.getNamedFeature('non_existent_feature'), equals(0.0));
+      expect(vector.getNamedFeature('non_existent_feature', 99.0), equals(99.0));
+
+      expect(vector.getValueByName('contains_otp'), equals(1.0));
+      expect(vector.getValueByName('contains_deadline'), equals(0.0));
+      expect(vector.getValueByName('non_existent_feature'), isNull);
+
+      // Pad or truncate
+      final padded = vector.padOrTruncate(70);
+      expect(padded.length, equals(70));
+      expect(padded.sublist(0, FeatureVector.size), equals(sampleValues));
+      expect(padded.sublist(FeatureVector.size), equals(List<double>.filled(7, 0.0)));
+
+      final truncated = vector.padOrTruncate(10);
+      expect(truncated.length, equals(10));
+      expect(truncated, equals(sampleValues.sublist(0, 10)));
+
+      final sameSize = vector.padOrTruncate(FeatureVector.size);
+      expect(sameSize.length, equals(FeatureVector.size));
+      expect(sameSize, equals(sampleValues));
+
+      // Constructor validation for mismatched dimensions
+      expect(
+        () => FeatureVector(List<double>.filled(10, 0.0)),
+        throwsArgumentError,
+      );
+    });
   });
 
   group('MetadataAnalyzer', () {
