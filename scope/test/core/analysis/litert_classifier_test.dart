@@ -42,6 +42,7 @@ void main() {
       expect(result.engineName, contains('fallback'));
       expect(result.score, equals(0.0));
       expect(result.isFallback, isTrue);
+      expect(result.matchedSignals, isNotEmpty);
     });
   });
 }
