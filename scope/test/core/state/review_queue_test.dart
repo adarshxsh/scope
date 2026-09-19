@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:scope/core/bridge/notification_bridge.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/state/providers.dart';
 import 'package:scope/core/state/notification_controller.dart';
@@ -339,6 +341,71 @@ void main() {
       controller.complete('c1');
       expect(controller.isCompleted('c1'), isTrue);
       expect(container.read(reviewQueueProvider).first.state, equals(ReviewState.REVIEWED));
+    });
+
+    test('subscribes to EventChannel stream and processes pushed notifications without polling', () async {
+      final streamController = StreamController<AppNotification>();
+      final bridge = NotificationBridge(notificationStream: streamController.stream);
+      final testController = NotificationController(bridge: bridge, container: container);
+
+      testController.startListening();
+
+      final raw = AppNotification(
+        id: 'push_1',
+        packageName: 'com.push.app',
+        title: 'Pushed Event',
+        content: 'Stream notification test',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      streamController.add(raw);
+
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      expect(testController.notifications.any((n) => n.id == 'push_1'), isTrue);
+      expect(container.read(reviewQueueProvider).any((n) => n.id == 'push_1'), isTrue);
+
+      testController.dispose();
+      await streamController.close();
+    });
+
+    test('ignores duplicate notifications pushed from stream', () async {
+      final streamController = StreamController<AppNotification>();
+      final bridge = NotificationBridge(notificationStream: streamController.stream);
+      final testController = NotificationController(bridge: bridge, container: container);
+
+      testController.startListening();
+
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      final raw = AppNotification(
+        id: 'push_dup_1',
+        packageName: 'com.push.app',
+        title: 'Duplicate Event',
+        content: 'Content',
+        timestamp: ts,
+      );
+
+      streamController.add(raw);
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      final rawDup = AppNotification(
+        id: 'push_dup_2',
+        packageName: 'com.push.app',
+        title: 'Duplicate Event',
+        content: 'Content',
+        timestamp: ts,
+      );
+
+      streamController.add(rawDup);
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      final matches = testController.notifications.where((n) =>
+          n.packageName == 'com.push.app' && n.title == 'Duplicate Event').toList();
+
+      expect(matches.length, equals(1));
+
+      testController.dispose();
+      await streamController.close();
     });
   });
 }
