@@ -15,8 +15,11 @@ class AnalysisResult {
   /// Latency of the analysis step in milliseconds.
   final int latencyMs;
 
-  /// Whether this result was produced by a fallback heuristic due to model initialization bypass or error.
+  /// Whether this result was produced by a heuristic fallback state due to model initialization bypass or error.
   final bool isFallback;
+
+  /// Reason for entering fallback state, if applicable.
+  final String? fallbackReason;
 
   const AnalysisResult({
     required this.category,
@@ -25,9 +28,11 @@ class AnalysisResult {
     required this.matchedSignals,
     required this.latencyMs,
     this.isFallback = false,
+    this.fallbackReason,
   });
 
   @override
   String toString() => 'AnalysisResult(category: $category, score: $score, '
-      'engineName: $engineName, matchedSignals: $matchedSignals, latencyMs: ${latencyMs}ms, isFallback: $isFallback)';
+      'engineName: $engineName, matchedSignals: $matchedSignals, latencyMs: ${latencyMs}ms, '
+      'isFallback: $isFallback, fallbackReason: $fallbackReason)';
 }

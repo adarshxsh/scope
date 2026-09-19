@@ -15,8 +15,10 @@ class ExplanationGenerator {
     buffer.writeln('• Category: Inferred semantic category is **${fusedResult.category}**.');
     buffer.writeln('• Source: Handled by **${fusedResult.engineName}**.');
     if (fusedResult.isFallback) {
-      buffer.writeln('• Status: **Fallback Heuristic (ML Inference Bypassed/Failed)**.');
-      buffer.writeln('• Confidence: **N/A (Fallback)**.');
+      buffer.writeln('• Confidence: **Fallback Heuristic Active** (${(fusedResult.score * 100).toStringAsFixed(0)}% fallback score).');
+      if (fusedResult.fallbackReason != null) {
+        buffer.writeln('• Fallback Reason: ${fusedResult.fallbackReason}');
+      }
     } else {
       buffer.writeln('• Confidence: **${(fusedResult.score * 100).toStringAsFixed(0)}%**.');
     }
