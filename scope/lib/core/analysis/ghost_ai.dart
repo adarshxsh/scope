@@ -5,6 +5,7 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/utils/pii_redactor.dart';
+import 'package:scope/core/analysis/model_verifier.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -61,18 +62,27 @@ class GhostAI {
   Future<void> initialize() async {
     if (_interpreter != null) return;
     try {
-      // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      // 1. Verify and load model interpreter buffer
+      final modelBytes = await ModelVerifier.instance.verifyAndLoadBytes('assets/model.tflite');
+      if (modelBytes != null) {
+        _interpreter = Interpreter.fromBuffer(modelBytes);
+        debugPrint('GhostAI: TFLite interpreter loaded successfully from verified buffer.');
+      } else {
+        debugPrint('GhostAI: Asset verification failed for assets/model.tflite. Falling back to heuristic mode.');
+      }
     } catch (e) {
       debugPrint('GhostAI: Failed to load TFLite model: $e');
     }
 
     try {
-      // 2. Load and compile rules database
-      final jsonStr = await rootBundle.loadString('assets/rules.json');
-      _ruleEngine.compile(jsonStr);
-      debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
+      // 2. Verify and load rules database
+      final jsonStr = await ModelVerifier.instance.verifyAndLoadString('assets/rules.json');
+      if (jsonStr != null) {
+        _ruleEngine.compile(jsonStr);
+        debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
+      } else {
+        debugPrint('GhostAI: Asset verification failed for assets/rules.json. Rule engine uninitialized.');
+      }
     } catch (e) {
       debugPrint('GhostAI: Failed to initialize rules database: $e');
     }
