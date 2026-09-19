@@ -3,6 +3,7 @@ package com.scope.attentions
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
@@ -24,12 +25,34 @@ class NotificationCollectorService : NotificationListenerService() {
 
     companion object {
         private const val TAG = "NotifCollector"
+        private const val MAX_QUEUE_SIZE = 500
+
+        /** Default set of blacklisted packages that are excluded prior to queuing. */
+        private val defaultBlacklistedPackages = setOf(
+            "com.android.systemui.volume",
+            "com.android.providers.downloads"
+        )
+
+        /** Configurable set of excluded package names. */
+        private val blacklistedPackages = ConcurrentHashMap.newKeySet<String>().apply {
+            addAll(defaultBlacklistedPackages)
+        }
 
         /** Thread-safe queue of captured notifications. */
         private val queue = ConcurrentLinkedQueue<NotificationData>()
 
         /** Counter for generating simple unique IDs within a session. */
         private var idCounter = 0L
+
+        fun addBlacklistedPackage(pkg: String) {
+            blacklistedPackages.add(pkg)
+        }
+
+        fun removeBlacklistedPackage(pkg: String) {
+            blacklistedPackages.remove(pkg)
+        }
+
+        fun getBlacklistedPackages(): Set<String> = HashSet(blacklistedPackages)
 
         /**
          * Drains all notifications from the queue and returns them.
@@ -53,11 +76,18 @@ class NotificationCollectorService : NotificationListenerService() {
 
     private fun addSbnToQueue(sbn: StatusBarNotification) {
         try {
+            val packageName = sbn.packageName ?: "unknown"
+
+            // Exclusion check: Reject blacklisted packages prior to queuing
+            if (blacklistedPackages.contains(packageName)) {
+                Log.d(TAG, "Excluded notification from blacklisted package: $packageName")
+                return
+            }
+
             val extras = sbn.notification.extras
             val title = extras?.getCharSequence("android.title")?.toString() ?: ""
             val text = extras?.getCharSequence("android.text")?.toString() ?: ""
             val isOngoing = sbn.isOngoing
-            val packageName = sbn.packageName ?: "unknown"
 
             // Ignore if same package, title, and content already exist in queue
             val isDuplicate = queue.any {
@@ -65,6 +95,11 @@ class NotificationCollectorService : NotificationListenerService() {
             }
             if (isDuplicate) {
                 return
+            }
+
+            // Bounded memory enforcement: Maintain queue size <= MAX_QUEUE_SIZE
+            while (queue.size >= MAX_QUEUE_SIZE) {
+                queue.poll()
             }
 
             val data = NotificationData(
@@ -80,7 +115,7 @@ class NotificationCollectorService : NotificationListenerService() {
             queue.add(data)
             Log.d(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
         } catch (e: Exception) {
-            Log.e(TAG, "Error capturing/adding notification", e)
+            Log.e(TAG, "Error capturing/adding notification: ${e.javaClass.simpleName}")
         }
     }
 

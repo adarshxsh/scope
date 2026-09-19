@@ -42,9 +42,37 @@ class SettingsScreen extends StatelessWidget {
                   const Divider(height: 1, indent: 56),
                   _SettingsTile(
                     icon: Icons.shield_outlined,
-                    title: 'Privacy',
-                    subtitle: 'All analysis runs on your device',
-                    onTap: null,
+                    title: 'Privacy & Ingestion Guardrails',
+                    subtitle: 'Blacklist, Category Exclusions & Encryption At Rest',
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Ingestion Guardrails Active'),
+                          content: SingleChildScrollView(
+                            child: ListBody(
+                              children: [
+                                Text('• Package Blacklist: ${controller.guardrails.policy.blacklistedPackages.length} packages blocked'),
+                                const SizedBox(height: 8),
+                                Text('• Category Exclusions: ${controller.guardrails.policy.excludedCategories.isEmpty ? "None" : controller.guardrails.policy.excludedCategories.join(", ")}'),
+                                const SizedBox(height: 8),
+                                const Text('• Input Sanitization: Title (max 500 chars), Body (max 2000 chars)'),
+                                const SizedBox(height: 8),
+                                const Text('• Database Encryption: Field-level encryption active'),
+                                const SizedBox(height: 8),
+                                const Text('• Memory Cap: 500 notification limit enforced'),
+                              ],
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(ctx).pop(),
+                              child: const Text('Close'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                   const Divider(height: 1, indent: 56),
                   _SettingsTile(

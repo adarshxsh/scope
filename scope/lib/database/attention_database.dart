@@ -7,6 +7,7 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/database/tables.dart';
 import 'package:scope/database/daos.dart';
 import 'package:scope/database/converters.dart';
+import 'package:scope/database/encryption_converter.dart';
 
 part 'attention_database.g.dart';
 
