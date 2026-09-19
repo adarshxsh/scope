@@ -288,7 +288,7 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
 
   Widget _buildPostMortemPanel(AppNotification n, ThemeData theme) {
     final featuresMap = n.extractedFeatures ?? {};
-    final features = ExtractedFeatures.fromMap(featuresMap);
+    final sanitizedMap = ExtractedFeatures.redactMap(featuresMap) ?? {};
 
     // Identify defining features (e.g. keywords)
     final definingWords = <String>[];
@@ -297,8 +297,33 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     if (n.title.toLowerCase().contains('credited') || n.content.toLowerCase().contains('credited')) definingWords.add('credited');
     if (n.title.toLowerCase().contains('offer') || n.content.toLowerCase().contains('offer')) definingWords.add('offer');
     if (n.title.toLowerCase().contains('sale') || n.content.toLowerCase().contains('sale')) definingWords.add('sale');
-    if (features.otp != null) definingWords.add('OTP:${features.otp}');
-    if (features.amount != null) definingWords.add('Amount:Rs.${features.amount}');
+
+    final otp = sanitizedMap['otp'] as String?;
+    if (otp != null && otp.isNotEmpty) definingWords.add('OTP:$otp');
+
+    final amount = sanitizedMap['amount'];
+    if (amount != null && amount.toString().isNotEmpty) definingWords.add('Amount:$amount');
+
+    final urls = sanitizedMap['urls'] as List?;
+    if (urls != null && urls.isNotEmpty) {
+      for (final u in urls) {
+        definingWords.add('URL:$u');
+      }
+    }
+
+    final emails = sanitizedMap['emails'] as List?;
+    if (emails != null && emails.isNotEmpty) {
+      for (final e in emails) {
+        definingWords.add('Email:$e');
+      }
+    }
+
+    final phoneNumbers = sanitizedMap['phoneNumbers'] as List?;
+    if (phoneNumbers != null && phoneNumbers.isNotEmpty) {
+      for (final p in phoneNumbers) {
+        definingWords.add('Phone:$p');
+      }
+    }
 
     return ScopeSurface(
       padding: const EdgeInsets.all(AppSpacing.lg),
