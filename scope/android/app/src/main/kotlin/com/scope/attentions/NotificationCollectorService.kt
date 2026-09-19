@@ -1,5 +1,11 @@
 package com.scope.attentions
 
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.BatteryManager
+import android.os.Build
+import android.os.PowerManager
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
@@ -49,6 +55,32 @@ class NotificationCollectorService : NotificationListenerService() {
          * Returns the current queue size (for diagnostics).
          */
         fun queueSize(): Int = queue.size
+
+        /**
+         * Checks whether Android low-power save mode or battery < 15% is active.
+         */
+        fun isLowPowerModeActive(context: Context): Boolean {
+            return try {
+                val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+                val isPowerSaveMode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    powerManager?.isPowerSaveMode == true
+                } else {
+                    false
+                }
+
+                val batteryIntent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+                val level = batteryIntent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+                val scale = batteryIntent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
+                val batteryLevel = if (level >= 0 && scale > 0) (level * 100 / scale) else 100
+
+                val status = batteryIntent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+                val isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+
+                (isPowerSaveMode || batteryLevel < 15) && !isCharging
+            } catch (e: Exception) {
+                false
+            }
+        }
     }
 
     private fun addSbnToQueue(sbn: StatusBarNotification) {
@@ -67,6 +99,8 @@ class NotificationCollectorService : NotificationListenerService() {
                 return
             }
 
+            val lowPower = isLowPowerModeActive(this)
+
             val data = NotificationData(
                 id = "notif_${++idCounter}",
                 packageName = packageName,
@@ -74,11 +108,12 @@ class NotificationCollectorService : NotificationListenerService() {
                 content = text,
                 timestamp = sbn.postTime,
                 category = sbn.notification.category,
-                isOngoing = isOngoing
+                isOngoing = isOngoing,
+                isLowPowerMode = lowPower
             )
 
             queue.add(data)
-            Log.d(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
+            Log.d(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)} (lowPower=$lowPower)")
         } catch (e: Exception) {
             Log.e(TAG, "Error capturing/adding notification", e)
         }
