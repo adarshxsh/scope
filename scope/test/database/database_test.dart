@@ -273,5 +273,52 @@ void main() {
       // Missing one deleted due to being orphaned
       expect(queueItems.first.notificationId, equals('n-new'));
     });
+
+    test('enforceCapacityLimit evicts oldest notifications and associated review queue items', () async {
+      final baseTime = DateTime.now().millisecondsSinceEpoch;
+      
+      // Insert 10 notifications with increasing timestamps
+      for (int i = 1; i <= 10; i++) {
+        final notifId = 'notif_$i';
+        await db.notificationDao.insertNotification(NotificationEntry(
+          id: notifId,
+          packageName: 'com.test',
+          title: 'Notification $i',
+          content: 'Content $i',
+          timestamp: baseTime + i * 1000,
+          state: ReviewState.ACTIVE,
+          reviewed: false,
+          dismissed: false,
+          isOngoing: false,
+          createdAt: DateTime.now(),
+        ));
+
+        await db.reviewQueueDao.insertItem(ReviewQueueEntry(
+          id: i,
+          notificationId: notifId,
+          priority: 'high',
+          enqueueTime: DateTime.now(),
+          status: ReviewState.ACTIVE,
+        ));
+      }
+
+      expect(await db.notificationDao.getCount(), equals(10));
+      expect((await db.reviewQueueDao.getAll()).length, equals(10));
+
+      // Enforce custom capacity limit of 5
+      final evicted = await db.enforceCapacityLimit(maxItems: 5);
+      expect(evicted, equals(5));
+
+      final remainingNotifs = await db.notificationDao.getAll();
+      expect(remainingNotifs.length, equals(5));
+      // The remaining ones should be the 5 newest (indices 6 to 10)
+      final remainingIds = remainingNotifs.map((n) => n.id).toList();
+      expect(remainingIds, containsAll(['notif_6', 'notif_7', 'notif_8', 'notif_9', 'notif_10']));
+      expect(remainingIds, isNot(contains('notif_1')));
+
+      final remainingQueue = await db.reviewQueueDao.getAll();
+      expect(remainingQueue.length, equals(5));
+      expect(remainingQueue.map((q) => q.notificationId), containsAll(['notif_6', 'notif_7', 'notif_8', 'notif_9', 'notif_10']));
+    });
   });
 }
