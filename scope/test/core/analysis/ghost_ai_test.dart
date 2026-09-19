@@ -233,5 +233,21 @@ void main() {
         expect(result.reviewScore, isPositive); // Not overridden
       });
     });
+
+    group('Dynamic Tensor & Dimension Guardrails', () {
+      test('predict handles feature vectors and model dimension adaptation without error', () async {
+        final notif = AppNotification(
+          id: 'test-dim-1',
+          packageName: 'com.example.app',
+          title: 'Hello',
+          content: 'Meeting tomorrow at 5pm',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        final result = await GhostAI.predict(notif);
+        expect(result.reviewScore, isNotNull);
+        expect(result.featureVector, isNotEmpty);
+      });
+    });
   });
 }

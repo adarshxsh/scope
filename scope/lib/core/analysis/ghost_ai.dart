@@ -93,16 +93,35 @@ class GhostAI {
     int inferenceTimeUs = 0;
 
     if (_interpreter != null) {
-      final input = [featureVector];
-      final output = List<double>.filled(1, 0.0).reshape([1, 1]);
+      List<double> inputVector = featureVector;
+      try {
+        final inputTensor = _interpreter!.getInputTensor(0);
+        final shape = inputTensor.shape;
+        final expectedDim = shape.isNotEmpty ? shape.last : inputVector.length;
+        if (inputVector.length != expectedDim && expectedDim > 0) {
+          inputVector = FeatureVector(inputVector)
+              .padOrTruncate(expectedDim)
+              .toList();
+        }
+      } catch (e) {
+        debugPrint('GhostAI: Failed to inspect input tensor shape, using original vector length: $e');
+      }
 
-      final inferStopwatch = Stopwatch()..start();
-      _interpreter!.run(input, output);
-      inferStopwatch.stop();
+      try {
+        final input = [inputVector];
+        final output = List<double>.filled(1, 0.0).reshape([1, 1]);
 
-      inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
-      // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
-      predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+        final inferStopwatch = Stopwatch()..start();
+        _interpreter!.run(input, output);
+        inferStopwatch.stop();
+
+        inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
+        // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
+        predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+      } catch (e) {
+        debugPrint('GhostAI: TFLite model inference failed, using heuristic fallback: $e');
+        predictedScore = _heuristicLookAgainScore(featureVector);
+      }
     } else {
       // Heuristic fallback if model not loaded
       predictedScore = _heuristicLookAgainScore(featureVector);
