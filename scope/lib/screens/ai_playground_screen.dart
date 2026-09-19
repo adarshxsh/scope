@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/extracted_features.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
@@ -13,7 +14,12 @@ import 'package:scope/widgets/section_header.dart';
 class AiPlaygroundScreen extends StatefulWidget {
   final NotificationController controller;
 
-  const AiPlaygroundScreen({super.key, required this.controller});
+  AiPlaygroundScreen({super.key, required this.controller}) {
+    assert(kDebugMode || kProfileMode, 'AiPlaygroundScreen is disabled in release mode.');
+    if (kReleaseMode) {
+      throw UnsupportedError('AiPlaygroundScreen is disabled in release mode.');
+    }
+  }
 
   @override
   State<AiPlaygroundScreen> createState() => _AiPlaygroundScreenState();
@@ -146,6 +152,9 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (kReleaseMode) {
+      return const SizedBox.shrink();
+    }
     final theme = Theme.of(context);
     final notifications = widget.controller.notifications.take(15).toList();
 
