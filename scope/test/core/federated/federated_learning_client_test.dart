@@ -69,6 +69,60 @@ void main() {
       );
     });
 
+    test('validates non-finite score and feature inputs', () {
+      final validVector = List<double>.filled(63, 0.5);
+
+      expect(
+        () => client.computeGradientUpdate(
+          featureVector: validVector,
+          predictedScore: double.nan,
+          targetScore: 0.5,
+        ),
+        throwsArgumentError,
+      );
+
+      expect(
+        () => client.computeGradientUpdate(
+          featureVector: validVector,
+          predictedScore: 0.5,
+          targetScore: double.infinity,
+        ),
+        throwsArgumentError,
+      );
+
+      final nanVector = List<double>.filled(63, 0.5);
+      nanVector[10] = double.nan;
+      expect(
+        () => client.computeGradientUpdate(
+          featureVector: nanVector,
+          predictedScore: 0.5,
+          targetScore: 0.2,
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('enforces maxBufferSize memory quota using FIFO eviction', () {
+      final cappedClient = FederatedLearningClient(
+        privacyBudgetTracker: PrivacyBudgetTracker(maxEpsilon: 100.0),
+        maxBufferSize: 3,
+        defaultEpsilonStep: 0.01,
+      );
+
+      final vector = List<double>.filled(63, 0.1);
+
+      for (int i = 0; i < 5; i++) {
+        cappedClient.computeGradientUpdate(
+          featureVector: vector,
+          predictedScore: 0.5,
+          targetScore: 0.1,
+        );
+      }
+
+      // Buffer size must be capped at maxBufferSize (3)
+      expect(cappedClient.bufferedUpdates.length, equals(3));
+    });
+
     test('computes gradient, applies L2 norm clipping and noise injection', () {
       final featureVector = List<double>.generate(63, (i) => (i + 1) * 0.1);
       final update = client.computeGradientUpdate(
