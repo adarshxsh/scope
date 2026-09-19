@@ -15,9 +15,14 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
   final AttentionDatabase? _db;
   ReviewQueueNotifier([this._db]) : super([]);
 
+  static const int _maxQueueSize = 500;
+
+  /// Exposes current queue state for tests and UI getters.
+  List<AppNotification> get currentList => state;
+
   /// Load a list of notifications directly (used on startup recovery).
   void load(List<AppNotification> list) {
-    state = list;
+    state = list.length > _maxQueueSize ? list.take(_maxQueueSize).toList() : list;
   }
 
   /// Add a notification to the review queue.
@@ -49,7 +54,8 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
         state: ReviewState.ACTIVE,
         lastUpdated: now,
       );
-      state = [...state, newItem];
+      final updatedList = [...state, newItem];
+      state = updatedList.length > _maxQueueSize ? updatedList.take(_maxQueueSize).toList() : updatedList;
     }
 
     // Persist to DB
