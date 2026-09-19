@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/extracted_features.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/privacy/pii_redactor.dart';
 import 'package:scope/core/utils/smart_actions.dart';
 import 'package:scope/theme/app_colors.dart';
 import 'package:scope/theme/app_spacing.dart';
@@ -115,12 +116,12 @@ class ReviewCard extends StatelessWidget {
             ),
           ),
         Text(
-          notification.title.isNotEmpty ? notification.title : 'Notification',
+          PiiRedactor.redactText(notification.title.isNotEmpty ? notification.title : 'Notification').redactedText,
           style: titleStyle,
         ),
         SizedBox(height: isLow ? AppSpacing.sm : AppSpacing.md),
         Text(
-          _summary,
+          PiiRedactor.redactText(_summary).redactedText,
           style: bodyStyle,
           maxLines: isLow ? 2 : 5,
           overflow: TextOverflow.ellipsis,
@@ -201,7 +202,7 @@ class DetectedInfoPanel extends StatelessWidget {
         if (features.urls.isNotEmpty)
           _DetectedLine(icon: Icons.link, text: features.urls.first, color: rowColor),
         if (features.phoneNumbers.isNotEmpty)
-          _DetectedLine(icon: Icons.phone, text: features.phoneNumbers.first, color: rowColor),
+          _DetectedLine(icon: Icons.phone, text: PiiRedactor.redactText(features.phoneNumbers.first).redactedText, color: rowColor),
       ],
     );
   }

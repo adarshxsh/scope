@@ -5,6 +5,7 @@
 library;
 
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/privacy/pii_redactor.dart';
 
 /// Abstract interface for notification persistence.
 ///
@@ -44,9 +45,10 @@ class InMemoryNotificationStorage implements NotificationStorage {
 
   @override
   Future<void> save(AppNotification notification) async {
+    final safeNotif = PiiRedactor.redactNotification(notification, source: 'IN_MEMORY_STORAGE');
     // Remove existing entry with the same ID (upsert behavior)
-    _store.removeWhere((n) => n.id == notification.id);
-    _store.add(notification);
+    _store.removeWhere((n) => n.id == safeNotif.id);
+    _store.add(safeNotif);
   }
 
   @override

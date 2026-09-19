@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/extracted_features.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/privacy/pii_redactor.dart';
 import 'package:scope/core/state/notification_controller.dart';
 import 'package:scope/core/utils/smart_actions.dart';
 import 'package:scope/theme/app_colors.dart';
@@ -134,7 +135,7 @@ class NotificationDetailScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _DetailSection(title: 'Raw Message', child: Text(notification.content, style: theme.textTheme.bodyMedium)),
+                        _DetailSection(title: 'Raw Message', child: Text(PiiRedactor.redactText(notification.content).redactedText, style: theme.textTheme.bodyMedium)),
                         const SizedBox(height: AppSpacing.md),
                         _DetailSection(
                           title: 'What I found',
@@ -148,9 +149,9 @@ class NotificationDetailScreen extends StatelessWidget {
                               if (features.urls.isNotEmpty)
                                 ScopeInfoRow(label: 'Website', value: features.urls.first),
                               if (features.phoneNumbers.isNotEmpty)
-                                ScopeInfoRow(label: 'Phone', value: features.phoneNumbers.first),
+                                ScopeInfoRow(label: 'Phone', value: PiiRedactor.redactText(features.phoneNumbers.first).redactedText),
                               if (features.emails.isNotEmpty)
-                                ScopeInfoRow(label: 'Email', value: features.emails.first),
+                                ScopeInfoRow(label: 'Email', value: PiiRedactor.redactText(features.emails.first).redactedText),
                               ScopeInfoRow(label: 'Organization', value: notification.packageName),
                               if (!features.hasDeadline &&
                                   features.amount == null &&
