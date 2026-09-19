@@ -4,6 +4,7 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
+import 'package:scope/core/utils/pii_redactor.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -327,7 +328,10 @@ class GhostAI {
 
   /// Outputs structured AI execution reports in debug mode without cleartext PII.
   void _logStructured(AppNotification notification, GhostAIResult result) {
+    final redactedTitle = PiiRedactor.redactTitle(notification.title);
+    final redactedContent = PiiRedactor.redactContent(notification.content);
     debugPrint('=== GHOST AI INFERENCE REPORT ===');
+    debugPrint('Notification: "$redactedTitle" - "$redactedContent"');
     debugPrint('Package: ${notification.packageName}');
     debugPrint('Title Length: ${notification.title.length}, Content Length: ${notification.content.length}');
     debugPrint('Feature Vector (First 15): ${result.featureVector.take(15).toList()}...');
