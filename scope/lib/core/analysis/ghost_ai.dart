@@ -26,6 +26,15 @@ class GhostAIResult {
   /// Rule match score (0.0 to 1.0) output by the rule engine.
   final double? ruleScore;
 
+  /// Whether fallback heuristic mode was executed.
+  final bool isFallback;
+
+  /// Whether model execution encountered an unhandled failure/exception.
+  final bool isError;
+
+  /// Error message details if model execution failed.
+  final String? errorMessage;
+
   const GhostAIResult({
     required this.reviewScore,
     this.confidence,
@@ -33,6 +42,9 @@ class GhostAIResult {
     required this.featureVector,
     required this.predictedScore,
     this.ruleScore,
+    this.isFallback = false,
+    this.isError = false,
+    this.errorMessage,
   });
 }
 
@@ -92,20 +104,31 @@ class GhostAI {
     // 2. Model inference
     double predictedScore = 0.0;
     int inferenceTimeUs = 0;
+    bool isFallback = false;
+    bool isError = false;
+    String? errorMessage;
 
     if (_interpreter != null) {
-      final input = [featureVector];
-      final output = List<double>.filled(1, 0.0).reshape([1, 1]);
+      try {
+        final input = [featureVector];
+        final output = List<double>.filled(1, 0.0).reshape([1, 1]);
 
-      final inferStopwatch = Stopwatch()..start();
-      _interpreter!.run(input, output);
-      inferStopwatch.stop();
+        final inferStopwatch = Stopwatch()..start();
+        _interpreter!.run(input, output);
+        inferStopwatch.stop();
 
-      inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
-      // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
-      predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+        inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
+        // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
+        predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+      } catch (e) {
+        isFallback = true;
+        isError = true;
+        errorMessage = 'TFLite inference execution failure: $e';
+        predictedScore = _heuristicLookAgainScore(featureVector);
+      }
     } else {
       // Heuristic fallback if model not loaded
+      isFallback = true;
       predictedScore = _heuristicLookAgainScore(featureVector);
     }
 
@@ -173,6 +196,9 @@ class GhostAI {
       featureVector: featureVector,
       predictedScore: predictedScore,
       ruleScore: ruleScore,
+      isFallback: isFallback,
+      isError: isError,
+      errorMessage: errorMessage,
     );
 
     // Structured logging in debug mode
