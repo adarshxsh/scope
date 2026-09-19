@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
+import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/models/notification_model.dart';
 
 void main() {
@@ -32,7 +33,7 @@ void main() {
       expect(result.confidence, equals(1.0));
       expect(result.inferenceTimeUs, isPositive);
       expect(result.featureVector, isNotEmpty);
-      expect(result.featureVector.length, equals(63));
+      expect(result.featureVector.length, equals(FeatureVector.size));
       expect(result.predictedScore, equals(1.0)); // Heuristic fallback score for OTP
     });
 

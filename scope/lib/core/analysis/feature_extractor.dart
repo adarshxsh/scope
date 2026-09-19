@@ -167,7 +167,7 @@ class FeatureVector {
     'category_id',
   ];
 
-  static const int size = 63;
+  static int get size => featureNames.length;
 
   final List<double> values;
 
@@ -184,10 +184,44 @@ class FeatureVector {
     }
   }
 
+  /// Gets the value of a feature by its [name]. Returns [defaultValue] if not found.
+  double getNamedFeature(String name, [double defaultValue = 0.0]) {
+    final index = featureNames.indexOf(name);
+    if (index < 0 || index >= values.length) {
+      return defaultValue;
+    }
+    return values[index];
+  }
+
+  /// Gets the value of a feature by its [name]. Returns `null` if not found.
+  double? getValueByName(String name) {
+    final index = featureNames.indexOf(name);
+    if (index < 0 || index >= values.length) {
+      return null;
+    }
+    return values[index];
+  }
+
+  /// Adapts feature values to [targetDimension] by padding with 0.0 or truncating as needed.
+  List<double> padOrTruncate(int targetDimension) {
+    if (values.length == targetDimension) {
+      return toList();
+    }
+    if (values.length > targetDimension) {
+      return values.sublist(0, targetDimension);
+    }
+    final padded = List<double>.filled(targetDimension, 0.0);
+    for (var i = 0; i < values.length; i++) {
+      padded[i] = values[i];
+    }
+    return padded;
+  }
+
   List<double> toList() => List<double>.from(values, growable: false);
 
   Map<String, double> toNamedMap() => {
-    for (var i = 0; i < featureNames.length; i++) featureNames[i]: values[i],
+    for (var i = 0; i < math.min(featureNames.length, values.length); i++)
+      featureNames[i]: values[i],
   };
 }
 

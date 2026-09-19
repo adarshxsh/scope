@@ -87,14 +87,27 @@ class GhostAI {
     final stopwatch = Stopwatch()..start();
 
     // 1. Feature extraction using the existing FeatureExtractor
-    final featureVector = FeatureExtractor.extractFromAppNotification(notification);
+    final featureVector = FeatureExtractor.extractVector(
+      NotificationFeatureInput.fromAppNotification(notification),
+    );
 
     // 2. Model inference
     double predictedScore = 0.0;
     int inferenceTimeUs = 0;
 
     if (_interpreter != null) {
-      final input = [featureVector];
+      int expectedDim = FeatureVector.size;
+      try {
+        final shape = _interpreter!.getInputTensor(0).shape;
+        if (shape.isNotEmpty) {
+          expectedDim = shape.last;
+        }
+      } catch (e) {
+        debugPrint('GhostAI: Failed to inspect input tensor shape: $e');
+      }
+
+      final adaptedVector = featureVector.padOrTruncate(expectedDim);
+      final input = [adaptedVector];
       final output = List<double>.filled(1, 0.0).reshape([1, 1]);
 
       final inferStopwatch = Stopwatch()..start();
@@ -148,8 +161,8 @@ class GhostAI {
     }
 
     // 5. Apply deterministic overrides (expired OTP, expired reminders, duplicates, completed tasks)
-    final hasOtp = featureVector[11] == 1.0; // contains_otp
-    final hasDeadline = featureVector[27] == 1.0; // contains_deadline
+    final hasOtp = featureVector.getNamedFeature('contains_otp') == 1.0;
+    final hasDeadline = featureVector.getNamedFeature('contains_deadline') == 1.0;
 
     if (hasOtp && _isOtpExpired(notification)) {
       finalScore = 0.0;
@@ -170,7 +183,7 @@ class GhostAI {
       reviewScore: finalScore,
       confidence: 1.0,
       inferenceTimeUs: inferenceTimeUs > 0 ? inferenceTimeUs : stopwatch.elapsedMicroseconds,
-      featureVector: featureVector,
+      featureVector: featureVector.toList(),
       predictedScore: predictedScore,
       ruleScore: ruleScore,
     );
@@ -184,11 +197,11 @@ class GhostAI {
   }
 
   /// Helper to compute heuristic score if model is not loaded.
-  double _heuristicLookAgainScore(List<double> featureVector) {
-    if (featureVector[11] == 1.0) return 1.0; // OTP
-    if (featureVector[20] == 1.0) return 0.05; // Promo
-    if (featureVector[10] == 1.0) return 0.85; // Money/finance
-    if (featureVector[27] == 1.0) return 0.80; // Deadline
+  double _heuristicLookAgainScore(FeatureVector featureVector) {
+    if (featureVector.getNamedFeature('contains_otp') == 1.0) return 1.0; // OTP
+    if (featureVector.getNamedFeature('contains_discount') == 1.0) return 0.05; // Promo
+    if (featureVector.getNamedFeature('contains_money') == 1.0) return 0.85; // Money/finance
+    if (featureVector.getNamedFeature('contains_deadline') == 1.0) return 0.80; // Deadline
     return 0.35; // Default medium-low fallback
   }
 
