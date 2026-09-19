@@ -12,8 +12,14 @@ class LiteRtClassifier implements NotificationAnalyzer {
   WordPieceTokenizer? _tokenizer;
   bool _isModelLoaded = false;
 
-  LiteRtClassifier() {
-    _initialize();
+  LiteRtClassifier({Interpreter? interpreter, WordPieceTokenizer? tokenizer}) {
+    if (interpreter != null) {
+      _interpreter = interpreter;
+      _tokenizer = tokenizer;
+      _isModelLoaded = true;
+    } else {
+      _initialize();
+    }
   }
 
   Future<void> _initialize() async {
@@ -23,8 +29,9 @@ class LiteRtClassifier implements NotificationAnalyzer {
       final lines = vocabStr.split('\n');
       _tokenizer = WordPieceTokenizer.fromLines(lines);
 
-      // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
-      _isModelLoaded = false;
+      // 2. Load Interpreter
+      _interpreter = await Interpreter.fromAsset('assets/classifier.tflite');
+      _isModelLoaded = true;
     } catch (e) {
       // Graceful degradation: Log and set flags so analyze runs in fallback mode
       // ignore: avoid_print
