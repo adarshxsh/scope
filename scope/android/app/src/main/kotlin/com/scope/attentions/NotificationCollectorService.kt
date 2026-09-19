@@ -104,7 +104,7 @@ class NotificationCollectorService : NotificationListenerService() {
 
             queue.add(data)
             if (BuildConfig.DEBUG) {
-                Log.d(TAG, "Captured: ${data.packageName} - ${data.title}")
+                Log.d(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error capturing/adding notification", e)
@@ -120,7 +120,8 @@ class NotificationCollectorService : NotificationListenerService() {
         if (sbn == null) return
         // Log for now; future phases may track dismissed notifications
         if (BuildConfig.DEBUG) {
-            Log.d(TAG, "Removed: ${sbn.packageName}")
+            val removedTitle = sbn.notification.extras?.getCharSequence("android.title")?.toString()
+            Log.d(TAG, "Removed: ${sbn.packageName} - ${NotificationRedactor.redactTitle(removedTitle)}")
         }
     }
 
