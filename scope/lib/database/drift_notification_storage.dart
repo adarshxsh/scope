@@ -8,13 +8,23 @@ class DriftNotificationStorage implements NotificationStorage {
 
   @override
   Future<void> save(AppNotification notification) async {
-    await _db.notificationDao.insertNotification(_toEntry(notification));
+    try {
+      await _db.notificationDao.insertNotification(_toEntry(notification));
+      await _db.notificationDao.enforceRowCap();
+    } catch (_) {
+      // Gracefully catch persistence exceptions to prevent unhandled app crashes
+    }
   }
 
   @override
   Future<void> saveAll(List<AppNotification> notifications) async {
-    final entries = notifications.map(_toEntry).toList();
-    await _db.notificationDao.insertAll(entries);
+    try {
+      final entries = notifications.map(_toEntry).toList();
+      await _db.notificationDao.insertAll(entries);
+      await _db.notificationDao.enforceRowCap();
+    } catch (_) {
+      // Gracefully catch persistence exceptions to prevent unhandled app crashes
+    }
   }
 
   @override
