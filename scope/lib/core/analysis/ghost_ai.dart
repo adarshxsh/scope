@@ -384,11 +384,10 @@ class GhostAI {
   }
 
   void _logStructured(AppNotification notification, GhostAIResult result) {
-    final safeTitle = PiiRedactor.redact(notification.title);
-    final safeContent = PiiRedactor.redact(notification.content);
-
+    final redactedTitle = PiiRedactor.redactTitle(notification.title);
+    final redactedContent = PiiRedactor.redactContent(notification.content);
     debugPrint('=== GHOST AI INFERENCE REPORT ===');
-    debugPrint('Notification: "$safeTitle" - "$safeContent"');
+    debugPrint('Notification: "$redactedTitle" - "$redactedContent"');
     debugPrint('Package: ${notification.packageName}');
     debugPrint('Inference Time: ${result.inferenceTimeUs} us');
     debugPrint('Raw Predicted Score: ${(result.predictedScore * 100).toStringAsFixed(2)}');

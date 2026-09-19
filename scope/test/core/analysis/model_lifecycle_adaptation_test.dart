@@ -4,7 +4,6 @@ import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
 import 'package:scope/core/analysis/model_adaptation_strategy.dart';
 import 'package:scope/core/analysis/model_audit_logger.dart';
-import 'package:scope/core/analysis/model_manager.dart';
 import 'package:scope/core/analysis/model_verifier.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/utils/pii_redactor.dart';
