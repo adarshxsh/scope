@@ -5,6 +5,8 @@ import 'package:scope/database/attention_database.dart';
 import 'package:scope/database/database_provider.dart';
 import 'package:scope/database/drift_notification_storage.dart';
 
+import 'package:scope/core/state/telemetry_governance_engine.dart';
+
 enum QueueSortOrder {
   reviewScore,
   deadline,
@@ -285,6 +287,10 @@ ProviderContainer get providerContainer => _globalProviderContainerInstance ??= 
 final reviewQueueProvider = StateNotifierProvider<ReviewQueueNotifier, List<AppNotification>>((ref) {
   final db = ref.watch(databaseProvider);
   return ReviewQueueNotifier(db);
+});
+
+final telemetryGovernanceEngineProvider = Provider<TelemetryGovernanceEngine>((ref) {
+  return TelemetryGovernanceEngine();
 });
 
 final reviewQueueSortOrderProvider = StateProvider<QueueSortOrder>((ref) {

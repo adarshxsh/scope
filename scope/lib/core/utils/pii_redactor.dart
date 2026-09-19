@@ -42,6 +42,12 @@ class PiiRedactor {
     r'\b\d{4,8}\b',
   );
 
+  // Microsecond / millisecond event timing pattern
+  static final RegExp _timestampUsMsRegex = RegExp(
+    r'\b\d+(?:\.\d+)?\s*(?:us|µs|ms|microseconds|milliseconds)\b',
+    caseSensitive: false,
+  );
+
   /// Redacts sensitive PII tokens from the provided string.
   /// Returns empty string if [text] is null or empty.
   /// Fully protected by error handling to prevent runtime exceptions.
@@ -74,6 +80,9 @@ class PiiRedactor {
       // 7. Redact Passcodes / OTPs (standalone 4-8 digit numbers)
       result = result.replaceAll(_otpRegex, '[REDACTED_OTP]');
 
+      // 8. Redact raw microsecond/millisecond timing logs
+      result = result.replaceAll(_timestampUsMsRegex, '[REDACTED_LATENCY]');
+
       return result;
     } catch (e) {
       if (kDebugMode) {
@@ -88,4 +97,11 @@ class PiiRedactor {
 
   /// Convenience wrapper for redacting notification content.
   static String redactContent(String? content) => redact(content);
+
+  /// Governs debug outputs: redacts PII and latency logs, disabled in production builds.
+  static void logDebug(String message) {
+    if (kDebugMode) {
+      debugPrint(redact(message));
+    }
+  }
 }

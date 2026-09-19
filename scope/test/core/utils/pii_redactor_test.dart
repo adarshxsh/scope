@@ -67,5 +67,13 @@ void main() {
       expect(redacted, isNot(contains(r'$250.00')));
       expect(redacted, isNot(contains('user@pay.com')));
     });
+
+    test('redact sanitizes raw microsecond and millisecond latency logs', () {
+      const input = 'Inference Time: 1234 us, Latency: 15.2 ms';
+      final redacted = PiiRedactor.redact(input);
+      expect(redacted, contains('[REDACTED_LATENCY]'));
+      expect(redacted, isNot(contains('1234 us')));
+      expect(redacted, isNot(contains('15.2 ms')));
+    });
   });
 }
