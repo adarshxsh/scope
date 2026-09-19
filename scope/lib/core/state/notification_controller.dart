@@ -8,6 +8,7 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/storage/notification_storage.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/core/utils/focus_area_mapper.dart';
+import 'package:scope/core/utils/privacy_logger.dart';
 import 'package:scope/core/utils/smart_actions.dart';
 import 'package:scope/core/state/providers.dart';
 import 'package:drift/drift.dart';
@@ -67,6 +68,13 @@ class NotificationController extends ChangeNotifier {
   List<AppNotification> _notifications = [];
   bool _isListenerEnabled = false;
   bool _isLoading = true;
+  bool _isFetching = false;
+  int _consecutiveEmptyPolls = 0;
+  Duration _currentPollInterval = const Duration(seconds: 3);
+  static const Duration _basePollInterval = Duration(seconds: 3);
+  static const Duration _maxPollInterval = Duration(seconds: 30);
+  static const int _maxNotificationsLimit = 500;
+
   Timer? _pollTimer;
   Timer? _cleanupTimer;
   bool _isCleaningUp = false;
@@ -289,9 +297,16 @@ class NotificationController extends ChangeNotifier {
   }
 
   void startPolling() {
-    _pollTimer?.cancel();
+    _consecutiveEmptyPolls = 0;
+    _currentPollInterval = _basePollInterval;
+    _scheduleNextPoll();
     _checkPermissionAndFetch();
-    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+  }
+
+  void _scheduleNextPoll() {
+    _pollTimer?.cancel();
+    if (_isDisposed) return;
+    _pollTimer = Timer.periodic(_currentPollInterval, (_) {
       fetchNotifications();
     });
   }
@@ -376,9 +391,20 @@ class NotificationController extends ChangeNotifier {
     await fetchNotifications();
   }
 
-  Future<void> refresh() => _checkPermissionAndFetch();
+  Future<void> refresh() async {
+    _consecutiveEmptyPolls = 0;
+    if (_currentPollInterval != _basePollInterval) {
+      _currentPollInterval = _basePollInterval;
+      _scheduleNextPoll();
+    }
+    await _checkPermissionAndFetch();
+  }
 
   Future<void> fetchNotifications() async {
+    if (_isFetching) return;
+    _isFetching = true;
+    final wasLoading = _isLoading;
+
     try {
       final newNotifications = await _bridge.getNotifications();
       final analyzed = <AppNotification>[];
@@ -411,17 +437,58 @@ class NotificationController extends ChangeNotifier {
 
       if (analyzed.isNotEmpty) {
         await _storage.saveAll(analyzed);
-        final loaded = await _storage.getAll();
+        var loaded = await _storage.getAll();
+
+        // Enforce bounded memory consumption limit (max 500 items)
+        if (loaded.length > _maxNotificationsLimit) {
+          loaded = loaded.take(_maxNotificationsLimit).toList();
+        }
+
         final notifier = _container.read(reviewQueueProvider.notifier);
         notifier.load(loaded);
         await notifier.rescore();
-      }
 
-      _isLoading = false;
-      notifyListeners();
-    } catch (_) {
-      _isLoading = false;
-      notifyListeners();
+        _consecutiveEmptyPolls = 0;
+        if (_currentPollInterval != _basePollInterval) {
+          _currentPollInterval = _basePollInterval;
+          _scheduleNextPoll();
+        }
+
+        _isLoading = false;
+        notifyListeners();
+      } else {
+        _consecutiveEmptyPolls++;
+        final nextSecs = (_basePollInterval.inSeconds + (_consecutiveEmptyPolls * 3))
+            .clamp(3, _maxPollInterval.inSeconds);
+        final newInterval = Duration(seconds: nextSecs);
+
+        if (newInterval != _currentPollInterval) {
+          _currentPollInterval = newInterval;
+          _scheduleNextPoll();
+        }
+
+        PrivacyLogger.logPolling(
+          fetchedCount: 0,
+          totalCount: _notifications.length,
+          intervalSeconds: _currentPollInterval.inSeconds,
+          consecutiveEmptyPolls: _consecutiveEmptyPolls,
+        );
+
+        if (_isLoading) {
+          _isLoading = false;
+          notifyListeners();
+        } else if (wasLoading) {
+          notifyListeners();
+        }
+      }
+    } catch (e, stack) {
+      PrivacyLogger.logError('NotificationController.fetchNotifications', e, stack);
+      if (_isLoading) {
+        _isLoading = false;
+        notifyListeners();
+      }
+    } finally {
+      _isFetching = false;
     }
   }
 
