@@ -6,14 +6,15 @@ import 'package:scope/core/analysis/score_fusion.dart';
 void main() {
   group('ScoreFusion Tests', () {
     test('critical bypass rule returns max confidence bypass result', () {
-      final rule = MatchedRuleResult(
+      const rule = MatchedRuleResult(
         ruleId: 'otp_security',
         category: 'sys',
         priority: 'critical',
         matchedSignal: 'Matched keyword "otp"',
+        isSystemRule: true,
       );
 
-      final modelResult = AnalysisResult(
+      const modelResult = AnalysisResult(
         category: 'sys',
         score: 0.60,
         engineName: 'litert_model',
@@ -34,14 +35,15 @@ void main() {
     });
 
     test('authentic model result blends scores when rule matches', () {
-      final rule = MatchedRuleResult(
+      const rule = MatchedRuleResult(
         ruleId: 'custom_rule_1',
         category: 'msg',
         priority: 'medium',
         matchedSignal: 'Matched message rule',
+        isSystemRule: false,
       );
 
-      final modelResult = AnalysisResult(
+      const modelResult = AnalysisResult(
         category: 'msg',
         score: 0.80,
         engineName: 'litert_model',
@@ -62,14 +64,15 @@ void main() {
     });
 
     test('fallback model result does NOT blend score into rule match result', () {
-      final rule = MatchedRuleResult(
+      const rule = MatchedRuleResult(
         ruleId: 'custom_rule_2',
         category: 'finance',
         priority: 'high',
         matchedSignal: 'Matched finance keyword',
+        isSystemRule: false,
       );
 
-      final fallbackModelResult = AnalysisResult(
+      const fallbackModelResult = AnalysisResult(
         category: 'finance',
         score: 0.0,
         engineName: 'litert_model (fallback)',
@@ -90,7 +93,7 @@ void main() {
     });
 
     test('fallback model result returned directly when no rule matches', () {
-      final fallbackModelResult = AnalysisResult(
+      const fallbackModelResult = AnalysisResult(
         category: 'msg',
         score: 0.0,
         engineName: 'litert_model (fallback)',
@@ -108,6 +111,72 @@ void main() {
       expect(fused.score, equals(0.0));
       expect(fused.engineName, equals('litert_model (fallback)'));
       expect(fused.isFallback, isTrue);
+    });
+  });
+
+  group('ScoreFusion Tests with Priority Capping & Tiering', () {
+    const modelResult = AnalysisResult(
+      category: 'promo',
+      score: 0.60,
+      engineName: 'ml_classifier',
+      matchedSignals: ['ml_prediction'],
+      latencyMs: 5,
+    );
+
+    test('system critical rule triggers deterministic score bypass (1.0)', () {
+      const systemRuleMatch = MatchedRuleResult(
+        ruleId: 'otp_security',
+        category: 'otp',
+        priority: 'critical',
+        matchedSignal: 'Content matches "verification code"',
+        isSystemRule: true,
+      );
+
+      final result = ScoreFusion.fuse(
+        ruleResult: systemRuleMatch,
+        modelResult: modelResult,
+      );
+
+      expect(result.score, equals(1.0));
+      expect(result.engineName, contains('rule bypass: otp_security'));
+      expect(result.category, equals('otp'));
+    });
+
+    test('custom rule with high priority does NOT trigger critical bypass (score < 1.0)', () {
+      const customRuleMatch = MatchedRuleResult(
+        ruleId: 'rlhf-custom-1',
+        category: 'finance',
+        priority: 'high',
+        matchedSignal: 'Content matches "transfer"',
+        isSystemRule: false,
+      );
+
+      final result = ScoreFusion.fuse(
+        ruleResult: customRuleMatch,
+        modelResult: modelResult,
+      );
+
+      expect(result.score, lessThan(1.0));
+      expect(result.engineName, equals('score_fusion (hybrid)'));
+      expect(result.category, equals('finance'));
+    });
+
+    test('custom rule claiming critical priority fails bypass check when isSystemRule is false', () {
+      const spoofedCustomRuleMatch = MatchedRuleResult(
+        ruleId: 'rlhf-spoofed-critical',
+        category: 'finance',
+        priority: 'critical',
+        matchedSignal: 'Content matches "spoof"',
+        isSystemRule: false,
+      );
+
+      final result = ScoreFusion.fuse(
+        ruleResult: spoofedCustomRuleMatch,
+        modelResult: modelResult,
+      );
+
+      expect(result.score, lessThan(1.0));
+      expect(result.engineName, equals('score_fusion (hybrid)'));
     });
   });
 }
