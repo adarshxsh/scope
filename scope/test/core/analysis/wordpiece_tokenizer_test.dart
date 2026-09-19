@@ -1,8 +1,10 @@
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scope/core/analysis/wordpiece_tokenizer.dart';
 
 void main() {
-  group('WordPieceTokenizer', () {
+  group('WordPieceTokenizer Basic Tokenization', () {
     final Map<String, int> vocab = {
       '[PAD]': 0,
       '[UNK]': 1,
@@ -49,6 +51,85 @@ void main() {
       expect(ids.length, equals(8));
       expect(ids[0], equals(2)); // [CLS]
       expect(ids[7], equals(3)); // [SEP]
+    });
+  });
+
+  group('WordPieceTokenizer Vocabulary Validation', () {
+    test('throws VocabularyValidationException when required special token is missing', () {
+      final invalidVocabMissingCls = {
+        '[PAD]': 0,
+        '[UNK]': 1,
+        '[SEP]': 2,
+        'hello': 3,
+      };
+
+      expect(
+        () => WordPieceTokenizer(invalidVocabMissingCls),
+        throwsA(isA<VocabularyValidationException>()),
+      );
+    });
+
+    test('throws VocabularyValidationException when vocabulary is empty', () {
+      expect(
+        () => WordPieceTokenizer({}),
+        throwsA(isA<VocabularyValidationException>()),
+      );
+    });
+
+    test('throws VocabularyValidationException when size exceeds maxVocabSize', () {
+      final largeVocab = <String, int>{
+        '[PAD]': 0,
+        '[UNK]': 1,
+        '[CLS]': 2,
+        '[SEP]': 3,
+      };
+      for (int i = 4; i < 15; i++) {
+        largeVocab['word_$i'] = i;
+      }
+
+      expect(
+        () => WordPieceTokenizer(largeVocab, maxVocabSize: 10),
+        throwsA(isA<VocabularyValidationException>()),
+      );
+    });
+
+    test('validates SHA-256 digest when provided in fromContent', () {
+      const vocabContent = '[PAD]\n[UNK]\n[CLS]\n[SEP]\nbank\nalert';
+      final validSha256 = sha256.convert(utf8.encode(vocabContent)).toString();
+      const invalidSha256 = '0000000000000000000000000000000000000000000000000000000000000000';
+
+      // Valid SHA-256 succeeds
+      final tokenizer = WordPieceTokenizer.fromContent(
+        vocabContent,
+        expectedSha256: validSha256,
+      );
+      expect(tokenizer.vocab.length, equals(6));
+
+      // Mismatched SHA-256 throws exception
+      expect(
+        () => WordPieceTokenizer.fromContent(
+          vocabContent,
+          expectedSha256: invalidSha256,
+        ),
+        throwsA(isA<VocabularyValidationException>()),
+      );
+    });
+
+    test('dynamically uses reordered special token IDs from vocabulary mapping', () {
+      // Reordered special tokens: [CLS] is 0, [SEP] is 1, [PAD] is 2, [UNK] is 3
+      final reorderedVocab = {
+        '[CLS]': 0,
+        '[SEP]': 1,
+        '[PAD]': 2,
+        '[UNK]': 3,
+        'test': 4,
+      };
+
+      final tokenizer = WordPieceTokenizer(reorderedVocab, maxSeqLength: 5);
+      final ids = tokenizer.tokenize('test');
+
+      // Expected: [CLS] (0), test (4), [SEP] (1), [PAD] (2), [PAD] (2)
+      expect(ids, equals([0, 4, 1, 2, 2]));
     });
   });
 }
