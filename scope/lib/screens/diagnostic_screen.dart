@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
+import 'package:scope/core/analysis/ghost_ai.dart';
+import 'package:scope/core/analysis/model_lifecycle_manager.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/storage/feedback_dataset_logger.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/widgets/scope_card.dart';
 
@@ -402,15 +405,52 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
         ),
         const SizedBox(height: 12),
 
-        // 3. Versions and Metadata
+        // 3. Versions and Model Origin Metadata
         ScopeCard(
-          padding: const EdgeInsets.all(12.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildVersionItem('Engine', notif.engineVersion ?? 'None'),
-              _buildVersionItem('Rules', notif.ruleVersion ?? 'None'),
-              _buildVersionItem('Model', notif.modelVersion ?? 'None'),
+              Text(
+                'Model Lifecycle & System Metadata',
+                style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const Divider(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildVersionItem('Engine', notif.engineVersion ?? 'None'),
+                  _buildVersionItem('Rules', notif.ruleVersion ?? 'None'),
+                  _buildVersionItem('Model', notif.modelVersion ?? 'None'),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildVersionItem(
+                    'Model Origin',
+                    GhostAI.instance.modelSource == ModelSource.dynamicFile
+                        ? 'Dynamic File'
+                        : (GhostAI.instance.modelSource == ModelSource.bundledAsset ? 'Bundled Asset' : 'Fallback Heuristics'),
+                  ),
+                  _buildVersionItem(
+                    'Inference State',
+                    GhostAI.instance.isModelLoaded ? 'TFLite Active' : 'Heuristics Only',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              FutureBuilder<int>(
+                future: FeedbackDatasetLogger.instance.getRecordCount(),
+                builder: (context, snapshot) {
+                  final count = snapshot.data ?? 0;
+                  return Text(
+                    'Local Feedback JSONL Dataset: $count records persisted',
+                    style: theme.textTheme.bodySmall?.copyWith(color: Colors.white70),
+                  );
+                },
+              ),
             ],
           ),
         ),
