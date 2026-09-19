@@ -154,3 +154,117 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
     await delete(dailyBriefTable).go();
   }
 }
+
+class StorageStats {
+  final int totalNotifications;
+  final double estimatedSizeMb;
+  final int maxStorageMb;
+  final int maxRowCap;
+
+  const StorageStats({
+    required this.totalNotifications,
+    required this.estimatedSizeMb,
+    required this.maxStorageMb,
+    required this.maxRowCap,
+  });
+}
+
+@DriftAccessor(tables: [UserSettingsTable, NotificationsTable])
+class UserSettingsDao extends DatabaseAccessor<AttentionDatabase> with _$UserSettingsDaoMixin {
+  UserSettingsDao(super.db);
+
+  static const List<int> allowedRetentionDays = [3, 7, 14, 30, -1];
+  static const List<int> allowedStorageMb = [10, 25, 50, 100, -1];
+
+  Future<UserSettingsEntry> getSettings() async {
+    final existing = await (select(userSettingsTable)..where((t) => t.id.equals(1))).getSingleOrNull();
+    if (existing != null) {
+      return existing;
+    }
+    const defaultSettings = UserSettingsEntry(
+      id: 1,
+      retentionDays: 7,
+      telemetryEnabled: true,
+      maxRowCap: 5000,
+      maxStorageMb: 25,
+    );
+    await into(userSettingsTable).insert(defaultSettings, mode: InsertMode.insertOrReplace);
+    return defaultSettings;
+  }
+
+  Stream<UserSettingsEntry> watchSettings() {
+    return (select(userSettingsTable)..where((t) => t.id.equals(1)))
+        .watchSingleOrNull()
+        .map((entry) =>
+            entry ??
+            const UserSettingsEntry(
+              id: 1,
+              retentionDays: 7,
+              telemetryEnabled: true,
+              maxRowCap: 5000,
+              maxStorageMb: 25,
+            ));
+  }
+
+  Future<void> updateSettings({
+    int? retentionDays,
+    bool? telemetryEnabled,
+    int? maxRowCap,
+    int? maxStorageMb,
+  }) async {
+    final current = await getSettings();
+
+    // Validation & Sanitization Guardrails
+    int validatedRetention = current.retentionDays;
+    if (retentionDays != null) {
+      if (allowedRetentionDays.contains(retentionDays) || retentionDays > 0) {
+        validatedRetention = retentionDays;
+      } else {
+        validatedRetention = 7; // Default fallback
+      }
+    }
+
+    bool validatedTelemetry = telemetryEnabled ?? current.telemetryEnabled;
+
+    int validatedRowCap = current.maxRowCap;
+    if (maxRowCap != null) {
+      if (maxRowCap == -1 || maxRowCap > 0) {
+        validatedRowCap = maxRowCap;
+      } else {
+        validatedRowCap = 5000; // Default fallback
+      }
+    }
+
+    int validatedStorageMb = current.maxStorageMb;
+    if (maxStorageMb != null) {
+      if (allowedStorageMb.contains(maxStorageMb) || maxStorageMb == -1 || maxStorageMb > 0) {
+        validatedStorageMb = maxStorageMb;
+      } else {
+        validatedStorageMb = 25; // Default fallback
+      }
+    }
+
+    final updated = current.copyWith(
+      retentionDays: validatedRetention,
+      telemetryEnabled: validatedTelemetry,
+      maxRowCap: validatedRowCap,
+      maxStorageMb: validatedStorageMb,
+    );
+
+    await update(userSettingsTable).replace(updated);
+  }
+
+  Future<StorageStats> getStorageStats() async {
+    final settings = await getSettings();
+    final count = await db.notificationDao.getCount();
+    // Estimate average notification size (~1.5 KB)
+    final estimatedMb = (count * 1500) / (1024 * 1024);
+    return StorageStats(
+      totalNotifications: count,
+      estimatedSizeMb: double.parse(estimatedMb.toStringAsFixed(2)),
+      maxStorageMb: settings.maxStorageMb,
+      maxRowCap: settings.maxRowCap,
+    );
+  }
+}
+
