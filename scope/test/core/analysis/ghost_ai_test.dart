@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
 import 'package:scope/core/models/notification_model.dart';
@@ -231,6 +232,71 @@ void main() {
 
         final result = await GhostAI.predict(activeTask);
         expect(result.reviewScore, isPositive); // Not overridden
+      });
+    });
+
+    group('Historical Rescoring with Reference Timestamp', () {
+      test('prevents false relative OTP expiry when referenceTimestamp is supplied', () async {
+        final historicalTimestamp = DateTime.now().millisecondsSinceEpoch - 60 * 60 * 1000; // 1 hour ago
+        final oldOtp = AppNotification(
+          id: 'otp-historical',
+          packageName: 'com.whatsapp',
+          title: 'WhatsApp Code',
+          content: 'Your verification code is 882715. Valid for 10 minutes.',
+          timestamp: historicalTimestamp,
+        );
+
+        // Score relative to its historical timestamp (as during historical review queue rescoring)
+        final result = await GhostAI.predict(
+          oldOtp,
+          referenceTimestamp: historicalTimestamp,
+        );
+
+        expect(result.reviewScore, equals(1.0)); // Priority score preserved, not forced to 0.0
+      });
+
+      test('prevents false relative reminder expiry when referenceTimestamp is supplied', () async {
+        final historicalTimestamp = DateTime.now().millisecondsSinceEpoch - 2 * 60 * 60 * 1000; // 2 hours ago
+        final oldReminder = AppNotification(
+          id: 'reminder-historical',
+          packageName: 'com.google.android.calendar',
+          title: 'Upcoming meeting reminder',
+          content: 'Standup starts in 15 minutes',
+          timestamp: historicalTimestamp,
+        );
+
+        final result = await GhostAI.predict(
+          oldReminder,
+          referenceTimestamp: historicalTimestamp,
+        );
+
+        expect(result.reviewScore, equals(0.80)); // Priority score preserved
+      });
+
+      test('handles future timestamps gracefully without negative elapsed error', () async {
+        final futureTimestamp = DateTime.now().millisecondsSinceEpoch + 10 * 60 * 1000;
+        final futureOtp = AppNotification(
+          id: 'otp-future',
+          packageName: 'com.whatsapp',
+          title: 'WhatsApp Code',
+          content: 'Your verification code is 882715. Valid for 10 minutes.',
+          timestamp: futureTimestamp,
+        );
+
+        final result = await GhostAI.predict(
+          futureOtp,
+          referenceTimestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        expect(result.reviewScore, equals(1.0)); // Not expired
+      });
+    });
+
+    group('Model Hot Reloading & Utilities', () {
+      test('hotReloadModelFromFile handles missing file gracefully', () async {
+        final dummyFile = File('/tmp/non_existent_model_${DateTime.now().millisecondsSinceEpoch}.tflite');
+        final success = await GhostAI.instance.hotReloadModelFromFile(dummyFile);
+        expect(success, isFalse);
       });
     });
   });
