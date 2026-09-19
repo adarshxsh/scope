@@ -83,6 +83,9 @@ class PrivacyBudgetManager {
   final double defaultEpsilonPerQuery;
   final Random? _random;
 
+  /// Optional callback invoked when local privacy budget is consumed (used for cross-device sync).
+  void Function(String date, double epsilon, double delta)? onBudgetConsumed;
+
   // In-memory fallback tracking when db is unavailable or null
   double _inMemorySpentToday = 0.0;
   double _inMemorySpentMonth = 0.0;
@@ -95,6 +98,7 @@ class PrivacyBudgetManager {
     this.monthlyEpsilonCap = 10.0,
     this.defaultEpsilonPerQuery = 0.1,
     Random? random,
+    this.onBudgetConsumed,
   })  : _db = db,
         _random = random;
 
@@ -263,6 +267,8 @@ class PrivacyBudgetManager {
       _addInMemorySpent(dateKey, monthKey, qEpsilon);
     }
 
+    onBudgetConsumed?.call(dateKey, qEpsilon, delta);
+
     return NoisedQueryResult<T>(
       exactValue: exact,
       noisedValue: noised,
@@ -330,6 +336,8 @@ class PrivacyBudgetManager {
     } else {
       _addInMemorySpent(dateKey, monthKey, totalEps);
     }
+
+    onBudgetConsumed?.call(dateKey, totalEps, 0.0);
 
     return results;
   }

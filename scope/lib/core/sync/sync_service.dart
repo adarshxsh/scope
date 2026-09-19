@@ -45,6 +45,7 @@ class SyncService {
   VectorClock _vectorClock = const VectorClock({});
   bool _isOnline = true;
   StreamSubscription<EncryptedSyncPayload>? _transportSubscription;
+  final List<String> _auditLogs = [];
 
   SyncService({
     required this.deviceId,
@@ -54,11 +55,21 @@ class SyncService {
     this.ruleEngine,
     this.privacyBudgetManager,
   }) {
+    if (privacyBudgetManager != null) {
+      privacyBudgetManager!.onBudgetConsumed = (date, epsilon, delta) {
+        syncPrivacyBudget(
+          date: date,
+          epsilonConsumed: epsilon,
+          deltaConsumed: delta,
+        );
+      };
+    }
     _initTransportListener();
   }
 
   bool get isOnline => _isOnline;
   VectorClock get currentVectorClock => _vectorClock;
+  List<String> get auditLogs => List.unmodifiable(_auditLogs);
 
   void _initTransportListener() {
     _transportSubscription = transport.incomingPayloads.listen((payload) {
@@ -266,6 +277,7 @@ class SyncService {
       }
     } catch (e) {
       // Graceful error recovery: log error without breaking execution or exposing cleartext PII
+      _auditLogs.add('[SyncService] Failed to process payload from ${payload.senderDeviceId}: ${e.runtimeType}');
     }
   }
 
