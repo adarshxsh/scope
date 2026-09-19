@@ -20,10 +20,26 @@ class MainActivity : FlutterActivity() {
 
     companion object {
         private const val CHANNEL = "com.scope.notifications"
+        private const val KEYSTORE_CHANNEL = "com.scope.keystore"
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, KEYSTORE_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                if (call.method == "getDatabaseKey") {
+                    try {
+                        val keyManager = SecurityKeyManager(applicationContext)
+                        val key = keyManager.getOrCreateDatabaseKey()
+                        result.success(key)
+                    } catch (e: Exception) {
+                        result.error("KEYSTORE_ERROR", e.message, null)
+                    }
+                } else {
+                    result.notImplemented()
+                }
+            }
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
             .setMethodCallHandler { call, result ->
