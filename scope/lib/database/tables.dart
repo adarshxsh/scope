@@ -6,8 +6,8 @@ import 'package:scope/database/converters.dart';
 class NotificationsTable extends Table {
   TextColumn get id => text()();
   TextColumn get packageName => text()();
-  TextColumn get title => text()();
-  TextColumn get content => text()();
+  TextColumn get title => text().map(const EncryptedTextConverter())();
+  TextColumn get content => text().map(const EncryptedTextConverter())();
   IntColumn get timestamp => integer()();
   TextColumn get category => text().nullable()();
   BoolColumn get isOngoing => boolean().withDefault(const Constant(false))();
@@ -19,7 +19,7 @@ class NotificationsTable extends Table {
   TextColumn get ruleVersion => text().nullable()();
   TextColumn get modelVersion => text().nullable()();
   TextColumn get engineVersion => text().nullable()();
-  TextColumn get extractedFeatures => text().map(const JsonConverter()).nullable()();
+  TextColumn get extractedFeatures => text().map(const EncryptedJsonConverter()).nullable()();
   TextColumn get state => textEnum<ReviewState>()();
   DateTimeColumn get snoozedUntil => dateTime().nullable()();
   DateTimeColumn get lastUpdated => dateTime().nullable()();
