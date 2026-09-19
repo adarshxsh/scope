@@ -2709,6 +2709,775 @@ class DailyBriefTableCompanion extends UpdateCompanion<DailyBriefEntry> {
   }
 }
 
+class $RlhfFeedbackEventsTableTable extends RlhfFeedbackEventsTable
+    with TableInfo<$RlhfFeedbackEventsTableTable, RlhfFeedbackEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RlhfFeedbackEventsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _notificationIdMeta = const VerificationMeta(
+    'notificationId',
+  );
+  @override
+  late final GeneratedColumn<String> notificationId = GeneratedColumn<String>(
+    'notification_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _featureVectorJsonMeta = const VerificationMeta(
+    'featureVectorJson',
+  );
+  @override
+  late final GeneratedColumn<String> featureVectorJson =
+      GeneratedColumn<String>(
+        'feature_vector_json',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _feedbackTypeMeta = const VerificationMeta(
+    'feedbackType',
+  );
+  @override
+  late final GeneratedColumn<String> feedbackType = GeneratedColumn<String>(
+    'feedback_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _rewardValueMeta = const VerificationMeta(
+    'rewardValue',
+  );
+  @override
+  late final GeneratedColumn<double> rewardValue = GeneratedColumn<double>(
+    'reward_value',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _originalCategoryMeta = const VerificationMeta(
+    'originalCategory',
+  );
+  @override
+  late final GeneratedColumn<String> originalCategory = GeneratedColumn<String>(
+    'original_category',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _originalPriorityMeta = const VerificationMeta(
+    'originalPriority',
+  );
+  @override
+  late final GeneratedColumn<String> originalPriority = GeneratedColumn<String>(
+    'original_priority',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _correctedCategoryMeta = const VerificationMeta(
+    'correctedCategory',
+  );
+  @override
+  late final GeneratedColumn<String> correctedCategory =
+      GeneratedColumn<String>(
+        'corrected_category',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _correctedPriorityMeta = const VerificationMeta(
+    'correctedPriority',
+  );
+  @override
+  late final GeneratedColumn<String> correctedPriority =
+      GeneratedColumn<String>(
+        'corrected_priority',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _activeModelVersionMeta =
+      const VerificationMeta('activeModelVersion');
+  @override
+  late final GeneratedColumn<String> activeModelVersion =
+      GeneratedColumn<String>(
+        'active_model_version',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _timestampMeta = const VerificationMeta(
+    'timestamp',
+  );
+  @override
+  late final GeneratedColumn<DateTime> timestamp = GeneratedColumn<DateTime>(
+    'timestamp',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _isSyncedMeta = const VerificationMeta(
+    'isSynced',
+  );
+  @override
+  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
+    'is_synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_synced" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    notificationId,
+    featureVectorJson,
+    feedbackType,
+    rewardValue,
+    originalCategory,
+    originalPriority,
+    correctedCategory,
+    correctedPriority,
+    activeModelVersion,
+    timestamp,
+    isSynced,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'rlhf_feedback_events_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RlhfFeedbackEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('notification_id')) {
+      context.handle(
+        _notificationIdMeta,
+        notificationId.isAcceptableOrUnknown(
+          data['notification_id']!,
+          _notificationIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('feature_vector_json')) {
+      context.handle(
+        _featureVectorJsonMeta,
+        featureVectorJson.isAcceptableOrUnknown(
+          data['feature_vector_json']!,
+          _featureVectorJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_featureVectorJsonMeta);
+    }
+    if (data.containsKey('feedback_type')) {
+      context.handle(
+        _feedbackTypeMeta,
+        feedbackType.isAcceptableOrUnknown(
+          data['feedback_type']!,
+          _feedbackTypeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_feedbackTypeMeta);
+    }
+    if (data.containsKey('reward_value')) {
+      context.handle(
+        _rewardValueMeta,
+        rewardValue.isAcceptableOrUnknown(
+          data['reward_value']!,
+          _rewardValueMeta,
+        ),
+      );
+    }
+    if (data.containsKey('original_category')) {
+      context.handle(
+        _originalCategoryMeta,
+        originalCategory.isAcceptableOrUnknown(
+          data['original_category']!,
+          _originalCategoryMeta,
+        ),
+      );
+    }
+    if (data.containsKey('original_priority')) {
+      context.handle(
+        _originalPriorityMeta,
+        originalPriority.isAcceptableOrUnknown(
+          data['original_priority']!,
+          _originalPriorityMeta,
+        ),
+      );
+    }
+    if (data.containsKey('corrected_category')) {
+      context.handle(
+        _correctedCategoryMeta,
+        correctedCategory.isAcceptableOrUnknown(
+          data['corrected_category']!,
+          _correctedCategoryMeta,
+        ),
+      );
+    }
+    if (data.containsKey('corrected_priority')) {
+      context.handle(
+        _correctedPriorityMeta,
+        correctedPriority.isAcceptableOrUnknown(
+          data['corrected_priority']!,
+          _correctedPriorityMeta,
+        ),
+      );
+    }
+    if (data.containsKey('active_model_version')) {
+      context.handle(
+        _activeModelVersionMeta,
+        activeModelVersion.isAcceptableOrUnknown(
+          data['active_model_version']!,
+          _activeModelVersionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('timestamp')) {
+      context.handle(
+        _timestampMeta,
+        timestamp.isAcceptableOrUnknown(data['timestamp']!, _timestampMeta),
+      );
+    }
+    if (data.containsKey('is_synced')) {
+      context.handle(
+        _isSyncedMeta,
+        isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  RlhfFeedbackEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RlhfFeedbackEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      notificationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notification_id'],
+      ),
+      featureVectorJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}feature_vector_json'],
+      )!,
+      feedbackType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}feedback_type'],
+      )!,
+      rewardValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}reward_value'],
+      ),
+      originalCategory: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}original_category'],
+      ),
+      originalPriority: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}original_priority'],
+      ),
+      correctedCategory: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}corrected_category'],
+      ),
+      correctedPriority: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}corrected_priority'],
+      ),
+      activeModelVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}active_model_version'],
+      ),
+      timestamp: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}timestamp'],
+      )!,
+      isSynced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_synced'],
+      )!,
+    );
+  }
+
+  @override
+  $RlhfFeedbackEventsTableTable createAlias(String alias) {
+    return $RlhfFeedbackEventsTableTable(attachedDatabase, alias);
+  }
+}
+
+class RlhfFeedbackEntry extends DataClass
+    implements Insertable<RlhfFeedbackEntry> {
+  final int id;
+  final String? notificationId;
+  final String featureVectorJson;
+  final String feedbackType;
+  final double? rewardValue;
+  final String? originalCategory;
+  final String? originalPriority;
+  final String? correctedCategory;
+  final String? correctedPriority;
+  final String? activeModelVersion;
+  final DateTime timestamp;
+  final bool isSynced;
+  const RlhfFeedbackEntry({
+    required this.id,
+    this.notificationId,
+    required this.featureVectorJson,
+    required this.feedbackType,
+    this.rewardValue,
+    this.originalCategory,
+    this.originalPriority,
+    this.correctedCategory,
+    this.correctedPriority,
+    this.activeModelVersion,
+    required this.timestamp,
+    required this.isSynced,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    if (!nullToAbsent || notificationId != null) {
+      map['notification_id'] = Variable<String>(notificationId);
+    }
+    map['feature_vector_json'] = Variable<String>(featureVectorJson);
+    map['feedback_type'] = Variable<String>(feedbackType);
+    if (!nullToAbsent || rewardValue != null) {
+      map['reward_value'] = Variable<double>(rewardValue);
+    }
+    if (!nullToAbsent || originalCategory != null) {
+      map['original_category'] = Variable<String>(originalCategory);
+    }
+    if (!nullToAbsent || originalPriority != null) {
+      map['original_priority'] = Variable<String>(originalPriority);
+    }
+    if (!nullToAbsent || correctedCategory != null) {
+      map['corrected_category'] = Variable<String>(correctedCategory);
+    }
+    if (!nullToAbsent || correctedPriority != null) {
+      map['corrected_priority'] = Variable<String>(correctedPriority);
+    }
+    if (!nullToAbsent || activeModelVersion != null) {
+      map['active_model_version'] = Variable<String>(activeModelVersion);
+    }
+    map['timestamp'] = Variable<DateTime>(timestamp);
+    map['is_synced'] = Variable<bool>(isSynced);
+    return map;
+  }
+
+  RlhfFeedbackEventsTableCompanion toCompanion(bool nullToAbsent) {
+    return RlhfFeedbackEventsTableCompanion(
+      id: Value(id),
+      notificationId: notificationId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notificationId),
+      featureVectorJson: Value(featureVectorJson),
+      feedbackType: Value(feedbackType),
+      rewardValue: rewardValue == null && nullToAbsent
+          ? const Value.absent()
+          : Value(rewardValue),
+      originalCategory: originalCategory == null && nullToAbsent
+          ? const Value.absent()
+          : Value(originalCategory),
+      originalPriority: originalPriority == null && nullToAbsent
+          ? const Value.absent()
+          : Value(originalPriority),
+      correctedCategory: correctedCategory == null && nullToAbsent
+          ? const Value.absent()
+          : Value(correctedCategory),
+      correctedPriority: correctedPriority == null && nullToAbsent
+          ? const Value.absent()
+          : Value(correctedPriority),
+      activeModelVersion: activeModelVersion == null && nullToAbsent
+          ? const Value.absent()
+          : Value(activeModelVersion),
+      timestamp: Value(timestamp),
+      isSynced: Value(isSynced),
+    );
+  }
+
+  factory RlhfFeedbackEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RlhfFeedbackEntry(
+      id: serializer.fromJson<int>(json['id']),
+      notificationId: serializer.fromJson<String?>(json['notificationId']),
+      featureVectorJson: serializer.fromJson<String>(json['featureVectorJson']),
+      feedbackType: serializer.fromJson<String>(json['feedbackType']),
+      rewardValue: serializer.fromJson<double?>(json['rewardValue']),
+      originalCategory: serializer.fromJson<String?>(json['originalCategory']),
+      originalPriority: serializer.fromJson<String?>(json['originalPriority']),
+      correctedCategory: serializer.fromJson<String?>(
+        json['correctedCategory'],
+      ),
+      correctedPriority: serializer.fromJson<String?>(
+        json['correctedPriority'],
+      ),
+      activeModelVersion: serializer.fromJson<String?>(
+        json['activeModelVersion'],
+      ),
+      timestamp: serializer.fromJson<DateTime>(json['timestamp']),
+      isSynced: serializer.fromJson<bool>(json['isSynced']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'notificationId': serializer.toJson<String?>(notificationId),
+      'featureVectorJson': serializer.toJson<String>(featureVectorJson),
+      'feedbackType': serializer.toJson<String>(feedbackType),
+      'rewardValue': serializer.toJson<double?>(rewardValue),
+      'originalCategory': serializer.toJson<String?>(originalCategory),
+      'originalPriority': serializer.toJson<String?>(originalPriority),
+      'correctedCategory': serializer.toJson<String?>(correctedCategory),
+      'correctedPriority': serializer.toJson<String?>(correctedPriority),
+      'activeModelVersion': serializer.toJson<String?>(activeModelVersion),
+      'timestamp': serializer.toJson<DateTime>(timestamp),
+      'isSynced': serializer.toJson<bool>(isSynced),
+    };
+  }
+
+  RlhfFeedbackEntry copyWith({
+    int? id,
+    Value<String?> notificationId = const Value.absent(),
+    String? featureVectorJson,
+    String? feedbackType,
+    Value<double?> rewardValue = const Value.absent(),
+    Value<String?> originalCategory = const Value.absent(),
+    Value<String?> originalPriority = const Value.absent(),
+    Value<String?> correctedCategory = const Value.absent(),
+    Value<String?> correctedPriority = const Value.absent(),
+    Value<String?> activeModelVersion = const Value.absent(),
+    DateTime? timestamp,
+    bool? isSynced,
+  }) => RlhfFeedbackEntry(
+    id: id ?? this.id,
+    notificationId: notificationId.present
+        ? notificationId.value
+        : this.notificationId,
+    featureVectorJson: featureVectorJson ?? this.featureVectorJson,
+    feedbackType: feedbackType ?? this.feedbackType,
+    rewardValue: rewardValue.present ? rewardValue.value : this.rewardValue,
+    originalCategory: originalCategory.present
+        ? originalCategory.value
+        : this.originalCategory,
+    originalPriority: originalPriority.present
+        ? originalPriority.value
+        : this.originalPriority,
+    correctedCategory: correctedCategory.present
+        ? correctedCategory.value
+        : this.correctedCategory,
+    correctedPriority: correctedPriority.present
+        ? correctedPriority.value
+        : this.correctedPriority,
+    activeModelVersion: activeModelVersion.present
+        ? activeModelVersion.value
+        : this.activeModelVersion,
+    timestamp: timestamp ?? this.timestamp,
+    isSynced: isSynced ?? this.isSynced,
+  );
+  RlhfFeedbackEntry copyWithCompanion(RlhfFeedbackEventsTableCompanion data) {
+    return RlhfFeedbackEntry(
+      id: data.id.present ? data.id.value : this.id,
+      notificationId: data.notificationId.present
+          ? data.notificationId.value
+          : this.notificationId,
+      featureVectorJson: data.featureVectorJson.present
+          ? data.featureVectorJson.value
+          : this.featureVectorJson,
+      feedbackType: data.feedbackType.present
+          ? data.feedbackType.value
+          : this.feedbackType,
+      rewardValue: data.rewardValue.present
+          ? data.rewardValue.value
+          : this.rewardValue,
+      originalCategory: data.originalCategory.present
+          ? data.originalCategory.value
+          : this.originalCategory,
+      originalPriority: data.originalPriority.present
+          ? data.originalPriority.value
+          : this.originalPriority,
+      correctedCategory: data.correctedCategory.present
+          ? data.correctedCategory.value
+          : this.correctedCategory,
+      correctedPriority: data.correctedPriority.present
+          ? data.correctedPriority.value
+          : this.correctedPriority,
+      activeModelVersion: data.activeModelVersion.present
+          ? data.activeModelVersion.value
+          : this.activeModelVersion,
+      timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
+      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RlhfFeedbackEntry(')
+          ..write('id: $id, ')
+          ..write('notificationId: $notificationId, ')
+          ..write('featureVectorJson: $featureVectorJson, ')
+          ..write('feedbackType: $feedbackType, ')
+          ..write('rewardValue: $rewardValue, ')
+          ..write('originalCategory: $originalCategory, ')
+          ..write('originalPriority: $originalPriority, ')
+          ..write('correctedCategory: $correctedCategory, ')
+          ..write('correctedPriority: $correctedPriority, ')
+          ..write('activeModelVersion: $activeModelVersion, ')
+          ..write('timestamp: $timestamp, ')
+          ..write('isSynced: $isSynced')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    notificationId,
+    featureVectorJson,
+    feedbackType,
+    rewardValue,
+    originalCategory,
+    originalPriority,
+    correctedCategory,
+    correctedPriority,
+    activeModelVersion,
+    timestamp,
+    isSynced,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RlhfFeedbackEntry &&
+          other.id == this.id &&
+          other.notificationId == this.notificationId &&
+          other.featureVectorJson == this.featureVectorJson &&
+          other.feedbackType == this.feedbackType &&
+          other.rewardValue == this.rewardValue &&
+          other.originalCategory == this.originalCategory &&
+          other.originalPriority == this.originalPriority &&
+          other.correctedCategory == this.correctedCategory &&
+          other.correctedPriority == this.correctedPriority &&
+          other.activeModelVersion == this.activeModelVersion &&
+          other.timestamp == this.timestamp &&
+          other.isSynced == this.isSynced);
+}
+
+class RlhfFeedbackEventsTableCompanion
+    extends UpdateCompanion<RlhfFeedbackEntry> {
+  final Value<int> id;
+  final Value<String?> notificationId;
+  final Value<String> featureVectorJson;
+  final Value<String> feedbackType;
+  final Value<double?> rewardValue;
+  final Value<String?> originalCategory;
+  final Value<String?> originalPriority;
+  final Value<String?> correctedCategory;
+  final Value<String?> correctedPriority;
+  final Value<String?> activeModelVersion;
+  final Value<DateTime> timestamp;
+  final Value<bool> isSynced;
+  const RlhfFeedbackEventsTableCompanion({
+    this.id = const Value.absent(),
+    this.notificationId = const Value.absent(),
+    this.featureVectorJson = const Value.absent(),
+    this.feedbackType = const Value.absent(),
+    this.rewardValue = const Value.absent(),
+    this.originalCategory = const Value.absent(),
+    this.originalPriority = const Value.absent(),
+    this.correctedCategory = const Value.absent(),
+    this.correctedPriority = const Value.absent(),
+    this.activeModelVersion = const Value.absent(),
+    this.timestamp = const Value.absent(),
+    this.isSynced = const Value.absent(),
+  });
+  RlhfFeedbackEventsTableCompanion.insert({
+    this.id = const Value.absent(),
+    this.notificationId = const Value.absent(),
+    required String featureVectorJson,
+    required String feedbackType,
+    this.rewardValue = const Value.absent(),
+    this.originalCategory = const Value.absent(),
+    this.originalPriority = const Value.absent(),
+    this.correctedCategory = const Value.absent(),
+    this.correctedPriority = const Value.absent(),
+    this.activeModelVersion = const Value.absent(),
+    this.timestamp = const Value.absent(),
+    this.isSynced = const Value.absent(),
+  }) : featureVectorJson = Value(featureVectorJson),
+       feedbackType = Value(feedbackType);
+  static Insertable<RlhfFeedbackEntry> custom({
+    Expression<int>? id,
+    Expression<String>? notificationId,
+    Expression<String>? featureVectorJson,
+    Expression<String>? feedbackType,
+    Expression<double>? rewardValue,
+    Expression<String>? originalCategory,
+    Expression<String>? originalPriority,
+    Expression<String>? correctedCategory,
+    Expression<String>? correctedPriority,
+    Expression<String>? activeModelVersion,
+    Expression<DateTime>? timestamp,
+    Expression<bool>? isSynced,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (notificationId != null) 'notification_id': notificationId,
+      if (featureVectorJson != null) 'feature_vector_json': featureVectorJson,
+      if (feedbackType != null) 'feedback_type': feedbackType,
+      if (rewardValue != null) 'reward_value': rewardValue,
+      if (originalCategory != null) 'original_category': originalCategory,
+      if (originalPriority != null) 'original_priority': originalPriority,
+      if (correctedCategory != null) 'corrected_category': correctedCategory,
+      if (correctedPriority != null) 'corrected_priority': correctedPriority,
+      if (activeModelVersion != null)
+        'active_model_version': activeModelVersion,
+      if (timestamp != null) 'timestamp': timestamp,
+      if (isSynced != null) 'is_synced': isSynced,
+    });
+  }
+
+  RlhfFeedbackEventsTableCompanion copyWith({
+    Value<int>? id,
+    Value<String?>? notificationId,
+    Value<String>? featureVectorJson,
+    Value<String>? feedbackType,
+    Value<double?>? rewardValue,
+    Value<String?>? originalCategory,
+    Value<String?>? originalPriority,
+    Value<String?>? correctedCategory,
+    Value<String?>? correctedPriority,
+    Value<String?>? activeModelVersion,
+    Value<DateTime>? timestamp,
+    Value<bool>? isSynced,
+  }) {
+    return RlhfFeedbackEventsTableCompanion(
+      id: id ?? this.id,
+      notificationId: notificationId ?? this.notificationId,
+      featureVectorJson: featureVectorJson ?? this.featureVectorJson,
+      feedbackType: feedbackType ?? this.feedbackType,
+      rewardValue: rewardValue ?? this.rewardValue,
+      originalCategory: originalCategory ?? this.originalCategory,
+      originalPriority: originalPriority ?? this.originalPriority,
+      correctedCategory: correctedCategory ?? this.correctedCategory,
+      correctedPriority: correctedPriority ?? this.correctedPriority,
+      activeModelVersion: activeModelVersion ?? this.activeModelVersion,
+      timestamp: timestamp ?? this.timestamp,
+      isSynced: isSynced ?? this.isSynced,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (notificationId.present) {
+      map['notification_id'] = Variable<String>(notificationId.value);
+    }
+    if (featureVectorJson.present) {
+      map['feature_vector_json'] = Variable<String>(featureVectorJson.value);
+    }
+    if (feedbackType.present) {
+      map['feedback_type'] = Variable<String>(feedbackType.value);
+    }
+    if (rewardValue.present) {
+      map['reward_value'] = Variable<double>(rewardValue.value);
+    }
+    if (originalCategory.present) {
+      map['original_category'] = Variable<String>(originalCategory.value);
+    }
+    if (originalPriority.present) {
+      map['original_priority'] = Variable<String>(originalPriority.value);
+    }
+    if (correctedCategory.present) {
+      map['corrected_category'] = Variable<String>(correctedCategory.value);
+    }
+    if (correctedPriority.present) {
+      map['corrected_priority'] = Variable<String>(correctedPriority.value);
+    }
+    if (activeModelVersion.present) {
+      map['active_model_version'] = Variable<String>(activeModelVersion.value);
+    }
+    if (timestamp.present) {
+      map['timestamp'] = Variable<DateTime>(timestamp.value);
+    }
+    if (isSynced.present) {
+      map['is_synced'] = Variable<bool>(isSynced.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RlhfFeedbackEventsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('notificationId: $notificationId, ')
+          ..write('featureVectorJson: $featureVectorJson, ')
+          ..write('feedbackType: $feedbackType, ')
+          ..write('rewardValue: $rewardValue, ')
+          ..write('originalCategory: $originalCategory, ')
+          ..write('originalPriority: $originalPriority, ')
+          ..write('correctedCategory: $correctedCategory, ')
+          ..write('correctedPriority: $correctedPriority, ')
+          ..write('activeModelVersion: $activeModelVersion, ')
+          ..write('timestamp: $timestamp, ')
+          ..write('isSynced: $isSynced')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AttentionDatabase extends GeneratedDatabase {
   _$AttentionDatabase(QueryExecutor e) : super(e);
   $AttentionDatabaseManager get managers => $AttentionDatabaseManager(this);
@@ -2722,6 +3491,8 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final $DailyBriefTableTable dailyBriefTable = $DailyBriefTableTable(
     this,
   );
+  late final $RlhfFeedbackEventsTableTable rlhfFeedbackEventsTable =
+      $RlhfFeedbackEventsTableTable(this);
   late final NotificationDao notificationDao = NotificationDao(
     this as AttentionDatabase,
   );
@@ -2734,6 +3505,9 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final DailyBriefDao dailyBriefDao = DailyBriefDao(
     this as AttentionDatabase,
   );
+  late final RlhfFeedbackDao rlhfFeedbackDao = RlhfFeedbackDao(
+    this as AttentionDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2743,6 +3517,7 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
     reviewQueueTable,
     focusSessionsTable,
     dailyBriefTable,
+    rlhfFeedbackEventsTable,
   ];
 }
 
@@ -3406,7 +4181,9 @@ class $$NotificationsTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$NotificationsTableTable, NotificationEntry>(
+                    table,
+                  ),
                   $$NotificationsTableTableReferences(db, table, e),
                 ),
               )
@@ -3749,7 +4526,7 @@ class $$ReviewQueueTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$ReviewQueueTableTable, ReviewQueueEntry>(table),
                   $$ReviewQueueTableTableReferences(db, table, e),
                 ),
               )
@@ -4021,7 +4798,18 @@ class $$FocusSessionsTableTableTableManager
                 duration: duration,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$FocusSessionsTableTable, FocusSessionEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $FocusSessionsTableTable,
+                    FocusSessionEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4273,7 +5061,16 @@ class $$DailyBriefTableTableTableManager
                 archivedCount: archivedCount,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$DailyBriefTableTable, DailyBriefEntry>(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $DailyBriefTableTable,
+                    DailyBriefEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4301,6 +5098,381 @@ typedef $$DailyBriefTableTableProcessedTableManager =
       DailyBriefEntry,
       PrefetchHooks Function()
     >;
+typedef $$RlhfFeedbackEventsTableTableCreateCompanionBuilder =
+    RlhfFeedbackEventsTableCompanion Function({
+      Value<int> id,
+      Value<String?> notificationId,
+      required String featureVectorJson,
+      required String feedbackType,
+      Value<double?> rewardValue,
+      Value<String?> originalCategory,
+      Value<String?> originalPriority,
+      Value<String?> correctedCategory,
+      Value<String?> correctedPriority,
+      Value<String?> activeModelVersion,
+      Value<DateTime> timestamp,
+      Value<bool> isSynced,
+    });
+typedef $$RlhfFeedbackEventsTableTableUpdateCompanionBuilder =
+    RlhfFeedbackEventsTableCompanion Function({
+      Value<int> id,
+      Value<String?> notificationId,
+      Value<String> featureVectorJson,
+      Value<String> feedbackType,
+      Value<double?> rewardValue,
+      Value<String?> originalCategory,
+      Value<String?> originalPriority,
+      Value<String?> correctedCategory,
+      Value<String?> correctedPriority,
+      Value<String?> activeModelVersion,
+      Value<DateTime> timestamp,
+      Value<bool> isSynced,
+    });
+
+class $$RlhfFeedbackEventsTableTableFilterComposer
+    extends Composer<_$AttentionDatabase, $RlhfFeedbackEventsTableTable> {
+  $$RlhfFeedbackEventsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get featureVectorJson => $composableBuilder(
+    column: $table.featureVectorJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get feedbackType => $composableBuilder(
+    column: $table.feedbackType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get rewardValue => $composableBuilder(
+    column: $table.rewardValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get originalCategory => $composableBuilder(
+    column: $table.originalCategory,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get originalPriority => $composableBuilder(
+    column: $table.originalPriority,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get correctedCategory => $composableBuilder(
+    column: $table.correctedCategory,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get correctedPriority => $composableBuilder(
+    column: $table.correctedPriority,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get activeModelVersion => $composableBuilder(
+    column: $table.activeModelVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RlhfFeedbackEventsTableTableOrderingComposer
+    extends Composer<_$AttentionDatabase, $RlhfFeedbackEventsTableTable> {
+  $$RlhfFeedbackEventsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get featureVectorJson => $composableBuilder(
+    column: $table.featureVectorJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get feedbackType => $composableBuilder(
+    column: $table.feedbackType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get rewardValue => $composableBuilder(
+    column: $table.rewardValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get originalCategory => $composableBuilder(
+    column: $table.originalCategory,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get originalPriority => $composableBuilder(
+    column: $table.originalPriority,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get correctedCategory => $composableBuilder(
+    column: $table.correctedCategory,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get correctedPriority => $composableBuilder(
+    column: $table.correctedPriority,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get activeModelVersion => $composableBuilder(
+    column: $table.activeModelVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RlhfFeedbackEventsTableTableAnnotationComposer
+    extends Composer<_$AttentionDatabase, $RlhfFeedbackEventsTableTable> {
+  $$RlhfFeedbackEventsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get featureVectorJson => $composableBuilder(
+    column: $table.featureVectorJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get feedbackType => $composableBuilder(
+    column: $table.feedbackType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get rewardValue => $composableBuilder(
+    column: $table.rewardValue,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get originalCategory => $composableBuilder(
+    column: $table.originalCategory,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get originalPriority => $composableBuilder(
+    column: $table.originalPriority,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get correctedCategory => $composableBuilder(
+    column: $table.correctedCategory,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get correctedPriority => $composableBuilder(
+    column: $table.correctedPriority,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get activeModelVersion => $composableBuilder(
+    column: $table.activeModelVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get timestamp =>
+      $composableBuilder(column: $table.timestamp, builder: (column) => column);
+
+  GeneratedColumn<bool> get isSynced =>
+      $composableBuilder(column: $table.isSynced, builder: (column) => column);
+}
+
+class $$RlhfFeedbackEventsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AttentionDatabase,
+          $RlhfFeedbackEventsTableTable,
+          RlhfFeedbackEntry,
+          $$RlhfFeedbackEventsTableTableFilterComposer,
+          $$RlhfFeedbackEventsTableTableOrderingComposer,
+          $$RlhfFeedbackEventsTableTableAnnotationComposer,
+          $$RlhfFeedbackEventsTableTableCreateCompanionBuilder,
+          $$RlhfFeedbackEventsTableTableUpdateCompanionBuilder,
+          (
+            RlhfFeedbackEntry,
+            BaseReferences<
+              _$AttentionDatabase,
+              $RlhfFeedbackEventsTableTable,
+              RlhfFeedbackEntry
+            >,
+          ),
+          RlhfFeedbackEntry,
+          PrefetchHooks Function()
+        > {
+  $$RlhfFeedbackEventsTableTableTableManager(
+    _$AttentionDatabase db,
+    $RlhfFeedbackEventsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RlhfFeedbackEventsTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$RlhfFeedbackEventsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$RlhfFeedbackEventsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String?> notificationId = const Value.absent(),
+                Value<String> featureVectorJson = const Value.absent(),
+                Value<String> feedbackType = const Value.absent(),
+                Value<double?> rewardValue = const Value.absent(),
+                Value<String?> originalCategory = const Value.absent(),
+                Value<String?> originalPriority = const Value.absent(),
+                Value<String?> correctedCategory = const Value.absent(),
+                Value<String?> correctedPriority = const Value.absent(),
+                Value<String?> activeModelVersion = const Value.absent(),
+                Value<DateTime> timestamp = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+              }) => RlhfFeedbackEventsTableCompanion(
+                id: id,
+                notificationId: notificationId,
+                featureVectorJson: featureVectorJson,
+                feedbackType: feedbackType,
+                rewardValue: rewardValue,
+                originalCategory: originalCategory,
+                originalPriority: originalPriority,
+                correctedCategory: correctedCategory,
+                correctedPriority: correctedPriority,
+                activeModelVersion: activeModelVersion,
+                timestamp: timestamp,
+                isSynced: isSynced,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String?> notificationId = const Value.absent(),
+                required String featureVectorJson,
+                required String feedbackType,
+                Value<double?> rewardValue = const Value.absent(),
+                Value<String?> originalCategory = const Value.absent(),
+                Value<String?> originalPriority = const Value.absent(),
+                Value<String?> correctedCategory = const Value.absent(),
+                Value<String?> correctedPriority = const Value.absent(),
+                Value<String?> activeModelVersion = const Value.absent(),
+                Value<DateTime> timestamp = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+              }) => RlhfFeedbackEventsTableCompanion.insert(
+                id: id,
+                notificationId: notificationId,
+                featureVectorJson: featureVectorJson,
+                feedbackType: feedbackType,
+                rewardValue: rewardValue,
+                originalCategory: originalCategory,
+                originalPriority: originalPriority,
+                correctedCategory: correctedCategory,
+                correctedPriority: correctedPriority,
+                activeModelVersion: activeModelVersion,
+                timestamp: timestamp,
+                isSynced: isSynced,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$RlhfFeedbackEventsTableTable, RlhfFeedbackEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $RlhfFeedbackEventsTableTable,
+                    RlhfFeedbackEntry
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RlhfFeedbackEventsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AttentionDatabase,
+      $RlhfFeedbackEventsTableTable,
+      RlhfFeedbackEntry,
+      $$RlhfFeedbackEventsTableTableFilterComposer,
+      $$RlhfFeedbackEventsTableTableOrderingComposer,
+      $$RlhfFeedbackEventsTableTableAnnotationComposer,
+      $$RlhfFeedbackEventsTableTableCreateCompanionBuilder,
+      $$RlhfFeedbackEventsTableTableUpdateCompanionBuilder,
+      (
+        RlhfFeedbackEntry,
+        BaseReferences<
+          _$AttentionDatabase,
+          $RlhfFeedbackEventsTableTable,
+          RlhfFeedbackEntry
+        >,
+      ),
+      RlhfFeedbackEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AttentionDatabaseManager {
   final _$AttentionDatabase _db;
@@ -4313,4 +5485,9 @@ class $AttentionDatabaseManager {
       $$FocusSessionsTableTableTableManager(_db, _db.focusSessionsTable);
   $$DailyBriefTableTableTableManager get dailyBriefTable =>
       $$DailyBriefTableTableTableManager(_db, _db.dailyBriefTable);
+  $$RlhfFeedbackEventsTableTableTableManager get rlhfFeedbackEventsTable =>
+      $$RlhfFeedbackEventsTableTableTableManager(
+        _db,
+        _db.rlhfFeedbackEventsTable,
+      );
 }
