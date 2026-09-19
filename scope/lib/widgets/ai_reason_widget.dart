@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/utils/pii_redactor.dart';
 import 'package:scope/theme/app_colors.dart';
 import 'package:scope/theme/app_spacing.dart';
 
@@ -31,7 +32,7 @@ class AIReasonWidget extends StatelessWidget {
     if (notification.explanation != null && notification.explanation!.isNotEmpty) {
       final lines = notification.explanation!
           .split('\n')
-          .map((l) => l.replaceAll(RegExp(r'^[-•*]\s*'), '').trim())
+          .map((l) => PiiRedactor.redactContent(l.replaceAll(RegExp(r'^[-•*]\s*'), '').trim()))
           .where((l) => l.isNotEmpty)
           .take(2);
       reasons.addAll(lines);

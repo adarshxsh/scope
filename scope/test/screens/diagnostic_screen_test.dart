@@ -105,11 +105,12 @@ void main() {
       await tester.tap(find.text('ANALYZE NOTIFICATION'));
       await tester.pumpAndSettle();
 
-      // Verify result dashboard cards appear
+      // Verify result dashboard cards appear and sensitive fields are redacted in UI
       expect(find.text('Analysis Pipeline Results'), findsOneWidget);
       expect(find.text('CRITICAL'), findsOneWidget);
       expect(find.text('Pipeline Explanation Trace'), findsOneWidget);
       expect(find.text('Extracted Text Features'), findsOneWidget);
+      expect(find.text('[REDACTED_OTP]'), findsWidgets);
     });
   });
 }
