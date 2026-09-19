@@ -7,6 +7,7 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/database/tables.dart';
 import 'package:scope/database/daos.dart';
 import 'package:scope/database/converters.dart';
+import 'package:scope/database/database_provider.dart';
 
 part 'attention_database.g.dart';
 
@@ -31,6 +32,14 @@ class AttentionDatabase extends _$AttentionDatabase {
     return AttentionDatabase(NativeDatabase.memory());
   }
 
+  factory AttentionDatabase.withPassphrase(String passphrase) {
+    return AttentionDatabase(_openConnection(passphrase));
+  }
+
+  factory AttentionDatabase.encrypted([Future<String> Function()? getPassphrase]) {
+    return AttentionDatabase(_openEncryptedConnection(getPassphrase));
+  }
+
   @override
   int get schemaVersion => 1;
 
@@ -52,10 +61,34 @@ class AttentionDatabase extends _$AttentionDatabase {
   }
 }
 
-QueryExecutor _openConnection() {
+QueryExecutor _openConnection([String? passphrase]) {
   return LazyDatabase(() async {
+    final key = passphrase ?? await getDatabasePassphrase();
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'attention_os.db'));
-    return NativeDatabase(file);
+    return NativeDatabase(
+      file,
+      setup: key.isNotEmpty
+          ? (rawDb) {
+              rawDb.execute("PRAGMA key = '$key';");
+            }
+          : null,
+    );
+  });
+}
+
+QueryExecutor _openEncryptedConnection([Future<String> Function()? getPassphrase]) {
+  return LazyDatabase(() async {
+    final key = getPassphrase != null ? await getPassphrase() : await getDatabasePassphrase();
+    final dbFolder = await getApplicationDocumentsDirectory();
+    final file = File(p.join(dbFolder.path, 'attention_os.db'));
+    return NativeDatabase(
+      file,
+      setup: key.isNotEmpty
+          ? (rawDb) {
+              rawDb.execute("PRAGMA key = '$key';");
+            }
+          : null,
+    );
   });
 }
