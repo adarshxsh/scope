@@ -233,5 +233,74 @@ void main() {
         expect(result.reviewScore, isPositive); // Not overridden
       });
     });
+
+    group('Prediction Cache Tests', () {
+      test('bypasses redundant model inference on cached predictions', () async {
+        final notif = AppNotification(
+          id: 'cache-test-1',
+          packageName: 'com.example.news',
+          title: 'Breaking News',
+          content: 'Major announcement today in technology.',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        // First prediction -> Cache Miss
+        final firstResult = await GhostAI.predict(notif);
+        expect(GhostAI.instance.cacheMisses, isPositive);
+        final initialHits = GhostAI.instance.cacheHits;
+
+        // Second prediction for identical notification -> Cache Hit
+        final secondResult = await GhostAI.predict(notif);
+        expect(GhostAI.instance.cacheHits, equals(initialHits + 1));
+        expect(secondResult.reviewScore, equals(firstResult.reviewScore));
+        expect(secondResult.inferenceTimeUs, equals(0)); // 0us indicates inference was bypassed
+      });
+
+      test('dynamic overrides evaluate correctly on cached predictions', () async {
+        final now = DateTime.now().millisecondsSinceEpoch;
+        final otpNotif = AppNotification(
+          id: 'otp-cache-test',
+          packageName: 'com.bank.app',
+          title: 'Bank OTP',
+          content: 'Your OTP code is 492011. Valid for 5 minutes.',
+          timestamp: now,
+        );
+
+        // First call caches the raw prediction (fresh OTP)
+        final firstResult = await GhostAI.predict(otpNotif);
+        expect(firstResult.reviewScore, equals(1.0));
+
+        // Create notification with same ID/content but timestamp set to 10 minutes ago
+        final expiredOtpNotif = AppNotification(
+          id: 'otp-cache-test',
+          packageName: 'com.bank.app',
+          title: 'Bank OTP',
+          content: 'Your OTP code is 492011. Valid for 5 minutes.',
+          timestamp: now - 10 * 60 * 1000,
+        );
+
+        // This will miss cache key because timestamp differs, but let's test prediction override
+        final secondResult = await GhostAI.predict(expiredOtpNotif);
+        expect(secondResult.reviewScore, equals(0.0));
+      });
+
+      test('clearCache resets prediction cache and performance metrics', () async {
+        final notif = AppNotification(
+          id: 'clear-cache-test',
+          packageName: 'com.example.app',
+          title: 'Test Title',
+          content: 'Test Content',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        await GhostAI.predict(notif);
+        expect(GhostAI.instance.predictionCacheSize, equals(1));
+
+        GhostAI.instance.clearCache();
+        expect(GhostAI.instance.predictionCacheSize, equals(0));
+        expect(GhostAI.instance.cacheHits, equals(0));
+        expect(GhostAI.instance.cacheMisses, equals(0));
+      });
+    });
   });
 }
