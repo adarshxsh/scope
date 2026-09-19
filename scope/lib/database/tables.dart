@@ -65,3 +65,19 @@ class DailyBriefTable extends Table {
   IntColumn get remindersCreated => integer().withDefault(const Constant(0))();
   IntColumn get archivedCount => integer().withDefault(const Constant(0))();
 }
+
+@DataClassName('UserFeedbackEntry')
+class UserFeedbackTable extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get notificationId => text()();
+  TextColumn get packageName => text()();
+  TextColumn get title => text()();
+  TextColumn get content => text()();
+  IntColumn get rating => integer()(); // 1 for reward (+1), -1 for penalty (-1)
+  TextColumn get feedbackType => text()(); // 'reward' or 'penalty'
+  TextColumn get featureVector => text()(); // JSON string of 63 double values
+  TextColumn get category => text().nullable()();
+  TextColumn get priority => text().nullable()();
+  RealColumn get lookAgainScore => real().nullable()();
+  DateTimeColumn get timestamp => dateTime().withDefault(currentDateAndTime)();
+}
