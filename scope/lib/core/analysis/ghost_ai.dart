@@ -102,8 +102,10 @@ class GhostAI {
       inferStopwatch.stop();
 
       inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
+      final rawOutput = output[0][0];
+      final safeOutput = rawOutput.isFinite ? rawOutput : 0.0;
       // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
-      predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+      predictedScore = (safeOutput / 100.0).clamp(0.0, 1.0);
     } else {
       // Heuristic fallback if model not loaded
       predictedScore = _heuristicLookAgainScore(featureVector);
@@ -146,6 +148,7 @@ class GhostAI {
         finalScore = (predictedScore + ruleScore) / 2.0;
       }
     }
+    finalScore = finalScore.clamp(0.0, 1.0);
 
     // 5. Apply deterministic overrides (expired OTP, expired reminders, duplicates, completed tasks)
     final hasOtp = featureVector[11] == 1.0; // contains_otp
