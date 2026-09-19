@@ -4,6 +4,7 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
+import 'package:scope/core/analysis/feature_attribution.dart';
 import 'package:scope/core/utils/pii_redactor.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
@@ -26,6 +27,15 @@ class GhostAIResult {
   /// Rule match score (0.0 to 1.0) output by the rule engine.
   final double? ruleScore;
 
+  /// Deterministic override trigger if applied.
+  final String overrideTrigger;
+
+  /// Step-by-step score evolution trace.
+  final List<ScoreEvolutionStep> scoreEvolutionSteps;
+
+  /// Feature attributions explaining influence on priority determination.
+  final List<FeatureAttribution> featureAttributions;
+
   const GhostAIResult({
     required this.reviewScore,
     this.confidence,
@@ -33,8 +43,12 @@ class GhostAIResult {
     required this.featureVector,
     required this.predictedScore,
     this.ruleScore,
+    this.overrideTrigger = 'none',
+    this.scoreEvolutionSteps = const [],
+    this.featureAttributions = const [],
   });
 }
+
 
 /// Core inference singleton coordinating look-again score predictions and overrides.
 class GhostAI {
@@ -85,9 +99,15 @@ class GhostAI {
 
   Future<GhostAIResult> _predict(AppNotification notification) async {
     final stopwatch = Stopwatch()..start();
+    final steps = <ScoreEvolutionStep>[];
+    String overrideTrigger = 'none';
 
     // 1. Feature extraction using the existing FeatureExtractor
     final featureVector = FeatureExtractor.extractFromAppNotification(notification);
+    final features = FeatureExtractor.extract(
+      title: notification.title,
+      content: notification.content,
+    );
 
     // 2. Model inference
     double predictedScore = 0.0;
@@ -108,6 +128,14 @@ class GhostAI {
       // Heuristic fallback if model not loaded
       predictedScore = _heuristicLookAgainScore(featureVector);
     }
+
+    steps.add(ScoreEvolutionStep(
+      stage: '1. Model Inference',
+      scoreBefore: 0.0,
+      scoreAfter: predictedScore,
+      action: _interpreter != null ? 'TFLite Model Prediction' : 'Heuristic Fallback Prediction',
+      details: 'Extracted 63 features. Base predicted score: ${(predictedScore * 100).toStringAsFixed(1)}%.',
+    ));
 
     // 3. Rule matching
     final ruleMatch = _ruleEngine.match(notification);
@@ -131,6 +159,7 @@ class GhostAI {
     }
 
     // 4. Score Fusion (rules + predictions)
+    double scoreBeforeFusion = predictedScore;
     double finalScore = predictedScore;
     if (ruleScore != null && ruleMatch != null) {
       // Immediate critical bypass triggers
@@ -141,30 +170,100 @@ class GhostAI {
 
       if (isCriticalBypass) {
         finalScore = 1.0;
+        overrideTrigger = 'critical_bypass';
+        steps.add(ScoreEvolutionStep(
+          stage: '2. Rule Fusion',
+          scoreBefore: scoreBeforeFusion,
+          scoreAfter: finalScore,
+          action: 'Critical Rule Bypass',
+          details: 'Matched critical security rule: ${ruleMatch.ruleId}. Priority elevated to 100%.',
+        ));
       } else {
         // Average rule score and predicted score
         finalScore = (predictedScore + ruleScore) / 2.0;
+        steps.add(ScoreEvolutionStep(
+          stage: '2. Rule Fusion',
+          scoreBefore: scoreBeforeFusion,
+          scoreAfter: finalScore,
+          action: 'Hybrid Score Fusion',
+          details: 'Rule ${ruleMatch.ruleId} matched. Averaged predicted (${(predictedScore * 100).toStringAsFixed(0)}%) and rule (${(ruleScore * 100).toStringAsFixed(0)}%) scores.',
+        ));
       }
+    } else {
+      steps.add(ScoreEvolutionStep(
+        stage: '2. Rule Fusion',
+        scoreBefore: scoreBeforeFusion,
+        scoreAfter: finalScore,
+        action: 'No Rule Match',
+        details: 'No pre-compiled system or custom RLHF rules matched. Retained base ML score.',
+      ));
     }
 
     // 5. Apply deterministic overrides (expired OTP, expired reminders, duplicates, completed tasks)
     final hasOtp = featureVector[11] == 1.0; // contains_otp
     final hasDeadline = featureVector[27] == 1.0; // contains_deadline
+    final scoreBeforeOverride = finalScore;
 
     if (hasOtp && _isOtpExpired(notification)) {
       finalScore = 0.0;
+      overrideTrigger = 'expired_otp';
+      steps.add(ScoreEvolutionStep(
+        stage: '3. Deterministic Overrides',
+        scoreBefore: scoreBeforeOverride,
+        scoreAfter: finalScore,
+        action: 'Expired OTP Override',
+        details: 'Verification code time window expired. Priority score suppressed to 0%.',
+      ));
     } else if (hasDeadline && _isReminderExpired(notification)) {
       finalScore = 0.0;
+      overrideTrigger = 'expired_deadline';
+      steps.add(ScoreEvolutionStep(
+        stage: '3. Deterministic Overrides',
+        scoreBefore: scoreBeforeOverride,
+        scoreAfter: finalScore,
+        action: 'Expired Deadline Override',
+        details: 'Relative deadline/event time passed. Priority score demoted to 0%.',
+      ));
     } else if (_isDuplicate(notification)) {
       finalScore = 0.0;
+      overrideTrigger = 'duplicate';
+      steps.add(ScoreEvolutionStep(
+        stage: '3. Deterministic Overrides',
+        scoreBefore: scoreBeforeOverride,
+        scoreAfter: finalScore,
+        action: 'Duplicate Alert Override',
+        details: 'Identical notification received within 5-minute sliding window. Suppressed to 0%.',
+      ));
     } else if (_isCompletedTask(notification)) {
       finalScore = 0.0;
+      overrideTrigger = 'completed_task';
+      steps.add(ScoreEvolutionStep(
+        stage: '3. Deterministic Overrides',
+        scoreBefore: scoreBeforeOverride,
+        scoreAfter: finalScore,
+        action: 'Completed Task Override',
+        details: 'Task/reminder resolution detected in non-financial notification. Demoted to 0%.',
+      ));
+    } else {
+      steps.add(ScoreEvolutionStep(
+        stage: '3. Deterministic Overrides',
+        scoreBefore: scoreBeforeOverride,
+        scoreAfter: finalScore,
+        action: 'No Override Applied',
+        details: 'Passed all deterministic expiry and duplicate suppression checks.',
+      ));
     }
 
     stopwatch.stop();
 
     // Cache the notification for future duplicate checks
     _cacheNotification(notification);
+
+    final attributions = FeatureAttribution.computeFromVector(
+      featureVector: featureVector,
+      features: features,
+      category: notification.classifiedCategory ?? 'msg',
+    );
 
     final result = GhostAIResult(
       reviewScore: finalScore,
@@ -173,6 +272,9 @@ class GhostAI {
       featureVector: featureVector,
       predictedScore: predictedScore,
       ruleScore: ruleScore,
+      overrideTrigger: overrideTrigger,
+      scoreEvolutionSteps: steps,
+      featureAttributions: attributions,
     );
 
     // Structured logging in debug mode
@@ -182,6 +284,7 @@ class GhostAI {
 
     return result;
   }
+
 
   /// Helper to compute heuristic score if model is not loaded.
   double _heuristicLookAgainScore(List<double> featureVector) {
@@ -324,14 +427,17 @@ class GhostAI {
   void _logStructured(AppNotification notification, GhostAIResult result) {
     final redactedTitle = PiiRedactor.redactTitle(notification.title);
     final redactedContent = PiiRedactor.redactContent(notification.content);
+    final redactedPackage = PiiRedactor.redact(notification.packageName);
     debugPrint('=== GHOST AI INFERENCE REPORT ===');
     debugPrint('Notification: "$redactedTitle" - "$redactedContent"');
-    debugPrint('Package: ${notification.packageName}');
+    debugPrint('Package: $redactedPackage');
     debugPrint('Feature Vector (First 15): ${result.featureVector.take(15).toList()}...');
     debugPrint('Inference Time: ${result.inferenceTimeUs} us');
     debugPrint('Raw Predicted Score: ${(result.predictedScore * 100).toStringAsFixed(2)}');
     debugPrint('Rule Score: ${result.ruleScore != null ? (result.ruleScore! * 100).toStringAsFixed(2) : "N/A"}');
     debugPrint('Final Fused Score: ${(result.reviewScore * 100).toStringAsFixed(2)}');
+    debugPrint('Override Trigger: ${result.overrideTrigger}');
     debugPrint('==================================');
   }
+
 }

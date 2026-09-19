@@ -16,12 +16,14 @@ part 'attention_database.g.dart';
     ReviewQueueTable,
     FocusSessionsTable,
     DailyBriefTable,
+    InferenceAuditLogsTable,
   ],
   daos: [
     NotificationDao,
     ReviewQueueDao,
     FocusSessionDao,
     DailyBriefDao,
+    InferenceAuditDao,
   ],
 )
 class AttentionDatabase extends _$AttentionDatabase {
@@ -48,9 +50,13 @@ class AttentionDatabase extends _$AttentionDatabase {
         return t.notificationId.isNotInQuery(hasNotification);
       });
       await orphanedQuery.go();
+
+      // 3. Purge excess audit logs beyond row caps (500 max rows)
+      await inferenceAuditDao.clearOldAuditLogs(maxRows: 500);
     });
   }
 }
+
 
 QueryExecutor _openConnection() {
   return LazyDatabase(() async {
