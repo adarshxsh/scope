@@ -6,39 +6,50 @@ import 'package:scope/database/tables.dart';
 part 'daos.g.dart';
 
 @DriftAccessor(tables: [NotificationsTable])
-class NotificationDao extends DatabaseAccessor<AttentionDatabase> with _$NotificationDaoMixin {
+class NotificationDao extends DatabaseAccessor<AttentionDatabase>
+    with _$NotificationDaoMixin {
   NotificationDao(super.db);
 
   Future<void> insertNotification(NotificationEntry entry) async {
-    await into(notificationsTable).insert(entry, mode: InsertMode.insertOrReplace);
+    await into(
+      notificationsTable,
+    ).insert(entry, mode: InsertMode.insertOrReplace);
   }
 
   Future<void> insertAll(List<NotificationEntry> entries) async {
     await batch((b) {
-      b.insertAll(notificationsTable, entries, mode: InsertMode.insertOrReplace);
+      b.insertAll(
+        notificationsTable,
+        entries,
+        mode: InsertMode.insertOrReplace,
+      );
     });
   }
 
   Future<NotificationEntry?> getById(String id) {
-    return (select(notificationsTable)..where((t) => t.id.equals(id))).getSingleOrNull();
+    return (select(
+      notificationsTable,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
   }
 
   Future<List<NotificationEntry>> getAll() {
-    return (select(notificationsTable)
-          ..orderBy([(t) => OrderingTerm(expression: t.timestamp, mode: OrderingMode.desc)]))
+    return (select(notificationsTable)..orderBy([
+          (t) => OrderingTerm(expression: t.timestamp, mode: OrderingMode.desc),
+        ]))
         .get();
   }
 
   Stream<List<NotificationEntry>> watchAll() {
-    return (select(notificationsTable)
-          ..orderBy([(t) => OrderingTerm(expression: t.timestamp, mode: OrderingMode.desc)]))
+    return (select(notificationsTable)..orderBy([
+          (t) => OrderingTerm(expression: t.timestamp, mode: OrderingMode.desc),
+        ]))
         .watch();
   }
 
   Future<int> deleteOlderThan(int cutoffTimestamp) {
-    return (delete(notificationsTable)
-          ..where((t) => t.timestamp.isSmallerThanValue(cutoffTimestamp)))
-        .go();
+    return (delete(
+      notificationsTable,
+    )..where((t) => t.timestamp.isSmallerThanValue(cutoffTimestamp))).go();
   }
 
   Future<void> clearAll() async {
@@ -51,14 +62,48 @@ class NotificationDao extends DatabaseAccessor<AttentionDatabase> with _$Notific
     final row = await query.getSingle();
     return row.read(countExpr) ?? 0;
   }
+
+  Future<int> enforceStorageQuota(int maxCount) async {
+    if (maxCount <= 0) return 0;
+    final currentCount = await getCount();
+    if (currentCount <= maxCount) return 0;
+
+    final excess = currentCount - maxCount;
+
+    final query = select(notificationsTable)
+      ..orderBy([
+        (t) => OrderingTerm(
+          expression: CustomExpression<int>(
+            "CASE WHEN state = '${ReviewState.ACTIVE.name}' THEN 1 ELSE 0 END",
+          ),
+          mode: OrderingMode.asc,
+        ),
+        (t) => OrderingTerm(expression: t.timestamp, mode: OrderingMode.asc),
+      ])
+      ..limit(excess);
+
+    final itemsToPrune = await query.get();
+    if (itemsToPrune.isEmpty) return 0;
+
+    final idsToPrune = itemsToPrune.map((e) => e.id).toList();
+
+    final deletedCount = await (delete(
+      notificationsTable,
+    )..where((t) => t.id.isIn(idsToPrune))).go();
+
+    return deletedCount;
+  }
 }
 
 @DriftAccessor(tables: [ReviewQueueTable])
-class ReviewQueueDao extends DatabaseAccessor<AttentionDatabase> with _$ReviewQueueDaoMixin {
+class ReviewQueueDao extends DatabaseAccessor<AttentionDatabase>
+    with _$ReviewQueueDaoMixin {
   ReviewQueueDao(super.db);
 
   Future<void> insertItem(ReviewQueueEntry entry) async {
-    await into(reviewQueueTable).insert(entry, mode: InsertMode.insertOrReplace);
+    await into(
+      reviewQueueTable,
+    ).insert(entry, mode: InsertMode.insertOrReplace);
   }
 
   Future<List<ReviewQueueEntry>> getAll() {
@@ -66,7 +111,9 @@ class ReviewQueueDao extends DatabaseAccessor<AttentionDatabase> with _$ReviewQu
   }
 
   Future<int> deleteItem(String notificationId) {
-    return (delete(reviewQueueTable)..where((t) => t.notificationId.equals(notificationId))).go();
+    return (delete(
+      reviewQueueTable,
+    )..where((t) => t.notificationId.equals(notificationId))).go();
   }
 
   Future<void> clearAll() async {
@@ -74,13 +121,15 @@ class ReviewQueueDao extends DatabaseAccessor<AttentionDatabase> with _$ReviewQu
   }
 
   Future<int> updateStatus(String notificationId, ReviewState state) {
-    return (update(reviewQueueTable)..where((t) => t.notificationId.equals(notificationId)))
+    return (update(reviewQueueTable)
+          ..where((t) => t.notificationId.equals(notificationId)))
         .write(ReviewQueueTableCompanion(status: Value(state)));
   }
 }
 
 @DriftAccessor(tables: [FocusSessionsTable])
-class FocusSessionDao extends DatabaseAccessor<AttentionDatabase> with _$FocusSessionDaoMixin {
+class FocusSessionDao extends DatabaseAccessor<AttentionDatabase>
+    with _$FocusSessionDaoMixin {
   FocusSessionDao(super.db);
 
   Future<void> insertSession(FocusSessionEntry entry) async {
@@ -88,7 +137,9 @@ class FocusSessionDao extends DatabaseAccessor<AttentionDatabase> with _$FocusSe
   }
 
   Future<FocusSessionEntry?> getActiveSession() {
-    return (select(focusSessionsTable)..where((t) => t.sessionEnd.isNull())).getSingleOrNull();
+    return (select(
+      focusSessionsTable,
+    )..where((t) => t.sessionEnd.isNull())).getSingleOrNull();
   }
 
   Future<void> updateSession(FocusSessionEntry entry) async {
@@ -105,7 +156,8 @@ class FocusSessionDao extends DatabaseAccessor<AttentionDatabase> with _$FocusSe
 }
 
 @DriftAccessor(tables: [DailyBriefTable])
-class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBriefDaoMixin {
+class DailyBriefDao extends DatabaseAccessor<AttentionDatabase>
+    with _$DailyBriefDaoMixin {
   DailyBriefDao(super.db);
 
   Future<void> insertOrUpdate(DailyBriefEntry entry) async {
@@ -113,7 +165,9 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
   }
 
   Future<DailyBriefEntry?> getBriefForDate(String date) {
-    return (select(dailyBriefTable)..where((t) => t.date.equals(date))).getSingleOrNull();
+    return (select(
+      dailyBriefTable,
+    )..where((t) => t.date.equals(date))).getSingleOrNull();
   }
 
   Future<void> incrementStats(
@@ -126,23 +180,27 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
   }) async {
     final existing = await getBriefForDate(date);
     if (existing != null) {
-      await update(dailyBriefTable).replace(existing.copyWith(
-        notificationsReviewed: existing.notificationsReviewed + reviewed,
-        actionsCompleted: existing.actionsCompleted + completed,
-        calendarEventsCreated: existing.calendarEventsCreated + calendar,
-        remindersCreated: existing.remindersCreated + reminders,
-        archivedCount: existing.archivedCount + archived,
-      ));
+      await update(dailyBriefTable).replace(
+        existing.copyWith(
+          notificationsReviewed: existing.notificationsReviewed + reviewed,
+          actionsCompleted: existing.actionsCompleted + completed,
+          calendarEventsCreated: existing.calendarEventsCreated + calendar,
+          remindersCreated: existing.remindersCreated + reminders,
+          archivedCount: existing.archivedCount + archived,
+        ),
+      );
     } else {
-      await into(dailyBriefTable).insert(DailyBriefEntry(
-        id: 0,
-        date: date,
-        notificationsReviewed: reviewed,
-        actionsCompleted: completed,
-        calendarEventsCreated: calendar,
-        remindersCreated: reminders,
-        archivedCount: archived,
-      ));
+      await into(dailyBriefTable).insert(
+        DailyBriefEntry(
+          id: 0,
+          date: date,
+          notificationsReviewed: reviewed,
+          actionsCompleted: completed,
+          calendarEventsCreated: calendar,
+          remindersCreated: reminders,
+          archivedCount: archived,
+        ),
+      );
     }
   }
 
@@ -152,5 +210,55 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
 
   Future<void> clearAll() async {
     await delete(dailyBriefTable).go();
+  }
+}
+
+@DriftAccessor(tables: [AppSettingsTable])
+class AppSettingsDao extends DatabaseAccessor<AttentionDatabase>
+    with _$AppSettingsDaoMixin {
+  AppSettingsDao(super.db);
+
+  Future<AppSettingsEntry> getSettings() async {
+    final list = await select(appSettingsTable).get();
+    if (list.isNotEmpty) {
+      return list.first;
+    }
+    const defaultEntry = AppSettingsEntry(
+      id: 1,
+      retentionDays: 7,
+      storageQuota: -1,
+      telemetryEnabled: true,
+    );
+    await into(
+      appSettingsTable,
+    ).insert(defaultEntry, mode: InsertMode.insertOrReplace);
+    return defaultEntry;
+  }
+
+  Stream<AppSettingsEntry> watchSettings() {
+    return select(appSettingsTable).watchSingleOrNull().map(
+      (entry) =>
+          entry ??
+          const AppSettingsEntry(
+            id: 1,
+            retentionDays: 7,
+            storageQuota: -1,
+            telemetryEnabled: true,
+          ),
+    );
+  }
+
+  Future<void> updateSettings({
+    int? retentionDays,
+    int? storageQuota,
+    bool? telemetryEnabled,
+  }) async {
+    final current = await getSettings();
+    final updated = current.copyWith(
+      retentionDays: retentionDays ?? current.retentionDays,
+      storageQuota: storageQuota ?? current.storageQuota,
+      telemetryEnabled: telemetryEnabled ?? current.telemetryEnabled,
+    );
+    await update(appSettingsTable).replace(updated);
   }
 }

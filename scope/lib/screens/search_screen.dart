@@ -62,7 +62,9 @@ class _SearchScreenState extends State<SearchScreen> {
                   if (results.isEmpty) {
                     return EmptyState(
                       icon: Icons.search_off_outlined,
-                      title: _query.trim().isEmpty ? 'No notifications' : 'No matches',
+                      title: _query.trim().isEmpty
+                          ? 'No notifications'
+                          : 'No matches',
                       message: _query.trim().isEmpty
                           ? 'Wait for notifications to arrive.'
                           : 'Nothing found for "$_query".',
@@ -70,7 +72,11 @@ class _SearchScreenState extends State<SearchScreen> {
                   }
 
                   return ListView.builder(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.xl, left: AppSpacing.md, right: AppSpacing.md),
+                    padding: const EdgeInsets.only(
+                      bottom: AppSpacing.xl,
+                      left: AppSpacing.md,
+                      right: AppSpacing.md,
+                    ),
                     itemCount: results.length,
                     itemBuilder: (context, index) {
                       final notification = results[index];
@@ -153,7 +159,7 @@ class _SwipeableSearchTile extends StatelessWidget {
             margin: EdgeInsets.symmetric(vertical: isLow ? 2 : 4),
             padding: EdgeInsets.all(isLow ? AppSpacing.sm : AppSpacing.md),
             decoration: BoxDecoration(
-              color: notification.priority == 'high' 
+              color: notification.priority == 'high'
                   ? AppColors.high.withValues(alpha: 0.05)
                   : const Color(0xFF161A23),
               borderRadius: BorderRadius.circular(12),
@@ -163,13 +169,15 @@ class _SwipeableSearchTile extends StatelessWidget {
                     : const Color(0xFF262A36),
                 width: notification.priority == 'critical' ? 1.5 : 1.0,
               ),
-              boxShadow: notification.priority == 'critical' ? [
-                BoxShadow(
-                  color: AppColors.critical.withValues(alpha: 0.15),
-                  blurRadius: 24,
-                  spreadRadius: -4,
-                )
-              ] : null,
+              boxShadow: notification.priority == 'critical'
+                  ? [
+                      BoxShadow(
+                        color: AppColors.critical.withValues(alpha: 0.15),
+                        blurRadius: 24,
+                        spreadRadius: -4,
+                      ),
+                    ]
+                  : null,
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -178,7 +186,9 @@ class _SwipeableSearchTile extends StatelessWidget {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: _getPriorityColor(notification.priority).withValues(alpha: 0.15),
+                    color: _getPriorityColor(
+                      notification.priority,
+                    ).withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -197,9 +207,13 @@ class _SwipeableSearchTile extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              notification.title.isNotEmpty ? notification.title : '(No title)',
+                              notification.title.isNotEmpty
+                                  ? notification.title
+                                  : '(No title)',
                               style: theme.textTheme.titleSmall?.copyWith(
-                                fontWeight: (notification.priority == 'critical' || notification.priority == 'high')
+                                fontWeight:
+                                    (notification.priority == 'critical' ||
+                                        notification.priority == 'high')
                                     ? FontWeight.bold
                                     : FontWeight.normal,
                               ),
@@ -210,7 +224,9 @@ class _SwipeableSearchTile extends StatelessWidget {
                           const SizedBox(width: 8),
                           Text(
                             _formatTime(notification.timestamp),
-                            style: theme.textTheme.bodySmall?.copyWith(color: Colors.white54),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: Colors.white54,
+                            ),
                           ),
                         ],
                       ),
@@ -218,7 +234,9 @@ class _SwipeableSearchTile extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           notification.content,
-                          style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: Colors.white70,
+                          ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -226,7 +244,9 @@ class _SwipeableSearchTile extends StatelessWidget {
                       const SizedBox(height: 6),
                       Text(
                         notification.packageName,
-                        style: theme.textTheme.bodySmall?.copyWith(color: Colors.white38),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: Colors.white38,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -243,21 +263,31 @@ class _SwipeableSearchTile extends StatelessWidget {
 
   Color _getPriorityColor(String? priority) {
     switch (priority) {
-      case 'critical': return const Color(0xFFE05252);
-      case 'high': return const Color(0xFFE5923A);
-      case 'medium': return const Color(0xFF3A7BD5);
-      case 'low': return const Color(0xFF6B7A99);
-      default: return Colors.grey;
+      case 'critical':
+        return const Color(0xFFE05252);
+      case 'high':
+        return const Color(0xFFE5923A);
+      case 'medium':
+        return const Color(0xFF3A7BD5);
+      case 'low':
+        return const Color(0xFF6B7A99);
+      default:
+        return Colors.grey;
     }
   }
 
   IconData _getPriorityIcon(String? priority) {
     switch (priority) {
-      case 'critical': return Icons.gpp_bad;
-      case 'high': return Icons.warning_amber_rounded;
-      case 'medium': return Icons.notifications;
-      case 'low': return Icons.notifications_none;
-      default: return Icons.notifications;
+      case 'critical':
+        return Icons.gpp_bad;
+      case 'high':
+        return Icons.warning_amber_rounded;
+      case 'medium':
+        return Icons.notifications;
+      case 'low':
+        return Icons.notifications_none;
+      default:
+        return Icons.notifications;
     }
   }
 

@@ -22,15 +22,12 @@ class ScopeRow extends StatelessWidget {
     required this.label,
     required int count,
     this.valueSuffix = '',
-  })  : value = '$count',
-        animateValue = true;
+  }) : value = '$count',
+       animateValue = true;
 
-  const ScopeRow.info({
-    super.key,
-    required this.label,
-    required this.value,
-  })  : animateValue = false,
-        valueSuffix = '';
+  const ScopeRow.info({super.key, required this.label, required this.value})
+    : animateValue = false,
+      valueSuffix = '';
 
   @override
   Widget build(BuildContext context) {
@@ -42,9 +39,7 @@ class ScopeRow extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Text(label, style: theme.textTheme.bodyMedium),
-          ),
+          Expanded(child: Text(label, style: theme.textTheme.bodyMedium)),
           const SizedBox(width: AppSpacing.md),
           if (animateValue)
             AnimatedCountText(
@@ -103,7 +98,9 @@ class ScopeStatLine extends StatelessWidget {
           Icon(
             icon,
             size: 18,
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.45),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
