@@ -1,7 +1,10 @@
+import 'dart:io';
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/models/model_manager.dart';
 import 'package:scope/core/analysis/analysis_result.dart';
 import 'package:scope/core/analysis/notification_analyzer.dart';
 import 'package:scope/core/analysis/wordpiece_tokenizer.dart';
@@ -13,25 +16,56 @@ class LiteRtClassifier implements NotificationAnalyzer {
   bool _isModelLoaded = false;
 
   LiteRtClassifier() {
-    _initialize();
+    initialize();
   }
 
-  Future<void> _initialize() async {
+  /// Reloads category classification model and vocabulary from ModelManager.
+  Future<void> reload({File? customModelFile, String? customVocabStr}) async {
     try {
-      // 1. Load Vocab
-      final vocabStr = await rootBundle.loadString('assets/vocab.txt');
+      _interpreter?.close();
+    } catch (_) {}
+    _interpreter = null;
+    _isModelLoaded = false;
+    await initialize(customModelFile: customModelFile, customVocabStr: customVocabStr);
+  }
+
+  /// Initializes tokenizer and optional category classification model.
+  Future<void> initialize({File? customModelFile, String? customVocabStr}) async {
+    try {
+      // 1. Load Vocabulary (dynamic update or static asset)
+      final vocabStr = customVocabStr ?? await ModelManager.instance.getVocabContent();
       final lines = vocabStr.split('\n');
       _tokenizer = WordPieceTokenizer.fromLines(lines);
 
-      // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
-      _isModelLoaded = false;
+      // 2. Load Category Model if available
+      File? categoryFile = customModelFile ?? await ModelManager.instance.getCategoryModelFile();
+      if (categoryFile != null) {
+        try {
+          final interpreter = Interpreter.fromFile(categoryFile);
+          final inputShape = interpreter.getInputTensor(0).shape;
+          final outputShape = interpreter.getOutputTensor(0).shape;
+
+          if (inputShape.isNotEmpty && inputShape.last == 64 && outputShape.last == 5) {
+            _interpreter = interpreter;
+            _isModelLoaded = true;
+            debugPrint('LiteRtClassifier: Dynamic category model loaded successfully.');
+          } else {
+            debugPrint('LiteRtClassifier: Dynamic category model shape mismatch (input: $inputShape, output: $outputShape).');
+            interpreter.close();
+            _isModelLoaded = false;
+          }
+        } catch (e) {
+          debugPrint('LiteRtClassifier: Exception loading dynamic category model: $e');
+          _isModelLoaded = false;
+        }
+      } else {
+        _isModelLoaded = false;
+      }
     } catch (e) {
-      // Graceful degradation: Log and set flags so analyze runs in fallback mode
-      // ignore: avoid_print
-      print('LiteRtClassifier failed to initialize: $e');
+      debugPrint('LiteRtClassifier failed to initialize: $e');
       _isModelLoaded = false;
 
-      // Ensure tokenizer is loaded even if interpreter fails (so we can test tokenization in fallback)
+      // Ensure tokenizer is loaded even if interpreter fails
       if (_tokenizer == null) {
         try {
           final vocabStr = await rootBundle.loadString('assets/vocab.txt');
@@ -51,7 +85,7 @@ class LiteRtClassifier implements NotificationAnalyzer {
 
     // Ensure initialization finished
     if (_tokenizer == null) {
-      await _initialize();
+      await initialize();
     }
 
     final tokenIds = _tokenizer?.tokenize(combinedText) ?? List<int>.filled(64, 0);
