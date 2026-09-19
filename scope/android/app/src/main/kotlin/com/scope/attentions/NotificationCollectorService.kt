@@ -24,6 +24,7 @@ class NotificationCollectorService : NotificationListenerService() {
 
     companion object {
         private const val TAG = "NotifCollector"
+        private const val MAX_QUEUE_CAPACITY = 100
 
         /** Thread-safe queue of captured notifications. */
         private val queue = ConcurrentLinkedQueue<NotificationData>()
@@ -54,10 +55,13 @@ class NotificationCollectorService : NotificationListenerService() {
     private fun addSbnToQueue(sbn: StatusBarNotification) {
         try {
             val extras = sbn.notification.extras
-            val title = extras?.getCharSequence("android.title")?.toString() ?: ""
-            val text = extras?.getCharSequence("android.text")?.toString() ?: ""
+            val rawTitle = extras?.getCharSequence("android.title")?.toString() ?: ""
+            val rawText = extras?.getCharSequence("android.text")?.toString() ?: ""
             val isOngoing = sbn.isOngoing
             val packageName = sbn.packageName ?: "unknown"
+
+            val title = PayloadRedactor.redact(rawTitle)
+            val text = PayloadRedactor.redact(rawText)
 
             // Ignore if same package, title, and content already exist in queue
             val isDuplicate = queue.any {
@@ -77,8 +81,13 @@ class NotificationCollectorService : NotificationListenerService() {
                 isOngoing = isOngoing
             )
 
+            // Enforce queue capacity limit (evict oldest entries if capacity reached)
+            while (queue.size >= MAX_QUEUE_CAPACITY) {
+                queue.poll()
+            }
+
             queue.add(data)
-            Log.d(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
+            Log.d(TAG, "Captured notification from package hash: 0x${packageName.hashCode().toString(16)}")
         } catch (e: Exception) {
             Log.e(TAG, "Error capturing/adding notification", e)
         }
@@ -91,9 +100,8 @@ class NotificationCollectorService : NotificationListenerService() {
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         if (sbn == null) return
-        // Log for now; future phases may track dismissed notifications
-        val removedTitle = sbn.notification.extras?.getCharSequence("android.title")?.toString()
-        Log.d(TAG, "Removed: ${sbn.packageName} - ${NotificationRedactor.redactTitle(removedTitle)}")
+        val pkgHash = (sbn.packageName ?: "unknown").hashCode().toString(16)
+        Log.d(TAG, "Removed notification from package hash: 0x$pkgHash")
     }
 
     override fun onListenerConnected() {
