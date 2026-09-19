@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
@@ -57,6 +58,37 @@ class GhostAI {
   /// Returns whether the model is loaded.
   bool get isModelLoaded => _interpreter != null;
 
+  /// Hot reloads TFLite model from in-memory byte buffer.
+  Future<bool> hotReloadModelFromBytes(Uint8List bytes) async {
+    try {
+      final newInterpreter = Interpreter.fromBuffer(bytes);
+      _interpreter?.close();
+      _interpreter = newInterpreter;
+      debugPrint('GhostAI: Model hot-reloaded successfully from bytes.');
+      return true;
+    } catch (e) {
+      debugPrint('GhostAI: Failed to hot reload model from bytes: $e');
+      return false;
+    }
+  }
+
+  /// Hot reloads TFLite model from local File.
+  Future<bool> hotReloadModelFromFile(File file) async {
+    try {
+      final bytes = await file.readAsBytes();
+      return await hotReloadModelFromBytes(bytes);
+    } catch (e) {
+      debugPrint('GhostAI: Failed to hot reload model from file: $e');
+      return false;
+    }
+  }
+
+  /// Sets interpreter instance directly for testing purposes.
+  void setInterpreterForTesting(Interpreter? interpreter) {
+    _interpreter?.close();
+    _interpreter = interpreter;
+  }
+
   /// Initializes the TFLite interpreter and rules database once on startup.
   Future<void> initialize() async {
     if (_interpreter != null) return;
@@ -89,21 +121,51 @@ class GhostAI {
     // 1. Feature extraction using the existing FeatureExtractor
     final featureVector = FeatureExtractor.extractFromAppNotification(notification);
 
-    // 2. Model inference
+    // 2. Model inference with dynamic shape adaptation and exception fallback
     double predictedScore = 0.0;
     int inferenceTimeUs = 0;
 
     if (_interpreter != null) {
-      final input = [featureVector];
-      final output = List<double>.filled(1, 0.0).reshape([1, 1]);
+      try {
+        int targetInputDim = FeatureVector.size;
+        try {
+          final inputTensors = _interpreter!.getInputTensors();
+          if (inputTensors.isNotEmpty && inputTensors[0].shape.isNotEmpty) {
+            final shape = inputTensors[0].shape;
+            targetInputDim = shape.length >= 2 ? shape[1] : shape[0];
+          }
+        } catch (_) {}
 
-      final inferStopwatch = Stopwatch()..start();
-      _interpreter!.run(input, output);
-      inferStopwatch.stop();
+        final adaptedVector = FeatureVector.padOrTruncateVector(featureVector, targetInputDim);
+        final input = [adaptedVector];
 
-      inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
-      // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
-      predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+        int targetOutputDim = 1;
+        try {
+          final outputTensors = _interpreter!.getOutputTensors();
+          if (outputTensors.isNotEmpty && outputTensors[0].shape.isNotEmpty) {
+            targetOutputDim = outputTensors[0].shape.last;
+          }
+        } catch (_) {}
+
+        final output = List<double>.filled(targetOutputDim, 0.0).reshape([1, targetOutputDim]);
+
+        final inferStopwatch = Stopwatch()..start();
+        _interpreter!.run(input, output);
+        inferStopwatch.stop();
+
+        inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
+
+        final rawVal = output[0][0];
+        if (rawVal is num && rawVal.isFinite) {
+          final doubleVal = rawVal.toDouble();
+          predictedScore = (doubleVal > 1.0 ? doubleVal / 100.0 : doubleVal).clamp(0.0, 1.0);
+        } else {
+          predictedScore = _heuristicLookAgainScore(featureVector);
+        }
+      } catch (e) {
+        debugPrint('GhostAI: Model inference error: $e');
+        predictedScore = _heuristicLookAgainScore(featureVector);
+      }
     } else {
       // Heuristic fallback if model not loaded
       predictedScore = _heuristicLookAgainScore(featureVector);
