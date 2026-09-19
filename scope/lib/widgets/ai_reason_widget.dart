@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:scope/core/analysis/extracted_features.dart';
+import 'package:scope/core/analysis/feature_attribution.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/theme/app_colors.dart';
 import 'package:scope/theme/app_spacing.dart';
 
-/// Explains why a notification matters.
+/// Explains why a notification matters using dynamic feature attribution influences.
 class AIReasonWidget extends StatelessWidget {
   final AppNotification notification;
   final bool inverted;
@@ -16,17 +18,18 @@ class AIReasonWidget extends StatelessWidget {
 
   List<String> get _reasons {
     final reasons = <String>[];
-    final features = notification.extractedFeatures;
+    final rawFeatures = notification.extractedFeatures;
+    final features = rawFeatures != null ? ExtractedFeatures.fromMap(rawFeatures) : const ExtractedFeatures();
 
-    if (features?['hasDeadline'] == true) reasons.add("There's a deadline coming up.");
-    if (features?['amount'] != null) reasons.add('I noticed a payment amount.');
-    if (features?['otp'] != null) reasons.add("Here's your security code.");
-    if (notification.priority == 'critical' || notification.priority == 'high') {
-      reasons.add('This seems important right now.');
+    final attributions = FeatureAttributionCalculator.computeAttributions(
+      notification: notification,
+      features: features,
+      predictedScore: notification.priorityScore,
+    );
+
+    for (final attr in attributions) {
+      reasons.add('${attr.featureName}: ${attr.description}');
     }
-    if (notification.packageName.contains('gov')) reasons.add('This is from an official source.');
-    final urls = features?['urls'];
-    if (urls is List && urls.isNotEmpty) reasons.add("There's an action you can take.");
 
     if (notification.explanation != null && notification.explanation!.isNotEmpty) {
       final lines = notification.explanation!
@@ -34,7 +37,11 @@ class AIReasonWidget extends StatelessWidget {
           .map((l) => l.replaceAll(RegExp(r'^[-•*]\s*'), '').trim())
           .where((l) => l.isNotEmpty)
           .take(2);
-      reasons.addAll(lines);
+      for (final line in lines) {
+        if (!reasons.contains(line)) {
+          reasons.add(line);
+        }
+      }
     }
 
     if (reasons.isEmpty) reasons.add('Thought you might want to see this.');
