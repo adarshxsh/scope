@@ -3,6 +3,7 @@ package com.scope.attentions
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
@@ -17,7 +18,8 @@ import java.util.concurrent.ConcurrentLinkedQueue
  * Design decisions:
  *   - Uses a static ConcurrentLinkedQueue (thread-safe, lock-free) because
  *     the service runs in a separate context from MainActivity.
- *   - No heavy processing here — just capture and queue.
+ *   - Enforces a strict queue capacity quota (MAX_QUEUE_SIZE) to prevent OOM/memory leaks.
+ *   - Enforces app exclusion controls filtering out blacklisted package names.
  *   - Skips ongoing/persistent notifications by default (configurable).
  */
 class NotificationCollectorService : NotificationListenerService() {
@@ -25,11 +27,51 @@ class NotificationCollectorService : NotificationListenerService() {
     companion object {
         private const val TAG = "NotifCollector"
 
+        /** Maximum allowed notifications in memory queue to enforce memory quota limits. */
+        private const val MAX_QUEUE_SIZE = 200
+
+        /** Maximum string length bounds for notification title and content. */
+        private const val MAX_TITLE_LENGTH = 256
+        private const val MAX_TEXT_LENGTH = 2048
+
         /** Thread-safe queue of captured notifications. */
         private val queue = ConcurrentLinkedQueue<NotificationData>()
 
+        /** Thread-safe set of user-excluded package names. */
+        private val excludedPackages = ConcurrentHashMap.newKeySet<String>()
+
         /** Counter for generating simple unique IDs within a session. */
         private var idCounter = 0L
+
+        /**
+         * Updates the list of excluded package names from Flutter bridge.
+         */
+        fun setExcludedPackages(packages: List<String>) {
+            excludedPackages.clear()
+            for (pkg in packages) {
+                if (pkg.isNotBlank()) {
+                    excludedPackages.add(pkg.trim())
+                }
+            }
+            Log.i(TAG, "Updated excluded packages count: ${excludedPackages.size}")
+        }
+
+        /**
+         * Returns the current list of excluded package names.
+         */
+        fun getExcludedPackages(): List<String> {
+            return excludedPackages.toList()
+        }
+
+        /**
+         * Checks if a package name is currently excluded.
+         */
+        fun isPackageExcluded(packageName: String): Boolean {
+            if (packageName == "com.scope.attentions" || packageName == "com.scope.attentionos") {
+                return true
+            }
+            return excludedPackages.contains(packageName)
+        }
 
         /**
          * Drains all notifications from the queue and returns them.
@@ -53,11 +95,26 @@ class NotificationCollectorService : NotificationListenerService() {
 
     private fun addSbnToQueue(sbn: StatusBarNotification) {
         try {
-            val extras = sbn.notification.extras
-            val title = extras?.getCharSequence("android.title")?.toString() ?: ""
-            val text = extras?.getCharSequence("android.text")?.toString() ?: ""
-            val isOngoing = sbn.isOngoing
             val packageName = sbn.packageName ?: "unknown"
+
+            // App exclusion control: drop notifications from excluded package names
+            if (isPackageExcluded(packageName)) {
+                Log.d(TAG, "Skipping excluded package notification: $packageName")
+                return
+            }
+
+            val extras = sbn.notification.extras
+            var title = extras?.getCharSequence("android.title")?.toString() ?: ""
+            var text = extras?.getCharSequence("android.text")?.toString() ?: ""
+            val isOngoing = sbn.isOngoing
+
+            // Verification & sanitization: truncate long string fields to prevent memory bloat
+            if (title.length > MAX_TITLE_LENGTH) {
+                title = title.substring(0, MAX_TITLE_LENGTH)
+            }
+            if (text.length > MAX_TEXT_LENGTH) {
+                text = text.substring(0, MAX_TEXT_LENGTH)
+            }
 
             // Ignore if same package, title, and content already exist in queue
             val isDuplicate = queue.any {
@@ -65,6 +122,12 @@ class NotificationCollectorService : NotificationListenerService() {
             }
             if (isDuplicate) {
                 return
+            }
+
+            // Enforce queue memory quota limits: discard oldest if capacity reached
+            while (queue.size >= MAX_QUEUE_SIZE) {
+                val dropped = queue.poll()
+                Log.w(TAG, "Queue capacity reached ($MAX_QUEUE_SIZE). Dropped oldest notification from ${dropped?.packageName}")
             }
 
             val data = NotificationData(
@@ -80,7 +143,7 @@ class NotificationCollectorService : NotificationListenerService() {
             queue.add(data)
             Log.d(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
         } catch (e: Exception) {
-            Log.e(TAG, "Error capturing/adding notification", e)
+            Log.e(TAG, "Isolated error capturing/adding notification", e)
         }
     }
 
