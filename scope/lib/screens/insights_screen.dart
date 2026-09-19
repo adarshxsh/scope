@@ -1,6 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/privacy/privacy_budget_manager.dart';
 import 'package:scope/core/state/notification_controller.dart';
 import 'package:scope/core/utils/focus_area_mapper.dart';
 import 'package:scope/theme/app_colors.dart';
@@ -11,7 +12,7 @@ import 'package:scope/widgets/primitives/scope_surface.dart';
 import 'package:scope/widgets/scope_screen_body.dart';
 import 'package:scope/widgets/section_header.dart';
 
-/// Analytics overview using beautiful fl_charts.
+/// Analytics overview using differential privacy telemetry queries and fl_charts.
 class InsightsScreen extends StatefulWidget {
   final NotificationController controller;
 
@@ -24,20 +25,38 @@ class InsightsScreen extends StatefulWidget {
 class _InsightsScreenState extends State<InsightsScreen> {
   int _touchedPieIndex = -1;
   int _touchedBarIndex = -1;
+  PrivacyBudgetStatus? _budgetStatus;
+  bool _isBudgetExhausted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPrivacyBudgetStatus();
+  }
+
+  Future<void> _loadPrivacyBudgetStatus() async {
+    final status = await widget.controller.getPrivacyBudgetStatus();
+    if (mounted) {
+      setState(() {
+        _budgetStatus = status;
+        _isBudgetExhausted = status.isExhausted;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final notifications = widget.controller.notifications;
     final priorities = {'critical': 0, 'high': 0, 'medium': 0, 'low': 0};
-    
+
     // Group by hour
     final hourlyVolume = List<int>.filled(24, 0);
 
     for (final n in notifications) {
       final p = n.priority ?? 'medium';
       priorities[p] = (priorities[p] ?? 0) + 1;
-      
+
       final hour = DateTime.fromMillisecondsSinceEpoch(n.timestamp).hour;
       hourlyVolume[hour]++;
     }
@@ -57,14 +76,24 @@ class _InsightsScreenState extends State<InsightsScreen> {
               title: 'Insights',
               subtitle: 'How your attention is distributed.',
             ),
-            
+
+            if (_budgetStatus != null) _buildPrivacyBudgetBanner(context, _budgetStatus!),
+            const SizedBox(height: AppSpacing.md),
+
             // Priority Pie Chart
             ScopeSurface(
               padding: const EdgeInsets.all(AppSpacing.lg),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Priority Distribution', style: theme.textTheme.titleMedium),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Priority Distribution', style: theme.textTheme.titleMedium),
+                      if (_isBudgetExhausted)
+                        Text('Coarsened Fallback', style: theme.textTheme.bodySmall?.copyWith(color: Colors.amber)),
+                    ],
+                  ),
                   const SizedBox(height: AppSpacing.xl),
                   SizedBox(
                     height: 220,
@@ -101,7 +130,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
                               style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
                             ),
                             Text(
-                              'Total',
+                              _isBudgetExhausted ? 'Total (Coarsened)' : 'Total (Noised)',
                               style: theme.textTheme.bodySmall?.copyWith(color: Colors.white54),
                             ),
                           ],
@@ -114,9 +143,9 @@ class _InsightsScreenState extends State<InsightsScreen> {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: AppSpacing.md),
-            
+
             // Hourly Volume Bar Chart
             ScopeSurface(
               padding: const EdgeInsets.all(AppSpacing.lg),
@@ -125,7 +154,12 @@ class _InsightsScreenState extends State<InsightsScreen> {
                 children: [
                   Text('Hourly Volume', style: theme.textTheme.titleMedium),
                   const SizedBox(height: AppSpacing.md),
-                  Text('When you receive the most notifications', style: theme.textTheme.bodySmall?.copyWith(color: Colors.white54)),
+                  Text(
+                    _isBudgetExhausted
+                        ? 'When you receive notifications (Coarsened bucket fallback active)'
+                        : 'When you receive notifications (Laplace noise injected)',
+                    style: theme.textTheme.bodySmall?.copyWith(color: Colors.white54),
+                  ),
                   const SizedBox(height: AppSpacing.xl),
                   SizedBox(
                     height: 200,
@@ -165,7 +199,6 @@ class _InsightsScreenState extends State<InsightsScreen> {
                             sideTitles: SideTitles(
                               showTitles: true,
                               getTitlesWidget: (value, meta) {
-                                // Show title every 6 hours
                                 if (value % 6 != 0) return const SizedBox.shrink();
                                 return Padding(
                                   padding: const EdgeInsets.only(top: 8.0),
@@ -191,9 +224,9 @@ class _InsightsScreenState extends State<InsightsScreen> {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: AppSpacing.md),
-            
+
             // Overview Analysis
             ScopeSurface(
               padding: const EdgeInsets.all(AppSpacing.lg),
@@ -209,9 +242,9 @@ class _InsightsScreenState extends State<InsightsScreen> {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: AppSpacing.md),
-            
+
             // Focus Areas
             ScopeSurface(
               padding: const EdgeInsets.all(AppSpacing.lg),
@@ -241,9 +274,9 @@ class _InsightsScreenState extends State<InsightsScreen> {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: AppSpacing.md),
-            
+
             // Ghost AI Insights
             ScopeSurface(
               padding: const EdgeInsets.all(AppSpacing.lg),
@@ -267,6 +300,47 @@ class _InsightsScreenState extends State<InsightsScreen> {
       ),
     );
   }
+
+  Widget _buildPrivacyBudgetBanner(BuildContext context, PrivacyBudgetStatus status) {
+    final theme = Theme.of(context);
+    final isExhausted = status.isExhausted;
+
+    return ScopeSurface(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+      child: Row(
+        children: [
+          Icon(
+            isExhausted ? Icons.warning_amber_rounded : Icons.shield_rounded,
+            color: isExhausted ? Colors.amber : AppColors.seed,
+            size: 22,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isExhausted ? 'Privacy Budget Exhausted' : 'Privacy Budget Guard Active',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: isExhausted ? Colors.amber : AppColors.seed,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  isExhausted
+                      ? 'Daily budget exhausted (ε spent: ${status.spentToday.toStringAsFixed(2)} / ${status.dailyCap.toStringAsFixed(1)}). Returning coarsened bounds.'
+                      : 'Laplace noise injected. Remaining daily budget: ε = ${status.remainingDaily.toStringAsFixed(2)}',
+                  style: theme.textTheme.bodySmall?.copyWith(color: Colors.white70),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
 
   List<Widget> _generateDynamicInsights(
     List<AppNotification> notifications,
