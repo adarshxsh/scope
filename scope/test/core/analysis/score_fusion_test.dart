@@ -1,7 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scope/core/analysis/analysis_result.dart';
+import 'package:scope/core/analysis/explanation_generator.dart';
+import 'package:scope/core/analysis/extracted_features.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/analysis/score_fusion.dart';
+import 'package:scope/core/models/notification_model.dart';
 
 void main() {
   group('ScoreFusion Tests', () {
@@ -108,6 +111,62 @@ void main() {
       expect(fused.score, equals(0.0));
       expect(fused.engineName, equals('litert_model (fallback)'));
       expect(fused.isFallback, isTrue);
+    });
+  });
+
+  group('ExplanationGenerator Fallback Formatting', () {
+    test('renders explicit fallback status when fusedResult.isFallback is true', () {
+      final fallbackResult = AnalysisResult(
+        category: 'msg',
+        score: 0.50,
+        engineName: 'litert_model (fallback)',
+        matchedSignals: [],
+        latencyMs: 1,
+        isFallback: true,
+      );
+
+      final trace = ExplanationGenerator.generate(
+        fusedResult: fallbackResult,
+        features: const ExtractedFeatures(),
+        priority: 'medium',
+      );
+
+      expect(trace, contains('Fallback Heuristic'));
+      expect(trace, isNot(contains('50%')));
+    });
+  });
+
+  group('AppNotification isFallback Serialization', () {
+    test('serializes and deserializes isFallback correctly', () {
+      final notif = AppNotification(
+        id: 'test-id',
+        packageName: 'com.example.app',
+        title: 'Title',
+        content: 'Content',
+        timestamp: 1000000,
+        isFallback: true,
+      );
+
+      final map = notif.toMap();
+      expect(map['isFallback'], isTrue);
+
+      final deserialized = AppNotification.fromMap(map);
+      expect(deserialized.isFallback, isTrue);
+      expect(deserialized, equals(notif));
+    });
+
+    test('copyWith updates isFallback properly', () {
+      final notif = AppNotification(
+        id: 'test-id',
+        packageName: 'com.example.app',
+        title: 'Title',
+        content: 'Content',
+        timestamp: 1000000,
+        isFallback: false,
+      );
+
+      final updated = notif.copyWith(isFallback: true);
+      expect(updated.isFallback, isTrue);
     });
   });
 }
