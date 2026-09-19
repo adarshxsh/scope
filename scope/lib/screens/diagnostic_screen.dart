@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
+import 'package:scope/core/utils/pii_sanitizer.dart';
 import 'package:scope/widgets/scope_card.dart';
 
 class DiagnosticScreen extends StatefulWidget {
@@ -264,11 +265,11 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
     final notif = _analyzedNotification!;
     final priorityColor = _getPriorityColor(notif.priority);
 
-    // Safely parse feature variables to prevent Dart compilation/ternary ambiguity
-    final features = notif.extractedFeatures ?? {};
+    // Safely parse and sanitize feature variables to ensure static UI masking
+    final features = PiiSanitizer.sanitizeFeatureMap(notif.extractedFeatures);
     final otp = features['otp'] as String?;
     final amount = features['amount'];
-    final amountStr = amount != null ? 'Rs. $amount' : null;
+    final amountStr = amount != null ? amount.toString() : null;
     final hasDeadline = features['hasDeadline'] == true ? 'YES' : null;
 
     final urls = features['urls'] as List?;

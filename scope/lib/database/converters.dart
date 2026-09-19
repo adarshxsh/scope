@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:drift/drift.dart';
+import 'package:scope/core/utils/pii_sanitizer.dart';
 
 /// Drift converter to serialize/deserialize `Map<String, dynamic>` to/from text fields.
 class JsonConverter extends TypeConverter<Map<String, dynamic>, String> {
@@ -16,6 +17,7 @@ class JsonConverter extends TypeConverter<Map<String, dynamic>, String> {
 
   @override
   String toSql(Map<String, dynamic> value) {
-    return json.encode(value);
+    final sanitized = PiiSanitizer.sanitizeFeatureMap(value);
+    return json.encode(sanitized);
   }
 }
