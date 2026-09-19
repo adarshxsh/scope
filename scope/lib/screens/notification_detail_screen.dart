@@ -173,57 +173,44 @@ class NotificationDetailScreen extends StatelessWidget {
     );
   }
 
-  void _handleAction(BuildContext context, SmartAction action) {
-    bool shouldPop = false;
-    switch (action.type) {
-      case SmartActionType.archive:
-        controller.archive(notification.id);
-        shouldPop = true;
-        break;
-      case SmartActionType.complete:
-        controller.complete(notification.id);
-        shouldPop = true;
-        break;
-      case SmartActionType.addCalendar:
-        controller.saveActionItem(notification, action);
-        controller.recordCalendarEvent();
-        shouldPop = true;
-        break;
-      case SmartActionType.remind:
-        controller.saveActionItem(notification, action);
-        controller.recordReminder();
-        shouldPop = true;
-        break;
-      case SmartActionType.track:
-        controller.saveActionItem(notification, action);
-        controller.recordAction();
-        shouldPop = true;
-        break;
-      default:
-        controller.recordAction();
-        controller.complete(notification.id); // Mark complete since we are executing it
-        shouldPop = true;
-        break;
-    }
-    
-    if (context.mounted) {
-      final isGeneric = action.type == SmartActionType.archive || 
+  Future<void> _handleAction(BuildContext context, SmartAction action) async {
+    final result = await controller.executeSmartAction(action, notification);
+
+    if (!context.mounted) return;
+
+    if (result.wasBlocked) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Blocked unsafe action: ${result.error ?? "Invalid link scheme"}'),
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    } else if (result.success) {
+      final isGeneric = action.type == SmartActionType.archive ||
                         action.type == SmartActionType.complete ||
                         action.type == SmartActionType.addCalendar ||
                         action.type == SmartActionType.remind ||
                         action.type == SmartActionType.track;
-      
-      final msg = isGeneric 
+
+      final msg = isGeneric
           ? '${action.label} recorded'
-          : 'Opening App for: ${action.label}...';
+          : 'Launched: ${action.label}';
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(msg), duration: const Duration(seconds: 2)),
       );
-      
-      if (shouldPop && Navigator.canPop(context)) {
+
+      if (Navigator.canPop(context)) {
         Navigator.pop(context);
       }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not open: ${result.error ?? action.label}'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
     }
   }
 }
