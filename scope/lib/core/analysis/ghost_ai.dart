@@ -322,16 +322,14 @@ class GhostAI {
 
   /// Outputs structured AI execution reports in debug mode.
   void _logStructured(AppNotification notification, GhostAIResult result) {
-    final redactedTitle = PiiRedactor.redactTitle(notification.title);
-    final redactedContent = PiiRedactor.redactContent(notification.content);
-    debugPrint('=== GHOST AI INFERENCE REPORT ===');
-    debugPrint('Notification: "$redactedTitle" - "$redactedContent"');
-    debugPrint('Package: ${notification.packageName}');
-    debugPrint('Feature Vector (First 15): ${result.featureVector.take(15).toList()}...');
-    debugPrint('Inference Time: ${result.inferenceTimeUs} us');
-    debugPrint('Raw Predicted Score: ${(result.predictedScore * 100).toStringAsFixed(2)}');
-    debugPrint('Rule Score: ${result.ruleScore != null ? (result.ruleScore! * 100).toStringAsFixed(2) : "N/A"}');
-    debugPrint('Final Fused Score: ${(result.reviewScore * 100).toStringAsFixed(2)}');
-    debugPrint('==================================');
+    PiiRedactor.logDebug('=== GHOST AI INFERENCE REPORT ===');
+    PiiRedactor.logDebug('Notification: "${notification.title}" - "${notification.content}"');
+    PiiRedactor.logDebug('Package: ${notification.packageName}');
+    PiiRedactor.logDebug('Feature Vector (First 15): ${result.featureVector.take(15).toList()}...');
+    PiiRedactor.logDebug('Inference Time: ${result.inferenceTimeUs} us');
+    PiiRedactor.logDebug('Raw Predicted Score: ${(result.predictedScore * 100).toStringAsFixed(2)}');
+    PiiRedactor.logDebug('Rule Score: ${result.ruleScore != null ? (result.ruleScore! * 100).toStringAsFixed(2) : "N/A"}');
+    PiiRedactor.logDebug('Final Fused Score: ${(result.reviewScore * 100).toStringAsFixed(2)}');
+    PiiRedactor.logDebug('==================================');
   }
 }

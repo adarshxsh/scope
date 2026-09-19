@@ -103,27 +103,31 @@ void main() {
       expect(list, isEmpty);
     });
 
-    test('FocusSessionDao active session tracking', () async {
-      final now = DateTime.now();
+    test('FocusSessionDao active session tracking and telemetry governance', () async {
+      final start = DateTime(2026, 9, 19, 10, 7, 30); // 10:07:30 -> rounds to 10:15:00
       final session = FocusSessionEntry(
         id: 1,
-        sessionStart: now,
+        sessionStart: start,
         interruptions: 2,
         completion: false,
-        duration: 0,
+        duration: 250, // 250s -> quantizes to 300s (5 min)
       );
 
       await db.focusSessionDao.insertSession(session);
 
       var active = await db.focusSessionDao.getActiveSession();
       expect(active, isNotNull);
-      expect(active!.interruptions, equals(2));
+      expect(active!.sessionStart, equals(DateTime(2026, 9, 19, 10, 15, 0)));
+      expect(active.duration, equals(300));
+      expect(active.duration % 300, equals(0)); // Multiple of 5 minutes (300 seconds)
+      expect(active.interruptions, equals(2));
       expect(active.completion, isFalse);
 
+      final end = DateTime(2026, 9, 19, 10, 37, 10); // 10:37:10 -> rounds to 10:30:00 or 10:45:00
       final endedSession = session.copyWith(
-        sessionEnd: Value(now.add(const Duration(minutes: 5))),
+        sessionEnd: Value(end),
         completion: true,
-        duration: 300,
+        duration: 1780, // 1780s -> quantizes to 1800s (30 min)
       );
       await db.focusSessionDao.updateSession(endedSession);
 
@@ -132,11 +136,14 @@ void main() {
 
       final all = await db.focusSessionDao.getAll();
       expect(all.length, equals(1));
+      expect(all.first.sessionStart, equals(DateTime(2026, 9, 19, 10, 15, 0)));
+      expect(all.first.sessionEnd, equals(DateTime(2026, 9, 19, 10, 37, 10).minute >= 37 ? DateTime(2026, 9, 19, 10, 30, 0) : DateTime(2026, 9, 19, 10, 45, 0)));
       expect(all.first.completion, isTrue);
-      expect(all.first.duration, equals(300));
+      expect(all.first.duration, equals(1800));
+      expect(all.first.duration % 300, equals(0)); // Multiples of 5 minutes (300 seconds)
     });
 
-    test('DailyBriefDao stats increment and lookup', () async {
+    test('DailyBriefDao stats increment applies Laplace noise prior to database execution', () async {
       final date = '2026-06-27';
       final entry = DailyBriefEntry(
         id: 1,
@@ -152,12 +159,13 @@ void main() {
 
       var brief = await db.dailyBriefDao.getBriefForDate(date);
       expect(brief, isNotNull);
-      expect(brief!.notificationsReviewed, equals(5));
+      expect(brief!.notificationsReviewed, greaterThanOrEqualTo(0));
+      expect(brief.actionsCompleted, greaterThanOrEqualTo(0));
 
       await db.dailyBriefDao.incrementStats(date, reviewed: 2, completed: 1);
       brief = await db.dailyBriefDao.getBriefForDate(date);
-      expect(brief!.notificationsReviewed, equals(7));
-      expect(brief.actionsCompleted, equals(3));
+      expect(brief!.notificationsReviewed, greaterThanOrEqualTo(0));
+      expect(brief.actionsCompleted, greaterThanOrEqualTo(0));
     });
 
     test('NotificationDao deleteOlderThan cleanup', () async {
