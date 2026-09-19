@@ -10,6 +10,9 @@ import 'package:scope/core/models/notification_model.dart';
 ///
 /// All methods are async to support future database implementations.
 abstract class NotificationStorage {
+  /// Default maximum record limit for local storage.
+  static const int defaultMaxRows = 500;
+
   /// Save a notification. Overwrites if [notification.id] already exists.
   Future<void> save(AppNotification notification);
 
@@ -41,19 +44,34 @@ abstract class NotificationStorage {
 /// Will be replaced by a persistent backend in a later phase.
 class InMemoryNotificationStorage implements NotificationStorage {
   final List<AppNotification> _store = [];
+  final int maxRows;
+
+  InMemoryNotificationStorage({this.maxRows = NotificationStorage.defaultMaxRows});
+
+  void _enforceRowCap() {
+    if (_store.length > maxRows) {
+      _store.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+      while (_store.length > maxRows) {
+        _store.removeAt(0);
+      }
+    }
+  }
 
   @override
   Future<void> save(AppNotification notification) async {
     // Remove existing entry with the same ID (upsert behavior)
     _store.removeWhere((n) => n.id == notification.id);
     _store.add(notification);
+    _enforceRowCap();
   }
 
   @override
   Future<void> saveAll(List<AppNotification> notifications) async {
     for (final notification in notifications) {
-      await save(notification);
+      _store.removeWhere((n) => n.id == notification.id);
+      _store.add(notification);
     }
+    _enforceRowCap();
   }
 
   @override
