@@ -72,7 +72,9 @@ class GhostAI {
       // 2. Load and compile rules database
       final jsonStr = await rootBundle.loadString('assets/rules.json');
       _ruleEngine.compile(jsonStr);
-      debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
+      debugPrint(
+        'GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).',
+      );
     } catch (e) {
       debugPrint('GhostAI: Failed to initialize rules database: $e');
     }
@@ -87,7 +89,9 @@ class GhostAI {
     final stopwatch = Stopwatch()..start();
 
     // 1. Feature extraction using the existing FeatureExtractor
-    final featureVector = FeatureExtractor.extractFromAppNotification(notification);
+    final featureVector = FeatureExtractor.extractFromAppNotification(
+      notification,
+    );
 
     // 2. Model inference
     double predictedScore = 0.0;
@@ -134,7 +138,8 @@ class GhostAI {
     double finalScore = predictedScore;
     if (ruleScore != null && ruleMatch != null) {
       // Immediate critical bypass triggers
-      final isCriticalBypass = ruleMatch.priority == 'critical' ||
+      final isCriticalBypass =
+          ruleMatch.priority == 'critical' ||
           ruleMatch.ruleId == 'otp_security' ||
           ruleMatch.ruleId == 'finance_debit' ||
           ruleMatch.ruleId == 'scholarship_portal';
@@ -169,7 +174,9 @@ class GhostAI {
     final result = GhostAIResult(
       reviewScore: finalScore,
       confidence: 1.0,
-      inferenceTimeUs: inferenceTimeUs > 0 ? inferenceTimeUs : stopwatch.elapsedMicroseconds,
+      inferenceTimeUs: inferenceTimeUs > 0
+          ? inferenceTimeUs
+          : stopwatch.elapsedMicroseconds,
       featureVector: featureVector,
       predictedScore: predictedScore,
       ruleScore: ruleScore,
@@ -214,7 +221,8 @@ class GhostAI {
       }
     }
 
-    final elapsedMs = DateTime.now().millisecondsSinceEpoch - notification.timestamp;
+    final elapsedMs =
+        DateTime.now().millisecondsSinceEpoch - notification.timestamp;
     return elapsedMs > durationMs;
   }
 
@@ -239,18 +247,23 @@ class GhostAI {
         } else {
           durationMs = amount * 24 * 60 * 60 * 1000;
         }
-        final elapsedMs = DateTime.now().millisecondsSinceEpoch - notification.timestamp;
+        final elapsedMs =
+            DateTime.now().millisecondsSinceEpoch - notification.timestamp;
         return elapsedMs > durationMs;
       }
     }
 
     // Expiry check for calendar days (today/tonight/tomorrow in past)
     if (lower.contains('today') || lower.contains('tonight')) {
-      final notifDate = DateTime.fromMillisecondsSinceEpoch(notification.timestamp);
+      final notifDate = DateTime.fromMillisecondsSinceEpoch(
+        notification.timestamp,
+      );
       final nowDate = DateTime.now();
       if (notifDate.year < nowDate.year ||
           (notifDate.year == nowDate.year && notifDate.month < nowDate.month) ||
-          (notifDate.year == nowDate.year && notifDate.month == nowDate.month && notifDate.day < nowDate.day)) {
+          (notifDate.year == nowDate.year &&
+              notifDate.month == nowDate.month &&
+              notifDate.day < nowDate.day)) {
         return true;
       }
     }
@@ -263,7 +276,9 @@ class GhostAI {
     final now = DateTime.now().millisecondsSinceEpoch;
 
     // Prune stale duplicates older than 5 minutes
-    _processedNotifications.removeWhere((n) => now - n.timestamp > _duplicateWindowMs);
+    _processedNotifications.removeWhere(
+      (n) => now - n.timestamp > _duplicateWindowMs,
+    );
 
     for (final oldNotif in _processedNotifications) {
       if (oldNotif.packageName == notification.packageName &&
@@ -300,13 +315,15 @@ class GhostAI {
       caseSensitive: false,
     );
 
-    final isTaskApp = notification.packageName.contains('task') ||
+    final isTaskApp =
+        notification.packageName.contains('task') ||
         notification.packageName.contains('todo') ||
         notification.packageName.contains('jira') ||
         notification.packageName.contains('keep') ||
         notification.packageName.contains('calendar');
 
-    final hasTaskKeywords = lowerTitle.contains('task') ||
+    final hasTaskKeywords =
+        lowerTitle.contains('task') ||
         lowerTitle.contains('todo') ||
         lowerTitle.contains('reminder') ||
         lowerTitle.contains('payment') ||
@@ -314,7 +331,8 @@ class GhostAI {
         lowerTitle.contains('order');
 
     if (isTaskApp || hasTaskKeywords) {
-      return completedRegex.hasMatch(lowerTitle) || completedRegex.hasMatch(lowerContent);
+      return completedRegex.hasMatch(lowerTitle) ||
+          completedRegex.hasMatch(lowerContent);
     }
 
     return false;
@@ -327,11 +345,19 @@ class GhostAI {
     debugPrint('=== GHOST AI INFERENCE REPORT ===');
     debugPrint('Notification: "$redactedTitle" - "$redactedContent"');
     debugPrint('Package: ${notification.packageName}');
-    debugPrint('Feature Vector (First 15): ${result.featureVector.take(15).toList()}...');
+    debugPrint(
+      'Feature Vector (First 15): ${result.featureVector.take(15).toList()}...',
+    );
     debugPrint('Inference Time: ${result.inferenceTimeUs} us');
-    debugPrint('Raw Predicted Score: ${(result.predictedScore * 100).toStringAsFixed(2)}');
-    debugPrint('Rule Score: ${result.ruleScore != null ? (result.ruleScore! * 100).toStringAsFixed(2) : "N/A"}');
-    debugPrint('Final Fused Score: ${(result.reviewScore * 100).toStringAsFixed(2)}');
+    debugPrint(
+      'Raw Predicted Score: ${(result.predictedScore * 100).toStringAsFixed(2)}',
+    );
+    debugPrint(
+      'Rule Score: ${result.ruleScore != null ? (result.ruleScore! * 100).toStringAsFixed(2) : "N/A"}',
+    );
+    debugPrint(
+      'Final Fused Score: ${(result.reviewScore * 100).toStringAsFixed(2)}',
+    );
     debugPrint('==================================');
   }
 }

@@ -39,11 +39,7 @@ ExtractedFeatures _features({
   double? amount,
   bool hasDeadline = false,
 }) {
-  return ExtractedFeatures(
-    otp: otp,
-    amount: amount,
-    hasDeadline: hasDeadline,
-  );
+  return ExtractedFeatures(otp: otp, amount: amount, hasDeadline: hasDeadline);
 }
 
 void main() {
