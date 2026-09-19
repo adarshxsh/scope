@@ -5,11 +5,7 @@ import 'package:scope/screens/main_shell.dart';
 import 'package:scope/theme/app_theme.dart';
 
 void main() {
-  runApp(
-    const ProviderScope(
-      child: AttentionOSApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: AttentionOSApp()));
 }
 
 /// Root widget for Scope (AttentionOS).

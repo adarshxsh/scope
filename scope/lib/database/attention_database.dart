@@ -16,16 +16,19 @@ part 'attention_database.g.dart';
     ReviewQueueTable,
     FocusSessionsTable,
     DailyBriefTable,
+    AppSettingsTable,
   ],
   daos: [
     NotificationDao,
     ReviewQueueDao,
     FocusSessionDao,
     DailyBriefDao,
+    AppSettingsDao,
   ],
 )
 class AttentionDatabase extends _$AttentionDatabase {
-  AttentionDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
+  AttentionDatabase([QueryExecutor? executor])
+    : super(executor ?? _openConnection());
 
   factory AttentionDatabase.inMemory() {
     return AttentionDatabase(NativeDatabase.memory());
@@ -35,18 +38,28 @@ class AttentionDatabase extends _$AttentionDatabase {
   int get schemaVersion => 1;
 
   /// Runs a single-step atomic transaction to clean up expired notifications
-  /// and any orphaned review queue entries, avoiding main-thread loops.
-  Future<void> runSetBasedCleanup(int cutoffTimestamp) async {
+  /// and any orphaned review queue entries, enforcing storage quotas if specified.
+  Future<void> runSetBasedCleanup(int cutoffTimestamp, {int? maxCount}) async {
     await transaction(() async {
-      // 1. Delete expired notifications based on cutoff timestamp
-      await (delete(notificationsTable)..where((t) => t.timestamp.isSmallerThanValue(cutoffTimestamp))).go();
+      // 1. Delete expired notifications based on cutoff timestamp (if cutoffTimestamp > 0)
+      if (cutoffTimestamp > 0) {
+        await (delete(
+          notificationsTable,
+        )..where((t) => t.timestamp.isSmallerThanValue(cutoffTimestamp))).go();
+      }
 
-      // 2. Delete orphaned review queue entries in a set-based query
-      final orphanedQuery = delete(reviewQueueTable)..where((t) {
-        final hasNotification = selectOnly(notificationsTable)
-          ..addColumns([notificationsTable.id]);
-        return t.notificationId.isNotInQuery(hasNotification);
-      });
+      // 2. Enforce FIFO storage quota if maxCount is specified and > 0
+      if (maxCount != null && maxCount > 0) {
+        await notificationDao.enforceStorageQuota(maxCount);
+      }
+
+      // 3. Delete orphaned review queue entries in a set-based query
+      final orphanedQuery = delete(reviewQueueTable)
+        ..where((t) {
+          final hasNotification = selectOnly(notificationsTable)
+            ..addColumns([notificationsTable.id]);
+          return t.notificationId.isNotInQuery(hasNotification);
+        });
       await orphanedQuery.go();
     });
   }

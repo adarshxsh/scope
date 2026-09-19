@@ -102,7 +102,10 @@ void main() {
 
       // Archive item 'n2' (removes it from active reviewQueue)
       controller.archive('n2');
-      expect(controller.focusSessionProgressCount, equals(1)); // n2 is no longer active
+      expect(
+        controller.focusSessionProgressCount,
+        equals(1),
+      ); // n2 is no longer active
       expect(controller.currentFocusNotification!.id, equals('n1'));
 
       // Complete item 'n1' (removes it from active reviewQueue)
