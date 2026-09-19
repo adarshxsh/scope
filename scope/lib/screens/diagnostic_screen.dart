@@ -341,7 +341,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Confidence Score: ${(notif.priorityScore != null ? (notif.priorityScore! * 100).toStringAsFixed(0) : "0")}% · Latency: ${notif.latencyMs ?? 0} ms',
+                      'Confidence Score: ${((notif.engineVersion?.contains('fallback') ?? false) || (notif.modelVersion?.contains('fallback') ?? false)) ? "N/A (Fallback Heuristic)" : "${(notif.priorityScore != null ? (notif.priorityScore! * 100).toStringAsFixed(0) : "0")}%"} · Latency: ${notif.latencyMs ?? 0} ms',
                       style: theme.textTheme.bodySmall,
                     ),
                   ],
