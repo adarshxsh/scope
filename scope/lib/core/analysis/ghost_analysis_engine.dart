@@ -30,6 +30,12 @@ class GhostAnalysisEngine {
       print('GhostAnalysisEngine failed to load rules asset: $e');
     }
     try {
+      await ScoreFusion.loadSettingsFromAsset();
+    } catch (e) {
+      // ignore: avoid_print
+      print('GhostAnalysisEngine failed to load score fusion settings: $e');
+    }
+    try {
       await GhostAI.instance.initialize();
     } catch (e) {
       // ignore: avoid_print
