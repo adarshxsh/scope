@@ -5,6 +5,7 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/utils/pii_redactor.dart';
+import 'package:scope/core/analysis/model_lifecycle_manager.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -40,6 +41,7 @@ class GhostAIResult {
 class GhostAI {
   static GhostAI? _instance;
   Interpreter? _interpreter;
+  ModelLoadResult? _modelResult;
   final RuleEngine _ruleEngine = RuleEngine();
 
   // Slide-cache for duplicate detection
@@ -57,13 +59,25 @@ class GhostAI {
   /// Returns whether the model is loaded.
   bool get isModelLoaded => _interpreter != null;
 
+  /// Exposes current active model source origin.
+  ModelSource get modelSource => _modelResult?.source ?? ModelSource.fallbackHeuristics;
+
+  /// Exposes active model version string.
+  String get modelVersion => _modelResult?.version ?? 'fallback-heuristics';
+
+  /// Exposes active model file path if loaded from file or asset.
+  String? get modelFilePath => _modelResult?.filePath;
+
   /// Initializes the TFLite interpreter and rules database once on startup.
-  Future<void> initialize() async {
+  Future<void> initialize({String? customModelDirectory}) async {
     if (_interpreter != null) return;
     try {
-      // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      // 1. Dynamic inspect application storage before asset fallback
+      _modelResult = await ModelLifecycleManager.loadGhostAiModel(
+        customDirectoryPath: customModelDirectory,
+      );
+      _interpreter = _modelResult?.interpreter;
+      debugPrint('GhostAI: Model initialized (Source: $modelSource, Version: $modelVersion).');
     } catch (e) {
       debugPrint('GhostAI: Failed to load TFLite model: $e');
     }
