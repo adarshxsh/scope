@@ -1,8 +1,11 @@
 package com.scope.attentions
 
+import android.os.Handler
+import android.os.Looper
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
+import io.flutter.plugin.common.EventChannel
 import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
@@ -11,25 +14,57 @@ import java.util.concurrent.ConcurrentLinkedQueue
  * Extends [NotificationListenerService] which requires the user to manually
  * grant "Notification access" in system Settings.
  *
- * Captured notifications are placed in a static [queue] which is drained
- * by [MainActivity] when Flutter requests them via MethodChannel.
+ * Captured notifications are pushed directly to Flutter via [eventSink]
+ * when an EventChannel listener is connected, and stored in a static [queue]
+ * (capped at 250 items) for fallback polling via MethodChannel.
  *
  * Design decisions:
- *   - Uses a static ConcurrentLinkedQueue (thread-safe, lock-free) because
- *     the service runs in a separate context from MainActivity.
- *   - No heavy processing here — just capture and queue.
+ *   - Uses a static ConcurrentLinkedQueue (thread-safe, lock-free) capped at 250 items.
+ *   - Emits real-time stream events over EventChannel on main thread looper.
+ *   - Flushes pending queued items upon EventSink listener attachment.
  *   - Skips ongoing/persistent notifications by default (configurable).
  */
 class NotificationCollectorService : NotificationListenerService() {
 
     companion object {
         private const val TAG = "NotifCollector"
+        private const val MAX_QUEUE_SIZE = 250
 
         /** Thread-safe queue of captured notifications. */
         private val queue = ConcurrentLinkedQueue<NotificationData>()
 
         /** Counter for generating simple unique IDs within a session. */
         private var idCounter = 0L
+
+        /** Active EventChannel EventSink for pushing notifications directly to Flutter. */
+        @Volatile
+        private var eventSink: EventChannel.EventSink? = null
+
+        /** Handler bound to the main application looper for EventSink dispatch. */
+        private val mainHandler = Handler(Looper.getMainLooper())
+
+        /**
+         * Sets or clears the active EventSink stream listener.
+         * When attached, flushes any pending queued notifications accumulated
+         * while Flutter was disconnected.
+         */
+        fun setEventSink(sink: EventChannel.EventSink?) {
+            eventSink = sink
+            if (sink != null) {
+                val pending = drainQueue()
+                if (pending.isNotEmpty()) {
+                    mainHandler.post {
+                        for (item in pending) {
+                            try {
+                                sink.success(item.toMap())
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Error emitting pending notification event", e)
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         /**
          * Drains all notifications from the queue and returns them.
@@ -77,8 +112,22 @@ class NotificationCollectorService : NotificationListenerService() {
                 isOngoing = isOngoing
             )
 
+            while (queue.size >= MAX_QUEUE_SIZE) {
+                queue.poll()
+            }
             queue.add(data)
             Log.d(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
+
+            val sink = eventSink
+            if (sink != null) {
+                mainHandler.post {
+                    try {
+                        sink.success(data.toMap())
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error emitting notification event", e)
+                    }
+                }
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error capturing/adding notification", e)
         }
