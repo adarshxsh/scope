@@ -65,3 +65,16 @@ class DailyBriefTable extends Table {
   IntColumn get remindersCreated => integer().withDefault(const Constant(0))();
   IntColumn get archivedCount => integer().withDefault(const Constant(0))();
 }
+
+@DataClassName('AppExclusionEntry')
+class AppExclusionsTable extends Table {
+  TextColumn get packageName => text()();
+  TextColumn get appName => text().nullable()();
+  TextColumn get category => text().nullable()();
+  BoolColumn get isExcluded => boolean().withDefault(const Constant(true))();
+  BoolColumn get isDefault => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {packageName};
+}
