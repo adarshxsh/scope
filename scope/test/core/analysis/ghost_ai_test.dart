@@ -11,13 +11,13 @@ void main() {
       GhostAI.instance.clearCache();
     });
 
-    test('initialization handles missing assets and falls back gracefully', () async {
-      // Should not throw, should log and proceed with isModelLoaded = false
+    test('initialization handles missing assets and falls back gracefully to heuristics', () async {
       await GhostAI.instance.initialize();
-      expect(GhostAI.instance.isModelLoaded, isFalse);
+      expect(GhostAI.instance.modelVersion, isNotEmpty);
+      expect(GhostAI.instance.modelSource, isNotEmpty);
     });
 
-    test('predict outputs basic inference results and falls back to heuristics', () async {
+    test('predict includes modelVersion and modelSource in GhostAIResult', () async {
       final notif = AppNotification(
         id: 'otp-notif',
         packageName: 'com.whatsapp',
@@ -34,6 +34,8 @@ void main() {
       expect(result.featureVector, isNotEmpty);
       expect(result.featureVector.length, equals(63));
       expect(result.predictedScore, equals(1.0)); // Heuristic fallback score for OTP
+      expect(result.modelVersion, equals(GhostAI.instance.modelVersion));
+      expect(result.modelSource, equals(GhostAI.instance.modelSource));
     });
 
     group('Expired OTP Overrides', () {
