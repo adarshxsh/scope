@@ -11,14 +11,13 @@ import java.util.concurrent.ConcurrentLinkedQueue
  * Extends [NotificationListenerService] which requires the user to manually
  * grant "Notification access" in system Settings.
  *
- * Captured notifications are placed in a static [queue] which is drained
- * by [MainActivity] when Flutter requests them via MethodChannel.
+ * Captured notifications are placed in a static [queue] encrypted with AES-256-GCM,
+ * which is drained by [MainActivity] when Flutter requests them via MethodChannel.
  *
- * Design decisions:
- *   - Uses a static ConcurrentLinkedQueue (thread-safe, lock-free) because
- *     the service runs in a separate context from MainActivity.
- *   - No heavy processing here — just capture and queue.
- *   - Skips ongoing/persistent notifications by default (configurable).
+ * Security posture:
+ *   - Transient memory payload fields (title, content) are 100% AES-256-GCM encrypted in RAM.
+ *   - Decrypted byte buffers are explicitly zero-filled post-extraction.
+ *   - Logcat messages are sanitized (no package names, titles, or content).
  */
 class NotificationCollectorService : NotificationListenerService() {
 
@@ -67,7 +66,7 @@ class NotificationCollectorService : NotificationListenerService() {
                 return
             }
 
-            val data = NotificationData(
+            val data = NotificationData.create(
                 id = "notif_${++idCounter}",
                 packageName = packageName,
                 title = title,
@@ -78,9 +77,9 @@ class NotificationCollectorService : NotificationListenerService() {
             )
 
             queue.add(data)
-            Log.d(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
+            Log.d(TAG, "Notification captured")
         } catch (e: Exception) {
-            Log.e(TAG, "Error capturing/adding notification", e)
+            Log.e(TAG, "Error capturing notification", e)
         }
     }
 
@@ -92,8 +91,7 @@ class NotificationCollectorService : NotificationListenerService() {
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         if (sbn == null) return
         // Log for now; future phases may track dismissed notifications
-        val removedTitle = sbn.notification.extras?.getCharSequence("android.title")?.toString()
-        Log.d(TAG, "Removed: ${sbn.packageName} - ${NotificationRedactor.redactTitle(removedTitle)}")
+        Log.d(TAG, "Notification removed")
     }
 
     override fun onListenerConnected() {
@@ -102,7 +100,7 @@ class NotificationCollectorService : NotificationListenerService() {
         try {
             val activeNotifs = activeNotifications
             if (activeNotifs != null) {
-                Log.d(TAG, "Syncing ${activeNotifs.size} existing notifications from panel")
+                Log.d(TAG, "Syncing active notifications from panel")
                 for (sbn in activeNotifs) {
                     addSbnToQueue(sbn)
                 }
