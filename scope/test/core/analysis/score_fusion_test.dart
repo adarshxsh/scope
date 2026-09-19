@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scope/core/analysis/analysis_result.dart';
+import 'package:scope/core/analysis/explanation_generator.dart';
+import 'package:scope/core/analysis/extracted_features.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/analysis/score_fusion.dart';
 
@@ -108,6 +110,28 @@ void main() {
       expect(fused.score, equals(0.0));
       expect(fused.engineName, equals('litert_model (fallback)'));
       expect(fused.isFallback, isTrue);
+    });
+  });
+
+  group('ExplanationGenerator Tests', () {
+    test('renders explicit fallback status when fusedResult.isFallback is true', () {
+      final fallbackResult = AnalysisResult(
+        category: 'msg',
+        score: 0.0,
+        engineName: 'litert_model (fallback)',
+        matchedSignals: [],
+        latencyMs: 1,
+        isFallback: true,
+      );
+
+      final trace = ExplanationGenerator.generate(
+        fusedResult: fallbackResult,
+        features: const ExtractedFeatures(),
+        priority: 'medium',
+      );
+
+      expect(trace, contains('Fallback Heuristic (ML Inference Bypassed/Failed)'));
+      expect(trace, contains('Confidence: **N/A (Fallback)**.'));
     });
   });
 }
