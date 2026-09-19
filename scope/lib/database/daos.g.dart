@@ -72,3 +72,18 @@ class DailyBriefDaoManager {
         _db.dailyBriefTable,
       );
 }
+
+mixin _$MlFeedbackDaoMixin on DatabaseAccessor<AttentionDatabase> {
+  $MlFeedbackTableTable get mlFeedbackTable => attachedDatabase.mlFeedbackTable;
+  MlFeedbackDaoManager get managers => MlFeedbackDaoManager(this);
+}
+
+class MlFeedbackDaoManager {
+  final _$MlFeedbackDaoMixin _db;
+  MlFeedbackDaoManager(this._db);
+  $$MlFeedbackTableTableTableManager get mlFeedbackTable =>
+      $$MlFeedbackTableTableTableManager(
+        _db.attachedDatabase,
+        _db.mlFeedbackTable,
+      );
+}
