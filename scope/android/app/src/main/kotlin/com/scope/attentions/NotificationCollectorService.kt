@@ -1,8 +1,11 @@
 package com.scope.attentions
 
+import android.os.Handler
+import android.os.Looper
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
+import io.flutter.plugin.common.EventChannel
 import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
@@ -12,12 +15,13 @@ import java.util.concurrent.ConcurrentLinkedQueue
  * grant "Notification access" in system Settings.
  *
  * Captured notifications are placed in a static [queue] which is drained
- * by [MainActivity] when Flutter requests them via MethodChannel.
+ * by [MainActivity] when Flutter requests them via MethodChannel, and pushed
+ * directly over EventChannel if a listener is attached.
  *
  * Design decisions:
  *   - Uses a static ConcurrentLinkedQueue (thread-safe, lock-free) because
  *     the service runs in a separate context from MainActivity.
- *   - No heavy processing here — just capture and queue.
+ *   - Emits events over EventChannel on the main looper thread.
  *   - Skips ongoing/persistent notifications by default (configurable).
  */
 class NotificationCollectorService : NotificationListenerService() {
@@ -30,6 +34,10 @@ class NotificationCollectorService : NotificationListenerService() {
 
         /** Counter for generating simple unique IDs within a session. */
         private var idCounter = 0L
+
+        /** Static EventSink for emitting pushed notification events to Flutter. */
+        @Volatile
+        var eventSink: EventChannel.EventSink? = null
 
         /**
          * Drains all notifications from the queue and returns them.
@@ -49,6 +57,29 @@ class NotificationCollectorService : NotificationListenerService() {
          * Returns the current queue size (for diagnostics).
          */
         fun queueSize(): Int = queue.size
+
+        /**
+         * Safely emits a NotificationData event to the active EventSink on the main thread.
+         */
+        private fun emitEvent(data: NotificationData) {
+            val sink = eventSink ?: return
+            val looper = Looper.getMainLooper()
+            if (looper != null) {
+                Handler(looper).post {
+                    try {
+                        sink.success(data.toMap())
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error emitting notification event over EventChannel", e)
+                    }
+                }
+            } else {
+                try {
+                    sink.success(data.toMap())
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error emitting notification event over EventChannel", e)
+                }
+            }
+        }
     }
 
     private fun addSbnToQueue(sbn: StatusBarNotification) {
@@ -79,6 +110,7 @@ class NotificationCollectorService : NotificationListenerService() {
 
             queue.add(data)
             Log.d(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
+            emitEvent(data)
         } catch (e: Exception) {
             Log.e(TAG, "Error capturing/adding notification", e)
         }

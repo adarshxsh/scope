@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/services.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
+import 'package:scope/core/models/notification_model.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -127,6 +129,36 @@ void main() {
         });
         // Should complete without throwing
         await bridge.openNotificationSettings();
+      });
+    });
+
+    group('notificationStream', () {
+      test('emits parsed AppNotification objects from stream', () async {
+        final streamController = StreamController<AppNotification>();
+        final bridgeWithStream = NotificationBridge(
+          channel: channel,
+          notificationStream: streamController.stream,
+        );
+
+        final received = <AppNotification>[];
+        final subscription = bridgeWithStream.notificationStream.listen(received.add);
+
+        streamController.add(AppNotification(
+          id: 'stream_1',
+          packageName: 'com.stream.test',
+          title: 'Pushed Event',
+          content: 'Realtime update',
+          timestamp: 1700000002000,
+        ));
+
+        await Future.delayed(Duration.zero);
+
+        expect(received.length, 1);
+        expect(received.first.id, 'stream_1');
+        expect(received.first.title, 'Pushed Event');
+
+        await subscription.cancel();
+        await streamController.close();
       });
     });
   });
