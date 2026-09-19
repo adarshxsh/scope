@@ -23,6 +23,7 @@ void main() {
       expect(result.engineName, contains('fallback'));
       expect(result.score, equals(0.0));
       expect(result.isFallback, isTrue);
+      expect(result.matchedSignals.first, contains('Model asset invalid or uninitialized'));
     });
 
     test('fallback correctly categorizes bank alerts', () async {
@@ -42,6 +43,41 @@ void main() {
       expect(result.engineName, contains('fallback'));
       expect(result.score, equals(0.0));
       expect(result.isFallback, isTrue);
+    });
+
+    test('fallback correctly categorizes promo, social, and system OTP notifications', () async {
+      final classifier = LiteRtClassifier();
+
+      final promoNotif = AppNotification(
+        id: '3',
+        packageName: 'com.myntra.android',
+        title: 'Flash Sale',
+        content: 'Get 50% discount on shoes today!',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+      final promoResult = await classifier.analyze(promoNotif);
+      expect(promoResult.category, equals('promo'));
+      expect(promoResult.score, equals(0.0));
+
+      final socialNotif = AppNotification(
+        id: '4',
+        packageName: 'com.instagram.android',
+        title: 'New Like',
+        content: 'John liked your photo.',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+      final socialResult = await classifier.analyze(socialNotif);
+      expect(socialResult.category, equals('social'));
+
+      final sysNotif = AppNotification(
+        id: '5',
+        packageName: 'com.google.android.gms',
+        title: 'Verification Code',
+        content: 'Your OTP is 982134 for sign in.',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+      final sysResult = await classifier.analyze(sysNotif);
+      expect(sysResult.category, equals('sys'));
     });
   });
 }
