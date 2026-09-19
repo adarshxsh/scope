@@ -57,9 +57,12 @@ class GhostAI {
   /// Returns whether the model is loaded.
   bool get isModelLoaded => _interpreter != null;
 
+  bool _isInitialized = false;
+
   /// Initializes the TFLite interpreter and rules database once on startup.
   Future<void> initialize() async {
-    if (_interpreter != null) return;
+    if (_isInitialized) return;
+    _isInitialized = true;
     try {
       // 1. Load interpreter from assets
       _interpreter = await Interpreter.fromAsset('assets/model.tflite');
@@ -71,7 +74,7 @@ class GhostAI {
     try {
       // 2. Load and compile rules database
       final jsonStr = await rootBundle.loadString('assets/rules.json');
-      _ruleEngine.compile(jsonStr);
+      await _ruleEngine.compile(jsonStr);
       debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
     } catch (e) {
       debugPrint('GhostAI: Failed to initialize rules database: $e');
@@ -288,6 +291,7 @@ class GhostAI {
   /// Helper to clear the duplicate memory cache (used for unit tests).
   void clearCache() {
     _processedNotifications.clear();
+    _isInitialized = false;
   }
 
   /// Returns whether a notification indicates that a task/action is completed.
