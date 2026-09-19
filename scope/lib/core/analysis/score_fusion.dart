@@ -31,7 +31,7 @@ class ScoreFusion {
     // 2. Fallback model handling:
     // When the model is in fallback mode (e.g., uninitialized asset or inference error),
     // do not process the fallback score as an authentic model prediction.
-    if (modelResult.isFallback) {
+    if (modelResult.isFallback || modelResult.engineName.contains('fallback')) {
       if (ruleResult != null) {
         return AnalysisResult(
           category: ruleResult.category,
@@ -45,7 +45,7 @@ class ScoreFusion {
           isFallback: false,
         );
       } else {
-        return modelResult;
+        return modelResult.copyWith(isFallback: true);
       }
     }
 
