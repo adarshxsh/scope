@@ -273,5 +273,132 @@ void main() {
       // Missing one deleted due to being orphaned
       expect(queueItems.first.notificationId, equals('n-new'));
     });
+
+    test('UserSettingsDao set and get retention and telemetry settings', () async {
+      // Defaults
+      final defaultRetention = await db.userSettingsDao.getRetentionDays();
+      expect(defaultRetention, equals(7));
+
+      final defaultTelemetry = await db.userSettingsDao.getTelemetryEnabled();
+      expect(defaultTelemetry, isTrue);
+
+      // Save custom retention
+      await db.userSettingsDao.setRetentionDays(3);
+      final updatedRetention = await db.userSettingsDao.getRetentionDays();
+      expect(updatedRetention, equals(3));
+
+      // Save custom telemetry
+      await db.userSettingsDao.setTelemetryEnabled(false);
+      final updatedTelemetry = await db.userSettingsDao.getTelemetryEnabled();
+      expect(updatedTelemetry, isFalse);
+    });
+
+    test('FocusSessionDao deleteOlderThan prunes expired sessions', () async {
+      final oldStart = DateTime.now().subtract(const Duration(days: 10));
+      final newStart = DateTime.now().subtract(const Duration(days: 2));
+
+      await db.focusSessionDao.insertSession(FocusSessionEntry(
+        id: 1,
+        sessionStart: oldStart,
+        sessionEnd: oldStart.add(const Duration(minutes: 15)),
+        interruptions: 0,
+        completion: true,
+        duration: 900,
+      ));
+
+      await db.focusSessionDao.insertSession(FocusSessionEntry(
+        id: 2,
+        sessionStart: newStart,
+        sessionEnd: newStart.add(const Duration(minutes: 15)),
+        interruptions: 1,
+        completion: true,
+        duration: 900,
+      ));
+
+      final cutoff = DateTime.now().subtract(const Duration(days: 7));
+      final deleted = await db.focusSessionDao.deleteOlderThan(cutoff);
+      expect(deleted, equals(1));
+
+      final sessions = await db.focusSessionDao.getAll();
+      expect(sessions.length, equals(1));
+      expect(sessions.first.id, equals(2));
+    });
+
+    test('DailyBriefDao deleteOlderThan prunes expired brief records', () async {
+      final oldDate = '2026-01-01';
+      final newDate = '2026-09-15';
+
+      await db.dailyBriefDao.insertOrUpdate(DailyBriefEntry(
+        id: 1,
+        date: oldDate,
+        notificationsReviewed: 10,
+        actionsCompleted: 5,
+        calendarEventsCreated: 0,
+        remindersCreated: 0,
+        archivedCount: 2,
+      ));
+
+      await db.dailyBriefDao.insertOrUpdate(DailyBriefEntry(
+        id: 2,
+        date: newDate,
+        notificationsReviewed: 3,
+        actionsCompleted: 1,
+        calendarEventsCreated: 0,
+        remindersCreated: 0,
+        archivedCount: 1,
+      ));
+
+      final cutoff = DateTime(2026, 9, 10);
+      final deleted = await db.dailyBriefDao.deleteOlderThan(cutoff);
+      expect(deleted, equals(1));
+
+      final briefs = await db.dailyBriefDao.getAll();
+      expect(briefs.length, equals(1));
+      expect(briefs.first.date, equals(newDate));
+    });
+
+    test('runSetBasedCleanup prunes across notifications, review queue, focus sessions, and daily briefs in single transaction', () async {
+      final oldTime = DateTime.now().subtract(const Duration(days: 10));
+      final newTime = DateTime.now().subtract(const Duration(days: 1));
+
+      await db.notificationDao.insertNotification(NotificationEntry(
+        id: 'old-notif',
+        packageName: 'app',
+        title: 'Old',
+        content: 'Body',
+        timestamp: oldTime.millisecondsSinceEpoch,
+        state: ReviewState.ACTIVE,
+        reviewed: false,
+        dismissed: false,
+        isOngoing: false,
+        createdAt: oldTime,
+      ));
+
+      await db.focusSessionDao.insertSession(FocusSessionEntry(
+        id: 1,
+        sessionStart: oldTime,
+        sessionEnd: oldTime.add(const Duration(minutes: 10)),
+        interruptions: 0,
+        completion: true,
+        duration: 600,
+      ));
+
+      await db.dailyBriefDao.insertOrUpdate(DailyBriefEntry(
+        id: 1,
+        date: '2020-01-01',
+        notificationsReviewed: 5,
+        actionsCompleted: 2,
+        calendarEventsCreated: 0,
+        remindersCreated: 0,
+        archivedCount: 1,
+      ));
+
+      final cutoff = DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch;
+      await db.runSetBasedCleanup(cutoff);
+
+      expect(await db.notificationDao.getAll(), isEmpty);
+      expect(await db.focusSessionDao.getAll(), isEmpty);
+      expect(await db.dailyBriefDao.getAll(), isEmpty);
+    });
   });
 }
