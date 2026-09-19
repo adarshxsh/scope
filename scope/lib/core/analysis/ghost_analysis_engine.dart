@@ -74,7 +74,7 @@ class GhostAnalysisEngine {
     );
 
     // Run unified look-again MLP model prediction
-    final ghostResult = await GhostAI.predict(notification);
+    final ghostResult = await GhostAI.predict(notification, referenceTimestamp: notification.timestamp);
 
     // 5. Policy Engine (category + feature to priority levels resolution)
     final priority = PolicyEngine.resolvePriority(
@@ -100,7 +100,7 @@ class GhostAnalysisEngine {
       explanation: explanation,
       latencyMs: stopwatch.elapsedMilliseconds,
       ruleVersion: ruleEngine.version,
-      modelVersion: GhostAI.instance.isModelLoaded ? '1.0.0-tflite' : 'fallback-heuristics',
+      modelVersion: GhostAI.instance.isModelLoaded ? GhostAI.instance.modelVersion : 'fallback-heuristics',
       engineVersion: fusedResult.isFallback ? '2.0.0-hybrid (fallback)' : '2.0.0-hybrid',
       extractedFeatures: features.toMap(),
     );

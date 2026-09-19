@@ -13,11 +13,12 @@ class PiiRedactor {
   // Email Address pattern
   static final RegExp _emailRegex = RegExp(
     r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b',
+    caseSensitive: false,
   );
 
   // URL / Web Link pattern
   static final RegExp _urlRegex = RegExp(
-    r'https?://[^\s]+|www\.[^\s]+',
+    r'https?://[^\s]+|www\.[^\s]+|\b(?:https?:\/\/|www\.)[^\s]+',
     caseSensitive: false,
   );
 
@@ -27,14 +28,16 @@ class PiiRedactor {
     caseSensitive: false,
   );
 
-  // JWT / Auth tokens / API Keys pattern
+  // JWT / Auth tokens / API Keys / Bearer tokens pattern
   static final RegExp _tokenRegex = RegExp(
-    r'\b[A-Fa-f0-9]{32,64}\b|\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b',
+    r'\b[A-Fa-f0-9]{32,64}\b|\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b|(?:bearer|token|secret|key|auth)\s*[:=]?\s*([A-Za-z0-9._~+/-]{12,})',
+    caseSensitive: false,
   );
 
   // Phone numbers pattern
   static final RegExp _phoneRegex = RegExp(
-    r'\b(?:\+\d{1,3}[- ]?)?\(?\d{3}\)?[- ]?\d{3}[- ]?\d{4}\b',
+    r'\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?(?:\d{3}[-.\s]?)?\d{4}\b',
+    caseSensitive: false,
   );
 
   // Passcodes & OTPs pattern (4-8 digit numbers)
@@ -53,8 +56,15 @@ class PiiRedactor {
     try {
       String result = text;
 
-      // 1. Redact Credit / Debit Card Numbers
-      result = result.replaceAll(_cardRegex, '[REDACTED_CARD]');
+      // 1. Redact Auth Tokens / JWTs / Bearer Tokens
+      result = result.replaceAllMapped(_tokenRegex, (match) {
+        final matchedText = match.group(0) ?? '';
+        final tokenGroup = match.groupCount >= 1 ? match.group(1) : null;
+        if (tokenGroup != null && tokenGroup.isNotEmpty) {
+          return matchedText.replaceFirst(tokenGroup, '[REDACTED_TOKEN]');
+        }
+        return '[REDACTED_TOKEN]';
+      });
 
       // 2. Redact Email Addresses
       result = result.replaceAll(_emailRegex, '[REDACTED_EMAIL]');
@@ -62,17 +72,31 @@ class PiiRedactor {
       // 3. Redact URLs
       result = result.replaceAll(_urlRegex, '[REDACTED_URL]');
 
-      // 4. Redact Monetary Amounts
-      result = result.replaceAll(_monetaryRegex, '[REDACTED_AMOUNT]');
+      // 4. Redact Credit / Debit Card Numbers (and validate digit count 13-19)
+      result = result.replaceAllMapped(_cardRegex, (match) {
+        final value = match.group(0) ?? '';
+        final digitsOnly = value.replaceAll(RegExp(r'\D'), '');
+        if (digitsOnly.length >= 13 && digitsOnly.length <= 19) {
+          return '[REDACTED_CARD]';
+        }
+        return value;
+      });
 
-      // 5. Redact Auth Tokens / JWTs
-      result = result.replaceAll(_tokenRegex, '[REDACTED_TOKEN]');
+      // 5. Redact Monetary Amounts
+      result = result.replaceAll(_monetaryRegex, '[REDACTED_AMOUNT]');
 
       // 6. Redact Phone Numbers
       result = result.replaceAll(_phoneRegex, '[REDACTED_PHONE]');
 
-      // 7. Redact Passcodes / OTPs (standalone 4-8 digit numbers)
-      result = result.replaceAll(_otpRegex, '[REDACTED_OTP]');
+      // 7. Redact Passcodes / OTPs (standalone 4-8 digit numbers, excluding 2020-2030 years)
+      result = result.replaceAllMapped(_otpRegex, (match) {
+        final value = match.group(0) ?? '';
+        final val = int.tryParse(value);
+        if (val != null && val >= 2020 && val <= 2030) {
+          return value; // Keep year strings
+        }
+        return '[REDACTED_OTP]';
+      });
 
       return result;
     } catch (e) {
