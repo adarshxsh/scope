@@ -26,12 +26,12 @@ class _MainShellState extends State<MainShell> {
   @override
   void initState() {
     super.initState();
-    widget.controller.startPolling();
+    widget.controller.startListening();
   }
 
   @override
   void dispose() {
-    widget.controller.stopPolling();
+    widget.controller.stopListening();
     super.dispose();
   }
 
