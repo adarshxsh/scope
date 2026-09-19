@@ -83,6 +83,9 @@ class LiteRtClassifier implements NotificationAnalyzer {
       _interpreter!.run(input, output);
 
       final scores = List<double>.from(output[0] as List);
+      if (scores.any((x) => !x.isFinite)) {
+        throw FormatException('Model output tensor contained non-finite logit values: $scores');
+      }
       final softmaxScores = _softmax(scores);
 
       int bestIndex = 0;

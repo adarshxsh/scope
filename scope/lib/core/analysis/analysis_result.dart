@@ -27,6 +27,24 @@ class AnalysisResult {
     this.isFallback = false,
   });
 
+  AnalysisResult copyWith({
+    String? category,
+    double? score,
+    String? engineName,
+    List<String>? matchedSignals,
+    int? latencyMs,
+    bool? isFallback,
+  }) {
+    return AnalysisResult(
+      category: category ?? this.category,
+      score: score ?? this.score,
+      engineName: engineName ?? this.engineName,
+      matchedSignals: matchedSignals ?? this.matchedSignals,
+      latencyMs: latencyMs ?? this.latencyMs,
+      isFallback: isFallback ?? this.isFallback,
+    );
+  }
+
   @override
   String toString() => 'AnalysisResult(category: $category, score: $score, '
       'engineName: $engineName, matchedSignals: $matchedSignals, latencyMs: ${latencyMs}ms, isFallback: $isFallback)';

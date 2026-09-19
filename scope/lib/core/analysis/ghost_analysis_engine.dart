@@ -100,7 +100,9 @@ class GhostAnalysisEngine {
       explanation: explanation,
       latencyMs: stopwatch.elapsedMilliseconds,
       ruleVersion: ruleEngine.version,
-      modelVersion: GhostAI.instance.isModelLoaded ? '1.0.0-tflite' : 'fallback-heuristics',
+      modelVersion: (fusedResult.isFallback || !mlClassifier.isModelLoaded || !GhostAI.instance.isModelLoaded)
+          ? 'fallback-heuristics'
+          : '1.0.0-tflite',
       engineVersion: fusedResult.isFallback ? '2.0.0-hybrid (fallback)' : '2.0.0-hybrid',
       extractedFeatures: features.toMap(),
     );
