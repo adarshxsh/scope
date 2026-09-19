@@ -18,10 +18,12 @@ class LiteRtClassifier implements NotificationAnalyzer {
 
   Future<void> _initialize() async {
     try {
-      // 1. Load Vocab
+      // 1. Load and validate Vocab with checksum verification
       final vocabStr = await rootBundle.loadString('assets/vocab.txt');
-      final lines = vocabStr.split('\n');
-      _tokenizer = WordPieceTokenizer.fromLines(lines);
+      _tokenizer = WordPieceTokenizer.fromContent(
+        vocabStr,
+        expectedChecksum: kDefaultVocabSha256,
+      );
 
       // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
       _isModelLoaded = false;
@@ -29,15 +31,8 @@ class LiteRtClassifier implements NotificationAnalyzer {
       // Graceful degradation: Log and set flags so analyze runs in fallback mode
       // ignore: avoid_print
       print('LiteRtClassifier failed to initialize: $e');
+      _tokenizer = null;
       _isModelLoaded = false;
-
-      // Ensure tokenizer is loaded even if interpreter fails (so we can test tokenization in fallback)
-      if (_tokenizer == null) {
-        try {
-          final vocabStr = await rootBundle.loadString('assets/vocab.txt');
-          _tokenizer = WordPieceTokenizer.fromLines(vocabStr.split('\n'));
-        } catch (_) {}
-      }
     }
   }
 
@@ -54,7 +49,15 @@ class LiteRtClassifier implements NotificationAnalyzer {
       await _initialize();
     }
 
-    final tokenIds = _tokenizer?.tokenize(combinedText) ?? List<int>.filled(64, 0);
+    List<int> tokenIds = List<int>.filled(64, 0);
+    if (_tokenizer != null) {
+      try {
+        tokenIds = _tokenizer!.tokenize(combinedText);
+      } catch (e) {
+        // ignore: avoid_print
+        print('LiteRtClassifier tokenization error: $e');
+      }
+    }
 
     if (!_isModelLoaded || _interpreter == null) {
       // Graceful fallback heuristic classifier
