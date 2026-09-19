@@ -9,8 +9,8 @@ class ScoreFusion {
     MatchedRuleResult? ruleResult,
     required AnalysisResult modelResult,
   }) {
-    // 1. Check for deterministic critical bypass rules
-    if (ruleResult != null) {
+    // 1. Check for deterministic critical bypass rules (Tier 1 system rules only)
+    if (ruleResult != null && ruleResult.isSystemRule) {
       final isBypass = ruleResult.priority == 'critical' ||
           ruleResult.ruleId == 'otp_security' ||
           ruleResult.ruleId == 'finance_debit' ||
@@ -19,7 +19,7 @@ class ScoreFusion {
       if (isBypass) {
         return AnalysisResult(
           category: ruleResult.category,
-          score: 1.0, // Maximum confidence for security/fraud bypasses
+          score: 1.0, // Maximum confidence for system security/fraud bypasses
           engineName: 'score_fusion (rule bypass: ${ruleResult.ruleId})',
           matchedSignals: [ruleResult.matchedSignal],
           latencyMs: 0,
