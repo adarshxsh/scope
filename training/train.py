@@ -54,6 +54,18 @@ def parse_args() -> argparse.Namespace:
         help="Path to Flutter-exported JSONL dataset.",
     )
     parser.add_argument(
+        "--rlhf-data",
+        type=Path,
+        default=None,
+        help="Optional path to on-device RLHF feedback dataset (JSONL).",
+    )
+    parser.add_argument(
+        "--model-version",
+        type=str,
+        default="1.1.0",
+        help="Model semantic version string to assign to exported artifacts.",
+    )
+    parser.add_argument(
         "--out",
         type=Path,
         default=Path("training/runs/latest"),
@@ -77,6 +89,13 @@ def main() -> None:
     evaluation_dir = ensure_dir(output_dir / "evaluation")
 
     records = read_jsonl(args.data)
+    rlhf_sample_count = 0
+    if args.rlhf_data and args.rlhf_data.exists():
+        rlhf_records = read_jsonl(args.rlhf_data)
+        rlhf_sample_count = len(rlhf_records)
+        records.extend(rlhf_records)
+        print(f"Loaded {rlhf_sample_count} RLHF feedback samples from {args.rlhf_data}")
+
     dataset = build_dataset(records)
     splits = split_dataset(dataset.features, dataset.target, SplitConfig(), args.seed)
 
@@ -152,9 +171,12 @@ def main() -> None:
     write_json(label_encoder_path, dataset.label_encoders)
 
     metadata = {
+        "version": args.model_version,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "dataset_path": str(args.data),
+        "rlhf_data_path": str(args.rlhf_data) if args.rlhf_data else None,
         "sample_count": len(records),
+        "rlhf_sample_count": rlhf_sample_count,
         "feature_vector_size": FEATURE_VECTOR_SIZE,
         "feature_source": "Flutter deterministic FeatureExtractor",
         "python_feature_generation": False,
@@ -192,6 +214,14 @@ def main() -> None:
         },
     }
     write_json(output_dir / "metadata.json", metadata)
+    write_json(
+        export_dir / "version.json",
+        {
+            "version": args.model_version,
+            "feature_vector_size": FEATURE_VECTOR_SIZE,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        },
+    )
 
     print(f"SavedModel: {saved_model_dir}")
     print(f"TFLite: {tflite_path}")

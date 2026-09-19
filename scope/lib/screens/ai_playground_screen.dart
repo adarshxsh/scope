@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/extracted_features.dart';
+import 'package:scope/core/analysis/feature_extractor.dart';
+import 'package:scope/core/analysis/ghost_ai.dart';
+import 'package:scope/core/analysis/model_lifecycle_manager.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/state/notification_controller.dart';
@@ -88,13 +91,48 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     });
   }
 
-  void _submitFeedback(bool isReward) {
+  double _priorityToScore(String? priority) {
+    switch (priority?.toLowerCase()) {
+      case 'critical':
+        return 1.0;
+      case 'high':
+        return 0.85;
+      case 'medium':
+        return 0.50;
+      case 'low':
+      default:
+        return 0.15;
+    }
+  }
+
+  void _submitFeedback(bool isReward) async {
     if (_selectedNotification == null) return;
+    final n = _selectedNotification!;
+    final featureVector = FeatureExtractor.extractFromAppNotification(n);
 
     if (isReward) {
+      final sample = RLHFFeedbackSample(
+        id: 'rlhf-${DateTime.now().millisecondsSinceEpoch}',
+        notificationId: n.id,
+        packageName: n.packageName,
+        title: n.title,
+        content: n.content,
+        featureVector: featureVector,
+        predictedCategory: n.classifiedCategory ?? 'unknown',
+        predictedPriority: n.priority ?? 'medium',
+        predictedScore: n.priorityScore ?? 0.5,
+        rewardSignal: 1.0,
+        modelVersion: GhostAI.instance.modelVersion,
+        ruleVersion: GhostAI.instance.ruleVersion,
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      await ModelLifecycleManager.instance.logFeedbackSample(sample);
+
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Reward (+1) recorded! AI model confidence reinforced.'),
+          content: Text('Reward (+1) recorded! RLHF sample logged for ML adaptation.'),
           backgroundColor: Colors.green,
         ),
       );
@@ -105,10 +143,13 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     }
   }
 
-  void _applyReinforcementRule() {
+  void _applyReinforcementRule() async {
     if (_selectedNotification == null) return;
 
     final n = _selectedNotification!;
+    final featureVector = FeatureExtractor.extractFromAppNotification(n);
+    final correctedScore = _priorityToScore(_selectedPriority);
+
     // Extract defining keywords (e.g. words > 3 chars)
     final words = <String>[];
     for (final w in n.title.split(' ')) {
@@ -132,13 +173,35 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
 
     widget.controller.engine.ruleEngine.addReinforcementRule(newRule);
 
+    final sample = RLHFFeedbackSample(
+      id: 'rlhf-${DateTime.now().millisecondsSinceEpoch}',
+      notificationId: n.id,
+      packageName: n.packageName,
+      title: n.title,
+      content: n.content,
+      featureVector: featureVector,
+      predictedCategory: n.classifiedCategory ?? 'unknown',
+      predictedPriority: n.priority ?? 'medium',
+      predictedScore: n.priorityScore ?? 0.5,
+      rewardSignal: -1.0,
+      correctedCategory: _selectedCategory,
+      correctedPriority: _selectedPriority,
+      correctedScore: correctedScore,
+      modelVersion: GhostAI.instance.modelVersion,
+      ruleVersion: GhostAI.instance.ruleVersion,
+      timestamp: DateTime.now().millisecondsSinceEpoch,
+    );
+
+    await ModelLifecycleManager.instance.logFeedbackSample(sample);
+
     setState(() {
       _showCorrectionForm = false;
     });
 
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Reinforcement Rule Learned! Similar messages will now be classified as $_selectedPriority ($_selectedCategory).'),
+        content: Text('Reinforcement Rule Learned & Sample Logged! Classifying as $_selectedPriority ($_selectedCategory).'),
         backgroundColor: AppColors.seed,
       ),
     );
