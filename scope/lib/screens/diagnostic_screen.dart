@@ -140,6 +140,8 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
             const SizedBox(height: 16),
             _buildActionSection(),
             const SizedBox(height: 20),
+            _buildTelemetryDashboardCard(),
+            const SizedBox(height: 20),
             if (_analyzedNotification != null) ...[
               _buildResultsDashboard(),
               const SizedBox(height: 30),
@@ -446,6 +448,61 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
         Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
         const SizedBox(height: 2),
         Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+
+  Widget _buildTelemetryDashboardCard() {
+    final metrics = _engine.telemetryBuffer.getMetrics();
+    final theme = Theme.of(context);
+
+    return ScopeCard(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.speed, color: theme.colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                'Inference Telemetry & Performance',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const Divider(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildMetricStat('Avg Us', '${metrics.averageInferenceTimeUs.toStringAsFixed(0)} us'),
+              _buildMetricStat('Avg Ms', '${metrics.averageTotalLatencyMs.toStringAsFixed(1)} ms'),
+              _buildMetricStat('P95 Latency', '${metrics.p95InferenceTimeUs.toStringAsFixed(0)} us'),
+              _buildMetricStat('Total Inferences', '${metrics.totalInferences}'),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildMetricStat('Fallback Rate', '${(metrics.fallbackRate * 100).toStringAsFixed(1)}%'),
+              _buildMetricStat('Fallback Count', '${metrics.fallbackCount}'),
+              _buildMetricStat('Failures', '${metrics.failureCount}'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetricStat(String label, String value) {
+    return Column(
+      children: [
+        Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+        const SizedBox(height: 2),
+        Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
       ],
     );
   }
