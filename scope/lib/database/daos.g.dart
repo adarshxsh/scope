@@ -72,3 +72,36 @@ class DailyBriefDaoManager {
         _db.dailyBriefTable,
       );
 }
+
+mixin _$UserSettingsDaoMixin on DatabaseAccessor<AttentionDatabase> {
+  $UserSettingsTableTable get userSettingsTable =>
+      attachedDatabase.userSettingsTable;
+  UserSettingsDaoManager get managers => UserSettingsDaoManager(this);
+}
+
+class UserSettingsDaoManager {
+  final _$UserSettingsDaoMixin _db;
+  UserSettingsDaoManager(this._db);
+  $$UserSettingsTableTableTableManager get userSettingsTable =>
+      $$UserSettingsTableTableTableManager(
+        _db.attachedDatabase,
+        _db.userSettingsTable,
+      );
+}
+
+mixin _$InferenceTelemetryDaoMixin on DatabaseAccessor<AttentionDatabase> {
+  $InferenceTelemetryTableTable get inferenceTelemetryTable =>
+      attachedDatabase.inferenceTelemetryTable;
+  InferenceTelemetryDaoManager get managers =>
+      InferenceTelemetryDaoManager(this);
+}
+
+class InferenceTelemetryDaoManager {
+  final _$InferenceTelemetryDaoMixin _db;
+  InferenceTelemetryDaoManager(this._db);
+  $$InferenceTelemetryTableTableTableManager get inferenceTelemetryTable =>
+      $$InferenceTelemetryTableTableTableManager(
+        _db.attachedDatabase,
+        _db.inferenceTelemetryTable,
+      );
+}
