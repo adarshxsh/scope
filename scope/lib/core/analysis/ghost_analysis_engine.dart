@@ -7,17 +7,21 @@ import 'package:scope/core/analysis/score_fusion.dart';
 import 'package:scope/core/analysis/explanation_generator.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
+import 'package:scope/core/telemetry/inference_telemetry.dart';
 
 /// The central hub of Ghost AI coordinating all classification stages.
 class GhostAnalysisEngine {
   final RuleEngine ruleEngine;
   final LiteRtClassifier mlClassifier;
+  final InferenceTelemetryManager telemetryManager;
 
   GhostAnalysisEngine({
     RuleEngine? ruleEngine,
     LiteRtClassifier? mlClassifier,
+    InferenceTelemetryManager? telemetryManager,
   })  : ruleEngine = ruleEngine ?? RuleEngine(),
-        mlClassifier = mlClassifier ?? LiteRtClassifier();
+        mlClassifier = mlClassifier ?? LiteRtClassifier(),
+        telemetryManager = telemetryManager ?? InferenceTelemetryManager.instance;
 
   /// Compiles rules loaded from assets on engine startup.
   Future<void> initialize() async {
@@ -45,13 +49,27 @@ class GhostAnalysisEngine {
     // 0. Filter out progress/download/sync status notifications to prevent unnecessary analysis
     if (_isStatusOrProgressNotification(notification)) {
       stopwatch.stop();
+      final modelVer = GhostAI.instance.isModelLoaded ? '1.0.0-tflite' : 'fallback-heuristics';
+      final engVer = '2.0.0-hybrid';
+
+      await telemetryManager.recordInference(
+        inferenceTimeUs: 0,
+        engineLatencyMs: stopwatch.elapsedMilliseconds,
+        modelVersion: modelVer,
+        engineVersion: engVer,
+        isFallback: false,
+        isError: false,
+        notificationId: notification.id,
+        category: 'system_status',
+      );
+
       return notification.copyWith(
         priority: 'low',
         priorityScore: 0.0,
         classifiedCategory: 'system_status',
         explanation: 'Status or progress notification ignored by AI.',
         latencyMs: stopwatch.elapsedMilliseconds,
-        engineVersion: '2.0.0-hybrid',
+        engineVersion: engVer,
       );
     }
 
@@ -93,6 +111,25 @@ class GhostAnalysisEngine {
 
     stopwatch.stop();
 
+    final modelVer = GhostAI.instance.isModelLoaded ? '1.0.0-tflite' : 'fallback-heuristics';
+    final engVer = fusedResult.isFallback ? '2.0.0-hybrid (fallback)' : '2.0.0-hybrid';
+    final isFallback = fusedResult.isFallback || ghostResult.isFallback;
+    final isError = ghostResult.isError;
+    final errorMessage = ghostResult.errorMessage;
+
+    // Record inference telemetry metric
+    await telemetryManager.recordInference(
+      inferenceTimeUs: ghostResult.inferenceTimeUs,
+      engineLatencyMs: stopwatch.elapsedMilliseconds,
+      modelVersion: modelVer,
+      engineVersion: engVer,
+      isFallback: isFallback,
+      isError: isError,
+      errorMessage: errorMessage,
+      notificationId: notification.id,
+      category: fusedResult.category,
+    );
+
     return notification.copyWith(
       priority: priority,
       priorityScore: ghostResult.reviewScore,
@@ -100,8 +137,8 @@ class GhostAnalysisEngine {
       explanation: explanation,
       latencyMs: stopwatch.elapsedMilliseconds,
       ruleVersion: ruleEngine.version,
-      modelVersion: GhostAI.instance.isModelLoaded ? '1.0.0-tflite' : 'fallback-heuristics',
-      engineVersion: fusedResult.isFallback ? '2.0.0-hybrid (fallback)' : '2.0.0-hybrid',
+      modelVersion: modelVer,
+      engineVersion: engVer,
       extractedFeatures: features.toMap(),
     );
   }
