@@ -198,12 +198,13 @@ void main() {
     });
 
     group('toString', () {
-      test('contains key field values', () {
+      test('contains key field values and redacts cleartext title and content', () {
         final notification = createSample();
         final str = notification.toString();
         expect(str, contains('test-id-1'));
         expect(str, contains('com.example.app'));
-        expect(str, contains('Test Title'));
+        expect(str, contains('[REDACTED len=10]'));
+        expect(str, isNot(contains('Test Title')));
         expect(str, contains('priority:'));
       });
     });
