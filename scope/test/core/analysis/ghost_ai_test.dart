@@ -233,5 +233,28 @@ void main() {
         expect(result.reviewScore, isPositive); // Not overridden
       });
     });
+
+    group('Outlier Input Guards', () {
+      test(r'handles extreme text lengths (>10,000) and large financial amounts (>$1,000,000) safely', () async {
+        final outlierNotif = AppNotification(
+          id: 'outlier-notif',
+          packageName: 'com.bank.app',
+          title: 'A' * 12000,
+          content: 'You received \$10,000,000 transfer. ${'word ' * 5000}',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        final result = await GhostAI.predict(outlierNotif);
+
+        expect(result.reviewScore, greaterThanOrEqualTo(0.0));
+        expect(result.reviewScore, lessThanOrEqualTo(1.0));
+        expect(result.predictedScore, greaterThanOrEqualTo(0.0));
+        expect(result.predictedScore, lessThanOrEqualTo(1.0));
+        expect(result.featureVector[0], equals(500.0)); // title length clamped
+        expect(result.featureVector[1], equals(5000.0)); // body length clamped
+        expect(result.featureVector[2], equals(1000.0)); // word count clamped
+        expect(result.featureVector[50], equals(1000000.0)); // amount clamped
+      });
+    });
   });
 }

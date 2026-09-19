@@ -182,6 +182,41 @@ class FeatureVector {
     if (this.values.any((value) => value.isNaN || value.isInfinite)) {
       throw ArgumentError('FeatureVector cannot contain NaN or infinity.');
     }
+    if (this.values[0] < 0 || this.values[0] > 500) {
+      throw ArgumentError.value(
+        this.values[0],
+        'title_length',
+        'title_length must be between 0 and 500.',
+      );
+    }
+    if (this.values[1] < 0 || this.values[1] > 5000) {
+      throw ArgumentError.value(
+        this.values[1],
+        'body_length',
+        'body_length must be between 0 and 5000.',
+      );
+    }
+    if (this.values[2] < 0 || this.values[2] > 1000) {
+      throw ArgumentError.value(
+        this.values[2],
+        'word_count',
+        'word_count must be between 0 and 1000.',
+      );
+    }
+    if (this.values[49] > 525600) {
+      throw ArgumentError.value(
+        this.values[49],
+        'deadline_minutes_remaining',
+        'deadline_minutes_remaining cannot exceed 525600.',
+      );
+    }
+    if (this.values[50] < 0 || this.values[50] > 1000000) {
+      throw ArgumentError.value(
+        this.values[50],
+        'amount',
+        'amount must be between 0 and 1000000.',
+      );
+    }
   }
 
   List<double> toList() => List<double>.from(values, growable: false);
@@ -259,7 +294,7 @@ class FeatureExtractor {
     caseSensitive: false,
   );
   static final RegExp _relativeDeadlineRegex = RegExp(
-    r'\bin\s+(\d{1,4})\s*(minute|minutes|min|mins|hour|hours|hr|hrs|day|days)\b',
+    r'\bin\s+(\d+)\s*(minute|minutes|min|mins|hour|hours|hr|hrs|day|days)\b',
     caseSensitive: false,
   );
 
@@ -594,9 +629,9 @@ class FeatureExtractor {
     );
 
     final values = [
-      title.runes.length.toDouble(),
-      body.runes.length.toDouble(),
-      _wordRegex.allMatches(combined).length.toDouble(),
+      math.min(title.runes.length.toDouble(), 500.0),
+      math.min(body.runes.length.toDouble(), 5000.0),
+      math.min(_wordRegex.allMatches(combined).length.toDouble(), 1000.0),
       letters == 0 ? 0.0 : uppercase / letters,
       digits / textUnitCount,
       _emojiRegex.allMatches(combined).length.toDouble(),
@@ -647,8 +682,8 @@ class FeatureExtractor {
       _bool(isPromotion),
       _bool(_isDuplicateCandidate(lower)),
       _bool(containsDeadline),
-      _deadlineMinutesRemaining(lower).toDouble(),
-      amount,
+      math.min(_deadlineMinutesRemaining(lower).toDouble(), 525600.0),
+      math.min(amount, 1000000.0),
       (_currencyIds[currency] ?? 0).toDouble(),
       (otp?.length ?? 0).toDouble(),
       _bool(
@@ -688,7 +723,9 @@ class FeatureExtractor {
     if (match == null) return null;
     final raw = match.group(1) ?? match.group(2);
     if (raw == null) return null;
-    return double.tryParse(raw.replaceAll(',', ''));
+    final parsed = double.tryParse(raw.replaceAll(',', ''));
+    if (parsed == null) return null;
+    return math.min(parsed, 1000000.0);
   }
 
   static String _extractCurrency(String text) {

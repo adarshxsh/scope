@@ -151,6 +151,52 @@ void main() {
       );
       expect(values[FeatureVector.featureNames.indexOf('person_present')], 1.0);
     });
+
+    test('clamps continuous metrics to specified upper bounds', () {
+      final input = NotificationFeatureInput(
+        appName: 'Outlier App',
+        packageName: 'com.outlier',
+        title: 'A' * 1000, // 1000 chars -> clamp to 500
+        body: '${'word ' * 1200} in 1000000 minutes \$2,000,000 paid', // >5000 chars, >1000 words, >1M amount, >525600 deadline
+        timestampMillis: DateTime.utc(2026, 6, 26, 10).millisecondsSinceEpoch,
+      );
+
+      final vector = FeatureExtractor.extractVector(input);
+      final named = vector.toNamedMap();
+
+      expect(named['title_length'], equals(500.0));
+      expect(named['body_length'], equals(5000.0));
+      expect(named['word_count'], equals(1000.0));
+      expect(named['deadline_minutes_remaining'], equals(525600.0));
+      expect(named['amount'], equals(1000000.0));
+    });
+
+    test('FeatureVector constructor enforces continuous metric range constraints', () {
+      final validValues = List<double>.filled(FeatureVector.size, 0.0);
+
+      // Valid values should not throw
+      expect(() => FeatureVector(validValues), returnsNormally);
+
+      // Out of bounds title_length (>500)
+      final invalidTitle = List<double>.from(validValues)..[0] = 501.0;
+      expect(() => FeatureVector(invalidTitle), throwsArgumentError);
+
+      // Out of bounds body_length (>5000)
+      final invalidBody = List<double>.from(validValues)..[1] = 5001.0;
+      expect(() => FeatureVector(invalidBody), throwsArgumentError);
+
+      // Out of bounds word_count (>1000)
+      final invalidWord = List<double>.from(validValues)..[2] = 1001.0;
+      expect(() => FeatureVector(invalidWord), throwsArgumentError);
+
+      // Out of bounds deadline (>525600)
+      final invalidDeadline = List<double>.from(validValues)..[49] = 525601.0;
+      expect(() => FeatureVector(invalidDeadline), throwsArgumentError);
+
+      // Out of bounds amount (>1000000)
+      final invalidAmount = List<double>.from(validValues)..[50] = 1000001.0;
+      expect(() => FeatureVector(invalidAmount), throwsArgumentError);
+    });
   });
 
   group('MetadataAnalyzer', () {
