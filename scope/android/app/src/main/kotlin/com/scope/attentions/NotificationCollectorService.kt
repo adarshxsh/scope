@@ -217,7 +217,7 @@ class NotificationCollectorService : NotificationListenerService() {
             )
 
             queue.add(data)
-            tryLogD("Captured notification item [id=${data.id}]")
+            tryLogD("Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(title)}")
         } catch (e: Exception) {
             tryLogE("Error capturing/adding notification", e)
         }
@@ -230,7 +230,8 @@ class NotificationCollectorService : NotificationListenerService() {
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         if (sbn == null) return
-        tryLogD("Notification removed")
+        val removedTitle = sbn.notification.extras?.getCharSequence("android.title")?.toString()
+        tryLogD("Removed: ${sbn.packageName} - ${NotificationRedactor.redactTitle(removedTitle)}")
     }
 
     override fun onListenerConnected() {
