@@ -75,4 +75,32 @@ class NotificationBridge {
       // Not on Android — nothing to do
     }
   }
+
+  /// Safely dispatches a web URL launch request to the native platform.
+  Future<bool> launchUrl(String url) async {
+    try {
+      final result = await _channel.invokeMethod<bool>('launchUrl', {'url': url});
+      return result ?? false;
+    } on PlatformException catch (e) {
+      // ignore: avoid_print
+      print('NotificationBridge.launchUrl failed: ${e.message}');
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
+
+  /// Safely dispatches an application launch intent request to the native platform.
+  Future<bool> launchApp(String packageName) async {
+    try {
+      final result = await _channel.invokeMethod<bool>('launchApp', {'packageName': packageName});
+      return result ?? false;
+    } on PlatformException catch (e) {
+      // ignore: avoid_print
+      print('NotificationBridge.launchApp failed: ${e.message}');
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
 }

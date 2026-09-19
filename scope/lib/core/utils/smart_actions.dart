@@ -11,6 +11,8 @@ class SmartAction {
   final SmartActionType type;
   final Color? color;
   final bool isPrimary;
+  final String? url;
+  final String? packageName;
 
   const SmartAction({
     required this.label,
@@ -18,6 +20,8 @@ class SmartAction {
     required this.type,
     this.color,
     this.isPrimary = false,
+    this.url,
+    this.packageName,
   });
 }
 
@@ -71,6 +75,8 @@ abstract final class SmartActions {
       ));
     }
 
+    final firstUrl = features.urls.isNotEmpty ? features.urls.first : null;
+
     if (features.urls.isNotEmpty ||
         _containsAny(text, ['portal', 'apply', 'website', 'visit', 'scholarship'])) {
       actions.add(SmartAction(
@@ -79,6 +85,7 @@ abstract final class SmartActions {
         type: SmartActionType.openUrl,
         color: AppColors.portal,
         isPrimary: actions.isEmpty,
+        url: firstUrl,
       ));
     }
 
@@ -89,15 +96,17 @@ abstract final class SmartActions {
         type: SmartActionType.join,
         color: AppColors.calendar,
         isPrimary: actions.isEmpty,
+        url: firstUrl,
       ));
     }
 
     if (_containsAny(text, ['pdf', 'document', 'download']) || area == FocusArea.government) {
-      actions.add(const SmartAction(
+      actions.add(SmartAction(
         label: 'Download PDF',
         icon: Icons.download_outlined,
         type: SmartActionType.download,
         color: AppColors.portal,
+        url: firstUrl,
       ));
     }
 
@@ -109,12 +118,14 @@ abstract final class SmartActions {
         type: SmartActionType.pay,
         color: AppColors.finance,
         isPrimary: actions.isEmpty,
+        packageName: notification.packageName,
       ));
-      actions.add(const SmartAction(
+      actions.add(SmartAction(
         label: 'View Statement',
         icon: Icons.receipt_long_outlined,
         type: SmartActionType.viewStatement,
         color: AppColors.finance,
+        packageName: notification.packageName,
       ));
     }
 
@@ -125,15 +136,18 @@ abstract final class SmartActions {
         type: SmartActionType.track,
         color: AppColors.portal,
         isPrimary: actions.isEmpty,
+        url: firstUrl,
+        packageName: notification.packageName,
       ));
     }
 
     if (_containsAny(text, ['reply', '@', 'message', 'chat'])) {
-      actions.add(const SmartAction(
+      actions.add(SmartAction(
         label: 'Reply',
         icon: Icons.reply_outlined,
         type: SmartActionType.reply,
         color: AppColors.calendar,
+        packageName: notification.packageName,
       ));
     }
 
