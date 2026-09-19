@@ -25,6 +25,12 @@ class NotificationCollectorService : NotificationListenerService() {
     companion object {
         private const val TAG = "NotifCollector"
 
+        /** Default maximum number of notifications allowed in the native queue. */
+        const val DEFAULT_MAX_QUEUE_CAPACITY = 500
+
+        /** Configurable maximum capacity for the in-memory queue. */
+        var maxQueueCapacity: Int = DEFAULT_MAX_QUEUE_CAPACITY
+
         /** Thread-safe queue of captured notifications. */
         private val queue = ConcurrentLinkedQueue<NotificationData>()
 
@@ -32,23 +38,63 @@ class NotificationCollectorService : NotificationListenerService() {
         private var idCounter = 0L
 
         /**
+         * Non-destructively inspects pending notifications in the queue without removing them.
+         */
+        fun peekQueue(): List<NotificationData> {
+            return queue.toList()
+        }
+
+        /**
+         * Explicitly acknowledges and removes notifications matching the specified [ids].
+         * Returns the number of items removed.
+         */
+        fun acknowledge(ids: List<String>): Int {
+            if (ids.isEmpty()) return 0
+            val idSet = ids.toSet()
+            var removedCount = 0
+            val iterator = queue.iterator()
+            while (iterator.hasNext()) {
+                val item = iterator.next()
+                if (idSet.contains(item.id)) {
+                    iterator.remove()
+                    removedCount++
+                }
+            }
+            return removedCount
+        }
+
+        /**
          * Drains all notifications from the queue and returns them.
          * Called by [MainActivity] when Flutter requests notifications.
          * After this call, the queue is empty.
          */
         fun drainQueue(): List<NotificationData> {
-            val result = mutableListOf<NotificationData>()
-            while (true) {
-                val item = queue.poll() ?: break
-                result.add(item)
-            }
+            val result = queue.toList()
+            queue.clear()
             return result
+        }
+
+        /**
+         * Clears all notifications from the queue.
+         */
+        fun clearQueue() {
+            queue.clear()
         }
 
         /**
          * Returns the current queue size (for diagnostics).
          */
         fun queueSize(): Int = queue.size
+
+        /**
+         * Helper for unit testing queue behavior.
+         */
+        fun addNotificationForTest(data: NotificationData) {
+            while (queue.size >= maxQueueCapacity && queue.size > 0) {
+                queue.poll()
+            }
+            queue.add(data)
+        }
     }
 
     private fun addSbnToQueue(sbn: StatusBarNotification) {
@@ -76,6 +122,11 @@ class NotificationCollectorService : NotificationListenerService() {
                 category = sbn.notification.category,
                 isOngoing = isOngoing
             )
+
+            // Enforce max queue capacity (FIFO eviction)
+            while (queue.size >= maxQueueCapacity && queue.size > 0) {
+                queue.poll()
+            }
 
             queue.add(data)
             Log.d(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
