@@ -6,6 +6,7 @@
 library;
 
 import 'package:flutter/services.dart';
+import 'package:scope/core/analysis/ingestion_guardrail_filter.dart';
 import 'package:scope/core/models/notification_model.dart';
 
 /// Bridge between Flutter and the Android NotificationCollectorService.
@@ -73,6 +74,36 @@ class NotificationBridge {
       print('NotificationBridge.openNotificationSettings failed: ${e.message}');
     } on MissingPluginException {
       // Not on Android — nothing to do
+    }
+  }
+
+  /// Sends updated ingestion guardrail configurations to native Android.
+  Future<void> updateIngestionGuardrails(IngestionGuardrailConfig config) async {
+    try {
+      await _channel.invokeMethod<bool>(
+        'updateIngestionGuardrails',
+        config.toMap(),
+      );
+    } on PlatformException catch (e) {
+      // ignore: avoid_print
+      print('NotificationBridge.updateIngestionGuardrails failed: ${e.message}');
+    } on MissingPluginException {
+      // Not on Android
+    }
+  }
+
+  /// Retrieves ingestion telemetry metrics from native Android.
+  Future<IngestionTelemetry?> getIngestionTelemetry() async {
+    try {
+      final map = await _channel.invokeMethod<Map<dynamic, dynamic>>(
+        'getIngestionTelemetry',
+      );
+      if (map == null) return null;
+      return IngestionTelemetry.fromMap(Map<String, dynamic>.from(map));
+    } on PlatformException {
+      return null;
+    } on MissingPluginException {
+      return null;
     }
   }
 }
