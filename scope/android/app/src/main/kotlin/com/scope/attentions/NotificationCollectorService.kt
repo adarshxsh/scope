@@ -91,7 +91,8 @@ class NotificationCollectorService : NotificationListenerService() {
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         if (sbn == null) return
         // Log for now; future phases may track dismissed notifications
-        PrivacyLogger.d(TAG, "Removed: ${sbn.packageName} - ${sbn.notification.extras?.getCharSequence("android.title")}")
+        val removedTitle = sbn.notification.extras?.getCharSequence("android.title")?.toString()
+        PrivacyLogger.d(TAG, "Removed: ${sbn.packageName} - $removedTitle")
     }
 
     override fun onListenerConnected() {
