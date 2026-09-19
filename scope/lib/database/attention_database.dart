@@ -16,12 +16,14 @@ part 'attention_database.g.dart';
     ReviewQueueTable,
     FocusSessionsTable,
     DailyBriefTable,
+    GuardrailSettingsTable,
   ],
   daos: [
     NotificationDao,
     ReviewQueueDao,
     FocusSessionDao,
     DailyBriefDao,
+    GuardrailDao,
   ],
 )
 class AttentionDatabase extends _$AttentionDatabase {
@@ -50,7 +52,17 @@ class AttentionDatabase extends _$AttentionDatabase {
       await orphanedQuery.go();
     });
   }
+
+  /// Atomic transaction to purge notifications by ID list and clear orphaned review queue entries.
+  Future<void> deleteNotificationsByIds(List<String> ids) async {
+    if (ids.isEmpty) return;
+    await transaction(() async {
+      await (delete(notificationsTable)..where((t) => t.id.isIn(ids))).go();
+      await (delete(reviewQueueTable)..where((t) => t.notificationId.isIn(ids))).go();
+    });
+  }
 }
+
 
 QueryExecutor _openConnection() {
   return LazyDatabase(() async {
