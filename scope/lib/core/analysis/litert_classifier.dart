@@ -160,8 +160,9 @@ class LiteRtClassifier implements NotificationAnalyzer {
     double max = logits.reduce((curr, next) => curr > next ? curr : next);
     List<double> exps = logits.map((x) => math.exp(x - max)).toList();
     final sum = exps.reduce((curr, next) => curr + next);
-    if (sum == 0.0)
+    if (sum == 0.0) {
       return List<double>.filled(logits.length, 1.0 / logits.length);
+    }
     return exps.map((x) => x / sum).toList();
   }
 }

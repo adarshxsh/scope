@@ -18,19 +18,26 @@ class AIReasonWidget extends StatelessWidget {
     final reasons = <String>[];
     final features = notification.extractedFeatures;
 
-    if (features?['hasDeadline'] == true)
+    if (features?['hasDeadline'] == true) {
       reasons.add("There's a deadline coming up.");
-    if (features?['amount'] != null) reasons.add('I noticed a payment amount.');
-    if (features?['otp'] != null) reasons.add("Here's your security code.");
+    }
+    if (features?['amount'] != null) {
+      reasons.add('I noticed a payment amount.');
+    }
+    if (features?['otp'] != null) {
+      reasons.add("Here's your security code.");
+    }
     if (notification.priority == 'critical' ||
         notification.priority == 'high') {
       reasons.add('This seems important right now.');
     }
-    if (notification.packageName.contains('gov'))
+    if (notification.packageName.contains('gov')) {
       reasons.add('This is from an official source.');
+    }
     final urls = features?['urls'];
-    if (urls is List && urls.isNotEmpty)
+    if (urls is List && urls.isNotEmpty) {
       reasons.add("There's an action you can take.");
+    }
 
     if (notification.explanation != null &&
         notification.explanation!.isNotEmpty) {
