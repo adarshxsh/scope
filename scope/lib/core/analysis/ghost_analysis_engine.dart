@@ -23,7 +23,7 @@ class GhostAnalysisEngine {
   Future<void> initialize() async {
     try {
       final jsonStr = await rootBundle.loadString('assets/rules.json');
-      ruleEngine.compile(jsonStr);
+      await ruleEngine.compile(jsonStr);
       await ruleEngine.loadCustomRules();
     } catch (e) {
       // ignore: avoid_print
