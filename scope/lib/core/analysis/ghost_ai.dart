@@ -1,11 +1,10 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:crypto/crypto.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
+import 'package:scope/core/utils/pii_redactor.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -321,19 +320,12 @@ class GhostAI {
     return false;
   }
 
-  /// Sanitizes raw notification text by producing a truncated SHA-256 digest
-  /// and character length metric to protect PII in log output.
-  static String sanitizeText(String text) {
-    final bytes = utf8.encode(text);
-    final digest = sha256.convert(bytes).toString();
-    final truncated = digest.length >= 8 ? digest.substring(0, 8) : digest;
-    return '[sha256:$truncated, len:${text.length}]';
-  }
-
   /// Outputs structured AI execution reports in debug mode.
   void _logStructured(AppNotification notification, GhostAIResult result) {
+    final redactedTitle = PiiRedactor.redactTitle(notification.title);
+    final redactedContent = PiiRedactor.redactContent(notification.content);
     debugPrint('=== GHOST AI INFERENCE REPORT ===');
-    debugPrint('Notification: "${sanitizeText(notification.title)}" - "${sanitizeText(notification.content)}"');
+    debugPrint('Notification: "$redactedTitle" - "$redactedContent"');
     debugPrint('Package: ${notification.packageName}');
     debugPrint('Feature Vector (First 15): ${result.featureVector.take(15).toList()}...');
     debugPrint('Inference Time: ${result.inferenceTimeUs} us');
