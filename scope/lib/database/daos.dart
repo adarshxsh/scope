@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/telemetry/telemetry_governance_service.dart';
 import 'package:scope/database/attention_database.dart';
 import 'package:scope/database/tables.dart';
 
@@ -84,7 +85,8 @@ class FocusSessionDao extends DatabaseAccessor<AttentionDatabase> with _$FocusSe
   FocusSessionDao(super.db);
 
   Future<void> insertSession(FocusSessionEntry entry) async {
-    await into(focusSessionsTable).insert(entry);
+    final sanitized = TelemetryGovernanceService.sanitizeFocusSession(entry);
+    await into(focusSessionsTable).insert(sanitized);
   }
 
   Future<FocusSessionEntry?> getActiveSession() {
@@ -92,7 +94,8 @@ class FocusSessionDao extends DatabaseAccessor<AttentionDatabase> with _$FocusSe
   }
 
   Future<void> updateSession(FocusSessionEntry entry) async {
-    await update(focusSessionsTable).replace(entry);
+    final sanitized = TelemetryGovernanceService.sanitizeFocusSession(entry);
+    await update(focusSessionsTable).replace(sanitized);
   }
 
   Future<List<FocusSessionEntry>> getAll() {
@@ -114,6 +117,12 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
 
   Future<DailyBriefEntry?> getBriefForDate(String date) {
     return (select(dailyBriefTable)..where((t) => t.date.equals(date))).getSingleOrNull();
+  }
+
+  Future<DailyBriefEntry?> getSanitizedBriefForDate(String date, {double epsilon = 1.0}) async {
+    final brief = await getBriefForDate(date);
+    if (brief == null) return null;
+    return TelemetryGovernanceService.sanitizeDailyBrief(brief, epsilon: epsilon);
   }
 
   Future<void> incrementStats(
@@ -148,6 +157,13 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
 
   Future<List<DailyBriefEntry>> getAll() {
     return select(dailyBriefTable).get();
+  }
+
+  Future<List<DailyBriefEntry>> getAllSanitized({double epsilon = 1.0}) async {
+    final entries = await getAll();
+    return entries
+        .map((e) => TelemetryGovernanceService.sanitizeDailyBrief(e, epsilon: epsilon))
+        .toList();
   }
 
   Future<void> clearAll() async {
