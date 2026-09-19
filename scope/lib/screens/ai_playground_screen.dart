@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/extracted_features.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/services/pii_redaction_service.dart';
 import 'package:scope/core/state/notification_controller.dart';
 import 'package:scope/theme/app_colors.dart';
 import 'package:scope/theme/app_spacing.dart';
 import 'package:scope/widgets/primitives/scope_surface.dart';
 import 'package:scope/widgets/scope_screen_body.dart';
 import 'package:scope/widgets/section_header.dart';
+
 
 /// AI Playground for post-mortem analysis and Reinforcement Learning from Human Feedback (RLHF).
 class AiPlaygroundScreen extends StatefulWidget {
@@ -297,8 +299,10 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     if (n.title.toLowerCase().contains('credited') || n.content.toLowerCase().contains('credited')) definingWords.add('credited');
     if (n.title.toLowerCase().contains('offer') || n.content.toLowerCase().contains('offer')) definingWords.add('offer');
     if (n.title.toLowerCase().contains('sale') || n.content.toLowerCase().contains('sale')) definingWords.add('sale');
-    if (features.otp != null) definingWords.add('OTP:${features.otp}');
-    if (features.amount != null) definingWords.add('Amount:Rs.${features.amount}');
+    if (features.otp != null) definingWords.add('OTP:${PiiRedactionService.maskOtp(features.otp)}');
+    if (features.amount != null) definingWords.add('Amount:Rs.${PiiRedactionService.maskAmount(features.amount, currencyPrefix: "")}');
+    if (features.emails.isNotEmpty) definingWords.add('Email:${PiiRedactionService.maskEmail(features.emails.first)}');
+    if (features.phoneNumbers.isNotEmpty) definingWords.add('Phone:${PiiRedactionService.maskPhoneNumber(features.phoneNumbers.first)}');
 
     return ScopeSurface(
       padding: const EdgeInsets.all(AppSpacing.lg),
