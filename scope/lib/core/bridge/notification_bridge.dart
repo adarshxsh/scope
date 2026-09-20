@@ -22,14 +22,15 @@ class NotificationBridge {
   NotificationBridge({MethodChannel? channel})
     : _channel = channel ?? const MethodChannel('com.scope.notifications');
 
-  /// Drains the notification queue from the Android side.
+  /// Peeks buffered notifications from the Android side without removing them.
   ///
-  /// Returns a list of [AppNotification] objects captured since the last call.
-  /// Returns an empty list if the service isn't running or no new notifications.
-  Future<List<AppNotification>> getNotifications() async {
+  /// Returns a list of [AppNotification] objects currently in native memory.
+  /// Returns an empty list if the service isn't running or queue is empty.
+  Future<List<AppNotification>> peekNotifications({int? limit}) async {
     try {
       final result = await _channel.invokeMethod<List<dynamic>>(
-        'getNotifications',
+        'peekNotifications',
+        limit != null ? {'limit': limit} : null,
       );
       if (result == null) return [];
 
@@ -40,12 +41,40 @@ class NotificationBridge {
     } on PlatformException catch (e) {
       // Log but don't crash — the service might not be connected yet
       // ignore: avoid_print
-      print('NotificationBridge.getNotifications failed: ${e.message}');
+      print('NotificationBridge.peekNotifications failed: ${e.message}');
       return [];
     } on MissingPluginException {
       // Happens when running on non-Android platforms or in tests without mock
       return [];
     }
+  }
+
+  /// Explicitly acknowledges notifications by their IDs to prune them from native memory.
+  ///
+  /// Returns true if acknowledgment was acknowledged by native side, false on failure.
+  Future<bool> ackNotifications(List<String> ids) async {
+    if (ids.isEmpty) return true;
+    try {
+      final result = await _channel.invokeMethod<dynamic>(
+        'ackNotifications',
+        {'ids': ids},
+      );
+      return result != null;
+    } on PlatformException catch (e) {
+      // ignore: avoid_print
+      print('NotificationBridge.ackNotifications failed: ${e.message}');
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
+
+  /// Drains the notification queue from the Android side.
+  ///
+  /// Deprecated in favor of [peekNotifications] and [ackNotifications].
+  @Deprecated('Use peekNotifications and ackNotifications instead')
+  Future<List<AppNotification>> getNotifications() async {
+    return peekNotifications();
   }
 
   /// Checks if the notification listener service has been granted access.
