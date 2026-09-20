@@ -273,5 +273,11 @@ void main() {
       // Missing one deleted due to being orphaned
       expect(queueItems.first.notificationId, equals('n-new'));
     });
+
+    test('AttentionDatabase.withPassphrase instantiates correctly', () async {
+      final secureDb = AttentionDatabase.withPassphrase('secret_key_12345');
+      expect(secureDb, isNotNull);
+      await secureDb.close();
+    });
   });
 }
