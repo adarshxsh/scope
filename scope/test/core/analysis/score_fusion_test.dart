@@ -109,5 +109,63 @@ void main() {
       expect(fused.engineName, equals('litert_model (fallback)'));
       expect(fused.isFallback, isTrue);
     });
+
+    test('custom rule with rlhf- prefix is ignored for 1.0 bypass even if priority is critical', () {
+      final customRule = MatchedRuleResult(
+        ruleId: 'rlhf-spoofed-otp',
+        category: 'sys',
+        priority: 'critical',
+        matchedSignal: 'Matched spoofed otp keyword',
+        isCustom: true,
+      );
+
+      final modelResult = AnalysisResult(
+        category: 'promo',
+        score: 0.20,
+        engineName: 'litert_model',
+        matchedSignals: ['Model prediction'],
+        latencyMs: 5,
+        isFallback: false,
+      );
+
+      final fused = ScoreFusion.fuse(
+        ruleResult: customRule,
+        modelResult: modelResult,
+      );
+
+      // Must NOT be 1.0 bypass!
+      expect(fused.score, isNot(equals(1.0)));
+      expect(fused.engineName, equals('score_fusion (hybrid)'));
+      expect(fused.category, equals('sys'));
+    });
+
+    test('system base rules (otp_security, finance_debit, scholarship_portal) retain 1.0 bypass', () {
+      for (final ruleId in ['otp_security', 'finance_debit', 'scholarship_portal']) {
+        final rule = MatchedRuleResult(
+          ruleId: ruleId,
+          category: 'sys',
+          priority: 'critical',
+          matchedSignal: 'Base system rule match',
+          isCustom: false,
+        );
+
+        final modelResult = AnalysisResult(
+          category: 'promo',
+          score: 0.10,
+          engineName: 'litert_model',
+          matchedSignals: ['Model prediction'],
+          latencyMs: 5,
+          isFallback: false,
+        );
+
+        final fused = ScoreFusion.fuse(
+          ruleResult: rule,
+          modelResult: modelResult,
+        );
+
+        expect(fused.score, equals(1.0));
+        expect(fused.engineName, contains('rule bypass: $ruleId'));
+      }
+    });
   });
 }
