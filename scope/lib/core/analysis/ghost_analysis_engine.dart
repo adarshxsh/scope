@@ -1,4 +1,3 @@
-import 'package:flutter/services.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/litert_classifier.dart';
 import 'package:scope/core/analysis/policy_engine.dart';
@@ -7,6 +6,7 @@ import 'package:scope/core/analysis/score_fusion.dart';
 import 'package:scope/core/analysis/explanation_generator.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
+import 'package:scope/core/analysis/asset_verification_engine.dart';
 
 /// The central hub of Ghost AI coordinating all classification stages.
 class GhostAnalysisEngine {
@@ -22,9 +22,11 @@ class GhostAnalysisEngine {
   /// Compiles rules loaded from assets on engine startup.
   Future<void> initialize() async {
     try {
-      final jsonStr = await rootBundle.loadString('assets/rules.json');
-      ruleEngine.compile(jsonStr);
-      await ruleEngine.loadCustomRules();
+      final jsonStr = await AssetVerificationEngine.instance.loadAndVerifyString('assets/rules.json');
+      if (jsonStr != null) {
+        ruleEngine.compile(jsonStr);
+        await ruleEngine.loadCustomRules();
+      }
     } catch (e) {
       // ignore: avoid_print
       print('GhostAnalysisEngine failed to load rules asset: $e');
