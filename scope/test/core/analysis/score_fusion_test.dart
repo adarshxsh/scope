@@ -109,5 +109,32 @@ void main() {
       expect(fused.engineName, equals('litert_model (fallback)'));
       expect(fused.isFallback, isTrue);
     });
+
+    test('custom rule does NOT trigger max confidence critical bypass even if priority is critical', () {
+      final customRule = MatchedRuleResult(
+        ruleId: 'rlhf-custom-critical',
+        category: 'msg',
+        priority: 'critical',
+        matchedSignal: 'Matched custom rule',
+        isSystemRule: false,
+      );
+
+      final modelResult = AnalysisResult(
+        category: 'msg',
+        score: 0.80,
+        engineName: 'litert_model',
+        matchedSignals: ['Softmax scores'],
+        latencyMs: 5,
+        isFallback: false,
+      );
+
+      final fused = ScoreFusion.fuse(
+        ruleResult: customRule,
+        modelResult: modelResult,
+      );
+
+      expect(fused.score, isNot(equals(1.0)));
+      expect(fused.engineName, equals('score_fusion (hybrid)'));
+    });
   });
 }
