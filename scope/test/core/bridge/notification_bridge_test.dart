@@ -30,7 +30,7 @@ void main() {
   });
 
   group('NotificationBridge', () {
-    group('getNotifications', () {
+    group('peekNotifications', () {
       test('returns parsed notifications from channel', () async {
         mockHandler((call) async {
           return [
@@ -55,24 +55,25 @@ void main() {
           ];
         });
 
-        final notifications = await bridge.getNotifications();
+        final notifications = await bridge.peekNotifications();
         expect(notifications.length, 2);
         expect(notifications[0].id, 'n1');
         expect(notifications[0].title, 'Hello');
         expect(notifications[1].id, 'n2');
         expect(notifications[1].isOngoing, true);
-        expect(log.single.method, 'getNotifications');
+        expect(log.single.method, 'peekNotifications');
+      });
+
+      test('passes limit parameter when provided', () async {
+        mockHandler((call) async => []);
+        await bridge.peekNotifications(limit: 50);
+        expect(log.single.method, 'peekNotifications');
+        expect(log.single.arguments, {'limit': 50});
       });
 
       test('returns empty list when channel returns null', () async {
         mockHandler((call) async => null);
-        final notifications = await bridge.getNotifications();
-        expect(notifications, isEmpty);
-      });
-
-      test('returns empty list when channel returns empty list', () async {
-        mockHandler((call) async => <Map>[]);
-        final notifications = await bridge.getNotifications();
+        final notifications = await bridge.peekNotifications();
         expect(notifications, isEmpty);
       });
 
@@ -80,8 +81,41 @@ void main() {
         mockHandler((call) async {
           throw PlatformException(code: 'ERROR', message: 'test error');
         });
+        final notifications = await bridge.peekNotifications();
+        expect(notifications, isEmpty);
+      });
+    });
+
+    group('ackNotifications', () {
+      test('sends ids to channel and returns true on success', () async {
+        mockHandler((call) async => 2);
+        final result = await bridge.ackNotifications(['n1', 'n2']);
+        expect(result, true);
+        expect(log.single.method, 'ackNotifications');
+        expect(log.single.arguments, {'ids': ['n1', 'n2']});
+      });
+
+      test('returns true early if ids list is empty', () async {
+        final result = await bridge.ackNotifications([]);
+        expect(result, true);
+        expect(log, isEmpty);
+      });
+
+      test('returns false on PlatformException', () async {
+        mockHandler((call) async {
+          throw PlatformException(code: 'ERROR', message: 'ack error');
+        });
+        final result = await bridge.ackNotifications(['n1']);
+        expect(result, false);
+      });
+    });
+
+    group('getNotifications', () {
+      test('delegates to peekNotifications', () async {
+        mockHandler((call) async => []);
         final notifications = await bridge.getNotifications();
         expect(notifications, isEmpty);
+        expect(log.single.method, 'peekNotifications');
       });
     });
 
