@@ -1,10 +1,10 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/utils/pii_redactor.dart';
+import 'package:scope/core/analysis/asset_verification_engine.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -61,18 +61,29 @@ class GhostAI {
   Future<void> initialize() async {
     if (_interpreter != null) return;
     try {
-      // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      // 1. Load interpreter from assets via AssetVerificationEngine
+      final modelBytes = await AssetVerificationEngine.instance.loadAndVerifyByteData('assets/model.tflite');
+      if (modelBytes != null) {
+        _interpreter = Interpreter.fromBuffer(modelBytes);
+        debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      } else {
+        debugPrint('GhostAI: SHA-256 verification failed for assets/model.tflite');
+        _interpreter = null;
+      }
     } catch (e) {
       debugPrint('GhostAI: Failed to load TFLite model: $e');
+      _interpreter = null;
     }
 
     try {
-      // 2. Load and compile rules database
-      final jsonStr = await rootBundle.loadString('assets/rules.json');
-      _ruleEngine.compile(jsonStr);
-      debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
+      // 2. Load and compile rules database via AssetVerificationEngine
+      final jsonStr = await AssetVerificationEngine.instance.loadAndVerifyString('assets/rules.json');
+      if (jsonStr != null) {
+        _ruleEngine.compile(jsonStr);
+        debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
+      } else {
+        debugPrint('GhostAI: SHA-256 verification failed for assets/rules.json');
+      }
     } catch (e) {
       debugPrint('GhostAI: Failed to initialize rules database: $e');
     }
