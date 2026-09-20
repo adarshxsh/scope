@@ -186,5 +186,16 @@ void main() {
 
       expect(find.text('No notifications captured yet'), findsOneWidget);
     });
+
+    testWidgets('shows Diagnostics icon and TEST button in debug mode app bar',
+        (tester) async {
+      setupMock(isListenerEnabled: true, notifications: []);
+      await tester.pumpWidget(buildApp());
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.analytics), findsOneWidget);
+      expect(find.text('TEST'), findsOneWidget);
+      expect(find.byIcon(Icons.refresh), findsOneWidget);
+    });
   });
 }
