@@ -49,19 +49,29 @@ class NotificationCollectorService : NotificationListenerService() {
          * Returns the current queue size (for diagnostics).
          */
         fun queueSize(): Int = queue.size
+
+        /**
+         * Clears the queue (primarily for testing).
+         */
+        fun clearQueue() {
+            queue.clear()
+        }
     }
 
     private fun addSbnToQueue(sbn: StatusBarNotification) {
         try {
             val extras = sbn.notification.extras
-            val title = extras?.getCharSequence("android.title")?.toString() ?: ""
-            val text = extras?.getCharSequence("android.text")?.toString() ?: ""
+            val rawTitle = extras?.getCharSequence("android.title")?.toString() ?: ""
+            val rawText = extras?.getCharSequence("android.text")?.toString() ?: ""
             val isOngoing = sbn.isOngoing
             val packageName = sbn.packageName ?: "unknown"
 
+            val title = NotificationRedactor.redactTitle(rawTitle)
+            val content = NotificationRedactor.redactContent(rawText)
+
             // Ignore if same package, title, and content already exist in queue
             val isDuplicate = queue.any {
-                it.packageName == packageName && it.title == title && it.content == text
+                it.packageName == packageName && it.title == title && it.content == content
             }
             if (isDuplicate) {
                 return
@@ -71,14 +81,14 @@ class NotificationCollectorService : NotificationListenerService() {
                 id = "notif_${++idCounter}",
                 packageName = packageName,
                 title = title,
-                content = text,
+                content = content,
                 timestamp = sbn.postTime,
                 category = sbn.notification.category,
                 isOngoing = isOngoing
             )
 
             queue.add(data)
-            Log.d(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
+            Log.d(TAG, "Notification captured")
         } catch (e: Exception) {
             Log.e(TAG, "Error capturing/adding notification", e)
         }
@@ -91,9 +101,7 @@ class NotificationCollectorService : NotificationListenerService() {
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         if (sbn == null) return
-        // Log for now; future phases may track dismissed notifications
-        val removedTitle = sbn.notification.extras?.getCharSequence("android.title")?.toString()
-        Log.d(TAG, "Removed: ${sbn.packageName} - ${NotificationRedactor.redactTitle(removedTitle)}")
+        Log.d(TAG, "Notification removed")
     }
 
     override fun onListenerConnected() {
