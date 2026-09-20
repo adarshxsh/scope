@@ -1,41 +1,74 @@
+import 'dart:convert';
 import 'dart:math' as math;
+import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/analysis_result.dart';
 import 'package:scope/core/analysis/notification_analyzer.dart';
 import 'package:scope/core/analysis/wordpiece_tokenizer.dart';
+import 'package:scope/core/analysis/asset_verifier.dart';
+import 'package:scope/core/analysis/feature_extractor.dart';
 
 /// Classifier using LiteRT (TensorFlow Lite) to classify text categories.
 class LiteRtClassifier implements NotificationAnalyzer {
   Interpreter? _interpreter;
   WordPieceTokenizer? _tokenizer;
   bool _isModelLoaded = false;
+  String? _verificationError;
 
   LiteRtClassifier() {
     _initialize();
   }
 
-  Future<void> _initialize() async {
+  /// Reinitializes classifier with optional custom bytes (used for testing asset corruption).
+  Future<void> reinitialize({Uint8List? modelBytes, Uint8List? vocabBytes}) async {
+    await _initialize(modelBytes: modelBytes, vocabBytes: vocabBytes);
+  }
+
+  Future<void> _initialize({Uint8List? modelBytes, Uint8List? vocabBytes}) async {
+    _verificationError = null;
     try {
-      // 1. Load Vocab
-      final vocabStr = await rootBundle.loadString('assets/vocab.txt');
+      // 1. Load Vocab and verify SHA-256
+      final Uint8List vBytes;
+      if (vocabBytes != null) {
+        vBytes = vocabBytes;
+      } else {
+        final vocabData = await rootBundle.load('assets/vocab.txt');
+        vBytes = vocabData.buffer.asUint8List();
+      }
+      AssetVerifier.verifyAsset('assets/vocab.txt', vBytes);
+
+      final vocabStr = utf8.decode(vBytes);
       final lines = vocabStr.split('\n');
       _tokenizer = WordPieceTokenizer.fromLines(lines);
 
-      // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
-      _isModelLoaded = false;
+      // 2. Load Interpreter from verified assets/model.tflite bytes
+      final Uint8List mBytes;
+      if (modelBytes != null) {
+        mBytes = modelBytes;
+      } else {
+        final modelData = await rootBundle.load('assets/model.tflite');
+        mBytes = modelData.buffer.asUint8List();
+      }
+      AssetVerifier.verifyAsset('assets/model.tflite', mBytes);
+
+      _interpreter = Interpreter.fromBuffer(mBytes);
+      _isModelLoaded = true;
     } catch (e) {
       // Graceful degradation: Log and set flags so analyze runs in fallback mode
       // ignore: avoid_print
       print('LiteRtClassifier failed to initialize: $e');
       _isModelLoaded = false;
+      _verificationError = e.toString();
 
       // Ensure tokenizer is loaded even if interpreter fails (so we can test tokenization in fallback)
       if (_tokenizer == null) {
         try {
-          final vocabStr = await rootBundle.loadString('assets/vocab.txt');
-          _tokenizer = WordPieceTokenizer.fromLines(vocabStr.split('\n'));
+          final vocabData = await rootBundle.load('assets/vocab.txt');
+          final vBytes = vocabData.buffer.asUint8List();
+          AssetVerifier.verifyAsset('assets/vocab.txt', vBytes);
+          _tokenizer = WordPieceTokenizer.fromLines(utf8.decode(vBytes).split('\n'));
         } catch (_) {}
       }
     }
@@ -43,6 +76,9 @@ class LiteRtClassifier implements NotificationAnalyzer {
 
   /// Expose model loading status for diagnostics screen.
   bool get isModelLoaded => _isModelLoaded;
+
+  /// Expose last verification failure message if any.
+  String? get verificationError => _verificationError;
 
   @override
   Future<AnalysisResult> analyze(AppNotification notification) async {
@@ -59,49 +95,71 @@ class LiteRtClassifier implements NotificationAnalyzer {
     if (!_isModelLoaded || _interpreter == null) {
       // Graceful fallback heuristic classifier
       final category = _runFallbackHeuristic(combinedText);
+      final matchedSignals = <String>[];
+      if (_verificationError != null) {
+        matchedSignals.add('Asset verification failed: $_verificationError');
+      } else {
+        matchedSignals.add('Model asset invalid or uninitialized');
+      }
+      matchedSignals.add('Tokenizer parsed ${tokenIds.take(5).toList()}...');
+
       return AnalysisResult(
         category: category,
         score: 0.0, // Zero authentic model confidence for fallback heuristic
         engineName: 'litert_model (fallback)',
-        matchedSignals: [
-          'Model asset invalid or uninitialized',
-          'Tokenizer parsed ${tokenIds.take(5).toList()}...'
-        ],
+        matchedSignals: matchedSignals,
         latencyMs: stopwatch.elapsedMilliseconds,
         isFallback: true,
       );
     }
 
     try {
-      // Run model inference
-      // Assume input shape: [1, 64]
-      final input = [tokenIds];
-      
-      // Output logit tensor shape: [1, 5] (Promo, Social, System, Message, Finance)
-      final output = List<double>.filled(5, 0.0).reshape([1, 5]);
+      // Run model inference dynamically inspecting tensor shapes
+      final inputShape = _interpreter!.getInputTensor(0).shape;
+      final outputShape = _interpreter!.getOutputTensor(0).shape;
 
-      _interpreter!.run(input, output);
+      String predictedCategory;
+      double maxScore;
 
-      final scores = List<double>.from(output[0] as List);
-      final softmaxScores = _softmax(scores);
+      if (outputShape.length >= 2 && outputShape[1] == 5) {
+        final input = inputShape[1] == 63
+            ? [FeatureExtractor.extractFromAppNotification(notification)]
+            : [tokenIds];
+        final output = List<double>.filled(5, 0.0).reshape([1, 5]);
 
-      int bestIndex = 0;
-      double maxScore = -1.0;
-      for (int i = 0; i < softmaxScores.length; i++) {
-        if (softmaxScores[i] > maxScore) {
-          maxScore = softmaxScores[i];
-          bestIndex = i;
+        _interpreter!.run(input, output);
+
+        final scores = List<double>.from(output[0] as List);
+        final softmaxScores = _softmax(scores);
+
+        int bestIndex = 0;
+        maxScore = -1.0;
+        for (int i = 0; i < softmaxScores.length; i++) {
+          if (softmaxScores[i] > maxScore) {
+            maxScore = softmaxScores[i];
+            bestIndex = i;
+          }
         }
-      }
 
-      final categories = ['promo', 'social', 'sys', 'msg', 'finance'];
-      final predictedCategory = categories[bestIndex];
+        final categories = ['promo', 'social', 'sys', 'msg', 'finance'];
+        predictedCategory = categories[bestIndex];
+      } else {
+        final featureVector = FeatureExtractor.extractFromAppNotification(notification);
+        final input = [featureVector];
+        final output = List<double>.filled(1, 0.0).reshape([1, 1]);
+
+        _interpreter!.run(input, output);
+
+        final rawScore = output[0][0] as double;
+        maxScore = (rawScore / 100.0).clamp(0.0, 1.0);
+        predictedCategory = _runFallbackHeuristic(combinedText);
+      }
 
       return AnalysisResult(
         category: predictedCategory,
         score: maxScore,
         engineName: 'litert_model',
-        matchedSignals: ['Softmax scores: $softmaxScores'],
+        matchedSignals: ['Model inference executed successfully'],
         latencyMs: stopwatch.elapsedMilliseconds,
         isFallback: false,
       );

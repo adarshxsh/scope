@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/litert_classifier.dart';
@@ -5,6 +6,7 @@ import 'package:scope/core/analysis/policy_engine.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/analysis/score_fusion.dart';
 import 'package:scope/core/analysis/explanation_generator.dart';
+import 'package:scope/core/analysis/asset_verifier.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
 
@@ -19,10 +21,13 @@ class GhostAnalysisEngine {
   })  : ruleEngine = ruleEngine ?? RuleEngine(),
         mlClassifier = mlClassifier ?? LiteRtClassifier();
 
-  /// Compiles rules loaded from assets on engine startup.
+  /// Compiles rules loaded from assets on engine startup after SHA-256 integrity verification.
   Future<void> initialize() async {
     try {
-      final jsonStr = await rootBundle.loadString('assets/rules.json');
+      final rulesData = await rootBundle.load('assets/rules.json');
+      final rulesBytes = rulesData.buffer.asUint8List();
+      AssetVerifier.verifyAsset('assets/rules.json', rulesBytes);
+      final jsonStr = utf8.decode(rulesBytes);
       ruleEngine.compile(jsonStr);
       await ruleEngine.loadCustomRules();
     } catch (e) {
