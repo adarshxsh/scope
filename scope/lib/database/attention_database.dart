@@ -25,7 +25,12 @@ part 'attention_database.g.dart';
   ],
 )
 class AttentionDatabase extends _$AttentionDatabase {
-  AttentionDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
+  AttentionDatabase([QueryExecutor? executor, Future<String>? passphraseFuture])
+      : super(executor ?? _openConnection(passphraseFuture));
+
+  factory AttentionDatabase.withPassphrase(String passphrase) {
+    return AttentionDatabase(null, Future.value(passphrase));
+  }
 
   factory AttentionDatabase.inMemory() {
     return AttentionDatabase(NativeDatabase.memory());
@@ -52,10 +57,18 @@ class AttentionDatabase extends _$AttentionDatabase {
   }
 }
 
-QueryExecutor _openConnection() {
+QueryExecutor _openConnection([Future<String>? passphraseFuture]) {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'attention_os.db'));
-    return NativeDatabase(file);
+    final passphrase = passphraseFuture != null ? await passphraseFuture : null;
+    return NativeDatabase(
+      file,
+      setup: passphrase != null && passphrase.isNotEmpty
+          ? (db) {
+              db.execute("PRAGMA key = '$passphrase';");
+            }
+          : null,
+    );
   });
 }
