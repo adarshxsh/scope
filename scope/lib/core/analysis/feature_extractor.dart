@@ -539,13 +539,23 @@ class FeatureExtractor {
     String appName = '',
     AndroidNotificationMetadata? android,
   }) {
-    return extractVector(
+    final vector = extractVector(
       NotificationFeatureInput.fromAppNotification(
         notification,
         appName: appName,
         android: android,
       ),
     ).toList();
+
+    final lower = '${notification.title} ${notification.content}'.toLowerCase();
+    if (notification.extractedFeatures?['otp'] != null || lower.contains('[redacted_otp]')) {
+      vector[11] = 1.0;
+    }
+    if (notification.extractedFeatures?['amount'] != null || lower.contains('[redacted_amount]')) {
+      vector[10] = 1.0;
+    }
+
+    return vector;
   }
 
   /// Extracts a fixed-width numerical feature vector from normalized input.

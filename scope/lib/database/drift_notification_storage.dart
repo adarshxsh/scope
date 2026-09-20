@@ -8,13 +8,22 @@ class DriftNotificationStorage implements NotificationStorage {
 
   @override
   Future<void> save(AppNotification notification) async {
-    await _db.notificationDao.insertNotification(_toEntry(notification));
+    try {
+      final existing = await _db.notificationDao.getById(notification.id);
+      await _db.notificationDao.insertNotification(_toEntry(notification, existing));
+    } catch (e) {
+      if (e.toString().contains('closing') ||
+          e.toString().contains('closed') ||
+          e.toString().contains('ensureOpen')) return;
+      rethrow;
+    }
   }
 
   @override
   Future<void> saveAll(List<AppNotification> notifications) async {
-    final entries = notifications.map(_toEntry).toList();
-    await _db.notificationDao.insertAll(entries);
+    for (final notification in notifications) {
+      await save(notification);
+    }
   }
 
   @override
@@ -45,12 +54,26 @@ class DriftNotificationStorage implements NotificationStorage {
     return await _db.notificationDao.getCount();
   }
 
-  NotificationEntry _toEntry(AppNotification n) {
+  bool _isRedacted(String text) => text.contains('[REDACTED_');
+
+  NotificationEntry _toEntry(AppNotification n, [NotificationEntry? existing]) {
+    String title = n.title;
+    String content = n.content;
+
+    if (existing != null) {
+      if (_isRedacted(title) && !_isRedacted(existing.title)) {
+        title = existing.title;
+      }
+      if (_isRedacted(content) && !_isRedacted(existing.content)) {
+        content = existing.content;
+      }
+    }
+
     return NotificationEntry(
       id: n.id,
       packageName: n.packageName,
-      title: n.title,
-      content: n.content,
+      title: title,
+      content: content,
       timestamp: n.timestamp,
       category: n.category,
       isOngoing: n.isOngoing,
@@ -68,7 +91,7 @@ class DriftNotificationStorage implements NotificationStorage {
       lastUpdated: n.lastUpdated,
       reviewed: n.state == ReviewState.REVIEWED,
       dismissed: n.state == ReviewState.ARCHIVED || n.state == ReviewState.EXPIRED,
-      createdAt: DateTime.now(),
+      createdAt: existing?.createdAt ?? DateTime.now(),
     );
   }
 

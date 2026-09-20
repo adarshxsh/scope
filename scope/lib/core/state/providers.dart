@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
+import 'package:scope/core/utils/pii_redactor.dart';
 import 'package:scope/database/attention_database.dart';
 import 'package:scope/database/database_provider.dart';
 import 'package:scope/database/drift_notification_storage.dart';
@@ -15,9 +16,16 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
   final AttentionDatabase? _db;
   ReviewQueueNotifier([this._db]) : super([]);
 
+  AppNotification _redact(AppNotification n) {
+    return n.copyWith(
+      title: PiiRedactor.redactTitle(n.title),
+      content: PiiRedactor.redactContent(n.content),
+    );
+  }
+
   /// Load a list of notifications directly (used on startup recovery).
   void load(List<AppNotification> list) {
-    state = list;
+    state = list.map(_redact).toList();
   }
 
   /// Add a notification to the review queue.
@@ -26,8 +34,8 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
     final now = DateTime.now();
     final index = state.indexWhere((n) =>
         n.packageName == notification.packageName &&
-        n.title == notification.title &&
-        n.content == notification.content);
+        n.title == PiiRedactor.redactTitle(notification.title) &&
+        n.content == PiiRedactor.redactContent(notification.content));
 
     AppNotification newItem;
     if (index >= 0) {
@@ -39,23 +47,28 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
         snoozedUntil: null, // Clear snooze
         lastUpdated: now,
       );
-      state = [
-        for (int i = 0; i < state.length; i++)
-          if (i == index) newItem else state[i]
-      ];
     } else {
       // Add new notification
       newItem = notification.copyWith(
         state: ReviewState.ACTIVE,
         lastUpdated: now,
       );
-      state = [...state, newItem];
     }
 
-    // Persist to DB
+    // Persist raw unredacted to DB
     if (_db != null) {
       DriftNotificationStorage(_db).save(newItem);
       _saveQueueEntry(newItem);
+    }
+
+    final redactedNewItem = _redact(newItem);
+    if (index >= 0) {
+      state = [
+        for (int i = 0; i < state.length; i++)
+          if (i == index) redactedNewItem else state[i]
+      ];
+    } else {
+      state = [...state, redactedNewItem];
     }
   }
 
@@ -69,14 +82,15 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
 
   /// Update a notification's fields in the queue.
   void update(AppNotification notification) {
-    state = [
-      for (final n in state)
-        if (n.id == notification.id) notification else n
-    ];
     if (_db != null) {
       DriftNotificationStorage(_db).save(notification);
       _saveQueueEntry(notification);
     }
+    final redacted = _redact(notification);
+    state = [
+      for (final n in state)
+        if (n.id == notification.id) redacted else n
+    ];
   }
 
   /// Mark a notification as reviewed (transition to REVIEWED state).
@@ -256,14 +270,21 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
 
   Future<void> _saveQueueEntry(AppNotification n, {DateTime? expiry}) async {
     if (_db == null) return;
-    await _db.reviewQueueDao.insertItem(ReviewQueueEntry(
-      id: 0,
-      notificationId: n.id,
-      priority: n.priority ?? 'medium',
-      enqueueTime: DateTime.now(),
-      expiryTime: expiry,
-      status: n.state,
-    ));
+    try {
+      await _db.reviewQueueDao.insertItem(ReviewQueueEntry(
+        id: 0,
+        notificationId: n.id,
+        priority: n.priority ?? 'medium',
+        enqueueTime: DateTime.now(),
+        expiryTime: expiry,
+        status: n.state,
+      ));
+    } catch (e) {
+      if (e.toString().contains('closing') ||
+          e.toString().contains('closed') ||
+          e.toString().contains('ensureOpen')) return;
+      rethrow;
+    }
   }
 
   bool _checkCompletedKeywords(String title, String content) {

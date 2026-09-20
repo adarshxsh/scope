@@ -42,11 +42,25 @@ abstract class NotificationStorage {
 class InMemoryNotificationStorage implements NotificationStorage {
   final List<AppNotification> _store = [];
 
+  bool _isRedacted(String text) => text.contains('[REDACTED_');
+
   @override
   Future<void> save(AppNotification notification) async {
-    // Remove existing entry with the same ID (upsert behavior)
-    _store.removeWhere((n) => n.id == notification.id);
-    _store.add(notification);
+    final index = _store.indexWhere((n) => n.id == notification.id);
+    if (index >= 0) {
+      final existing = _store[index];
+      String title = notification.title;
+      String content = notification.content;
+      if (_isRedacted(title) && !_isRedacted(existing.title)) {
+        title = existing.title;
+      }
+      if (_isRedacted(content) && !_isRedacted(existing.content)) {
+        content = existing.content;
+      }
+      _store[index] = notification.copyWith(title: title, content: content);
+    } else {
+      _store.add(notification);
+    }
   }
 
   @override

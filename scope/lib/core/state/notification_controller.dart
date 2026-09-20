@@ -8,6 +8,7 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/storage/notification_storage.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/core/utils/focus_area_mapper.dart';
+import 'package:scope/core/utils/pii_redactor.dart';
 import 'package:scope/core/utils/smart_actions.dart';
 import 'package:scope/core/state/providers.dart';
 import 'package:drift/drift.dart';
@@ -82,6 +83,15 @@ class NotificationController extends ChangeNotifier {
   List<String> _focusSessionQueueIds = [];
   DateTime? _focusSessionStart;
   int _focusSessionInterruptions = 0;
+
+  NotificationStorage get storage => _storage;
+
+  Future<AppNotification?> getNotificationById(String id) => _storage.getById(id);
+
+  AppNotification _redact(AppNotification n) => n.copyWith(
+        title: PiiRedactor.redactTitle(n.title),
+        content: PiiRedactor.redactContent(n.content),
+      );
 
   List<AppNotification> get notifications => List.unmodifiable(_notifications);
 
@@ -323,8 +333,10 @@ class NotificationController extends ChangeNotifier {
     final loaded = await _storage.getAll();
     if (_initialLoadCompleted) return;
 
+    final sanitized = loaded.map(_redact).toList();
+
     if (_notifications.isEmpty) {
-      _notifications = loaded;
+      _notifications = sanitized;
     }
     if (_notifications.isNotEmpty) {
       final notifier = _container.read(reviewQueueProvider.notifier);
@@ -412,8 +424,9 @@ class NotificationController extends ChangeNotifier {
       if (analyzed.isNotEmpty) {
         await _storage.saveAll(analyzed);
         final loaded = await _storage.getAll();
+        final sanitized = loaded.map(_redact).toList();
         final notifier = _container.read(reviewQueueProvider.notifier);
-        notifier.load(loaded);
+        notifier.load(sanitized);
         await notifier.rescore();
       }
 
@@ -454,8 +467,9 @@ class NotificationController extends ChangeNotifier {
     if (analyzed.isNotEmpty) {
       await _storage.saveAll(analyzed);
       final loaded = await _storage.getAll();
+      final sanitized = loaded.map(_redact).toList();
       final notifier = _container.read(reviewQueueProvider.notifier);
-      notifier.load(loaded);
+      notifier.load(sanitized);
       await notifier.rescore();
     }
 
