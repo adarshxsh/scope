@@ -426,6 +426,7 @@ class NotificationController extends ChangeNotifier {
   }
 
   Future<void> generateTestData() async {
+    if (kReleaseMode) return;
     _initialLoadCompleted = true;
     _isLoading = false;
     final generator = TestNotificationGenerator();
@@ -463,6 +464,7 @@ class NotificationController extends ChangeNotifier {
   }
 
   Future<void> clearAll() async {
+    if (kReleaseMode) return;
     await _storage.clear();
     _container.read(reviewQueueProvider.notifier).clear();
     _notifications = [];
