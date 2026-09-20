@@ -58,4 +58,24 @@ class NotificationRedactorTest {
         assertTrue(redacted.contains("[REDACTED_AMOUNT]"))
         assertFalse(redacted.contains("1,250.00"))
     }
+
+    @Test
+    fun testPhoneRedaction() {
+        val text = "Call customer support at 800-555-0199 for assistance."
+        val redacted = NotificationRedactor.redact(text)
+        assertTrue(redacted.contains("[REDACTED_PHONE]"))
+        assertFalse(redacted.contains("800-555-0199"))
+    }
+
+    @Test
+    fun testMultipleSensitiveEntitiesRedaction() {
+        val text = "OTP 998811 for payment of $250.00 to user@pay.com"
+        val redacted = NotificationRedactor.redact(text)
+        assertTrue(redacted.contains("[REDACTED_OTP]"))
+        assertTrue(redacted.contains("[REDACTED_AMOUNT]"))
+        assertTrue(redacted.contains("[REDACTED_EMAIL]"))
+        assertFalse(redacted.contains("998811"))
+        assertFalse(redacted.contains("250.00"))
+        assertFalse(redacted.contains("user@pay.com"))
+    }
 }
