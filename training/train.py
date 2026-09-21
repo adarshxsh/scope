@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import os
 # Force CPU execution to bypass Apple Silicon tensorflow-metal GPU bugs
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
@@ -41,6 +42,22 @@ from training.utils.preprocessing import (
     split_dataset,
 )
 
+
+
+def compute_path_sha256(path: Path) -> str:
+    hasher = hashlib.sha256()
+    if path.is_file():
+        with path.open("rb") as handle:
+            while chunk := handle.read(65536):
+                hasher.update(chunk)
+    elif path.is_dir():
+        for subpath in sorted(path.rglob("*")):
+            if subpath.is_file():
+                hasher.update(subpath.relative_to(path).as_posix().encode("utf-8"))
+                with subpath.open("rb") as handle:
+                    while chunk := handle.read(65536):
+                        hasher.update(chunk)
+    return hasher.hexdigest()
 
 
 def parse_args() -> argparse.Namespace:
@@ -151,6 +168,22 @@ def main() -> None:
     label_encoder_path = output_dir / "label_encoder.json"
     write_json(label_encoder_path, dataset.label_encoders)
 
+    history_csv_path = output_dir / "history.csv"
+    artifact_paths: dict[str, Path] = {
+        "saved_model": saved_model_dir,
+        "quantized_tflite": tflite_path,
+        "label_encoder": label_encoder_path,
+        "history_csv": history_csv_path,
+        "evaluation_dir": evaluation_dir,
+    }
+
+    artifact_hashes: dict[str, str] = {}
+    for name, artifact_path in artifact_paths.items():
+        digest = compute_path_sha256(artifact_path)
+        artifact_hashes[name] = digest
+        sidecar_path = artifact_path.parent / f"{artifact_path.name}.sha256"
+        sidecar_path.write_text(f"{digest}\n", encoding="utf-8")
+
     metadata = {
         "created_at": datetime.now(timezone.utc).isoformat(),
         "dataset_path": str(args.data),
@@ -180,9 +213,11 @@ def main() -> None:
             "saved_model": str(saved_model_dir),
             "quantized_tflite": str(tflite_path),
             "label_encoder": str(label_encoder_path),
-            "history_csv": str(output_dir / "history.csv"),
+            "history_csv": str(history_csv_path),
             "evaluation_dir": str(evaluation_dir),
         },
+        "artifact_hashes": artifact_hashes,
+        "sha256_digests": artifact_hashes,
         "flutter": {
             "input_dtype": "float32",
             "input_shape": [1, FEATURE_VECTOR_SIZE],
@@ -191,7 +226,11 @@ def main() -> None:
             "output_name": "look_again_score",
         },
     }
-    write_json(output_dir / "metadata.json", metadata)
+    metadata_path = output_dir / "metadata.json"
+    write_json(metadata_path, metadata)
+
+    metadata_digest = compute_path_sha256(metadata_path)
+    (output_dir / "metadata.json.sha256").write_text(f"{metadata_digest}\n", encoding="utf-8")
 
     print(f"SavedModel: {saved_model_dir}")
     print(f"TFLite: {tflite_path}")
