@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scope/core/state/notification_controller.dart';
+import 'package:scope/core/storage/storage_migration.dart';
 import 'package:scope/screens/main_shell.dart';
 import 'package:scope/theme/app_theme.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await StorageMigrationService.migrateStorage();
   runApp(
     const ProviderScope(
       child: AttentionOSApp(),
