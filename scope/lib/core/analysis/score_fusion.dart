@@ -9,12 +9,14 @@ class ScoreFusion {
     MatchedRuleResult? ruleResult,
     required AnalysisResult modelResult,
   }) {
-    // 1. Check for deterministic critical bypass rules
+    // 1. Check for deterministic critical bypass rules (built-in base rules only)
     if (ruleResult != null) {
-      final isBypass = ruleResult.priority == 'critical' ||
-          ruleResult.ruleId == 'otp_security' ||
-          ruleResult.ruleId == 'finance_debit' ||
-          ruleResult.ruleId == 'scholarship_portal';
+      final isCustomRule = ruleResult.ruleId.startsWith('rlhf-');
+      final isBypass = !isCustomRule &&
+          (ruleResult.priority == 'critical' ||
+              ruleResult.ruleId == 'otp_security' ||
+              ruleResult.ruleId == 'finance_debit' ||
+              ruleResult.ruleId == 'scholarship_portal');
 
       if (isBypass) {
         return AnalysisResult(
@@ -33,9 +35,13 @@ class ScoreFusion {
     // do not process the fallback score as an authentic model prediction.
     if (modelResult.isFallback) {
       if (ruleResult != null) {
+        double score = 0.85; // Custom/standard rule baseline
+        if (ruleResult.ruleId.startsWith('rlhf-') && score > 0.85) {
+          score = 0.85;
+        }
         return AnalysisResult(
           category: ruleResult.category,
-          score: 0.85, // Custom rule baseline without unauthentic model score blending
+          score: score, // Custom rule baseline without unauthentic model score blending
           engineName: 'score_fusion (rule only, ml fallback: ${ruleResult.ruleId})',
           matchedSignals: [
             'Rule matched: ${ruleResult.ruleId} (${ruleResult.matchedSignal})',
@@ -68,6 +74,11 @@ class ScoreFusion {
       // Slight confidence reduction if they conflict, but rule still wins
       score = (score + (1.0 - modelResult.score)) / 2.0;
       if (score < 0.70) score = 0.70;
+    }
+
+    // Custom RLHF rules must pass through PolicyEngine evidence validation and cannot claim > 0.85 score
+    if (ruleResult.ruleId.startsWith('rlhf-') && score > 0.85) {
+      score = 0.85;
     }
 
     return AnalysisResult(
