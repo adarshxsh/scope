@@ -698,5 +698,38 @@ void main() {
         expect(priority, equals('high'));
       });
     });
+
+    // =========================================================================
+    // Custom RLHF rule priority validation
+    // =========================================================================
+    group('Custom RLHF rule priority validation', () {
+      test('custom RLHF rule attempting critical priority without evidence is downgraded', () {
+        final priority = PolicyEngine.resolvePriority(
+          fusedResult: _result(category: 'msg', score: 0.85),
+          features: _features(), // No OTP, no transaction amount
+          notification: _notif(
+            packageName: 'com.custom.app',
+            title: 'Custom Alert',
+            content: 'Random custom message',
+          ),
+          lookAgainScore: 0.85,
+        );
+        expect(priority, isNot(equals('critical')));
+      });
+
+      test('custom RLHF rule with valid critical evidence (OTP) holds critical priority', () {
+        final priority = PolicyEngine.resolvePriority(
+          fusedResult: _result(category: 'sys', score: 0.85),
+          features: _features(otp: '987654'),
+          notification: _notif(
+            packageName: 'com.custom.app',
+            title: 'Custom Alert',
+            content: 'Your code is 987654',
+          ),
+          lookAgainScore: 0.85,
+        );
+        expect(priority, equals('critical'));
+      });
+    });
   });
 }

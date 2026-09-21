@@ -109,5 +109,33 @@ void main() {
       expect(fused.engineName, equals('litert_model (fallback)'));
       expect(fused.isFallback, isTrue);
     });
+
+    test('custom RLHF rule (rlhf-) cannot trigger critical bypass and score is capped at 0.85', () {
+      final rlhfRule = MatchedRuleResult(
+        ruleId: 'rlhf-1712345678',
+        category: 'finance',
+        priority: 'critical',
+        matchedSignal: 'Matched user custom RLHF rule',
+      );
+
+      final modelResult = AnalysisResult(
+        category: 'finance',
+        score: 0.98,
+        engineName: 'litert_model',
+        matchedSignals: ['Model prediction'],
+        latencyMs: 2,
+        isFallback: false,
+      );
+
+      final fused = ScoreFusion.fuse(
+        ruleResult: rlhfRule,
+        modelResult: modelResult,
+      );
+
+      expect(fused.category, equals('finance'));
+      // Must NOT be 1.0 (no critical bypass) and must be capped at 0.85
+      expect(fused.score, equals(0.85));
+      expect(fused.engineName, equals('score_fusion (hybrid)'));
+    });
   });
 }
