@@ -8,6 +8,8 @@ import 'package:scope/database/tables.dart';
 import 'package:scope/database/daos.dart';
 import 'package:scope/database/converters.dart';
 
+import 'package:scope/core/storage/storage_migration.dart';
+
 part 'attention_database.g.dart';
 
 @DriftDatabase(
@@ -54,7 +56,8 @@ class AttentionDatabase extends _$AttentionDatabase {
 
 QueryExecutor _openConnection() {
   return LazyDatabase(() async {
-    final dbFolder = await getApplicationDocumentsDirectory();
+    await StorageMigrationService.migrateStorage();
+    final dbFolder = await getApplicationSupportDirectory();
     final file = File(p.join(dbFolder.path, 'attention_os.db'));
     return NativeDatabase(file);
   });
