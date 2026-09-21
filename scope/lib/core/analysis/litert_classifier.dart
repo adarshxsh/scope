@@ -1,41 +1,107 @@
+import 'dart:convert';
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/analysis_result.dart';
 import 'package:scope/core/analysis/notification_analyzer.dart';
 import 'package:scope/core/analysis/wordpiece_tokenizer.dart';
+import 'package:scope/core/utils/asset_integrity_guard.dart';
 
 /// Classifier using LiteRT (TensorFlow Lite) to classify text categories.
 class LiteRtClassifier implements NotificationAnalyzer {
   Interpreter? _interpreter;
   WordPieceTokenizer? _tokenizer;
   bool _isModelLoaded = false;
+  Future<void>? _initFuture;
 
-  LiteRtClassifier() {
-    _initialize();
+  final AssetBundle? _assetBundle;
+  final Map<String, String>? _customExpectedHashes;
+
+  LiteRtClassifier({
+    AssetBundle? assetBundle,
+    Map<String, String>? customExpectedHashes,
+    Interpreter? interpreter,
+    WordPieceTokenizer? tokenizer,
+  })  : _assetBundle = assetBundle,
+        _customExpectedHashes = customExpectedHashes,
+        _interpreter = interpreter,
+        _tokenizer = tokenizer,
+        _isModelLoaded = interpreter != null {
+    if (_interpreter == null) {
+      _initFuture = _initialize();
+    }
   }
 
   Future<void> _initialize() async {
     try {
-      // 1. Load Vocab
-      final vocabStr = await rootBundle.loadString('assets/vocab.txt');
+      final bundle = _assetBundle ?? rootBundle;
+
+      // 1. Load and verify assets/vocab.txt via SHA-256 integrity guard
+      const vocabPath = 'assets/vocab.txt';
+      final ByteData vocabData = await bundle.load(vocabPath);
+      final Uint8List vocabBytes = vocabData.buffer.asUint8List(
+        vocabData.offsetInBytes,
+        vocabData.lengthInBytes,
+      );
+
+      final isVocabValid = AssetIntegrityGuard.verifyAssetBytes(
+        vocabPath,
+        vocabBytes,
+        expectedHash: _customExpectedHashes?[vocabPath],
+      );
+
+      if (!isVocabValid) {
+        debugPrint('LiteRtClassifier: SHA-256 integrity check failed for $vocabPath');
+        _isModelLoaded = false;
+        return;
+      }
+
+      final vocabStr = utf8.decode(vocabBytes);
       final lines = vocabStr.split('\n');
       _tokenizer = WordPieceTokenizer.fromLines(lines);
 
-      // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
-      _isModelLoaded = false;
+      // 2. Load and verify assets/model.tflite via SHA-256 integrity guard
+      const modelPath = 'assets/model.tflite';
+      final ByteData modelData = await bundle.load(modelPath);
+      final Uint8List modelBytes = modelData.buffer.asUint8List(
+        modelData.offsetInBytes,
+        modelData.lengthInBytes,
+      );
+
+      final isModelValid = AssetIntegrityGuard.verifyAssetBytes(
+        modelPath,
+        modelBytes,
+        expectedHash: _customExpectedHashes?[modelPath],
+      );
+
+      if (!isModelValid) {
+        debugPrint('LiteRtClassifier: SHA-256 integrity check failed for $modelPath');
+        _isModelLoaded = false;
+        return;
+      }
+
+      // 3. Instantiate TFLite interpreter from verified buffer
+      _interpreter = Interpreter.fromBuffer(modelBytes);
+      _isModelLoaded = true;
+      debugPrint('LiteRtClassifier: Model verified and loaded successfully.');
     } catch (e) {
       // Graceful degradation: Log and set flags so analyze runs in fallback mode
-      // ignore: avoid_print
-      print('LiteRtClassifier failed to initialize: $e');
+      debugPrint('LiteRtClassifier failed to initialize: $e');
       _isModelLoaded = false;
+      _interpreter = null;
 
-      // Ensure tokenizer is loaded even if interpreter fails (so we can test tokenization in fallback)
+      // Ensure tokenizer is loaded if possible even if interpreter fails
       if (_tokenizer == null) {
         try {
-          final vocabStr = await rootBundle.loadString('assets/vocab.txt');
-          _tokenizer = WordPieceTokenizer.fromLines(vocabStr.split('\n'));
+          final bundle = _assetBundle ?? rootBundle;
+          final ByteData vocabData = await bundle.load('assets/vocab.txt');
+          final Uint8List vocabBytes = vocabData.buffer.asUint8List(
+            vocabData.offsetInBytes,
+            vocabData.lengthInBytes,
+          );
+          _tokenizer = WordPieceTokenizer.fromLines(utf8.decode(vocabBytes).split('\n'));
         } catch (_) {}
       }
     }
@@ -50,7 +116,9 @@ class LiteRtClassifier implements NotificationAnalyzer {
     final combinedText = '${notification.title} ${notification.content}';
 
     // Ensure initialization finished
-    if (_tokenizer == null) {
+    if (_initFuture != null) {
+      await _initFuture;
+    } else if (_tokenizer == null && !_isModelLoaded) {
       await _initialize();
     }
 
