@@ -25,30 +25,98 @@ class NotificationCollectorService : NotificationListenerService() {
     companion object {
         private const val TAG = "NotifCollector"
 
-        /** Thread-safe queue of captured notifications. */
-        private val queue = ConcurrentLinkedQueue<NotificationData>()
+        /** Maximum capacity for the unacknowledged staging buffer to bound memory usage. */
+        private const val MAX_BUFFER_CAPACITY = 1000
+
+        private val lock = Any()
+
+        /** Thread-safe unacknowledged staging buffer preserving insertion order. */
+        private val buffer = LinkedHashMap<String, NotificationData>()
 
         /** Counter for generating simple unique IDs within a session. */
         private var idCounter = 0L
 
         /**
-         * Drains all notifications from the queue and returns them.
-         * Called by [MainActivity] when Flutter requests notifications.
-         * After this call, the queue is empty.
+         * Peeks and returns all pending notifications without removing them from memory.
+         * Called by [MainActivity] when Flutter requests notifications (Phase 1 of two-phase handshake).
          */
-        fun drainQueue(): List<NotificationData> {
-            val result = mutableListOf<NotificationData>()
-            while (true) {
-                val item = queue.poll() ?: break
-                result.add(item)
+        fun peekQueue(): List<NotificationData> {
+            synchronized(lock) {
+                return buffer.values.toList()
             }
-            return result
         }
 
         /**
-         * Returns the current queue size (for diagnostics).
+         * Alias for [peekQueue] for clarity.
          */
-        fun queueSize(): Int = queue.size
+        fun getPendingNotifications(): List<NotificationData> = peekQueue()
+
+        /**
+         * Explicitly acknowledges notifications by ID, removing them from the native staging buffer.
+         * Called by [MainActivity] after Flutter successfully persists notifications (Phase 2 of two-phase handshake).
+         * Returns the number of items successfully removed.
+         */
+        fun acknowledgeNotifications(ids: Collection<String>): Int {
+            if (ids.isEmpty()) return 0
+            val idSet = ids.toSet()
+            var count = 0
+            synchronized(lock) {
+                val iterator = buffer.entries.iterator()
+                while (iterator.hasNext()) {
+                    val entry = iterator.next()
+                    if (entry.key in idSet) {
+                        iterator.remove()
+                        count++
+                    }
+                }
+            }
+            return count
+        }
+
+        /**
+         * Clears all notifications from the buffer (for testing or reset).
+         */
+        fun clearBuffer() {
+            synchronized(lock) {
+                buffer.clear()
+            }
+        }
+
+        /**
+         * Helper for unit tests to insert test notifications into the staging buffer.
+         */
+        fun addNotificationForTest(data: NotificationData) {
+            synchronized(lock) {
+                if (buffer.size >= MAX_BUFFER_CAPACITY) {
+                    val oldestKey = buffer.keys.firstOrNull()
+                    if (oldestKey != null) {
+                        buffer.remove(oldestKey)
+                    }
+                }
+                buffer[data.id] = data
+            }
+        }
+
+        /**
+         * Legacy method: drains all notifications from the buffer and returns them.
+         * Maintained for backward compatibility.
+         */
+        fun drainQueue(): List<NotificationData> {
+            synchronized(lock) {
+                val result = buffer.values.toList()
+                buffer.clear()
+                return result
+            }
+        }
+
+        /**
+         * Returns the current queue/buffer size (for diagnostics).
+         */
+        fun queueSize(): Int {
+            synchronized(lock) {
+                return buffer.size
+            }
+        }
     }
 
     private fun addSbnToQueue(sbn: StatusBarNotification) {
@@ -59,26 +127,36 @@ class NotificationCollectorService : NotificationListenerService() {
             val isOngoing = sbn.isOngoing
             val packageName = sbn.packageName ?: "unknown"
 
-            // Ignore if same package, title, and content already exist in queue
-            val isDuplicate = queue.any {
-                it.packageName == packageName && it.title == title && it.content == text
-            }
-            if (isDuplicate) {
-                return
-            }
+            synchronized(lock) {
+                // Ignore if same package, title, and content already exist in buffer
+                val isDuplicate = buffer.values.any {
+                    it.packageName == packageName && it.title == title && it.content == text
+                }
+                if (isDuplicate) {
+                    return
+                }
 
-            val data = NotificationData(
-                id = "notif_${++idCounter}",
-                packageName = packageName,
-                title = title,
-                content = text,
-                timestamp = sbn.postTime,
-                category = sbn.notification.category,
-                isOngoing = isOngoing
-            )
+                // Bound memory consumption by enforcing maximum capacity limit
+                if (buffer.size >= MAX_BUFFER_CAPACITY) {
+                    val oldestKey = buffer.keys.firstOrNull()
+                    if (oldestKey != null) {
+                        buffer.remove(oldestKey)
+                    }
+                }
 
-            queue.add(data)
-            Log.d(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
+                val data = NotificationData(
+                    id = "notif_${++idCounter}",
+                    packageName = packageName,
+                    title = title,
+                    content = text,
+                    timestamp = sbn.postTime,
+                    category = sbn.notification.category,
+                    isOngoing = isOngoing
+                )
+
+                buffer[data.id] = data
+                Log.d(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error capturing/adding notification", e)
         }
