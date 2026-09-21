@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import random
 import re
 import uuid
@@ -159,16 +160,38 @@ SCENARIOS: tuple[Scenario, ...] = (
 
 
 class NotificationDatasetGenerator:
-    def __init__(self, seed: int = 42, use_ollama: bool = False, ollama_model: str = "gemma3:9b") -> None:
+    def __init__(
+        self,
+        seed: int = 42,
+        use_ollama: bool = False,
+        ollama_model: str = "gemma3:9b",
+        ollama_base_url: str | None = None,
+    ) -> None:
         self.seed = seed
         self.random = random.Random(seed)
         self.fake = Faker("en_IN")
         Faker.seed(seed)
         self.use_ollama = use_ollama
         self.ollama_model = ollama_model
+        self.ollama_base_url = ollama_base_url
         self.base_time = datetime(2026, 6, 26, 9, 0, 0, tzinfo=timezone.utc)
         self._weighted_scenarios = [scenario for scenario in SCENARIOS for _ in range(scenario.weight)]
         self._seen_text: set[str] = set()
+
+    def _get_ollama_endpoint(self) -> str:
+        base = self.ollama_base_url
+        if not base:
+            base = os.getenv("OLLAMA_BASE_URL") or os.getenv("OLLAMA_HOST") or "http://localhost:11434"
+        base = base.strip()
+        if not (base.startswith("http://") or base.startswith("https://")):
+            base = f"http://{base}"
+        base = base.rstrip("/")
+        if base.endswith("/api/generate"):
+            return base
+        elif base.endswith("/api"):
+            return f"{base}/generate"
+        else:
+            return f"{base}/api/generate"
 
     def generate(self, count: int) -> Iterable[dict[str, Any]]:
         produced = 0
@@ -287,7 +310,7 @@ class NotificationDatasetGenerator:
         )
         payload = json.dumps({"model": self.ollama_model, "prompt": prompt, "stream": False}).encode("utf-8")
         try:
-            req = request.Request("http://localhost:11434/api/generate", data=payload, headers={"Content-Type": "application/json"})
+            req = request.Request(self._get_ollama_endpoint(), data=payload, headers={"Content-Type": "application/json"})
             with request.urlopen(req, timeout=20) as response:
                 raw = json.loads(response.read().decode("utf-8")).get("response", "{}")
         except (URLError, TimeoutError, json.JSONDecodeError):
