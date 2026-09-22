@@ -34,6 +34,7 @@ from training.export.tflite_exporter import (
     export_saved_model,
 )
 from training.models.mlp import build_baseline_mlp
+from training.manifest_manager import ManifestManager
 from training.utils.io import ensure_dir, read_jsonl, write_json
 from training.utils.preprocessing import (
     build_dataset,
@@ -76,7 +77,8 @@ def main() -> None:
     export_dir = ensure_dir(output_dir / "export")
     evaluation_dir = ensure_dir(output_dir / "evaluation")
 
-    records = read_jsonl(args.data)
+    records = read_jsonl(args.data, strict=True)
+    dataset_sha256 = ManifestManager.calculate_sha256(args.data)
     dataset = build_dataset(records)
     splits = split_dataset(dataset.features, dataset.target, SplitConfig(), args.seed)
 
@@ -130,6 +132,28 @@ def main() -> None:
     tflite_path = export_float32_tflite(
         saved_model_dir,
         export_dir / "ghost_ai.tflite",
+    )
+
+    tflite_manifest_path = ManifestManager.create_manifest(
+        artifact_path=tflite_path,
+        artifact_type="model",
+        record_count=len(records),
+        seed=args.seed,
+        dataset_sha256=dataset_sha256,
+        generator_config={
+            "dataset_path": str(args.data),
+            "dataset_sha256": dataset_sha256,
+            "seed": args.seed,
+            "epochs": config.epochs,
+            "batch_size": config.batch_size,
+            "learning_rate": config.learning_rate,
+            "metrics": metrics,
+        },
+    )
+    ManifestManager.validate_manifest(
+        artifact_path=tflite_path,
+        strict=True,
+        manifest_path=tflite_manifest_path,
     )
 
     write_history_csv(history, output_dir / "history.csv")
