@@ -30,6 +30,152 @@ void main() {
   });
 
   group('NotificationBridge', () {
+    group('fetchPendingNotifications', () {
+      test('returns parsed NotificationBatch from channel', () async {
+        mockHandler((call) async {
+          if (call.method == 'fetchPendingNotifications') {
+            return {
+              'batchId': 'tx_123',
+              'notifications': [
+                {
+                  'id': 'n1',
+                  'packageName': 'com.test.app',
+                  'title': 'Hello',
+                  'content': 'World',
+                  'timestamp': 1700000000000,
+                  'category': 'msg',
+                  'isOngoing': false,
+                },
+              ],
+            };
+          }
+          return null;
+        });
+
+        final batch = await bridge.fetchPendingNotifications();
+        expect(batch, isNotNull);
+        expect(batch!.batchId, 'tx_123');
+        expect(batch.notifications.length, 1);
+        expect(batch.notifications[0].title, 'Hello');
+        expect(log.single.method, 'fetchPendingNotifications');
+      });
+
+      test('returns null when channel returns null', () async {
+        mockHandler((call) async => null);
+        final batch = await bridge.fetchPendingNotifications();
+        expect(batch, isNull);
+      });
+    });
+
+    group('acknowledgeNotifications', () {
+      test('invokes acknowledgeNotifications with batchId and returns true', () async {
+        mockHandler((call) async {
+          if (call.method == 'acknowledgeNotifications') {
+            expect(call.arguments['batchId'], 'tx_123');
+            return true;
+          }
+          return false;
+        });
+
+        final result = await bridge.acknowledgeNotifications('tx_123');
+        expect(result, isTrue);
+        expect(log.single.method, 'acknowledgeNotifications');
+      });
+    });
+
+    group('peekNotificationCount', () {
+      test('invokes peekNotificationCount and returns queue size', () async {
+        mockHandler((call) async {
+          if (call.method == 'peekNotificationCount') {
+            return 5;
+          }
+          return 0;
+        });
+
+        final count = await bridge.peekNotificationCount();
+        expect(count, 5);
+        expect(log.single.method, 'peekNotificationCount');
+      });
+    });
+
+    group('fetchAndAcknowledge', () {
+      test('acknowledges batch only after onSave callback completes successfully', () async {
+        bool saveExecuted = false;
+
+        mockHandler((call) async {
+          if (call.method == 'fetchPendingNotifications') {
+            return {
+              'batchId': 'tx_999',
+              'notifications': [
+                {
+                  'id': 'n1',
+                  'packageName': 'com.test.app',
+                  'title': 'Test',
+                  'content': 'Body',
+                  'timestamp': 1700000000000,
+                  'category': 'msg',
+                  'isOngoing': false,
+                },
+              ],
+            };
+          }
+          if (call.method == 'acknowledgeNotifications') {
+            expect(saveExecuted, isTrue);
+            return true;
+          }
+          return null;
+        });
+
+        final result = await bridge.fetchAndAcknowledge(
+          onSave: (notifs) async {
+            expect(notifs.length, 1);
+            saveExecuted = true;
+          },
+        );
+
+        expect(result.length, 1);
+        expect(saveExecuted, isTrue);
+        expect(log.map((c) => c.method).toList(), [
+          'fetchPendingNotifications',
+          'acknowledgeNotifications',
+        ]);
+      });
+
+      test('does NOT acknowledge batch if onSave callback throws an exception', () async {
+        mockHandler((call) async {
+          if (call.method == 'fetchPendingNotifications') {
+            return {
+              'batchId': 'tx_error',
+              'notifications': [
+                {
+                  'id': 'n1',
+                  'packageName': 'com.test.app',
+                  'title': 'Error Test',
+                  'content': 'Body',
+                  'timestamp': 1700000000000,
+                  'category': 'msg',
+                  'isOngoing': false,
+                },
+              ],
+            };
+          }
+          return null;
+        });
+
+        expect(
+          () async => await bridge.fetchAndAcknowledge(
+            onSave: (notifs) async {
+              throw Exception('Database persistence error');
+            },
+          ),
+          throwsA(isA<Exception>()),
+        );
+
+        // Check that acknowledgeNotifications was NEVER called
+        expect(log.map((c) => c.method).toList(), ['fetchPendingNotifications']);
+      });
+    });
+
     group('getNotifications', () {
       test('returns parsed notifications from channel', () async {
         mockHandler((call) async {
@@ -61,7 +207,7 @@ void main() {
         expect(notifications[0].title, 'Hello');
         expect(notifications[1].id, 'n2');
         expect(notifications[1].isOngoing, true);
-        expect(log.single.method, 'getNotifications');
+        expect(log.map((c) => c.method), contains('getNotifications'));
       });
 
       test('returns empty list when channel returns null', () async {

@@ -6,13 +6,16 @@ import io.flutter.plugin.common.MethodChannel
 import android.content.ComponentName
 import android.content.Intent
 import android.provider.Settings
+import android.util.Log
 
 /**
  * Main entry point for the Flutter Android app.
  *
  * Registers a MethodChannel ("com.scope.notifications") that the Flutter side
  * uses to:
- *   - Pull captured notifications from [NotificationCollectorService]
+ *   - Fetch pending notifications via [NotificationCollectorService.fetchPendingBatch]
+ *   - Acknowledge notification batch persistence via [NotificationCollectorService.acknowledgeBatch]
+ *   - Peek non-destructively at queued notification count via [NotificationCollectorService.peekQueueCount]
  *   - Check if the notification listener permission is granted
  *   - Open the system notification listener settings
  */
@@ -20,6 +23,7 @@ class MainActivity : FlutterActivity() {
 
     companion object {
         private const val CHANNEL = "com.scope.notifications"
+        private const val TAG = "MainActivity"
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -28,10 +32,43 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
+                    "fetchPendingNotifications" -> {
+                        val limit = call.argument<Int>("limit") ?: NotificationCollectorService.MAX_BATCH_SIZE
+                        val batch = NotificationCollectorService.fetchPendingBatch(limit)
+                        if (batch != null) {
+                            result.success(batch.toMap())
+                        } else {
+                            result.success(null)
+                        }
+                    }
+
+                    "acknowledgeNotifications" -> {
+                        val batchId = call.argument<String>("batchId")
+                            ?: call.argument<String>("transactionId")
+                            ?: (call.arguments as? String)
+
+                        if (batchId != null) {
+                            val acknowledged = NotificationCollectorService.acknowledgeBatch(batchId)
+                            result.success(acknowledged)
+                        } else {
+                            result.error("INVALID_ARGUMENT", "Missing batchId parameter", null)
+                        }
+                    }
+
+                    "peekNotificationCount" -> {
+                        val count = NotificationCollectorService.peekQueueCount()
+                        result.success(count)
+                    }
+
                     "getNotifications" -> {
-                        val notifications = NotificationCollectorService.drainQueue()
-                        val mapList = notifications.map { it.toMap() }
-                        result.success(mapList)
+                        Log.w(TAG, "getNotifications is deprecated. Use fetchPendingNotifications and acknowledgeNotifications instead.")
+                        val batch = NotificationCollectorService.fetchPendingBatch()
+                        if (batch != null) {
+                            NotificationCollectorService.acknowledgeBatch(batch.batchId)
+                            result.success(batch.notifications.map { it.toMap() })
+                        } else {
+                            result.success(emptyList<Map<String, Any?>>())
+                        }
                     }
 
                     "isListenerEnabled" -> {

@@ -380,41 +380,22 @@ class NotificationController extends ChangeNotifier {
 
   Future<void> fetchNotifications() async {
     try {
-      final newNotifications = await _bridge.getNotifications();
-      final analyzed = <AppNotification>[];
-
-      if (!_initialLoadCompleted) {
-        await _loadInitialNotifications();
-      }
-
-      for (final raw in newNotifications) {
-        // Ignore ongoing background/system notifications (e.g. charging, media playback)
-        if (raw.isOngoing) continue;
-
-        final isDuplicate = _notifications.any((n) =>
-            n.packageName == raw.packageName &&
-            n.timestamp == raw.timestamp &&
-            n.title == raw.title &&
-            n.content == raw.content);
-
-        if (!isDuplicate) {
-          final inBatch = analyzed.any((n) =>
-              n.packageName == raw.packageName &&
-              n.timestamp == raw.timestamp &&
-              n.title == raw.title &&
-              n.content == raw.content);
-          if (!inBatch) {
-            analyzed.add(await _engine.analyze(raw));
-          }
+      final batch = await _bridge.fetchPendingNotifications();
+      if (batch == null) {
+        // Fallback or handle empty
+        final legacyNotifications = await _bridge.getNotifications();
+        if (legacyNotifications.isNotEmpty) {
+          await _processAndPersistNotifications(legacyNotifications);
         }
+        _isLoading = false;
+        notifyListeners();
+        return;
       }
 
-      if (analyzed.isNotEmpty) {
-        await _storage.saveAll(analyzed);
-        final loaded = await _storage.getAll();
-        final notifier = _container.read(reviewQueueProvider.notifier);
-        notifier.load(loaded);
-        await notifier.rescore();
+      if (batch.notifications.isNotEmpty) {
+        await _processAndPersistNotifications(batch.notifications);
+        // Only acknowledge after local storage persistence completes
+        await _bridge.acknowledgeNotifications(batch.batchId);
       }
 
       _isLoading = false;
@@ -422,6 +403,44 @@ class NotificationController extends ChangeNotifier {
     } catch (_) {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  Future<void> _processAndPersistNotifications(List<AppNotification> newNotifications) async {
+    final analyzed = <AppNotification>[];
+
+    if (!_initialLoadCompleted) {
+      await _loadInitialNotifications();
+    }
+
+    for (final raw in newNotifications) {
+      // Ignore ongoing background/system notifications (e.g. charging, media playback)
+      if (raw.isOngoing) continue;
+
+      final isDuplicate = _notifications.any((n) =>
+          n.packageName == raw.packageName &&
+          n.timestamp == raw.timestamp &&
+          n.title == raw.title &&
+          n.content == raw.content);
+
+      if (!isDuplicate) {
+        final inBatch = analyzed.any((n) =>
+            n.packageName == raw.packageName &&
+            n.timestamp == raw.timestamp &&
+            n.title == raw.title &&
+            n.content == raw.content);
+        if (!inBatch) {
+          analyzed.add(await _engine.analyze(raw));
+        }
+      }
+    }
+
+    if (analyzed.isNotEmpty) {
+      await _storage.saveAll(analyzed);
+      final loaded = await _storage.getAll();
+      final notifier = _container.read(reviewQueueProvider.notifier);
+      notifier.load(loaded);
+      await notifier.rescore();
     }
   }
 
