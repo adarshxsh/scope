@@ -6,13 +6,18 @@ import json
 from pathlib import Path
 from typing import Any, Iterable
 
+try:
+    from training.manifest_manager import ManifestManager
+except ImportError:
+    from manifest_manager import ManifestManager  # type: ignore
+
 
 def ensure_dir(path: Path) -> Path:
     path.mkdir(parents=True, exist_ok=True)
     return path
 
 
-def read_jsonl(path: Path) -> list[dict[str, Any]]:
+def read_jsonl(path: Path, strict: bool = False) -> list[dict[str, Any]]:
     if not path.exists():
         raise FileNotFoundError(f"Dataset not found: {path}")
 
@@ -32,6 +37,13 @@ def read_jsonl(path: Path) -> list[dict[str, Any]]:
 
     if not records:
         raise ValueError(f"Dataset is empty: {path}")
+
+    ManifestManager.validate_manifest(
+        artifact_path=path,
+        expected_record_count=len(records),
+        strict=strict,
+    )
+
     return records
 
 

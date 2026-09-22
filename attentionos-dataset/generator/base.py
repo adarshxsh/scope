@@ -13,6 +13,7 @@ from urllib.error import URLError
 from faker import Faker
 from jinja2 import Template
 
+from generator.pii_sanitizer import PIISanitizer
 from policy.scoring import score_notification
 from validator.duplicate import text_fingerprint
 from validator.schema import validate_record
@@ -166,6 +167,7 @@ class NotificationDatasetGenerator:
         Faker.seed(seed)
         self.use_ollama = use_ollama
         self.ollama_model = ollama_model
+        self.sanitizer = PIISanitizer()
         self.base_time = datetime(2026, 6, 26, 9, 0, 0, tzinfo=timezone.utc)
         self._weighted_scenarios = [scenario for scenario in SCENARIOS for _ in range(scenario.weight)]
         self._seen_text: set[str] = set()
@@ -303,6 +305,8 @@ class NotificationDatasetGenerator:
         body = str(parsed.get("body", "")).strip()
         if not title or not body:
             return None
+        title = self.sanitizer.sanitize(title)
+        body = self.sanitizer.sanitize(body)
         return self._clip(title, 50), self._clip(body, 140)
 
     def _context(self, app: AppProfile, scenario: Scenario, timestamp: datetime) -> dict[str, Any]:
