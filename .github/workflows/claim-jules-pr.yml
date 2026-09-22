@@ -31,6 +31,12 @@ jobs:
         env:
           HEAD_REF: ${{ github.head_ref }}
         run: |
+          CURRENT_AUTHOR_EMAIL=$(git log -1 --format='%ae')
+          CURRENT_AUTHOR_NAME=$(git log -1 --format='%an')
+          if [ "$CURRENT_AUTHOR_EMAIL" = "udhabhaw@gmail.com" ] && [ "$CURRENT_AUTHOR_NAME" = "Adarsh" ]; then
+            echo "Commit is already claimed by Adarsh <udhabhaw@gmail.com>. Skipping re-author and push."
+            exit 0
+          fi
           # Rewrites the commit author and committer to your identity
           git commit --amend --reset-author --no-edit
           git push origin "$HEAD_REF" --force
