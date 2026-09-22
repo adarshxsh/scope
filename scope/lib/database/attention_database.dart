@@ -4,6 +4,7 @@ import 'package:drift/native.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/storage/storage_migration.dart';
 import 'package:scope/database/tables.dart';
 import 'package:scope/database/daos.dart';
 import 'package:scope/database/converters.dart';
@@ -54,8 +55,15 @@ class AttentionDatabase extends _$AttentionDatabase {
 
 QueryExecutor _openConnection() {
   return LazyDatabase(() async {
-    final dbFolder = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dbFolder.path, 'attention_os.db'));
+    final supportDir = await getApplicationSupportDirectory();
+    final docsDir = await getApplicationDocumentsDirectory();
+
+    await StorageMigration.migrateLegacyFiles(
+      docsDir: docsDir,
+      supportDir: supportDir,
+    );
+
+    final file = File(p.join(supportDir.path, 'attention_os.db'));
     return NativeDatabase(file);
   });
 }
