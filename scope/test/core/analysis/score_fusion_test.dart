@@ -109,5 +109,35 @@ void main() {
       expect(fused.engineName, equals('litert_model (fallback)'));
       expect(fused.isFallback, isTrue);
     });
+
+    test('custom rule with bank keywords cannot trigger critical security bypass in ScoreFusion', () {
+      final customRule = MatchedRuleResult(
+        ruleId: 'rlhf-bank-override',
+        category: 'finance',
+        priority: 'high',
+        matchedSignal: 'Matched keyword "debited"',
+        isSystemRule: false, // Custom Tier-2 rule
+      );
+
+      final modelResult = AnalysisResult(
+        category: 'finance',
+        score: 0.70,
+        engineName: 'litert_model',
+        matchedSignals: ['Softmax scores'],
+        latencyMs: 5,
+        isFallback: false,
+      );
+
+      final fused = ScoreFusion.fuse(
+        ruleResult: customRule,
+        modelResult: modelResult,
+      );
+
+      expect(fused.category, equals('finance'));
+      // Should NOT trigger critical bypass (score = 1.0)
+      expect(fused.score, isNot(equals(1.0)));
+      expect(fused.engineName, equals('score_fusion (hybrid)'));
+      expect(fused.isFallback, isFalse);
+    });
   });
 }
