@@ -8,6 +8,7 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/storage/notification_storage.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/core/utils/focus_area_mapper.dart';
+import 'package:scope/core/utils/pii_redactor.dart';
 import 'package:scope/core/utils/smart_actions.dart';
 import 'package:scope/core/state/providers.dart';
 import 'package:drift/drift.dart';
@@ -391,18 +392,21 @@ class NotificationController extends ChangeNotifier {
         // Ignore ongoing background/system notifications (e.g. charging, media playback)
         if (raw.isOngoing) continue;
 
+        final rawTitleRedacted = PiiRedactor.redactTitle(raw.title);
+        final rawContentRedacted = PiiRedactor.redactContent(raw.content);
+
         final isDuplicate = _notifications.any((n) =>
             n.packageName == raw.packageName &&
             n.timestamp == raw.timestamp &&
-            n.title == raw.title &&
-            n.content == raw.content);
+            n.title == rawTitleRedacted &&
+            n.content == rawContentRedacted);
 
         if (!isDuplicate) {
           final inBatch = analyzed.any((n) =>
               n.packageName == raw.packageName &&
               n.timestamp == raw.timestamp &&
-              n.title == raw.title &&
-              n.content == raw.content);
+              n.title == rawTitleRedacted &&
+              n.content == rawContentRedacted);
           if (!inBatch) {
             analyzed.add(await _engine.analyze(raw));
           }
@@ -433,18 +437,21 @@ class NotificationController extends ChangeNotifier {
     final analyzed = <AppNotification>[];
 
     for (final raw in testNotifs) {
+      final rawTitleRedacted = PiiRedactor.redactTitle(raw.title);
+      final rawContentRedacted = PiiRedactor.redactContent(raw.content);
+
       final isDuplicate = _notifications.any((n) =>
           n.packageName == raw.packageName &&
           n.timestamp == raw.timestamp &&
-          n.title == raw.title &&
-          n.content == raw.content);
+          n.title == rawTitleRedacted &&
+          n.content == rawContentRedacted);
 
       if (!isDuplicate) {
         final inBatch = analyzed.any((n) =>
             n.packageName == raw.packageName &&
             n.timestamp == raw.timestamp &&
-            n.title == raw.title &&
-            n.content == raw.content);
+            n.title == rawTitleRedacted &&
+            n.content == rawContentRedacted);
         if (!inBatch) {
           analyzed.add(await _engine.analyze(raw));
         }

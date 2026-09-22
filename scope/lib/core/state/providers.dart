@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
+import 'package:scope/core/utils/pii_redactor.dart';
 import 'package:scope/database/attention_database.dart';
 import 'package:scope/database/database_provider.dart';
 import 'package:scope/database/drift_notification_storage.dart';
@@ -17,23 +18,30 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
 
   /// Load a list of notifications directly (used on startup recovery).
   void load(List<AppNotification> list) {
-    state = list;
+    state = list.map((n) => n.copyWith(
+      title: PiiRedactor.redactTitle(n.title),
+      content: PiiRedactor.redactContent(n.content),
+    )).toList();
   }
 
   /// Add a notification to the review queue.
   /// Merges duplicate notifications (same packageName, title, content).
   void add(AppNotification notification) {
+    final redacted = notification.copyWith(
+      title: PiiRedactor.redactTitle(notification.title),
+      content: PiiRedactor.redactContent(notification.content),
+    );
     final now = DateTime.now();
     final index = state.indexWhere((n) =>
-        n.packageName == notification.packageName &&
-        n.title == notification.title &&
-        n.content == notification.content);
+        n.packageName == redacted.packageName &&
+        n.title == redacted.title &&
+        n.content == redacted.content);
 
     AppNotification newItem;
     if (index >= 0) {
       // Merge duplicate notification
       final existing = state[index];
-      newItem = notification.copyWith(
+      newItem = redacted.copyWith(
         id: existing.id, // Preserve original ID
         state: ReviewState.ACTIVE, // Reset to ACTIVE
         snoozedUntil: null, // Clear snooze
@@ -45,7 +53,7 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
       ];
     } else {
       // Add new notification
-      newItem = notification.copyWith(
+      newItem = redacted.copyWith(
         state: ReviewState.ACTIVE,
         lastUpdated: now,
       );
@@ -69,13 +77,17 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
 
   /// Update a notification's fields in the queue.
   void update(AppNotification notification) {
+    final redacted = notification.copyWith(
+      title: PiiRedactor.redactTitle(notification.title),
+      content: PiiRedactor.redactContent(notification.content),
+    );
     state = [
       for (final n in state)
-        if (n.id == notification.id) notification else n
+        if (n.id == redacted.id) redacted else n
     ];
     if (_db != null) {
-      DriftNotificationStorage(_db).save(notification);
-      _saveQueueEntry(notification);
+      DriftNotificationStorage(_db).save(redacted);
+      _saveQueueEntry(redacted);
     }
   }
 
