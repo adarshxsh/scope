@@ -109,5 +109,33 @@ void main() {
       expect(fused.engineName, equals('litert_model (fallback)'));
       expect(fused.isFallback, isTrue);
     });
+
+    test('custom rule matches CANNOT activate deterministic critical system bypass logic', () {
+      final customRuleResult = MatchedRuleResult(
+        ruleId: 'rlhf-spoofed-bypass',
+        category: 'finance',
+        priority: 'critical',
+        matchedSignal: 'Matched keyword "otp"',
+        isCustom: true,
+      );
+
+      final modelResult = AnalysisResult(
+        category: 'finance',
+        score: 0.60,
+        engineName: 'litert_model',
+        matchedSignals: ['Model prediction'],
+        latencyMs: 5,
+        isFallback: false,
+      );
+
+      final fused = ScoreFusion.fuse(
+        ruleResult: customRuleResult,
+        modelResult: modelResult,
+      );
+
+      // Custom rule match must NOT trigger isBypass (score 1.0)
+      expect(fused.score, isNot(equals(1.0)));
+      expect(fused.engineName, equals('score_fusion (hybrid)'));
+    });
   });
 }
