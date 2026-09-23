@@ -13,7 +13,7 @@ import 'package:scope/widgets/section_header.dart';
 import 'package:scope/widgets/smart_action_chip.dart';
 
 /// Detail view — never auto-opens the originating app.
-class NotificationDetailScreen extends StatelessWidget {
+class NotificationDetailScreen extends StatefulWidget {
   final AppNotification notification;
   final NotificationController controller;
 
@@ -23,17 +23,47 @@ class NotificationDetailScreen extends StatelessWidget {
     required this.controller,
   });
 
-  String get _summary {
-    if (notification.explanation != null && notification.explanation!.isNotEmpty) {
-      return notification.explanation!.split('\n').first.replaceAll(RegExp(r'^[-•*]\s*'), '');
+  @override
+  State<NotificationDetailScreen> createState() => _NotificationDetailScreenState();
+}
+
+class _NotificationDetailScreenState extends State<NotificationDetailScreen> {
+  AppNotification? _unredactedNotification;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUnredactedPayload();
+  }
+
+  Future<void> _fetchUnredactedPayload() async {
+    try {
+      final unredacted = await widget.controller.getUnredactedNotification(widget.notification.id);
+      if (unredacted != null && mounted) {
+        setState(() {
+          _unredactedNotification = unredacted;
+        });
+      }
+    } catch (_) {
+      // Fallback gracefully to widget.notification if fetch fails
     }
-    return notification.content.isNotEmpty
-        ? notification.content
+  }
+
+  AppNotification get activeNotification => _unredactedNotification ?? widget.notification;
+
+  String get _summary {
+    final notif = activeNotification;
+    if (notif.explanation != null && notif.explanation!.isNotEmpty) {
+      return notif.explanation!.split('\n').first.replaceAll(RegExp(r'^[-•*]\s*'), '');
+    }
+    return notif.content.isNotEmpty
+        ? notif.content
         : 'No additional summary available.';
   }
 
   @override
   Widget build(BuildContext context) {
+    final notification = activeNotification;
     final theme = Theme.of(context);
     final features = notification.extractedFeatures != null
         ? ExtractedFeatures.fromMap(notification.extractedFeatures!)
@@ -177,31 +207,31 @@ class NotificationDetailScreen extends StatelessWidget {
     bool shouldPop = false;
     switch (action.type) {
       case SmartActionType.archive:
-        controller.archive(notification.id);
+        widget.controller.archive(widget.notification.id);
         shouldPop = true;
         break;
       case SmartActionType.complete:
-        controller.complete(notification.id);
+        widget.controller.complete(widget.notification.id);
         shouldPop = true;
         break;
       case SmartActionType.addCalendar:
-        controller.saveActionItem(notification, action);
-        controller.recordCalendarEvent();
+        widget.controller.saveActionItem(widget.notification, action);
+        widget.controller.recordCalendarEvent();
         shouldPop = true;
         break;
       case SmartActionType.remind:
-        controller.saveActionItem(notification, action);
-        controller.recordReminder();
+        widget.controller.saveActionItem(widget.notification, action);
+        widget.controller.recordReminder();
         shouldPop = true;
         break;
       case SmartActionType.track:
-        controller.saveActionItem(notification, action);
-        controller.recordAction();
+        widget.controller.saveActionItem(widget.notification, action);
+        widget.controller.recordAction();
         shouldPop = true;
         break;
       default:
-        controller.recordAction();
-        controller.complete(notification.id); // Mark complete since we are executing it
+        widget.controller.recordAction();
+        widget.controller.complete(widget.notification.id); // Mark complete since we are executing it
         shouldPop = true;
         break;
     }
