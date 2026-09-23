@@ -1,9 +1,48 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties").let {
+    if (it.exists()) it else file("key.properties")
+}
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.inputStream().use { inputStream ->
+        keystoreProperties.load(inputStream)
+    }
+}
+
+fun getSigningProperty(key: String, envKeys: List<String>): String? {
+    val prop = keystoreProperties.getProperty(key)
+    if (!prop.isNullOrBlank()) return prop
+    for (envKey in envKeys) {
+        val envVal = System.getenv(envKey)
+        if (!envVal.isNullOrBlank()) return envVal
+    }
+    return null
+}
+
+val storeFilePath = getSigningProperty("storeFile", listOf("ANDROID_STORE_FILE", "STORE_FILE", "KEYSTORE_FILE", "storeFile"))
+val storePasswordProp = getSigningProperty("storePassword", listOf("ANDROID_STORE_PASSWORD", "STORE_PASSWORD", "KEYSTORE_PASSWORD", "storePassword"))
+val keyAliasProp = getSigningProperty("keyAlias", listOf("ANDROID_KEY_ALIAS", "KEY_ALIAS", "KEYSTORE_KEY_ALIAS", "keyAlias"))
+val keyPasswordProp = getSigningProperty("keyPassword", listOf("ANDROID_KEY_PASSWORD", "KEY_PASSWORD", "KEYSTORE_KEY_PASSWORD", "keyPassword"))
+
+val storeFileObj = storeFilePath?.let { path ->
+    val f = file(path)
+    if (f.exists()) f
+    else rootProject.file(path).let { if (it.exists()) it else f }
+}
+
+val hasReleaseSigning = storeFileObj != null && storeFileObj.exists() &&
+        !storePasswordProp.isNullOrBlank() &&
+        !keyAliasProp.isNullOrBlank() &&
+        !keyPasswordProp.isNullOrBlank()
 
 android {
     namespace = "com.scope.attentions"
@@ -30,11 +69,25 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = storeFileObj
+                storePassword = storePasswordProp
+                keyAlias = keyAliasProp
+                keyPassword = keyPasswordProp
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                logger.warn("WARNING: Release signing credentials (key.properties or environment variables) not found or incomplete. Falling back to debug signing for local test builds.")
+                signingConfig = signingConfigs.getByName("debug")
+            }
         }
     }
 }
