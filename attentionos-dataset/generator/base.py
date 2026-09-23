@@ -18,6 +18,15 @@ from validator.duplicate import text_fingerprint
 from validator.schema import validate_record
 
 
+def sanitize_text(text: str) -> str:
+    if not isinstance(text, str):
+        return ""
+    text = re.sub(r"<[^>]*>", "", text)
+    text = re.sub(r"[\x00-\x1f\x7f-\x9f]", "", text)
+    text = " ".join(text.split())
+    return text
+
+
 @dataclass(frozen=True)
 class AppProfile:
     app_name: str
@@ -275,6 +284,8 @@ class NotificationDatasetGenerator:
                 return generated
         title = Template(self.random.choice(scenario.title_templates)).render(**ctx)
         body = Template(self.random.choice(scenario.body_templates)).render(**ctx)
+        title = sanitize_text(title)
+        body = sanitize_text(body)
         return self._clip(title, 50), self._clip(body, 140)
 
     def _ollama_notification(self, scenario: Scenario, ctx: dict[str, Any]) -> tuple[str, str] | None:
@@ -299,11 +310,38 @@ class NotificationDatasetGenerator:
             if not match:
                 return None
             parsed = json.loads(match.group(0))
-        title = str(parsed.get("title", "")).strip()
-        body = str(parsed.get("body", "")).strip()
-        if not title or not body:
+        raw_title = str(parsed.get("title", ""))
+        raw_body = str(parsed.get("body", ""))
+        sanitized_title = sanitize_text(raw_title)
+        sanitized_body = sanitize_text(raw_body)
+        if not sanitized_title or not sanitized_body:
             return None
-        return self._clip(title, 50), self._clip(body, 140)
+        title = self._clip(sanitized_title, 50)
+        body = self._clip(sanitized_body, 140)
+
+        test_record = {
+            "id": "validation-test-id",
+            "app_name": ctx.get("app_context", "App"),
+            "package_name": "com.example.app",
+            "category": scenario.category,
+            "subcategory": scenario.subcategory,
+            "notification_type": scenario.notification_type,
+            "title": title,
+            "body": body,
+            "language": "en",
+            "requires_action": scenario.requires_action,
+            "intent": scenario.intent,
+            "android": {},
+            "priority_score": 50,
+            "priority": "normal",
+            "look_again_score": 50,
+            "look_again": False,
+            "labels": {},
+        }
+        if validate_record(test_record):
+            return None
+
+        return title, body
 
     def _context(self, app: AppProfile, scenario: Scenario, timestamp: datetime) -> dict[str, Any]:
         city = self.random.choice(("Bengaluru", "Mumbai", "Delhi", "Pune", "Hyderabad", "Chennai", "Kolkata", "Ahmedabad", "Jaipur", "Kochi"))
