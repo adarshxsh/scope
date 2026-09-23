@@ -8,6 +8,7 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/storage/notification_storage.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/core/utils/focus_area_mapper.dart';
+import 'package:scope/core/utils/pii_redactor.dart';
 import 'package:scope/core/utils/smart_actions.dart';
 import 'package:scope/core/state/providers.dart';
 import 'package:drift/drift.dart';
@@ -303,6 +304,11 @@ class NotificationController extends ChangeNotifier {
 
   bool _isDisposed = false;
 
+  void cancelCleanupTimer() {
+    _cleanupTimer?.cancel();
+    _cleanupTimer = null;
+  }
+
   @override
   void dispose() {
     _isDisposed = true;
@@ -318,17 +324,31 @@ class NotificationController extends ChangeNotifier {
     }
   }
 
+  static AppNotification _sanitize(AppNotification n) {
+    return n.copyWith(
+      title: PiiRedactor.redactTitle(n.title),
+      content: PiiRedactor.redactContent(n.content),
+    );
+  }
+
+  /// Retrieves unredacted notification payload from local storage on demand.
+  Future<AppNotification?> getUnredactedNotification(String id) async {
+    return await _storage.getById(id);
+  }
+
   Future<void> _loadInitialNotifications() async {
     if (_initialLoadCompleted) return;
     final loaded = await _storage.getAll();
     if (_initialLoadCompleted) return;
 
+    final sanitizedLoaded = loaded.map(_sanitize).toList();
+
     if (_notifications.isEmpty) {
-      _notifications = loaded;
+      _notifications = sanitizedLoaded;
     }
     if (_notifications.isNotEmpty) {
       final notifier = _container.read(reviewQueueProvider.notifier);
-      notifier.load(_notifications);
+      notifier.load(sanitizedLoaded);
       await notifier.rescore();
     }
     _initialLoadCompleted = true;
@@ -391,18 +411,21 @@ class NotificationController extends ChangeNotifier {
         // Ignore ongoing background/system notifications (e.g. charging, media playback)
         if (raw.isOngoing) continue;
 
+        final sanitizedTitle = PiiRedactor.redactTitle(raw.title);
+        final sanitizedContent = PiiRedactor.redactContent(raw.content);
+
         final isDuplicate = _notifications.any((n) =>
             n.packageName == raw.packageName &&
             n.timestamp == raw.timestamp &&
-            n.title == raw.title &&
-            n.content == raw.content);
+            (n.title == raw.title || n.title == sanitizedTitle) &&
+            (n.content == raw.content || n.content == sanitizedContent));
 
         if (!isDuplicate) {
           final inBatch = analyzed.any((n) =>
               n.packageName == raw.packageName &&
               n.timestamp == raw.timestamp &&
-              n.title == raw.title &&
-              n.content == raw.content);
+              (n.title == raw.title || n.title == sanitizedTitle) &&
+              (n.content == raw.content || n.content == sanitizedContent));
           if (!inBatch) {
             analyzed.add(await _engine.analyze(raw));
           }
@@ -412,8 +435,9 @@ class NotificationController extends ChangeNotifier {
       if (analyzed.isNotEmpty) {
         await _storage.saveAll(analyzed);
         final loaded = await _storage.getAll();
+        final sanitizedLoaded = loaded.map(_sanitize).toList();
         final notifier = _container.read(reviewQueueProvider.notifier);
-        notifier.load(loaded);
+        notifier.load(sanitizedLoaded);
         await notifier.rescore();
       }
 
@@ -433,18 +457,21 @@ class NotificationController extends ChangeNotifier {
     final analyzed = <AppNotification>[];
 
     for (final raw in testNotifs) {
+      final sanitizedTitle = PiiRedactor.redactTitle(raw.title);
+      final sanitizedContent = PiiRedactor.redactContent(raw.content);
+
       final isDuplicate = _notifications.any((n) =>
           n.packageName == raw.packageName &&
           n.timestamp == raw.timestamp &&
-          n.title == raw.title &&
-          n.content == raw.content);
+          (n.title == raw.title || n.title == sanitizedTitle) &&
+          (n.content == raw.content || n.content == sanitizedContent));
 
       if (!isDuplicate) {
         final inBatch = analyzed.any((n) =>
             n.packageName == raw.packageName &&
             n.timestamp == raw.timestamp &&
-            n.title == raw.title &&
-            n.content == raw.content);
+            (n.title == raw.title || n.title == sanitizedTitle) &&
+            (n.content == raw.content || n.content == sanitizedContent));
         if (!inBatch) {
           analyzed.add(await _engine.analyze(raw));
         }
@@ -454,8 +481,9 @@ class NotificationController extends ChangeNotifier {
     if (analyzed.isNotEmpty) {
       await _storage.saveAll(analyzed);
       final loaded = await _storage.getAll();
+      final sanitizedLoaded = loaded.map(_sanitize).toList();
       final notifier = _container.read(reviewQueueProvider.notifier);
-      notifier.load(loaded);
+      notifier.load(sanitizedLoaded);
       await notifier.rescore();
     }
 
