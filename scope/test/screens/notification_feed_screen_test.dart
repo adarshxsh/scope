@@ -55,7 +55,10 @@ void main() {
         case 'isListenerEnabled':
           return isListenerEnabled;
         case 'getNotifications':
+        case 'peekNotifications':
           return notifications;
+        case 'acknowledgeNotifications':
+          return true;
         case 'openNotificationSettings':
           return true;
         default:
