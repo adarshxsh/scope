@@ -1,13 +1,13 @@
 name: Auto-Claim Jules PRs
 
 on:
-  pull_request_target:
+  pull_request:
     types: [opened, synchronize]
 
 jobs:
   claim-commits:
     # Trigger whenever a PR is created by the Jules bot or on a jules branch
-    if: startsWith(github.head_ref, 'jules/') || github.actor == 'google-labs-jules[bot]'
+    if: github.event.pull_request.head.repo.full_name == github.repository && (startsWith(github.head_ref, 'jules/') || github.actor == 'google-labs-jules[bot]')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -15,12 +15,10 @@ jobs:
 
     steps:
       - name: Checkout Jules PR Branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
-          # Use PAT if you want your avatar credited for triggering downstream checks,
-          # or GITHUB_TOKEN for default runner auth:
           token: ${{ secrets.PAT_GITHUB || secrets.GITHUB_TOKEN }}
 
       - name: Configure Your Git Identity
@@ -29,7 +27,9 @@ jobs:
           git config --global user.email "udhabhaw@gmail.com"
 
       - name: Re-author Commit and Push
+        env:
+          HEAD_REF: ${{ github.head_ref }}
         run: |
           # Rewrites the commit author and committer to your identity
           git commit --amend --reset-author --no-edit
-          git push origin ${{ github.head_ref }} --force
+          git push origin "$HEAD_REF" --force
