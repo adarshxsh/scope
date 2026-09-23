@@ -3,7 +3,7 @@ package com.scope.attentions
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
-import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.ArrayDeque
 
 /**
  * Android service that captures all incoming notifications.
@@ -11,44 +11,90 @@ import java.util.concurrent.ConcurrentLinkedQueue
  * Extends [NotificationListenerService] which requires the user to manually
  * grant "Notification access" in system Settings.
  *
- * Captured notifications are placed in a static [queue] which is drained
- * by [MainActivity] when Flutter requests them via MethodChannel.
+ * Captured notifications are placed in a static bounded FIFO buffer [queue]
+ * with an index [dedupSet] for O(1) deduplication, which is drained by
+ * [MainActivity] when Flutter requests them via MethodChannel.
  *
  * Design decisions:
- *   - Uses a static ConcurrentLinkedQueue (thread-safe, lock-free) because
- *     the service runs in a separate context from MainActivity.
- *   - No heavy processing here — just capture and queue.
+ *   - Bounded FIFO buffer with max capacity of 200 items to prevent heap memory exhaustion.
+ *   - Drops oldest notification when capacity is reached.
+ *   - Synchronized monitor lock prevents race conditions between background ingestion
+ *     and foreground draining.
  *   - Skips ongoing/persistent notifications by default (configurable).
  */
 class NotificationCollectorService : NotificationListenerService() {
 
+    private data class NotificationKey(
+        val packageName: String,
+        val title: String,
+        val content: String
+    )
+
     companion object {
         private const val TAG = "NotifCollector"
 
-        /** Thread-safe queue of captured notifications. */
-        private val queue = ConcurrentLinkedQueue<NotificationData>()
+        /** Maximum capacity for the in-memory notification queue. */
+        const val MAX_CAPACITY = 200
+
+        private val lock = Any()
+
+        /** Bounded FIFO queue of captured notifications. */
+        private val queue = ArrayDeque<NotificationData>()
+
+        /** Hash set index for O(1) deduplication lookups. */
+        private val dedupSet = HashSet<NotificationKey>()
 
         /** Counter for generating simple unique IDs within a session. */
         private var idCounter = 0L
 
         /**
-         * Drains all notifications from the queue and returns them.
-         * Called by [MainActivity] when Flutter requests notifications.
-         * After this call, the queue is empty.
+         * Adds a [NotificationData] to the queue if it's not a duplicate.
+         * Enforces the hard limit of [MAX_CAPACITY] items by evicting the oldest item.
+         * Resets/updates both the queue and deduplication set atomically.
+         * Returns true if added, false if ignored as duplicate.
          */
-        fun drainQueue(): List<NotificationData> {
-            val result = mutableListOf<NotificationData>()
-            while (true) {
-                val item = queue.poll() ?: break
-                result.add(item)
+        fun addNotification(data: NotificationData): Boolean = synchronized(lock) {
+            val key = NotificationKey(data.packageName, data.title, data.content)
+            if (dedupSet.contains(key)) {
+                return false
             }
+
+            if (queue.size >= MAX_CAPACITY) {
+                val oldest = queue.removeFirst()
+                dedupSet.remove(NotificationKey(oldest.packageName, oldest.title, oldest.content))
+            }
+
+            queue.addLast(data)
+            dedupSet.add(key)
+            return true
+        }
+
+        /**
+         * Drains all notifications from the queue and returns them in FIFO order.
+         * Called by [MainActivity] when Flutter requests notifications.
+         * Resets both the queue and deduplication index atomically.
+         */
+        fun drainQueue(): List<NotificationData> = synchronized(lock) {
+            val result = ArrayList(queue)
+            queue.clear()
+            dedupSet.clear()
             return result
         }
 
         /**
          * Returns the current queue size (for diagnostics).
          */
-        fun queueSize(): Int = queue.size
+        fun queueSize(): Int = synchronized(lock) {
+            return queue.size
+        }
+
+        /**
+         * Clears the queue and deduplication set (primarily for testing/reset).
+         */
+        fun clearQueue() = synchronized(lock) {
+            queue.clear()
+            dedupSet.clear()
+        }
     }
 
     private fun addSbnToQueue(sbn: StatusBarNotification) {
@@ -58,14 +104,6 @@ class NotificationCollectorService : NotificationListenerService() {
             val text = extras?.getCharSequence("android.text")?.toString() ?: ""
             val isOngoing = sbn.isOngoing
             val packageName = sbn.packageName ?: "unknown"
-
-            // Ignore if same package, title, and content already exist in queue
-            val isDuplicate = queue.any {
-                it.packageName == packageName && it.title == title && it.content == text
-            }
-            if (isDuplicate) {
-                return
-            }
 
             val data = NotificationData(
                 id = "notif_${++idCounter}",
@@ -77,8 +115,10 @@ class NotificationCollectorService : NotificationListenerService() {
                 isOngoing = isOngoing
             )
 
-            queue.add(data)
-            Log.d(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
+            val added = addNotification(data)
+            if (added) {
+                Log.d(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error capturing/adding notification", e)
         }
