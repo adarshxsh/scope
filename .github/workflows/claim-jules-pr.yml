@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
 
     steps:
       - name: Checkout Jules PR Branch
@@ -18,7 +19,7 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PAT_GITHUB || secrets.GITHUB_TOKEN }}
 
       - name: Configure Your Git Identity
         run: |
@@ -26,7 +27,9 @@ jobs:
           git config --global user.email "udhabhaw@gmail.com"
 
       - name: Re-author Commit and Push
+        env:
+          HEAD_REF: ${{ github.head_ref }}
         run: |
           # Rewrites the commit author and committer to your identity
           git commit --amend --reset-author --no-edit
-          git push origin ${{ github.head_ref }} --force
+          git push origin "$HEAD_REF" --force
