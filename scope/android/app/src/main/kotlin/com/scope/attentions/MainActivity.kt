@@ -34,6 +34,20 @@ class MainActivity : FlutterActivity() {
                         result.success(mapList)
                     }
 
+                    "peekNotifications" -> {
+                        val notifications = NotificationCollectorService.peekQueue()
+                        val mapList = notifications.map { it.toMap() }
+                        result.success(mapList)
+                    }
+
+                    "acknowledgeNotifications" -> {
+                        val ids = call.argument<List<String>>("ids")
+                            ?: (call.arguments as? List<*>)?.filterIsInstance<String>()
+                            ?: emptyList()
+                        NotificationCollectorService.acknowledgeIds(ids)
+                        result.success(true)
+                    }
+
                     "isListenerEnabled" -> {
                         val enabled = isNotificationListenerEnabled()
                         result.success(enabled)

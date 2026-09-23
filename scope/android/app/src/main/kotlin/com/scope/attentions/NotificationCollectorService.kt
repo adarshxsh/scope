@@ -46,6 +46,22 @@ class NotificationCollectorService : NotificationListenerService() {
         }
 
         /**
+         * Returns a list of all current items in the queue without removing them.
+         */
+        fun peekQueue(): List<NotificationData> {
+            return queue.toList()
+        }
+
+        /**
+         * Removes notifications from the queue whose ID matches any in [ids].
+         */
+        fun acknowledgeIds(ids: List<String>) {
+            if (ids.isEmpty()) return
+            val idSet = ids.toSet()
+            queue.removeIf { it.id in idSet }
+        }
+
+        /**
          * Returns the current queue size (for diagnostics).
          */
         fun queueSize(): Int = queue.size

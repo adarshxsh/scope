@@ -48,6 +48,45 @@ class NotificationBridge {
     }
   }
 
+  /// Peeks pending notifications from the native side without removing them.
+  ///
+  /// Returns a list of pending [AppNotification] objects currently in native queue memory.
+  Future<List<AppNotification>> peekNotifications() async {
+    try {
+      final result = await _channel.invokeMethod<List<dynamic>>(
+        'peekNotifications',
+      );
+      if (result == null) return [];
+
+      return result
+          .whereType<Map>()
+          .map((map) => AppNotification.fromMap(Map<String, dynamic>.from(map)))
+          .toList();
+    } on PlatformException catch (e) {
+      // ignore: avoid_print
+      print('NotificationBridge.peekNotifications failed: ${e.message}');
+      return [];
+    } on MissingPluginException {
+      return [];
+    }
+  }
+
+  /// Acknowledges notifications by ID to remove them from native queue memory.
+  Future<void> acknowledgeNotifications(List<String> ids) async {
+    if (ids.isEmpty) return;
+    try {
+      await _channel.invokeMethod<void>(
+        'acknowledgeNotifications',
+        {'ids': ids},
+      );
+    } on PlatformException catch (e) {
+      // ignore: avoid_print
+      print('NotificationBridge.acknowledgeNotifications failed: ${e.message}');
+    } on MissingPluginException {
+      // Not on Android — nothing to do
+    }
+  }
+
   /// Checks if the notification listener service has been granted access.
   ///
   /// Returns false if the check fails (e.g., on non-Android platforms).
