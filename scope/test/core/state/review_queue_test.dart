@@ -341,4 +341,58 @@ void main() {
       expect(container.read(reviewQueueProvider).first.state, equals(ReviewState.REVIEWED));
     });
   });
+
+  group('ReviewQueueNotifier Redaction Tests', () {
+    late ProviderContainer container;
+    late ReviewQueueNotifier notifier;
+
+    setUp(() {
+      container = ProviderContainer();
+      notifier = container.read(reviewQueueProvider.notifier);
+    });
+
+    tearDown(() {
+      container.dispose();
+    });
+
+    test('add() redacts sensitive PII in title and content', () {
+      final sensitive = AppNotification(
+        id: 'pii-1',
+        packageName: 'com.bank.app',
+        title: 'Statement for john.doe@domain.com',
+        content: 'Your OTP is 987654 for payment of \$500.00 to card 4111-2222-3333-4444.',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      notifier.add(sensitive);
+
+      final list = container.read(reviewQueueProvider);
+      expect(list.length, equals(1));
+      expect(list.first.title, contains('[REDACTED_EMAIL]'));
+      expect(list.first.title, isNot(contains('john.doe@domain.com')));
+      expect(list.first.content, contains('[REDACTED_OTP]'));
+      expect(list.first.content, contains('[REDACTED_AMOUNT]'));
+      expect(list.first.content, contains('[REDACTED_CARD]'));
+      expect(list.first.content, isNot(contains('987654')));
+    });
+
+    test('load() redacts sensitive PII in loaded notifications', () {
+      final unredactedList = [
+        AppNotification(
+          id: 'load-1',
+          packageName: 'com.service',
+          title: 'Alert for admin@service.org',
+          content: 'Reset link https://service.org/reset?token=123',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        ),
+      ];
+
+      notifier.load(unredactedList);
+
+      final list = container.read(reviewQueueProvider);
+      expect(list.length, equals(1));
+      expect(list.first.title, contains('[REDACTED_EMAIL]'));
+      expect(list.first.content, contains('[REDACTED_URL]'));
+    });
+  });
 }

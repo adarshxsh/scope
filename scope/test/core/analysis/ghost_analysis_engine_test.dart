@@ -46,6 +46,7 @@ void main() {
       expect(analyzed.latencyMs, isNotNull);
       expect(analyzed.extractedFeatures, isNotNull);
       expect(analyzed.extractedFeatures!['amount'], equals(5000.0));
+      expect(analyzed.content, contains('[REDACTED_AMOUNT]'));
     });
 
     test('orchestrates pipeline and classifies OTP messages as critical priority', () async {
@@ -61,6 +62,7 @@ void main() {
 
       expect(analyzed.priority, equals('critical'));
       expect(analyzed.extractedFeatures!['otp'], equals('882715'));
+      expect(analyzed.content, contains('[REDACTED_OTP]'));
     });
 
     test('categorizes low priority promo keywords as low', () async {
@@ -76,6 +78,31 @@ void main() {
 
       expect(analyzed.priority, equals('low'));
       expect(analyzed.classifiedCategory, equals('promo'));
+    });
+
+    test('sanitizes title and content while preserving extracted features', () async {
+      final notif = AppNotification(
+        id: '4',
+        packageName: 'com.bank.app',
+        title: 'Security Alert for user@domain.com',
+        content: 'OTP 123456 for payment of \$199.99 with card 4532-1100-8890-2311.',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final analyzed = await engine.analyze(notif);
+
+      // Features extracted from raw text
+      expect(analyzed.extractedFeatures!['otp'], equals('123456'));
+      expect(analyzed.extractedFeatures!['amount'], equals(199.99));
+
+      // Returned object title & content are redacted
+      expect(analyzed.title, contains('[REDACTED_EMAIL]'));
+      expect(analyzed.title, isNot(contains('user@domain.com')));
+      expect(analyzed.content, contains('[REDACTED_OTP]'));
+      expect(analyzed.content, contains('[REDACTED_AMOUNT]'));
+      expect(analyzed.content, contains('[REDACTED_CARD]'));
+      expect(analyzed.content, isNot(contains('123456')));
+      expect(analyzed.content, isNot(contains('4532-1100-8890-2311')));
     });
   });
 }
