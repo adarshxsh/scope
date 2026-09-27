@@ -3,7 +3,6 @@ package com.scope.attentions
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
-import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
  * Android service that captures all incoming notifications.
@@ -11,61 +10,90 @@ import java.util.concurrent.ConcurrentLinkedQueue
  * Extends [NotificationListenerService] which requires the user to manually
  * grant "Notification access" in system Settings.
  *
- * Captured notifications are placed in a static [queue] which is drained
- * by [MainActivity] when Flutter requests them via MethodChannel.
- *
- * Design decisions:
- *   - Uses a static ConcurrentLinkedQueue (thread-safe, lock-free) because
- *     the service runs in a separate context from MainActivity.
- *   - No heavy processing here — just capture and queue.
- *   - Skips ongoing/persistent notifications by default (configurable).
+ * Captured notifications are streamed directly to Flutter via [MainActivity]'s
+ * EventChannel handler with zero static queue retention in Kotlin memory.
  */
 class NotificationCollectorService : NotificationListenerService() {
 
     companion object {
         private const val TAG = "NotifCollector"
 
-        /** Thread-safe queue of captured notifications. */
-        private val queue = ConcurrentLinkedQueue<NotificationData>()
+        /** Active instance reference while service is connected to OS. */
+        var instance: NotificationCollectorService? = null
+            private set
 
         /** Counter for generating simple unique IDs within a session. */
         private var idCounter = 0L
 
-        /**
-         * Drains all notifications from the queue and returns them.
-         * Called by [MainActivity] when Flutter requests notifications.
-         * After this call, the queue is empty.
-         */
-        fun drainQueue(): List<NotificationData> {
-            val result = mutableListOf<NotificationData>()
-            while (true) {
-                val item = queue.poll() ?: break
-                result.add(item)
-            }
-            return result
-        }
+        /** Listener callback set by MainActivity to stream notifications to Flutter EventChannel. */
+        var listener: ((NotificationData) -> Unit)? = null
 
         /**
-         * Returns the current queue size (for diagnostics).
+         * Triggers direct sync of active notifications from the Android notification panel
+         * to the active stream subscriber without queue retention.
          */
-        fun queueSize(): Int = queue.size
+        fun syncActiveNotifications() {
+            instance?.syncActiveNotificationsInternal()
+        }
     }
 
-    private fun addSbnToQueue(sbn: StatusBarNotification) {
+    override fun onListenerConnected() {
+        super.onListenerConnected()
+        instance = this
+        Log.i(TAG, "NotificationCollectorService connected")
+        if (listener != null) {
+            syncActiveNotificationsInternal()
+        }
+    }
+
+    override fun onListenerDisconnected() {
+        super.onListenerDisconnected()
+        if (instance == this) {
+            instance = null
+        }
+        Log.w(TAG, "NotificationCollectorService disconnected")
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (instance == this) {
+            instance = null
+        }
+    }
+
+    override fun onNotificationPosted(sbn: StatusBarNotification?) {
+        if (sbn == null) return
+        emitNotification(sbn)
+    }
+
+    override fun onNotificationRemoved(sbn: StatusBarNotification?) {
+        if (sbn == null) return
+        // Log for now; future phases may track dismissed notifications
+        val removedTitle = sbn.notification.extras?.getCharSequence("android.title")?.toString()
+        Log.d(TAG, "Removed: ${sbn.packageName} - ${NotificationRedactor.redactTitle(removedTitle)}")
+    }
+
+    private fun syncActiveNotificationsInternal() {
+        try {
+            val activeNotifs = activeNotifications
+            if (activeNotifs != null) {
+                Log.d(TAG, "Syncing ${activeNotifs.size} existing notifications from panel directly to stream")
+                for (sbn in activeNotifs) {
+                    emitNotification(sbn)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching active notifications for stream sync", e)
+        }
+    }
+
+    private fun emitNotification(sbn: StatusBarNotification) {
         try {
             val extras = sbn.notification.extras
             val title = extras?.getCharSequence("android.title")?.toString() ?: ""
             val text = extras?.getCharSequence("android.text")?.toString() ?: ""
             val isOngoing = sbn.isOngoing
             val packageName = sbn.packageName ?: "unknown"
-
-            // Ignore if same package, title, and content already exist in queue
-            val isDuplicate = queue.any {
-                it.packageName == packageName && it.title == title && it.content == text
-            }
-            if (isDuplicate) {
-                return
-            }
 
             val data = NotificationData(
                 id = "notif_${++idCounter}",
@@ -77,43 +105,16 @@ class NotificationCollectorService : NotificationListenerService() {
                 isOngoing = isOngoing
             )
 
-            queue.add(data)
-            Log.d(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error capturing/adding notification", e)
-        }
-    }
-
-    override fun onNotificationPosted(sbn: StatusBarNotification?) {
-        if (sbn == null) return
-        addSbnToQueue(sbn)
-    }
-
-    override fun onNotificationRemoved(sbn: StatusBarNotification?) {
-        if (sbn == null) return
-        // Log for now; future phases may track dismissed notifications
-        val removedTitle = sbn.notification.extras?.getCharSequence("android.title")?.toString()
-        Log.d(TAG, "Removed: ${sbn.packageName} - ${NotificationRedactor.redactTitle(removedTitle)}")
-    }
-
-    override fun onListenerConnected() {
-        super.onListenerConnected()
-        Log.i(TAG, "NotificationCollectorService connected")
-        try {
-            val activeNotifs = activeNotifications
-            if (activeNotifs != null) {
-                Log.d(TAG, "Syncing ${activeNotifs.size} existing notifications from panel")
-                for (sbn in activeNotifs) {
-                    addSbnToQueue(sbn)
-                }
+            val currentListener = listener
+            if (currentListener != null) {
+                currentListener.invoke(data)
+                Log.d(TAG, "Streamed: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
+            } else {
+                Log.d(TAG, "No active EventSink subscriber; passed through ${data.packageName}")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error fetching active notifications on connect", e)
+            Log.e(TAG, "Error processing notification for stream", e)
         }
     }
-
-    override fun onListenerDisconnected() {
-        super.onListenerDisconnected()
-        Log.w(TAG, "NotificationCollectorService disconnected")
-    }
 }
+
