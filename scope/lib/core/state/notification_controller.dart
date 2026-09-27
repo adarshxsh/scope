@@ -57,6 +57,9 @@ class NotificationController extends ChangeNotifier {
 
     // Populate initial notifications from storage, if any
     _loadInitialNotifications();
+
+    // Subscribe to real-time notification stream via EventChannel
+    _initStreamListener();
   }
 
   final NotificationBridge _bridge;
@@ -68,8 +71,10 @@ class NotificationController extends ChangeNotifier {
   bool _isListenerEnabled = false;
   bool _isLoading = true;
   Timer? _pollTimer;
+  StreamSubscription<AppNotification>? _streamSubscription;
   Timer? _cleanupTimer;
   bool _isCleaningUp = false;
+
 
   ReviewSessionStats sessionStats = ReviewSessionStats();
 
@@ -307,9 +312,45 @@ class NotificationController extends ChangeNotifier {
   void dispose() {
     _isDisposed = true;
     stopPolling();
+    _streamSubscription?.cancel();
     _cleanupTimer?.cancel();
     super.dispose();
   }
+
+  void _initStreamListener() {
+    _streamSubscription?.cancel();
+    try {
+      _streamSubscription = _bridge.notificationStream.listen((raw) async {
+        await _handleIncomingNotification(raw);
+      }, onError: (_) {});
+    } catch (_) {}
+  }
+
+  Future<void> _handleIncomingNotification(AppNotification raw) async {
+    if (raw.isOngoing) return;
+
+    if (!_initialLoadCompleted) {
+      await _loadInitialNotifications();
+    }
+
+    final isDuplicate = _notifications.any((n) =>
+        n.packageName == raw.packageName &&
+        n.timestamp == raw.timestamp &&
+        n.title == raw.title &&
+        n.content == raw.content);
+
+    if (!isDuplicate) {
+      final analyzed = await _engine.analyze(raw);
+      await _storage.saveAll([analyzed]);
+      final loaded = await _storage.getAll();
+      final notifier = _container.read(reviewQueueProvider.notifier);
+      notifier.load(loaded);
+      await notifier.rescore();
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
 
   @override
   void notifyListeners() {
