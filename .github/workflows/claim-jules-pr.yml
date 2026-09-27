@@ -1,13 +1,19 @@
 name: Auto-Claim Jules PRs
 
 on:
-  pull_request_target:
-    types: [opened, synchronize]
+  workflow_run:
+    workflows: ["Jules PR Trigger"]
+    types: [completed]
+
+permissions:
+  contents: read
+  pull-requests: read
 
 jobs:
   claim-commits:
-    # Trigger whenever a PR is created by the Jules bot or on a jules branch
-    if: startsWith(github.head_ref, 'jules/') || github.actor == 'google-labs-jules[bot]'
+    if: |
+      github.event.workflow_run.conclusion == 'success' &&
+      startsWith(github.event.workflow_run.head_branch, 'jules/')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -15,21 +21,42 @@ jobs:
 
     steps:
       - name: Checkout Jules PR Branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
         with:
-          ref: ${{ github.head_ref }}
+          ref: ${{ github.event.workflow_run.head_branch }}
           fetch-depth: 0
-          # Use PAT if you want your avatar credited for triggering downstream checks,
-          # or GITHUB_TOKEN for default runner auth:
           token: ${{ secrets.PAT_GITHUB || secrets.GITHUB_TOKEN }}
 
-      - name: Configure Your Git Identity
+      - name: Configure Git Identity
         run: |
           git config --global user.name "Adarsh"
           git config --global user.email "udhabhaw@gmail.com"
 
       - name: Re-author Commit and Push
+        env:
+          HEAD_REF: ${{ github.event.workflow_run.head_branch }}
+          HEAD_REPO: ${{ github.event.workflow_run.head_repository.full_name }}
         run: |
-          # Rewrites the commit author and committer to your identity
+          if [ -z "$HEAD_REF" ]; then
+            echo "HEAD_REF is empty. Skipping re-authoring."
+            exit 0
+          fi
+
+          if [[ ! "$HEAD_REF" =~ ^jules/[a-zA-Z0-9._/-]+$ ]]; then
+            echo "Branch name '$HEAD_REF' does not match strict pattern '^jules/...'. Skipping."
+            exit 0
+          fi
+
+          if [ -n "$HEAD_REPO" ] && [ "$HEAD_REPO" != "$GITHUB_REPOSITORY" ]; then
+            echo "PR originates from fork '$HEAD_REPO'. Skipping re-authoring for security."
+            exit 0
+          fi
+
+          CURRENT_AUTHOR_EMAIL=$(git log -1 --format='%ae')
+          if [ "$CURRENT_AUTHOR_EMAIL" = "udhabhaw@gmail.com" ]; then
+            echo "Commit is already authored by udhabhaw@gmail.com. Skipping re-authoring."
+            exit 0
+          fi
+
           git commit --amend --reset-author --no-edit
-          git push origin ${{ github.head_ref }} --force
+          git push origin "HEAD:$HEAD_REF" --force
