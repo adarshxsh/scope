@@ -7,6 +7,8 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/database/tables.dart';
 import 'package:scope/database/daos.dart';
 import 'package:scope/database/converters.dart';
+import 'package:scope/database/secure_key_storage.dart';
+import 'package:scope/database/database_migrator.dart';
 
 part 'attention_database.g.dart';
 
@@ -25,10 +27,14 @@ part 'attention_database.g.dart';
   ],
 )
 class AttentionDatabase extends _$AttentionDatabase {
-  AttentionDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
+  AttentionDatabase([QueryExecutor? executor]) : super(executor ?? openConnection());
 
   factory AttentionDatabase.inMemory() {
     return AttentionDatabase(NativeDatabase.memory());
+  }
+
+  factory AttentionDatabase.encrypted({required String passphrase, String? dbPath}) {
+    return AttentionDatabase(openConnection(passphrase: passphrase, dbPath: dbPath));
   }
 
   @override
@@ -52,10 +58,30 @@ class AttentionDatabase extends _$AttentionDatabase {
   }
 }
 
-QueryExecutor _openConnection() {
+QueryExecutor openConnection({String? passphrase, String? dbPath}) {
   return LazyDatabase(() async {
-    final dbFolder = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dbFolder.path, 'attention_os.db'));
-    return NativeDatabase(file);
+    final File file;
+    if (dbPath != null) {
+      file = File(dbPath);
+    } else {
+      final dbFolder = await getApplicationDocumentsDirectory();
+      file = File(p.join(dbFolder.path, 'attention_os.db'));
+    }
+
+    final key = passphrase ?? await DatabaseKeyService().getOrGeneratePassphrase();
+
+    if (key.isNotEmpty) {
+      await DatabaseMigrator.migrateUnencryptedIfNeeded(file, key);
+    }
+
+    return NativeDatabase(
+      file,
+      setup: (db) {
+        if (key.isNotEmpty) {
+          final escapedPassphrase = key.replaceAll("'", "''");
+          db.execute("PRAGMA key = '$escapedPassphrase';");
+        }
+      },
+    );
   });
 }
