@@ -14,24 +14,25 @@ class NotificationCollectorServiceTest {
     }
 
     @Test
-    fun testQueueCapacityLimit() {
-        val now = 1_000_000_000L
+    fun testCapacityLimitAndHeadEviction() {
+        val now = 1_000_000L
 
-        // Add MAX_QUEUE_SIZE (100) notifications
-        for (i in 1..NotificationCollectorService.MAX_QUEUE_SIZE) {
+        // Add 100 distinct notifications (MAX_CAPACITY)
+        for (i in 1..100) {
             val data = NotificationData(
                 id = "notif_$i",
                 packageName = "com.app.$i",
                 title = "Title $i",
                 content = "Content $i",
                 timestamp = now,
-                category = null,
+                category = "msg",
                 isOngoing = false
             )
-            NotificationCollectorService.addNotification(data, now)
+            val added = NotificationCollectorService.addNotification(data, now)
+            assertTrue(added)
         }
 
-        assertEquals(NotificationCollectorService.MAX_QUEUE_SIZE, NotificationCollectorService.queueSize())
+        assertEquals(100, NotificationCollectorService.queueSize(now))
 
         // Add 101st notification
         val extraData = NotificationData(
@@ -40,101 +41,129 @@ class NotificationCollectorServiceTest {
             title = "Title 101",
             content = "Content 101",
             timestamp = now,
-            category = null,
+            category = "msg",
             isOngoing = false
         )
-        NotificationCollectorService.addNotification(extraData, now)
+        val added101 = NotificationCollectorService.addNotification(extraData, now)
+        assertTrue(added101)
 
-        // Queue size should still be capped at MAX_QUEUE_SIZE (100)
-        assertEquals(NotificationCollectorService.MAX_QUEUE_SIZE, NotificationCollectorService.queueSize())
+        // Capacity must remain 100
+        assertEquals(100, NotificationCollectorService.queueSize(now))
 
-        // Drain queue and check contents
+        // Draining queue should yield notifications 2 through 101 (notification 1 was evicted)
         val drained = NotificationCollectorService.drainQueue(now)
-        assertEquals(NotificationCollectorService.MAX_QUEUE_SIZE, drained.size)
-
-        // First item (com.app.1) should have been evicted (FIFO)
-        assertFalse(drained.any { it.packageName == "com.app.1" })
-        // Second item (com.app.2) and last item (com.app.101) should be present
-        assertTrue(drained.any { it.packageName == "com.app.2" })
-        assertTrue(drained.any { it.packageName == "com.app.101" })
+        assertEquals(100, drained.size)
+        assertEquals("notif_2", drained.first().id)
+        assertEquals("notif_101", drained.last().id)
     }
 
     @Test
-    fun testTtlEvictionDuringCapture() {
-        val baseTime = 1_000_000_000L
-        val expiredTime = baseTime - (NotificationCollectorService.MAX_AGE_MS + 1000L)
+    fun testTTLEvictionOnDrain() {
+        val baseTime = 2_000_000L
 
-        // Add an expired notification directly
-        val expiredData = NotificationData(
-            id = "old_1",
-            packageName = "com.app.old",
-            title = "Old Title",
-            content = "Old Content",
-            timestamp = expiredTime,
+        // Add 3 notifications with different timestamps:
+        // 1. Expired (20 minutes old)
+        // 2. Expired (16 minutes old)
+        // 3. Valid (5 minutes old)
+        val notifExpired1 = NotificationData(
+            id = "expired_1",
+            packageName = "com.app.a",
+            title = "Old Title 1",
+            content = "Old Content 1",
+            timestamp = baseTime - (20 * 60 * 1000L),
             category = null,
             isOngoing = false
         )
-        NotificationCollectorService.addNotification(expiredData, baseTime)
+        val notifExpired2 = NotificationData(
+            id = "expired_2",
+            packageName = "com.app.b",
+            title = "Old Title 2",
+            content = "Old Content 2",
+            timestamp = baseTime - (16 * 60 * 1000L),
+            category = null,
+            isOngoing = false
+        )
+        val notifValid = NotificationData(
+            id = "valid_3",
+            packageName = "com.app.c",
+            title = "Recent Title",
+            content = "Recent Content",
+            timestamp = baseTime - (5 * 60 * 1000L),
+            category = null,
+            isOngoing = false
+        )
 
-        // Since pruneExpired runs on addNotification, adding an expired item relative to baseTime should not remain
-        assertEquals(0, NotificationCollectorService.queueSize())
+        NotificationCollectorService.addNotification(notifExpired1, baseTime - (20 * 60 * 1000L))
+        NotificationCollectorService.addNotification(notifExpired2, baseTime - (16 * 60 * 1000L))
+        NotificationCollectorService.addNotification(notifValid, baseTime - (5 * 60 * 1000L))
 
-        // Manually place old item with older timestamp and add fresh item
-        val freshData = NotificationData(
-            id = "fresh_1",
-            packageName = "com.app.fresh",
-            title = "Fresh Title",
-            content = "Fresh Content",
+        // queueSize at baseTime evicts expired items
+        assertEquals(1, NotificationCollectorService.queueSize(baseTime))
+
+        val drained = NotificationCollectorService.drainQueue(baseTime)
+        assertEquals(1, drained.size)
+        assertEquals("valid_3", drained.first().id)
+    }
+
+    @Test
+    fun testTTLEvictionOnAdd() {
+        val baseTime = 3_000_000L
+        val oldTime = baseTime - (20 * 60 * 1000L) // 20 minutes ago
+
+        val oldNotif = NotificationData(
+            id = "old_1",
+            packageName = "com.app.old",
+            title = "Old",
+            content = "Old",
+            timestamp = oldTime,
+            category = null,
+            isOngoing = false
+        )
+        NotificationCollectorService.addNotification(oldNotif, oldTime)
+
+        // Adding a new notification at baseTime triggers eviction of oldNotif
+        val newNotif = NotificationData(
+            id = "new_1",
+            packageName = "com.app.new",
+            title = "New",
+            content = "New",
             timestamp = baseTime,
             category = null,
             isOngoing = false
         )
-        NotificationCollectorService.addNotification(freshData, baseTime)
+        NotificationCollectorService.addNotification(newNotif, baseTime)
 
-        assertEquals(1, NotificationCollectorService.queueSize())
-
-        // Now add another item at baseTime + MAX_AGE_MS + 2000L (so fresh_1 expires)
-        val futureTime = baseTime + NotificationCollectorService.MAX_AGE_MS + 2000L
-        val newerData = NotificationData(
-            id = "newer_1",
-            packageName = "com.app.newer",
-            title = "Newer Title",
-            content = "Newer Content",
-            timestamp = futureTime,
-            category = null,
-            isOngoing = false
-        )
-        NotificationCollectorService.addNotification(newerData, futureTime)
-
-        // fresh_1 should be evicted during pruneExpired on capture
-        assertEquals(1, NotificationCollectorService.queueSize())
-        val drained = NotificationCollectorService.drainQueue(futureTime)
+        assertEquals(1, NotificationCollectorService.queueSize(baseTime))
+        val drained = NotificationCollectorService.drainQueue(baseTime)
         assertEquals(1, drained.size)
-        assertEquals("com.app.newer", drained[0].packageName)
+        assertEquals("new_1", drained.first().id)
     }
 
     @Test
-    fun testTtlEvictionDuringDrain() {
-        val postTime = 1_000_000_000L
-
-        val notif = NotificationData(
-            id = "n1",
-            packageName = "com.app.test",
-            title = "Title",
-            content = "Content",
-            timestamp = postTime,
+    fun testDuplicatePrevention() {
+        val now = 1_000_000L
+        val notif1 = NotificationData(
+            id = "notif_1",
+            packageName = "com.app.dup",
+            title = "Duplicate Title",
+            content = "Duplicate Content",
+            timestamp = now,
             category = null,
             isOngoing = false
         )
-        NotificationCollectorService.addNotification(notif, postTime)
-        assertEquals(1, NotificationCollectorService.queueSize())
+        val notif2 = NotificationData(
+            id = "notif_2",
+            packageName = "com.app.dup",
+            title = "Duplicate Title",
+            content = "Duplicate Content",
+            timestamp = now + 1000L,
+            category = null,
+            isOngoing = false
+        )
 
-        // Drain at time postTime + MAX_AGE_MS + 10,000ms (15m10s later)
-        val drainTime = postTime + NotificationCollectorService.MAX_AGE_MS + 10_000L
-        val drained = NotificationCollectorService.drainQueue(drainTime)
-
-        assertTrue("Expired item should be filtered out on drain", drained.isEmpty())
-        assertEquals(0, NotificationCollectorService.queueSize())
+        assertTrue(NotificationCollectorService.addNotification(notif1, now))
+        assertFalse(NotificationCollectorService.addNotification(notif2, now + 1000L))
+        assertEquals(1, NotificationCollectorService.queueSize(now + 1000L))
     }
 
     @Test
@@ -163,7 +192,7 @@ class NotificationCollectorServiceTest {
             isOngoing = false
         )
         NotificationCollectorService.addNotification(dupNotif, t0)
-        assertEquals(1, NotificationCollectorService.queueSize())
+        assertEquals(1, NotificationCollectorService.queueSize(t0))
 
         // Advance time past expiry
         val tFuture = t0 + NotificationCollectorService.MAX_AGE_MS + 5000L
@@ -180,9 +209,29 @@ class NotificationCollectorServiceTest {
         )
         NotificationCollectorService.addNotification(newNotif, tFuture)
 
-        assertEquals(1, NotificationCollectorService.queueSize())
+        assertEquals(1, NotificationCollectorService.queueSize(tFuture))
         val drained = NotificationCollectorService.drainQueue(tFuture)
         assertEquals(1, drained.size)
         assertEquals("3", drained[0].id)
+    }
+
+    @Test
+    fun testClearQueue() {
+        val now = 1_000_000L
+        val notif = NotificationData(
+            id = "notif_1",
+            packageName = "com.app.test",
+            title = "Title",
+            content = "Content",
+            timestamp = now,
+            category = null,
+            isOngoing = false
+        )
+
+        NotificationCollectorService.addNotification(notif, now)
+        assertEquals(1, NotificationCollectorService.queueSize(now))
+
+        NotificationCollectorService.clearQueue()
+        assertEquals(0, NotificationCollectorService.queueSize(now))
     }
 }
