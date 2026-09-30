@@ -2,7 +2,6 @@ package com.scope.attentions
 
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
-import android.util.Log
 import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
@@ -11,12 +10,14 @@ import java.util.concurrent.ConcurrentLinkedQueue
  * Extends [NotificationListenerService] which requires the user to manually
  * grant "Notification access" in system Settings.
  *
- * Captured notifications are placed in a static [queue] which is drained
- * by [MainActivity] when Flutter requests them via MethodChannel.
+ * Captured notifications are placed in a static bounded queue capped at [MAX_QUEUE_SIZE],
+ * which is drained by [MainActivity] when Flutter requests them via MethodChannel.
  *
  * Design decisions:
- *   - Uses a static ConcurrentLinkedQueue (thread-safe, lock-free) because
- *     the service runs in a separate context from MainActivity.
+ *   - Uses a bounded queue capped at [MAX_QUEUE_SIZE] with FIFO eviction rules
+ *     to prevent unbounded memory growth and heap retention of cleartext payloads.
+ *   - Thread-safe synchronization ensures safe operations across background service thread
+ *     and MainActivity MethodChannel thread.
  *   - No heavy processing here — just capture and queue.
  *   - Skips ongoing/persistent notifications by default (configurable).
  */
@@ -25,17 +26,48 @@ class NotificationCollectorService : NotificationListenerService() {
     companion object {
         private const val TAG = "NotifCollector"
 
-        /** Thread-safe queue of captured notifications. */
+        /** Maximum capacity for the notification queue before oldest items are evicted. */
+        const val MAX_QUEUE_SIZE = 100
+
+        /** Bounded queue of captured notifications. */
         private val queue = ConcurrentLinkedQueue<NotificationData>()
 
         /** Counter for generating simple unique IDs within a session. */
         private var idCounter = 0L
 
         /**
+         * Enqueues a notification item into the bounded queue.
+         *
+         * Performs duplicate suppression (ignores if same packageName, title, and content
+         * already exist in queue) and enforces maximum capacity by evicting the oldest
+         * entry via [queue.poll()] whenever [queue.size] reaches [MAX_QUEUE_SIZE].
+         *
+         * Synchronized to guarantee thread safety during concurrent notification events.
+         */
+        @Synchronized
+        fun enqueue(data: NotificationData): Boolean {
+            // Ignore duplicate if same package, title, and content already exist in queue
+            val isDuplicate = queue.any {
+                it.packageName == data.packageName && it.title == data.title && it.content == data.content
+            }
+            if (isDuplicate) {
+                return false
+            }
+
+            // Evict oldest entries until size is strictly below capacity
+            while (queue.size >= MAX_QUEUE_SIZE) {
+                queue.poll()
+            }
+
+            return queue.add(data)
+        }
+
+        /**
          * Drains all notifications from the queue and returns them.
          * Called by [MainActivity] when Flutter requests notifications.
          * After this call, the queue is empty.
          */
+        @Synchronized
         fun drainQueue(): List<NotificationData> {
             val result = mutableListOf<NotificationData>()
             while (true) {
@@ -46,9 +78,35 @@ class NotificationCollectorService : NotificationListenerService() {
         }
 
         /**
+         * Returns a snapshot copy of current queued notifications without removing them (for inspection/testing).
+         */
+        @Synchronized
+        fun peekQueue(): List<NotificationData> {
+            return queue.toList()
+        }
+
+        /**
          * Returns the current queue size (for diagnostics).
          */
+        @Synchronized
         fun queueSize(): Int = queue.size
+
+        /**
+         * Clears all items in the queue and resets the ID counter (for tests and resets).
+         */
+        @Synchronized
+        fun clearQueue() {
+            queue.clear()
+            idCounter = 0L
+        }
+
+        /**
+         * Generates a new unique notification ID.
+         */
+        @Synchronized
+        fun nextNotificationId(): String {
+            return "notif_${++idCounter}"
+        }
     }
 
     private fun addSbnToQueue(sbn: StatusBarNotification) {
@@ -59,16 +117,8 @@ class NotificationCollectorService : NotificationListenerService() {
             val isOngoing = sbn.isOngoing
             val packageName = sbn.packageName ?: "unknown"
 
-            // Ignore if same package, title, and content already exist in queue
-            val isDuplicate = queue.any {
-                it.packageName == packageName && it.title == title && it.content == text
-            }
-            if (isDuplicate) {
-                return
-            }
-
             val data = NotificationData(
-                id = "notif_${++idCounter}",
+                id = nextNotificationId(),
                 packageName = packageName,
                 title = title,
                 content = text,
@@ -77,10 +127,11 @@ class NotificationCollectorService : NotificationListenerService() {
                 isOngoing = isOngoing
             )
 
-            queue.add(data)
-            Log.d(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
+            if (enqueue(data)) {
+                logD(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
+            }
         } catch (e: Exception) {
-            Log.e(TAG, "Error capturing/adding notification", e)
+            logE(TAG, "Error capturing/adding notification", e)
         }
     }
 
@@ -91,29 +142,64 @@ class NotificationCollectorService : NotificationListenerService() {
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         if (sbn == null) return
-        // Log for now; future phases may track dismissed notifications
         val removedTitle = sbn.notification.extras?.getCharSequence("android.title")?.toString()
-        Log.d(TAG, "Removed: ${sbn.packageName} - ${NotificationRedactor.redactTitle(removedTitle)}")
+        logD(TAG, "Removed: ${sbn.packageName} - ${NotificationRedactor.redactTitle(removedTitle)}")
     }
 
     override fun onListenerConnected() {
         super.onListenerConnected()
-        Log.i(TAG, "NotificationCollectorService connected")
+        logI(TAG, "NotificationCollectorService connected")
         try {
             val activeNotifs = activeNotifications
             if (activeNotifs != null) {
-                Log.d(TAG, "Syncing ${activeNotifs.size} existing notifications from panel")
+                logD(TAG, "Syncing ${activeNotifs.size} existing notifications from panel")
                 for (sbn in activeNotifs) {
                     addSbnToQueue(sbn)
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error fetching active notifications on connect", e)
+            logE(TAG, "Error fetching active notifications on connect", e)
         }
     }
 
     override fun onListenerDisconnected() {
         super.onListenerDisconnected()
-        Log.w(TAG, "NotificationCollectorService disconnected")
+        logW(TAG, "NotificationCollectorService disconnected")
+    }
+
+    private fun logD(tag: String, msg: String) {
+        try {
+            android.util.Log.d(tag, msg)
+        } catch (e: Throwable) {
+            println("[$tag] $msg")
+        }
+    }
+
+    private fun logI(tag: String, msg: String) {
+        try {
+            android.util.Log.i(tag, msg)
+        } catch (e: Throwable) {
+            println("[$tag] $msg")
+        }
+    }
+
+    private fun logW(tag: String, msg: String) {
+        try {
+            android.util.Log.w(tag, msg)
+        } catch (e: Throwable) {
+            println("[$tag] $msg")
+        }
+    }
+
+    private fun logE(tag: String, msg: String, tr: Throwable? = null) {
+        try {
+            if (tr != null) {
+                android.util.Log.e(tag, msg, tr)
+            } else {
+                android.util.Log.e(tag, msg)
+            }
+        } catch (e: Throwable) {
+            println("[$tag] $msg ${tr?.message ?: ""}")
+        }
     }
 }
