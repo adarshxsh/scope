@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/storage/backup_exclusion_helper.dart';
+import 'package:scope/core/storage/storage_migrator.dart';
 
 /// Condition definition for a notification classification rule.
 class RuleCondition {
@@ -103,17 +105,22 @@ class RuleEngine {
   }
 
   /// Prepends a user-defined reinforcement learning rule to the top of the evaluation chain.
-  void addReinforcementRule(NotificationRule rule) {
+  Future<void> addReinforcementRule(NotificationRule rule) async {
     _rules.insert(0, rule);
-    _saveCustomRules();
+    await _saveCustomRules();
   }
 
   /// Loads custom rules from local storage and prepends them.
   Future<void> loadCustomRules() async {
     try {
-      final dir = await getApplicationDocumentsDirectory();
+      await StorageMigrator.migrateLegacyFiles();
+      final dir = await getApplicationSupportDirectory();
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
       final file = File('${dir.path}/rlhf_rules.json');
       if (await file.exists()) {
+        await BackupExclusionHelper.excludeFromBackup(file.path);
         final content = await file.readAsString();
         final list = json.decode(content) as List<dynamic>;
         final customRules = list.map((r) => NotificationRule.fromMap(Map<String, dynamic>.from(r))).toList();
@@ -121,6 +128,13 @@ class RuleEngine {
         _rules.insertAll(0, customRules);
       }
     } catch (e) {
+      if (e is FormatException) {
+        try {
+          final dir = await getApplicationSupportDirectory();
+          final file = File('${dir.path}/rlhf_rules.json');
+          await file.writeAsString('[]');
+        } catch (_) {}
+      }
       // ignore: avoid_print
       print('Failed to load custom RLHF rules: $e');
     }
@@ -133,9 +147,13 @@ class RuleEngine {
       final customRules = _rules.where((r) => r.id.startsWith('rlhf-')).toList();
       final list = customRules.map((r) => r.toMap()).toList();
       
-      final dir = await getApplicationDocumentsDirectory();
+      final dir = await getApplicationSupportDirectory();
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
       final file = File('${dir.path}/rlhf_rules.json');
       await file.writeAsString(json.encode(list));
+      await BackupExclusionHelper.excludeFromBackup(file.path);
     } catch (e) {
       // ignore: avoid_print
       print('Failed to save custom RLHF rules: $e');

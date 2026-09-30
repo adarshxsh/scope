@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <exclude domain="file" path="rlhf_rules.json" />
+    <exclude domain="database" path="attention_os.db" />
+    <exclude domain="database" path="attention_os.db-wal" />
+    <exclude domain="database" path="attention_os.db-shm" />
+    <exclude domain="file" path="." />
+    <exclude domain="database" path="." />
+    <exclude domain="sharedpref" path="." />
+</full-backup-content>
