@@ -29,9 +29,27 @@ class MainActivity : FlutterActivity() {
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "getNotifications" -> {
-                        val notifications = NotificationCollectorService.drainQueue()
+                        val notifications = NotificationCollectorService.peekQueue()
                         val mapList = notifications.map { it.toMap() }
                         result.success(mapList)
+                    }
+
+                    "acknowledgeNotifications" -> {
+                        val ids = when (val args = call.arguments) {
+                            is List<*> -> args.filterIsInstance<String>()
+                            is Map<*, *> -> {
+                                val rawIds = args["ids"] ?: args["batchIds"] ?: args["batchId"]
+                                when (rawIds) {
+                                    is List<*> -> rawIds.filterIsInstance<String>()
+                                    is String -> listOf(rawIds)
+                                    else -> emptyList()
+                                }
+                            }
+                            is String -> listOf(args)
+                            else -> emptyList()
+                        }
+                        val count = NotificationCollectorService.acknowledgeNotifications(ids)
+                        result.success(count)
                     }
 
                     "isListenerEnabled" -> {

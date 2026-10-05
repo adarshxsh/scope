@@ -417,6 +417,12 @@ class NotificationController extends ChangeNotifier {
         await notifier.rescore();
       }
 
+      // Explicitly acknowledge batch IDs only after successful storage persistence
+      if (newNotifications.isNotEmpty) {
+        final idsToAcknowledge = newNotifications.map((n) => n.id).toList();
+        await _bridge.acknowledgeNotifications(idsToAcknowledge);
+      }
+
       _isLoading = false;
       notifyListeners();
     } catch (_) {

@@ -129,5 +129,30 @@ void main() {
         await bridge.openNotificationSettings();
       });
     });
+
+    group('acknowledgeNotifications', () {
+      test('invokes acknowledgeNotifications method on channel with list of ids', () async {
+        mockHandler((call) async => 2);
+        final result = await bridge.acknowledgeNotifications(['n1', 'n2']);
+        expect(result, true);
+        expect(log.single.method, 'acknowledgeNotifications');
+        expect(log.single.arguments, {'ids': ['n1', 'n2']});
+      });
+
+      test('returns true on empty id list without making channel call', () async {
+        mockHandler((call) async => 0);
+        final result = await bridge.acknowledgeNotifications([]);
+        expect(result, true);
+        expect(log, isEmpty);
+      });
+
+      test('returns false on PlatformException without throwing', () async {
+        mockHandler((call) async {
+          throw PlatformException(code: 'ERROR', message: 'ack failed');
+        });
+        final result = await bridge.acknowledgeNotifications(['n1']);
+        expect(result, false);
+      });
+    });
   });
 }
