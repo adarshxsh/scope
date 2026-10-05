@@ -42,7 +42,7 @@ void main() {
 
       expect(analyzed.priority, equals('critical'));
       expect(analyzed.classifiedCategory, equals('finance'));
-      expect(analyzed.explanation, contains('Amount: Found transaction amount'));
+      expect(analyzed.explanation, contains('Transaction Amount'));
       expect(analyzed.latencyMs, isNotNull);
       expect(analyzed.extractedFeatures, isNotNull);
       expect(analyzed.extractedFeatures!['amount'], equals(5000.0));
