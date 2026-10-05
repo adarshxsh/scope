@@ -89,6 +89,12 @@ class _NotificationFeedScreenState extends State<NotificationFeedScreen> {
         await _storage.saveAll(analyzedNotifications);
       }
 
+      if (newNotifications.isNotEmpty) {
+        await _bridge.acknowledgeNotifications(
+          newNotifications.map((n) => n.id).toList(),
+        );
+      }
+
       // Get all stored (sorted newest first)
       final all = await _storage.getAll();
 
