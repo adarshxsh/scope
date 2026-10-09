@@ -22,6 +22,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", type=Path, default=None, help="Output file path.")
     parser.add_argument("--ollama", action="store_true", help="Optionally call local Ollama for a small share of text variants.")
     parser.add_argument("--ollama-model", default="gemma3:9b", help="Local Ollama model name.")
+    parser.add_argument("--ollama-base-url", default=None, help="Base URL for local Ollama endpoint (or use OLLAMA_BASE_URL env var).")
     parser.add_argument("--stats", action="store_true", help="Write summary statistics next to the dataset.")
     return parser.parse_args()
 
@@ -41,6 +42,7 @@ def main() -> None:
         seed=args.seed,
         use_ollama=args.ollama,
         ollama_model=args.ollama_model,
+        ollama_base_url=args.ollama_base_url,
     )
     records = generator.generate(args.count)
 
