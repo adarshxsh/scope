@@ -426,6 +426,10 @@ class NotificationController extends ChangeNotifier {
   }
 
   Future<void> generateTestData() async {
+    assert(kDebugMode || kProfileMode, 'generateTestData is only available in debug or profile mode.');
+    if (kReleaseMode) {
+      throw UnsupportedError('generateTestData is disabled in release mode.');
+    }
     _initialLoadCompleted = true;
     _isLoading = false;
     final generator = TestNotificationGenerator();
@@ -463,6 +467,10 @@ class NotificationController extends ChangeNotifier {
   }
 
   Future<void> clearAll() async {
+    assert(kDebugMode || kProfileMode, 'clearAll is only available in debug or profile mode.');
+    if (kReleaseMode) {
+      throw UnsupportedError('clearAll is disabled in release mode.');
+    }
     await _storage.clear();
     _container.read(reviewQueueProvider.notifier).clear();
     _notifications = [];

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
@@ -7,7 +8,12 @@ import 'package:scope/widgets/scope_card.dart';
 class DiagnosticScreen extends StatefulWidget {
   final GhostAnalysisEngine? engine;
 
-  const DiagnosticScreen({super.key, this.engine});
+  DiagnosticScreen({super.key, this.engine}) {
+    assert(kDebugMode || kProfileMode, 'DiagnosticScreen is disabled in release mode.');
+    if (kReleaseMode) {
+      throw UnsupportedError('DiagnosticScreen is disabled in release mode.');
+    }
+  }
 
   @override
   State<DiagnosticScreen> createState() => _DiagnosticScreenState();
@@ -114,6 +120,9 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (kReleaseMode) {
+      return const SizedBox.shrink();
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Text('Ghost AI Diagnostics'),
