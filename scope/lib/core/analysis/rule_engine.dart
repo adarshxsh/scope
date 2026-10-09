@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:path_provider/path_provider.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/storage/storage_initializer.dart';
 
 /// Condition definition for a notification classification rule.
 class RuleCondition {
@@ -111,14 +111,15 @@ class RuleEngine {
   /// Loads custom rules from local storage and prepends them.
   Future<void> loadCustomRules() async {
     try {
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/rlhf_rules.json');
-      if (await file.exists()) {
+      final file = await StorageInitializer.prepareStorageFile('rlhf_rules.json');
+      if (await file.exists() && (await file.length()) > 0) {
         final content = await file.readAsString();
-        final list = json.decode(content) as List<dynamic>;
-        final customRules = list.map((r) => NotificationRule.fromMap(Map<String, dynamic>.from(r))).toList();
-        // Insert custom rules at the top
-        _rules.insertAll(0, customRules);
+        if (content.trim().isNotEmpty) {
+          final list = json.decode(content) as List<dynamic>;
+          final customRules = list.map((r) => NotificationRule.fromMap(Map<String, dynamic>.from(r))).toList();
+          // Insert custom rules at the top
+          _rules.insertAll(0, customRules);
+        }
       }
     } catch (e) {
       // ignore: avoid_print
@@ -133,9 +134,9 @@ class RuleEngine {
       final customRules = _rules.where((r) => r.id.startsWith('rlhf-')).toList();
       final list = customRules.map((r) => r.toMap()).toList();
       
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/rlhf_rules.json');
+      final file = await StorageInitializer.prepareStorageFile('rlhf_rules.json');
       await file.writeAsString(json.encode(list));
+      await StorageInitializer.applyNonBackupFlag(file);
     } catch (e) {
       // ignore: avoid_print
       print('Failed to save custom RLHF rules: $e');
