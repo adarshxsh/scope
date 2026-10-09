@@ -160,7 +160,7 @@ def main() -> None:
         "python_feature_generation": False,
         "target": "look_again_score",
         "architecture": [
-            "Input(63)",
+            f"Input({FEATURE_VECTOR_SIZE})",
             "Normalization",
             "Dense(128, relu)",
             "Dropout(0.2)",
