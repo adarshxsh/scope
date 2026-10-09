@@ -66,6 +66,12 @@ def build_baseline_mlp(
     stddev_const = tf.constant(stddev, dtype=tf.float32, name="normalization_stddev")
     x = (inputs - mean_const) / stddev_const
 
+    # In-graph feature clipping immediately following normalization
+    x = tf.keras.layers.Lambda(
+        lambda t: tf.clip_by_value(t, clip_value_min=-5.0, clip_value_max=5.0),
+        name="clip_zscore",
+    )(x)
+
     x = tf.keras.layers.Dense(128, activation="relu", name="dense_128")(x)
     x = tf.keras.layers.Dropout(0.2, name="dropout_0_2")(x)
     x = tf.keras.layers.Dense(64, activation="relu", name="dense_64")(x)
