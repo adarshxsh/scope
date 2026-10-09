@@ -23,6 +23,8 @@ void main() {
       expect(result.engineName, contains('fallback'));
       expect(result.score, equals(0.0));
       expect(result.isFallback, isTrue);
+      expect(classifier.isModelLoaded, isFalse);
+      expect(classifier.diagnosticMessage, isNotEmpty);
     });
 
     test('fallback correctly categorizes bank alerts', () async {
@@ -42,6 +44,32 @@ void main() {
       expect(result.engineName, contains('fallback'));
       expect(result.score, equals(0.0));
       expect(result.isFallback, isTrue);
+    });
+
+    test('exposes model path and diagnostic information safely', () {
+      final classifier = LiteRtClassifier(modelPath: 'assets/non_existent.tflite');
+      expect(classifier.modelPath, equals('assets/non_existent.tflite'));
+      expect(classifier.isModelLoaded, isFalse);
+      expect(classifier.diagnosticMessage, isNotEmpty);
+    });
+
+    test('matchedSignals do not expose cleartext personal notification text', () async {
+      final classifier = LiteRtClassifier();
+      
+      final secretContent = 'SUPER_SECRET_OTP_981245';
+      final notif = AppNotification(
+        id: 'privacy_test_1',
+        packageName: 'com.secret.bank',
+        title: 'Secret Auth',
+        content: secretContent,
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final result = await classifier.analyze(notif);
+      
+      for (final signal in result.matchedSignals) {
+        expect(signal.contains(secretContent), isFalse);
+      }
     });
   });
 }
