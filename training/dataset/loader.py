@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -11,9 +13,63 @@ import numpy as np
 from training.config import FEATURE_VECTOR_SIZE
 
 
-def load_jsonl_dataset(path: Path) -> list[dict[str, Any]]:
+def compute_file_sha256(path: Path) -> str:
+    hasher = hashlib.sha256()
+    with path.open("rb") as handle:
+        while chunk := handle.read(65536):
+            hasher.update(chunk)
+    return hasher.hexdigest()
+
+
+def verify_dataset_hash(path: Path, strict_verify: bool = False) -> None:
+    sidecar_path = path.parent / f"{path.name}.sha256"
+    manifest_named_path = path.parent / f"{path.name}.manifest.json"
+    manifest_default_path = path.parent / "manifest.json"
+
+    expected_hash: str | None = None
+
+    if sidecar_path.exists():
+        content = sidecar_path.read_text(encoding="utf-8").strip()
+        if content:
+            expected_hash = content.split()[0].lower()
+    elif manifest_named_path.exists():
+        try:
+            data = json.loads(manifest_named_path.read_text(encoding="utf-8"))
+            if isinstance(data, dict) and "sha256" in data:
+                expected_hash = str(data["sha256"]).lower()
+        except Exception:
+            pass
+    elif manifest_default_path.exists():
+        try:
+            data = json.loads(manifest_default_path.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                if data.get("file_name") == path.name and "sha256" in data:
+                    expected_hash = str(data["sha256"]).lower()
+                elif "sha256" in data:
+                    expected_hash = str(data["sha256"]).lower()
+        except Exception:
+            pass
+
+    if expected_hash is None:
+        msg = f"No SHA-256 digest or manifest file found for dataset {path}."
+        if strict_verify:
+            raise ValueError(msg)
+        else:
+            warnings.warn(msg)
+            return
+
+    actual_hash = compute_file_sha256(path).lower()
+    if actual_hash != expected_hash:
+        raise ValueError(
+            f"SHA-256 digest mismatch for dataset {path}: expected {expected_hash}, got {actual_hash}"
+        )
+
+
+def load_jsonl_dataset(path: Path, strict_verify: bool = False) -> list[dict[str, Any]]:
     if not path.exists():
         raise FileNotFoundError(f"Dataset not found: {path}")
+
+    verify_dataset_hash(path, strict_verify=strict_verify)
 
     records: list[dict[str, Any]] = []
     with path.open("r", encoding="utf-8") as handle:

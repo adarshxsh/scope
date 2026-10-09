@@ -18,6 +18,23 @@ from validator.duplicate import text_fingerprint
 from validator.schema import validate_record
 
 
+FORBIDDEN_PII_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"\b(?:\d[ -]*?){13,19}\b"),  # Credit/debit card numbers
+    re.compile(r"\b(?:\+\d{1,3}[- ]?)?\(?\d{3}\)?[- ]?\d{3}[- ]?\d{4}\b"),  # Phone numbers
+    re.compile(r"\b[A-Fa-f0-9]{32,64}\b|\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b"),  # Auth tokens / JWTs
+    re.compile(r"(?i)(ignore (all )?previous instructions|system prompt|developer mode|as an ai|you are an ai|override instructions|\[system\]|\[prompt\])"),  # Prompt injection markers
+)
+
+
+def contains_forbidden_pii_or_injection(text: str) -> bool:
+    if not text:
+        return False
+    for pattern in FORBIDDEN_PII_PATTERNS:
+        if pattern.search(text):
+            return True
+    return False
+
+
 @dataclass(frozen=True)
 class AppProfile:
     app_name: str
@@ -303,7 +320,38 @@ class NotificationDatasetGenerator:
         body = str(parsed.get("body", "")).strip()
         if not title or not body:
             return None
-        return self._clip(title, 50), self._clip(body, 140)
+
+        clipped_title = self._clip(title, 50)
+        clipped_body = self._clip(body, 140)
+
+        # Sanitize/filter out forbidden PII patterns and prompt injection markers
+        if contains_forbidden_pii_or_injection(clipped_title) or contains_forbidden_pii_or_injection(clipped_body):
+            return None
+
+        # Pass output through validate_record using a candidate record dictionary
+        candidate_record = {
+            "id": "ollama-candidate-validation-id",
+            "app_name": ctx.get("app_context", "App"),
+            "package_name": "com.example.app",
+            "category": scenario.category,
+            "subcategory": scenario.subcategory,
+            "notification_type": scenario.notification_type,
+            "title": clipped_title,
+            "body": clipped_body,
+            "language": "en",
+            "requires_action": scenario.requires_action,
+            "intent": scenario.intent,
+            "android": {},
+            "priority_score": 50,
+            "priority": 3,
+            "look_again_score": 50,
+            "look_again": False,
+            "labels": {},
+        }
+        if validate_record(candidate_record):
+            return None
+
+        return clipped_title, clipped_body
 
     def _context(self, app: AppProfile, scenario: Scenario, timestamp: datetime) -> dict[str, Any]:
         city = self.random.choice(("Bengaluru", "Mumbai", "Delhi", "Pune", "Hyderabad", "Chennai", "Kolkata", "Ahmedabad", "Jaipur", "Kochi"))

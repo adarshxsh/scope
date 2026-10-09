@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 from typing import Callable
 
@@ -28,6 +29,11 @@ def export_float32_tflite(
     converter = tf.lite.TFLiteConverter.from_saved_model(str(saved_model_dir))
     model_bytes = converter.convert()
     output_path.write_bytes(model_bytes)
+
+    digest = hashlib.sha256(model_bytes).hexdigest()
+    sidecar_path = output_path.parent / f"{output_path.name}.sha256"
+    sidecar_path.write_text(f"{digest}\n", encoding="utf-8")
+
     return output_path
 
 
