@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:scope/core/analysis/extracted_features.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
@@ -265,20 +266,21 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
     final priorityColor = _getPriorityColor(notif.priority);
 
     // Safely parse feature variables to prevent Dart compilation/ternary ambiguity
-    final features = notif.extractedFeatures ?? {};
+    final rawFeatures = notif.extractedFeatures ?? {};
+    final features = ExtractedFeatures.redactMap(rawFeatures) ?? {};
     final otp = features['otp'] as String?;
     final amount = features['amount'];
-    final amountStr = amount != null ? 'Rs. $amount' : null;
+    final amountStr = amount != null ? (amount is num ? 'Rs. $amount' : amount.toString()) : null;
     final hasDeadline = features['hasDeadline'] == true ? 'YES' : null;
 
     final urls = features['urls'] as List?;
-    final urlsStr = urls != null && urls.isNotEmpty ? urls.toString() : null;
+    final urlsStr = urls != null && urls.isNotEmpty ? urls.join(', ') : null;
 
     final emails = features['emails'] as List?;
-    final emailsStr = emails != null && emails.isNotEmpty ? emails.toString() : null;
+    final emailsStr = emails != null && emails.isNotEmpty ? emails.join(', ') : null;
 
     final phoneNumbers = features['phoneNumbers'] as List?;
-    final phoneNumbersStr = phoneNumbers != null && phoneNumbers.isNotEmpty ? phoneNumbers.toString() : null;
+    final phoneNumbersStr = phoneNumbers != null && phoneNumbers.isNotEmpty ? phoneNumbers.join(', ') : null;
 
     final theme = Theme.of(context);
 
