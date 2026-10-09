@@ -273,5 +273,82 @@ void main() {
       // Missing one deleted due to being orphaned
       expect(queueItems.first.notificationId, equals('n-new'));
     });
+
+    test('UserSettingsDao default settings and update validation', () async {
+      var settings = await db.userSettingsDao.getUserSettings();
+      expect(settings.retentionDays, equals(7));
+      expect(settings.telemetryEnabled, isTrue);
+      expect(settings.maxRowCap, equals(1000));
+
+      await db.userSettingsDao.updateUserSettings(
+        retentionDays: 14,
+        telemetryEnabled: false,
+        maxRowCap: 500,
+      );
+
+      settings = await db.userSettingsDao.getUserSettings();
+      expect(settings.retentionDays, equals(14));
+      expect(settings.telemetryEnabled, isFalse);
+      expect(settings.maxRowCap, equals(500));
+    });
+
+    test('InferenceTelemetryDao logging and cutoff purging', () async {
+      final oldTime = DateTime.now().subtract(const Duration(days: 10)).millisecondsSinceEpoch;
+      final newTime = DateTime.now().millisecondsSinceEpoch;
+
+      final entry1 = InferenceTelemetryEntry(
+        id: 1,
+        eventType: 'inference_complete',
+        timestamp: oldTime,
+        createdAt: DateTime.now(),
+      );
+
+      final entry2 = InferenceTelemetryEntry(
+        id: 2,
+        eventType: 'inference_complete',
+        timestamp: newTime,
+        createdAt: DateTime.now(),
+      );
+
+      await db.inferenceTelemetryDao.logEvent(entry1);
+      await db.inferenceTelemetryDao.logEvent(entry2);
+
+      expect(await db.inferenceTelemetryDao.getTelemetryCount(), equals(2));
+
+      final cutoff = DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch;
+      await db.runSetBasedCleanup(cutoff);
+
+      expect(await db.inferenceTelemetryDao.getTelemetryCount(), equals(1));
+    });
+
+    test('runSetBasedCleanup enforces max quota / row cap limits', () async {
+      final now = DateTime.now().millisecondsSinceEpoch;
+
+      for (int i = 1; i <= 5; i++) {
+        await db.notificationDao.insertNotification(NotificationEntry(
+          id: 'n$i',
+          packageName: 'app',
+          title: 'Title $i',
+          content: 'Content $i',
+          timestamp: now + i * 1000,
+          state: ReviewState.ACTIVE,
+          reviewed: false,
+          dismissed: false,
+          isOngoing: false,
+          createdAt: DateTime.now(),
+        ));
+      }
+
+      expect(await db.notificationDao.getCount(), equals(5));
+
+      // Run cleanup enforcing row cap of 3
+      await db.runSetBasedCleanup(null, 3);
+
+      final remaining = await db.notificationDao.getAll();
+      expect(remaining.length, equals(3));
+      // Should keep the 3 newest (n3, n4, n5)
+      expect(remaining.map((e) => e.id), containsAll(['n3', 'n4', 'n5']));
+    });
   });
 }
+
