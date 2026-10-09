@@ -7,6 +7,8 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/database/tables.dart';
 import 'package:scope/database/daos.dart';
 import 'package:scope/database/converters.dart';
+import 'package:scope/database/key_manager.dart';
+import 'package:scope/database/migration.dart';
 
 part 'attention_database.g.dart';
 
@@ -25,7 +27,8 @@ part 'attention_database.g.dart';
   ],
 )
 class AttentionDatabase extends _$AttentionDatabase {
-  AttentionDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
+  AttentionDatabase([QueryExecutor? executor, DatabaseKeyManager? keyManager])
+      : super(executor ?? _openConnection(keyManager));
 
   factory AttentionDatabase.inMemory() {
     return AttentionDatabase(NativeDatabase.memory());
@@ -52,10 +55,22 @@ class AttentionDatabase extends _$AttentionDatabase {
   }
 }
 
-QueryExecutor _openConnection() {
+QueryExecutor _openConnection([DatabaseKeyManager? keyManager]) {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'attention_os.db'));
-    return NativeDatabase(file);
+    final mgr = keyManager ?? DatabaseKeyManager();
+    final passphrase = await mgr.getOrCreateKey();
+
+    // Automatically migrate legacy plaintext database if present
+    await DatabaseMigrator.migrateIfNeeded(file, passphrase);
+
+    return NativeDatabase(
+      file,
+      setup: (rawDb) {
+        final escapedKey = passphrase.replaceAll("'", "''");
+        rawDb.execute("PRAGMA key = '$escapedKey';");
+      },
+    );
   });
 }
