@@ -57,6 +57,9 @@ class NotificationController extends ChangeNotifier {
 
     // Populate initial notifications from storage, if any
     _loadInitialNotifications();
+
+    // Start listening to real-time notification stream pushed from native EventChannel
+    startListening();
   }
 
   final NotificationBridge _bridge;
@@ -67,7 +70,7 @@ class NotificationController extends ChangeNotifier {
   List<AppNotification> _notifications = [];
   bool _isListenerEnabled = false;
   bool _isLoading = true;
-  Timer? _pollTimer;
+  StreamSubscription<AppNotification>? _notificationSubscription;
   Timer? _cleanupTimer;
   bool _isCleaningUp = false;
 
@@ -288,25 +291,34 @@ class NotificationController extends ChangeNotifier {
     return null;
   }
 
-  void startPolling() {
-    _pollTimer?.cancel();
-    _checkPermissionAndFetch();
-    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      fetchNotifications();
-    });
+  /// Subscribes to the real-time notification EventChannel push stream.
+  void startListening() {
+    _checkPermission();
+    if (_notificationSubscription != null) return;
+    _notificationSubscription =
+        _bridge.notificationStream.listen(_processIncomingNotification);
   }
 
-  void stopPolling() {
-    _pollTimer?.cancel();
-    _pollTimer = null;
+  /// Stops listening to the notification EventChannel push stream.
+  void stopListening() {
+    _notificationSubscription?.cancel();
+    _notificationSubscription = null;
   }
+
+  /// Deprecated: Periodic timer polling removed in favor of EventChannel stream.
+  /// Delegates to [startListening] for backwards compatibility.
+  void startPolling() => startListening();
+
+  /// Deprecated: Periodic timer polling removed in favor of EventChannel stream.
+  /// Delegates to [stopListening] for backwards compatibility.
+  void stopPolling() => stopListening();
 
   bool _isDisposed = false;
 
   @override
   void dispose() {
     _isDisposed = true;
-    stopPolling();
+    stopListening();
     _cleanupTimer?.cancel();
     super.dispose();
   }
@@ -371,12 +383,47 @@ class NotificationController extends ChangeNotifier {
     }
   }
 
-  Future<void> _checkPermissionAndFetch() async {
+  Future<void> _checkPermission() async {
     _isListenerEnabled = await _bridge.isListenerEnabled();
+    notifyListeners();
+  }
+
+  Future<void> refresh() async {
+    await _checkPermission();
     await fetchNotifications();
   }
 
-  Future<void> refresh() => _checkPermissionAndFetch();
+  /// Processes an individual incoming notification pushed reactively via EventChannel stream.
+  Future<void> _processIncomingNotification(AppNotification raw) async {
+    try {
+      if (raw.isOngoing) return;
+
+      if (!_initialLoadCompleted) {
+        await _loadInitialNotifications();
+      }
+
+      final isDuplicate = _notifications.any((n) =>
+          n.packageName == raw.packageName &&
+          n.timestamp == raw.timestamp &&
+          n.title == raw.title &&
+          n.content == raw.content);
+
+      if (!isDuplicate) {
+        final analyzed = await _engine.analyze(raw);
+        await _storage.saveAll([analyzed]);
+        final loaded = await _storage.getAll();
+        final notifier = _container.read(reviewQueueProvider.notifier);
+        notifier.load(loaded);
+        await notifier.rescore();
+      }
+
+      _isLoading = false;
+      notifyListeners();
+    } catch (_) {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 
   Future<void> fetchNotifications() async {
     try {
