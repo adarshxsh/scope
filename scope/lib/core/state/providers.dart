@@ -12,12 +12,27 @@ enum QueueSortOrder {
 }
 
 class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
+  static const int maxInMemoryQueueCapacity = 500;
+
   final AttentionDatabase? _db;
   ReviewQueueNotifier([this._db]) : super([]);
 
+  List<AppNotification> _trimToCapacity(List<AppNotification> items) {
+    if (items.length <= maxInMemoryQueueCapacity) return items;
+    // Prioritize active notifications and newer items when capacity is reached
+    final sorted = List<AppNotification>.from(items);
+    sorted.sort((a, b) {
+      final aActive = a.state == ReviewState.ACTIVE ? 1 : 0;
+      final bActive = b.state == ReviewState.ACTIVE ? 1 : 0;
+      if (aActive != bActive) return bActive.compareTo(aActive);
+      return b.timestamp.compareTo(a.timestamp);
+    });
+    return sorted.take(maxInMemoryQueueCapacity).toList();
+  }
+
   /// Load a list of notifications directly (used on startup recovery).
   void load(List<AppNotification> list) {
-    state = list;
+    state = _trimToCapacity(list);
   }
 
   /// Add a notification to the review queue.
@@ -49,7 +64,7 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
         state: ReviewState.ACTIVE,
         lastUpdated: now,
       );
-      state = [...state, newItem];
+      state = _trimToCapacity([...state, newItem]);
     }
 
     // Persist to DB

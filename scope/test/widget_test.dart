@@ -6,7 +6,7 @@ import 'package:scope/main.dart';
 void main() {
   testWidgets('AttentionOSApp renders without crashing', (tester) async {
     await tester.pumpWidget(const AttentionOSApp());
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     // Verify home dashboard renders
     expect(find.text('Home'), findsOneWidget);

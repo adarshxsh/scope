@@ -50,7 +50,7 @@ class NotificationController extends ChangeNotifier {
     _engine.initialize();
 
     // Listen to changes in Riverpod's reviewQueueProvider to keep legacy notifier list in sync
-    _container.listen<List<AppNotification>>(reviewQueueProvider, (previous, next) {
+    _queueSubscription = _container.listen<List<AppNotification>>(reviewQueueProvider, (previous, next) {
       _notifications = next;
       notifyListeners();
     });
@@ -63,6 +63,7 @@ class NotificationController extends ChangeNotifier {
   final NotificationStorage _storage;
   final GhostAnalysisEngine _engine;
   final ProviderContainer _container;
+  ProviderSubscription<List<AppNotification>>? _queueSubscription;
 
   List<AppNotification> _notifications = [];
   bool _isListenerEnabled = false;
@@ -308,6 +309,8 @@ class NotificationController extends ChangeNotifier {
     _isDisposed = true;
     stopPolling();
     _cleanupTimer?.cancel();
+    _queueSubscription?.close();
+    _queueSubscription = null;
     super.dispose();
   }
 
@@ -319,18 +322,19 @@ class NotificationController extends ChangeNotifier {
   }
 
   Future<void> _loadInitialNotifications() async {
-    if (_initialLoadCompleted) return;
+    if (_initialLoadCompleted || _isDisposed) return;
     final loaded = await _storage.getAll();
-    if (_initialLoadCompleted) return;
+    if (_initialLoadCompleted || _isDisposed) return;
 
     if (_notifications.isEmpty) {
       _notifications = loaded;
     }
-    if (_notifications.isNotEmpty) {
+    if (_notifications.isNotEmpty && !_isDisposed) {
       final notifier = _container.read(reviewQueueProvider.notifier);
       notifier.load(_notifications);
       await notifier.rescore();
     }
+    if (_isDisposed) return;
     _initialLoadCompleted = true;
     _isLoading = false;
     notifyListeners();
@@ -347,7 +351,7 @@ class NotificationController extends ChangeNotifier {
 
   /// Cleans up old notifications (older than 7 days) and orphaned review queue items.
   Future<void> runBackgroundCleanup() async {
-    if (_isCleaningUp) return;
+    if (_isCleaningUp || _isDisposed) return;
 
     try {
       _isCleaningUp = true;
@@ -359,35 +363,60 @@ class NotificationController extends ChangeNotifier {
       }
 
       final cutoff = DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch;
+      if (_isDisposed) return;
       final db = _container.read(databaseProvider);
       
       // Execute the single-step atomic transaction
       await db.runSetBasedCleanup(cutoff);
 
-    } catch (_) {
-      // Silently handle errors to not interrupt UI
+      if (_isDisposed) return;
+
+      // Reload remaining notifications from storage to sync in-memory state with DB cleanup
+      final loaded = await _storage.getAll();
+      if (_isDisposed) return;
+
+      final hasChanged = loaded.length != _notifications.length ||
+          !listEquals(loaded, _notifications);
+
+      if (hasChanged) {
+        _notifications = loaded;
+        final notifier = _container.read(reviewQueueProvider.notifier);
+        notifier.load(loaded);
+        if (!_isDisposed) {
+          notifyListeners();
+        }
+      }
+      debugPrint('[Audit] Background cleanup successfully removed old notifications. Remaining items: ${loaded.length}');
+    } catch (e, stack) {
+      debugPrint('[Audit Error] Background cleanup failed: $e\n$stack');
     } finally {
       _isCleaningUp = false;
     }
   }
 
   Future<void> _checkPermissionAndFetch() async {
+    if (_isDisposed) return;
     _isListenerEnabled = await _bridge.isListenerEnabled();
+    if (_isDisposed) return;
     await fetchNotifications();
   }
 
   Future<void> refresh() => _checkPermissionAndFetch();
 
   Future<void> fetchNotifications() async {
+    if (_isDisposed) return;
     try {
       final newNotifications = await _bridge.getNotifications();
+      if (_isDisposed) return;
       final analyzed = <AppNotification>[];
 
       if (!_initialLoadCompleted) {
         await _loadInitialNotifications();
+        if (_isDisposed) return;
       }
 
       for (final raw in newNotifications) {
+        if (_isDisposed) return;
         // Ignore ongoing background/system notifications (e.g. charging, media playback)
         if (raw.isOngoing) continue;
 
@@ -409,19 +438,28 @@ class NotificationController extends ChangeNotifier {
         }
       }
 
+      if (_isDisposed) return;
+
       if (analyzed.isNotEmpty) {
         await _storage.saveAll(analyzed);
+        if (_isDisposed) return;
         final loaded = await _storage.getAll();
+        if (_isDisposed) return;
         final notifier = _container.read(reviewQueueProvider.notifier);
         notifier.load(loaded);
         await notifier.rescore();
       }
 
-      _isLoading = false;
-      notifyListeners();
-    } catch (_) {
-      _isLoading = false;
-      notifyListeners();
+      if (!_isDisposed) {
+        _isLoading = false;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('[Audit Error] Error fetching notifications: $e');
+      if (!_isDisposed) {
+        _isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
