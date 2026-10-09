@@ -1,8 +1,10 @@
 package com.scope.attentions
 
+import android.content.Context
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
@@ -17,13 +19,18 @@ import java.util.concurrent.ConcurrentLinkedQueue
  * Design decisions:
  *   - Uses a static ConcurrentLinkedQueue (thread-safe, lock-free) because
  *     the service runs in a separate context from MainActivity.
- *   - No heavy processing here — just capture and queue.
+ *   - Native filtering boundary: evaluates incoming StatusBarNotification objects
+ *     against blacklisted packages and excluded categories in SharedPreferences
+ *     before queue allocation (<1ms check).
  *   - Skips ongoing/persistent notifications by default (configurable).
  */
 class NotificationCollectorService : NotificationListenerService() {
 
     companion object {
         private const val TAG = "NotifCollector"
+        private const val PREFS_NAME = "scope_privacy_settings"
+        private const val KEY_BLACKLISTED_PACKAGES = "blacklisted_packages"
+        private const val KEY_EXCLUDED_CATEGORIES = "excluded_categories"
 
         /** Maximum allowed queue size to prevent unbounded memory growth. */
         const val MAX_QUEUE_SIZE = 100
@@ -33,6 +40,12 @@ class NotificationCollectorService : NotificationListenerService() {
 
         /** Thread-safe queue of captured notifications. */
         private val queue = ConcurrentLinkedQueue<NotificationData>()
+
+        /** Thread-safe set of blacklisted package names. */
+        private val blacklistedPackages: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
+        /** Thread-safe set of excluded notification categories. */
+        private val excludedCategories: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
         /** Counter for generating simple unique IDs within a session. */
         private var idCounter = 0L
@@ -100,15 +113,95 @@ class NotificationCollectorService : NotificationListenerService() {
          * Returns the current queue size (for diagnostics).
          */
         fun queueSize(): Int = queue.size
+
+        /**
+         * Updates the package blacklist set.
+         */
+        fun setPackageBlacklist(packages: Set<String>) {
+            blacklistedPackages.clear()
+            blacklistedPackages.addAll(packages)
+            Log.d(TAG, "Updated blacklisted packages: ${blacklistedPackages.size} packages")
+        }
+
+        /**
+         * Updates the category exclusion rules set.
+         */
+        fun setCategoryExclusionRules(categories: Set<String>) {
+            excludedCategories.clear()
+            excludedCategories.addAll(categories.map { it.lowercase() })
+            Log.d(TAG, "Updated excluded categories: ${excludedCategories.size} categories")
+        }
+
+        /**
+         * Checks if a package is blacklisted. Fast O(1) lookup.
+         */
+        fun isPackageBlacklisted(packageName: String): Boolean {
+            return blacklistedPackages.contains(packageName)
+        }
+
+        /**
+         * Checks if a notification category is excluded. Fast O(1) lookup.
+         */
+        fun isCategoryExcluded(category: String?): Boolean {
+            if (category == null) return false
+            val catLower = category.lowercase()
+            return excludedCategories.contains(catLower) ||
+                    excludedCategories.any { catLower.contains(it) }
+        }
+
+        /**
+         * Clears the static queue and filter sets (useful for testing).
+         */
+        fun resetForTesting() {
+            queue.clear()
+            blacklistedPackages.clear()
+            excludedCategories.clear()
+            idCounter = 0L
+        }
+
+        /**
+         * Synchronizes privacy settings from SharedPreferences.
+         */
+        fun loadPrivacyPreferences(context: Context) {
+            try {
+                val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                val packages = prefs.getStringSet(KEY_BLACKLISTED_PACKAGES, emptySet()) ?: emptySet()
+                val categories = prefs.getStringSet(KEY_EXCLUDED_CATEGORIES, emptySet()) ?: emptySet()
+                setPackageBlacklist(packages)
+                setCategoryExclusionRules(categories)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading privacy preferences from SharedPreferences", e)
+            }
+        }
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        loadPrivacyPreferences(this)
     }
 
     private fun addSbnToQueue(sbn: StatusBarNotification, now: Long = System.currentTimeMillis()) {
         try {
+            val packageName = sbn.packageName ?: "unknown"
+
+            // Native Boundary Check 1: Package Blacklist
+            if (isPackageBlacklisted(packageName)) {
+                Log.d(TAG, "Dropped blacklisted package notification: $packageName")
+                return
+            }
+
+            val category = sbn.notification?.category
+
+            // Native Boundary Check 2: Sensitive Category Exclusion
+            if (isCategoryExcluded(category)) {
+                Log.d(TAG, "Dropped excluded category notification: $category ($packageName)")
+                return
+            }
+
             val extras = sbn.notification.extras
             val title = extras?.getCharSequence("android.title")?.toString() ?: ""
             val text = extras?.getCharSequence("android.text")?.toString() ?: ""
             val isOngoing = sbn.isOngoing
-            val packageName = sbn.packageName ?: "unknown"
             val timestamp = if (sbn.postTime > 0) sbn.postTime else now
 
             val data = NotificationData(
@@ -117,7 +210,7 @@ class NotificationCollectorService : NotificationListenerService() {
                 title = title,
                 content = text,
                 timestamp = timestamp,
-                category = sbn.notification.category,
+                category = category,
                 isOngoing = isOngoing
             )
 
@@ -143,6 +236,7 @@ class NotificationCollectorService : NotificationListenerService() {
     override fun onListenerConnected() {
         super.onListenerConnected()
         Log.i(TAG, "NotificationCollectorService connected")
+        loadPrivacyPreferences(this)
         try {
             val activeNotifs = activeNotifications
             if (activeNotifs != null) {
@@ -161,3 +255,4 @@ class NotificationCollectorService : NotificationListenerService() {
         Log.w(TAG, "NotificationCollectorService disconnected")
     }
 }
+
