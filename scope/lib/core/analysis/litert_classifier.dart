@@ -5,12 +5,12 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/analysis_result.dart';
 import 'package:scope/core/analysis/notification_analyzer.dart';
 import 'package:scope/core/analysis/wordpiece_tokenizer.dart';
+import 'package:scope/core/analysis/model_manager.dart';
 
 /// Classifier using LiteRT (TensorFlow Lite) to classify text categories.
 class LiteRtClassifier implements NotificationAnalyzer {
-  Interpreter? _interpreter;
+  final ModelManager _modelManager = ModelManager();
   WordPieceTokenizer? _tokenizer;
-  bool _isModelLoaded = false;
 
   LiteRtClassifier() {
     _initialize();
@@ -23,13 +23,15 @@ class LiteRtClassifier implements NotificationAnalyzer {
       final lines = vocabStr.split('\n');
       _tokenizer = WordPieceTokenizer.fromLines(lines);
 
-      // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
-      _isModelLoaded = false;
+      // 2. Load Interpreter (checks dynamic category model storage first)
+      await _modelManager.loadInterpreter(
+        assetPath: 'assets/category_model.tflite',
+        modelName: 'category_classifier.tflite',
+      );
     } catch (e) {
       // Graceful degradation: Log and set flags so analyze runs in fallback mode
       // ignore: avoid_print
       print('LiteRtClassifier failed to initialize: $e');
-      _isModelLoaded = false;
 
       // Ensure tokenizer is loaded even if interpreter fails (so we can test tokenization in fallback)
       if (_tokenizer == null) {
@@ -42,7 +44,10 @@ class LiteRtClassifier implements NotificationAnalyzer {
   }
 
   /// Expose model loading status for diagnostics screen.
-  bool get isModelLoaded => _isModelLoaded;
+  bool get isModelLoaded => _modelManager.isModelLoaded;
+
+  /// Expose model source.
+  ModelSource get modelSource => _modelManager.modelSource;
 
   @override
   Future<AnalysisResult> analyze(AppNotification notification) async {
@@ -56,7 +61,8 @@ class LiteRtClassifier implements NotificationAnalyzer {
 
     final tokenIds = _tokenizer?.tokenize(combinedText) ?? List<int>.filled(64, 0);
 
-    if (!_isModelLoaded || _interpreter == null) {
+    final interpreter = _modelManager.interpreter;
+    if (!_modelManager.isModelLoaded || interpreter == null) {
       // Graceful fallback heuristic classifier
       final category = _runFallbackHeuristic(combinedText);
       return AnalysisResult(
@@ -80,7 +86,7 @@ class LiteRtClassifier implements NotificationAnalyzer {
       // Output logit tensor shape: [1, 5] (Promo, Social, System, Message, Finance)
       final output = List<double>.filled(5, 0.0).reshape([1, 5]);
 
-      _interpreter!.run(input, output);
+      interpreter.run(input, output);
 
       final scores = List<double>.from(output[0] as List);
       final softmaxScores = _softmax(scores);
