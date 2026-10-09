@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'dart:math' as math;
+import 'package:crypto/crypto.dart';
 import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
@@ -8,33 +10,97 @@ import 'package:scope/core/analysis/wordpiece_tokenizer.dart';
 
 /// Classifier using LiteRT (TensorFlow Lite) to classify text categories.
 class LiteRtClassifier implements NotificationAnalyzer {
+  static const String defaultModelHash =
+      '63b815ce62f895e48347b9f775c7f529ca56a86733bb3d2601e50889b73d87c6';
+  static const String defaultVocabHash =
+      '6229da7b5527533c901e57b32dafc3c6fd701114a407d1fe4f5da60af3b062c5';
+
+  final String expectedModelHash;
+  final String expectedVocabHash;
+  final String modelPath;
+  final String vocabPath;
+
   Interpreter? _interpreter;
   WordPieceTokenizer? _tokenizer;
   bool _isModelLoaded = false;
+  String _initializationSignal = 'Model asset invalid or uninitialized';
+  Future<void>? _initFuture;
 
-  LiteRtClassifier() {
+  LiteRtClassifier({
+    this.expectedModelHash = defaultModelHash,
+    this.expectedVocabHash = defaultVocabHash,
+    this.modelPath = 'assets/model.tflite',
+    this.vocabPath = 'assets/vocab.txt',
+  }) {
     _initialize();
   }
 
-  Future<void> _initialize() async {
+  Future<void> _initialize() {
+    _initFuture ??= _doInitialize();
+    return _initFuture!;
+  }
+
+  Future<void> _doInitialize() async {
     try {
-      // 1. Load Vocab
-      final vocabStr = await rootBundle.loadString('assets/vocab.txt');
+      // 1. Load and verify Vocab asset SHA-256
+      final vocabData = await rootBundle.load(vocabPath);
+      final vocabBytes = vocabData.buffer.asUint8List(
+        vocabData.offsetInBytes,
+        vocabData.lengthInBytes,
+      );
+      final computedVocabHash =
+          sha256.convert(vocabBytes).toString().toLowerCase();
+
+      if (computedVocabHash != expectedVocabHash.toLowerCase()) {
+        // ignore: avoid_print
+        print(
+          'LiteRtClassifier vocab asset checksum mismatch: expected $expectedVocabHash, got $computedVocabHash',
+        );
+        _initializationSignal =
+            'Vocab asset SHA-256 checksum mismatch (expected: $expectedVocabHash, got: $computedVocabHash)';
+        _isModelLoaded = false;
+        return;
+      }
+
+      final vocabStr = utf8.decode(vocabBytes);
       final lines = vocabStr.split('\n');
       _tokenizer = WordPieceTokenizer.fromLines(lines);
 
-      // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
-      _isModelLoaded = false;
+      // 2. Load and verify Model asset SHA-256
+      final modelData = await rootBundle.load(modelPath);
+      final modelBytes = modelData.buffer.asUint8List(
+        modelData.offsetInBytes,
+        modelData.lengthInBytes,
+      );
+      final computedModelHash =
+          sha256.convert(modelBytes).toString().toLowerCase();
+
+      if (computedModelHash != expectedModelHash.toLowerCase()) {
+        // ignore: avoid_print
+        print(
+          'LiteRtClassifier model asset checksum mismatch: expected $expectedModelHash, got $computedModelHash',
+        );
+        _initializationSignal =
+            'Model asset SHA-256 checksum mismatch (expected: $expectedModelHash, got: $computedModelHash)';
+        _isModelLoaded = false;
+        return;
+      }
+
+      // 3. Load Interpreter using verified model bytes
+      _interpreter = Interpreter.fromBuffer(modelBytes);
+      _isModelLoaded = true;
+      _initializationSignal = 'Model and vocab assets verified successfully';
     } catch (e) {
       // Graceful degradation: Log and set flags so analyze runs in fallback mode
       // ignore: avoid_print
       print('LiteRtClassifier failed to initialize: $e');
       _isModelLoaded = false;
+      _initializationSignal = 'LiteRtClassifier initialization error: $e';
 
       // Ensure tokenizer is loaded even if interpreter fails (so we can test tokenization in fallback)
       if (_tokenizer == null) {
         try {
-          final vocabStr = await rootBundle.loadString('assets/vocab.txt');
+          final vocabStr = await rootBundle.loadString(vocabPath);
           _tokenizer = WordPieceTokenizer.fromLines(vocabStr.split('\n'));
         } catch (_) {}
       }
@@ -50,11 +116,10 @@ class LiteRtClassifier implements NotificationAnalyzer {
     final combinedText = '${notification.title} ${notification.content}';
 
     // Ensure initialization finished
-    if (_tokenizer == null) {
-      await _initialize();
-    }
+    await _initialize();
 
-    final tokenIds = _tokenizer?.tokenize(combinedText) ?? List<int>.filled(64, 0);
+    final tokenIds =
+        _tokenizer?.tokenize(combinedText) ?? List<int>.filled(64, 0);
 
     if (!_isModelLoaded || _interpreter == null) {
       // Graceful fallback heuristic classifier
@@ -64,7 +129,7 @@ class LiteRtClassifier implements NotificationAnalyzer {
         score: 0.0, // Zero authentic model confidence for fallback heuristic
         engineName: 'litert_model (fallback)',
         matchedSignals: [
-          'Model asset invalid or uninitialized',
+          _initializationSignal,
           'Tokenizer parsed ${tokenIds.take(5).toList()}...'
         ],
         latencyMs: stopwatch.elapsedMilliseconds,
@@ -76,7 +141,7 @@ class LiteRtClassifier implements NotificationAnalyzer {
       // Run model inference
       // Assume input shape: [1, 64]
       final input = [tokenIds];
-      
+
       // Output logit tensor shape: [1, 5] (Promo, Social, System, Message, Finance)
       final output = List<double>.filled(5, 0.0).reshape([1, 5]);
 
@@ -121,19 +186,32 @@ class LiteRtClassifier implements NotificationAnalyzer {
 
   String _runFallbackHeuristic(String text) {
     final lower = text.toLowerCase();
-    if (lower.contains('otp') || lower.contains('verification') || lower.contains('code')) {
+    if (lower.contains('otp') ||
+        lower.contains('verification') ||
+        lower.contains('code')) {
       return 'sys';
     }
-    if (lower.contains('debited') || lower.contains('spent') || lower.contains('withdraw') || lower.contains('rs.') || lower.contains('inr')) {
+    if (lower.contains('debited') ||
+        lower.contains('spent') ||
+        lower.contains('withdraw') ||
+        lower.contains('rs.') ||
+        lower.contains('inr')) {
       return 'finance';
     }
-    if (lower.contains('appointment') || lower.contains('doctor') || lower.contains('medicine')) {
+    if (lower.contains('appointment') ||
+        lower.contains('doctor') ||
+        lower.contains('medicine')) {
       return 'health';
     }
-    if (lower.contains('sale') || lower.contains('discount') || lower.contains('promo') || lower.contains('off')) {
+    if (lower.contains('sale') ||
+        lower.contains('discount') ||
+        lower.contains('promo') ||
+        lower.contains('off')) {
       return 'promo';
     }
-    if (lower.contains('liked') || lower.contains('followed') || lower.contains('commented')) {
+    if (lower.contains('liked') ||
+        lower.contains('followed') ||
+        lower.contains('commented')) {
       return 'social';
     }
     if (lower.contains('deadline') || lower.contains('scholarship')) {
@@ -146,7 +224,9 @@ class LiteRtClassifier implements NotificationAnalyzer {
     double max = logits.reduce((curr, next) => curr > next ? curr : next);
     List<double> exps = logits.map((x) => math.exp(x - max)).toList();
     final sum = exps.reduce((curr, next) => curr + next);
-    if (sum == 0.0) return List<double>.filled(logits.length, 1.0 / logits.length);
+    if (sum == 0.0) {
+      return List<double>.filled(logits.length, 1.0 / logits.length);
+    }
     return exps.map((x) => x / sum).toList();
   }
 }
