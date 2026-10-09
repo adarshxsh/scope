@@ -73,7 +73,27 @@ class NotificationController extends ChangeNotifier {
 
   ReviewSessionStats sessionStats = ReviewSessionStats();
 
+  // Storage governance and telemetry settings
+  bool _telemetryEnabled = true;
+  int _retentionDays = 7; // 3, 7, 14, 30, 0 (0 = Unlimited)
+  int _maxNotificationQuota = 1000; // 250, 500, 1000, 2500, 0 (0 = Unlimited)
+
+  bool get telemetryEnabled => _telemetryEnabled;
+  int get retentionDays => _retentionDays;
+  int get maxNotificationQuota => _maxNotificationQuota;
+
+  int get totalStoredCount => _notifications.length;
+  double get estimatedDbSizeKb => _notifications.length * 1.5;
+  String get estimatedDbSizeString {
+    final kb = _notifications.length * 1.5;
+    if (kb >= 1024) {
+      return '${(kb / 1024).toStringAsFixed(2)} MB';
+    }
+    return '${kb.toStringAsFixed(1)} KB';
+  }
+
   FocusFilterType _filterType = FocusFilterType.none;
+
   FocusArea? _focusAreaFilter;
   bool _initialLoadCompleted = false;
 
@@ -318,10 +338,101 @@ class NotificationController extends ChangeNotifier {
     }
   }
 
+  Future<void> _loadSettings() async {
+    try {
+      final db = _container.read(databaseProvider);
+      final s = await db.appSettingsDao.getSettings();
+      if (_isDisposed) return;
+      _telemetryEnabled = s.telemetryEnabled;
+      _retentionDays = s.retentionDays;
+      _maxNotificationQuota = s.maxNotificationQuota;
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<void> setTelemetryEnabled(bool value) async {
+    _telemetryEnabled = value;
+    notifyListeners();
+    try {
+      final db = _container.read(databaseProvider);
+      await db.appSettingsDao.updateSettings(
+        AppSettingsTableCompanion(telemetryEnabled: Value(value)),
+      );
+    } catch (_) {}
+  }
+
+  Future<void> setRetentionDays(int days) async {
+    _retentionDays = days;
+    notifyListeners();
+    try {
+      final db = _container.read(databaseProvider);
+      await db.appSettingsDao.updateSettings(
+        AppSettingsTableCompanion(retentionDays: Value(days)),
+      );
+      if (!_isDisposed) {
+        await runBackgroundCleanup();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> setMaxNotificationQuota(int quota) async {
+    _maxNotificationQuota = quota;
+    notifyListeners();
+    try {
+      final db = _container.read(databaseProvider);
+      await db.appSettingsDao.updateSettings(
+        AppSettingsTableCompanion(maxNotificationQuota: Value(quota)),
+      );
+      if (!_isDisposed) {
+        await runBackgroundCleanup();
+      }
+    } catch (_) {}
+  }
+
+  /// Manually purges expired data and enforces item quotas immediately.
+  /// Returns the number of items purged.
+  Future<int> purgeExpiredDataNow() async {
+    if (_isCleaningUp || _isDisposed) return 0;
+    try {
+      _isCleaningUp = true;
+      final db = _container.read(databaseProvider);
+
+      int cutoff = 0;
+      if (_retentionDays > 0) {
+        cutoff = DateTime.now().subtract(Duration(days: _retentionDays)).millisecondsSinceEpoch;
+      }
+
+      final countBefore = await _storage.count;
+      if (_isDisposed) return 0;
+
+      await db.runSetBasedCleanup(cutoff, maxQuota: _maxNotificationQuota);
+      if (_isDisposed) return 0;
+
+      final loaded = await _storage.getAll();
+      if (_isDisposed) return 0;
+
+      _notifications = loaded;
+      final notifier = _container.read(reviewQueueProvider.notifier);
+      notifier.load(loaded);
+      notifyListeners();
+
+      final countAfter = loaded.length;
+      final purged = countBefore - countAfter;
+      return purged < 0 ? 0 : purged;
+    } catch (_) {
+      return 0;
+    } finally {
+      _isCleaningUp = false;
+    }
+  }
+
   Future<void> _loadInitialNotifications() async {
-    if (_initialLoadCompleted) return;
+    if (_initialLoadCompleted || _isDisposed) return;
+    await _loadSettings();
+    if (_isDisposed) return;
+
     final loaded = await _storage.getAll();
-    if (_initialLoadCompleted) return;
+    if (_initialLoadCompleted || _isDisposed) return;
 
     if (_notifications.isEmpty) {
       _notifications = loaded;
@@ -330,6 +441,7 @@ class NotificationController extends ChangeNotifier {
       final notifier = _container.read(reviewQueueProvider.notifier);
       notifier.load(_notifications);
       await notifier.rescore();
+      if (_isDisposed) return;
     }
     _initialLoadCompleted = true;
     _isLoading = false;
@@ -345,9 +457,9 @@ class NotificationController extends ChangeNotifier {
     });
   }
 
-  /// Cleans up old notifications (older than 7 days) and orphaned review queue items.
+  /// Cleans up old notifications based on retention settings and item quotas, and orphaned review queue items.
   Future<void> runBackgroundCleanup() async {
-    if (_isCleaningUp) return;
+    if (_isCleaningUp || _isDisposed) return;
 
     try {
       _isCleaningUp = true;
@@ -358,11 +470,29 @@ class NotificationController extends ChangeNotifier {
         if (_isDisposed) return;
       }
 
-      final cutoff = DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch;
       final db = _container.read(databaseProvider);
-      
+      final s = await db.appSettingsDao.getSettings();
+      if (_isDisposed) return;
+
+      _telemetryEnabled = s.telemetryEnabled;
+      _retentionDays = s.retentionDays;
+      _maxNotificationQuota = s.maxNotificationQuota;
+
+      int cutoff = 0;
+      if (_retentionDays > 0) {
+        cutoff = DateTime.now().subtract(Duration(days: _retentionDays)).millisecondsSinceEpoch;
+      }
+
       // Execute the single-step atomic transaction
-      await db.runSetBasedCleanup(cutoff);
+      await db.runSetBasedCleanup(cutoff, maxQuota: _maxNotificationQuota);
+      if (_isDisposed) return;
+
+      final loaded = await _storage.getAll();
+      if (_isDisposed) return;
+
+      _notifications = loaded;
+      _container.read(reviewQueueProvider.notifier).load(loaded);
+      notifyListeners();
 
     } catch (_) {
       // Silently handle errors to not interrupt UI
@@ -370,6 +500,8 @@ class NotificationController extends ChangeNotifier {
       _isCleaningUp = false;
     }
   }
+
+
 
   Future<void> _checkPermissionAndFetch() async {
     _isListenerEnabled = await _bridge.isListenerEnabled();
