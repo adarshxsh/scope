@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from typing import Any, Iterable
@@ -12,9 +13,42 @@ def ensure_dir(path: Path) -> Path:
     return path
 
 
+def write_sha256_sidecar(path: Path) -> Path:
+    sidecar_path = path.parent / f"{path.name}.sha256"
+    hasher = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(65536), b""):
+            hasher.update(chunk)
+    digest = hasher.hexdigest()
+    sidecar_path.write_text(f"{digest}\n", encoding="utf-8")
+    return sidecar_path
+
+
+def verify_sha256_sidecar(path: Path) -> None:
+    sidecar_path = path.parent / f"{path.name}.sha256"
+    if not sidecar_path.exists():
+        raise ValueError(f"Checksum sidecar missing for dataset: {sidecar_path}")
+
+    hasher = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(65536), b""):
+            hasher.update(chunk)
+    computed = hasher.hexdigest().lower()
+
+    content = sidecar_path.read_text(encoding="utf-8").strip()
+    if not content:
+        raise ValueError(f"Checksum sidecar file is empty: {sidecar_path}")
+    expected = content.split()[0].lower()
+
+    if computed != expected:
+        raise ValueError(f"Checksum mismatch for dataset {path}: expected {expected}, got {computed}")
+
+
 def read_jsonl(path: Path) -> list[dict[str, Any]]:
     if not path.exists():
         raise FileNotFoundError(f"Dataset not found: {path}")
+
+    verify_sha256_sidecar(path)
 
     records: list[dict[str, Any]] = []
     with path.open("r", encoding="utf-8") as handle:
@@ -40,6 +74,7 @@ def write_json(path: Path, value: Any) -> None:
     with path.open("w", encoding="utf-8") as handle:
         json.dump(value, handle, indent=2, sort_keys=True)
         handle.write("\n")
+    write_sha256_sidecar(path)
 
 
 def write_lines(path: Path, lines: Iterable[str]) -> None:

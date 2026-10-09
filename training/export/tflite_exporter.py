@@ -8,7 +8,7 @@ from typing import Callable
 import numpy as np
 import tensorflow as tf
 
-from training.utils.io import ensure_dir
+from training.utils.io import ensure_dir, write_json, write_sha256_sidecar
 
 
 def export_saved_model(model: tf.keras.Model, export_dir: Path) -> Path:
@@ -28,6 +28,15 @@ def export_float32_tflite(
     converter = tf.lite.TFLiteConverter.from_saved_model(str(saved_model_dir))
     model_bytes = converter.convert()
     output_path.write_bytes(model_bytes)
+    write_sha256_sidecar(output_path)
+    return output_path
+
+
+def export_evaluation_metrics(
+    metrics: dict,
+    output_path: Path,
+) -> Path:
+    write_json(output_path, metrics)
     return output_path
 
 

@@ -5,6 +5,8 @@ import json
 from pathlib import Path
 from typing import Iterable
 
+from export.jsonl import write_sha256_sidecar
+
 
 FIELDNAMES = [
     "id",
@@ -39,4 +41,5 @@ def write_csv(path: Path, records: Iterable[dict]) -> int:
             row["android"] = json.dumps(row.get("android", {}), ensure_ascii=False)
             writer.writerow(row)
             count += 1
+    write_sha256_sidecar(path)
     return count

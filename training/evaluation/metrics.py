@@ -16,7 +16,7 @@ from sklearn.metrics import (
     r2_score,
 )
 
-from training.utils.io import ensure_dir
+from training.utils.io import ensure_dir, write_sha256_sidecar
 
 
 def regression_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
@@ -45,6 +45,7 @@ def write_history_csv(history: Any, output_path: Path) -> None:
             for key in keys:
                 row[key] = history_dict[key][epoch]
             writer.writerow(row)
+    write_sha256_sidecar(output_path)
 
 
 def write_confusion_reports(
@@ -81,4 +82,5 @@ def write_confusion_reports(
         }
         path = output_dir / f"{label_name}_confusion_report.json"
         path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        write_sha256_sidecar(path)
 

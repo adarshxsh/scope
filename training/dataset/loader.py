@@ -9,11 +9,14 @@ from typing import Any
 import numpy as np
 
 from training.config import FEATURE_VECTOR_SIZE
+from training.utils.io import verify_sha256_sidecar
 
 
 def load_jsonl_dataset(path: Path) -> list[dict[str, Any]]:
     if not path.exists():
         raise FileNotFoundError(f"Dataset not found: {path}")
+
+    verify_sha256_sidecar(path)
 
     records: list[dict[str, Any]] = []
     with path.open("r", encoding="utf-8") as handle:
