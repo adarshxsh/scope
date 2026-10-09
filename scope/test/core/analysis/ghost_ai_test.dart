@@ -1,6 +1,23 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
 import 'package:scope/core/models/notification_model.dart';
+
+class FailingInterpreter extends Fake implements Interpreter {
+  @override
+  void run(Object input, Object output) {
+    throw Exception('Simulated TFLite runtime exception');
+  }
+}
+
+class NonFiniteOutputInterpreter extends Fake implements Interpreter {
+  @override
+  void run(Object input, Object output) {
+    if (output is List && output.isNotEmpty && output[0] is List && (output[0] as List).isNotEmpty) {
+      output[0][0] = double.nan;
+    }
+  }
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -231,6 +248,62 @@ void main() {
 
         final result = await GhostAI.predict(activeTask);
         expect(result.reviewScore, isPositive); // Not overridden
+      });
+    });
+
+    group('Interpreter Error Handling & Sanitization', () {
+      tearDown(() {
+        GhostAI.instance.interpreterForTesting = null;
+      });
+
+      test('catches runtime exception during interpreter.run and falls back gracefully', () async {
+        GhostAI.instance.interpreterForTesting = FailingInterpreter();
+
+        final notif = AppNotification(
+          id: 'test-failing-interpreter',
+          packageName: 'com.whatsapp',
+          title: 'WhatsApp Code',
+          content: 'Your verification code is 882715. Valid for 10 minutes.',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        final result = await GhostAI.predict(notif);
+
+        expect(result.reviewScore, isNotNull);
+        expect(result.predictedScore, equals(1.0)); // Fallback heuristic for OTP
+      });
+
+      test('catches non-finite score output and falls back gracefully', () async {
+        GhostAI.instance.interpreterForTesting = NonFiniteOutputInterpreter();
+
+        final notif = AppNotification(
+          id: 'test-non-finite',
+          packageName: 'com.whatsapp',
+          title: 'WhatsApp Code',
+          content: 'Your verification code is 882715. Valid for 10 minutes.',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        final result = await GhostAI.predict(notif);
+
+        expect(result.reviewScore, isNotNull);
+        expect(result.predictedScore, equals(1.0)); // Fallback heuristic for OTP
+      });
+
+      test('sanitizes input feature vector containing NaN or Infinity', () async {
+        final notif = AppNotification(
+          id: 'test-sanitization',
+          packageName: 'com.whatsapp',
+          title: 'WhatsApp Code',
+          content: 'Your verification code is 882715.',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        final result = await GhostAI.predict(notif);
+
+        for (final val in result.featureVector) {
+          expect(val.isFinite, isTrue);
+        }
       });
     });
   });
