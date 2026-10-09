@@ -45,6 +45,11 @@ class DriftNotificationStorage implements NotificationStorage {
     return await _db.notificationDao.getCount();
   }
 
+  @override
+  Future<int> getStorageUsageBytes() async {
+    return await _db.getStorageUsageBytes();
+  }
+
   NotificationEntry _toEntry(AppNotification n) {
     return NotificationEntry(
       id: n.id,
