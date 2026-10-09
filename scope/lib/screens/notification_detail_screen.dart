@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/extracted_features.dart';
+import 'package:scope/core/analysis/feature_attribution.dart';
 import 'package:scope/core/models/notification_model.dart';
+
 import 'package:scope/core/state/notification_controller.dart';
 import 'package:scope/core/utils/smart_actions.dart';
 import 'package:scope/theme/app_colors.dart';
@@ -144,13 +146,13 @@ class NotificationDetailScreen extends StatelessWidget {
                               if (features.hasDeadline)
                                 const ScopeInfoRow(label: 'Deadline', value: 'Detected'),
                               if (features.amount != null)
-                                ScopeInfoRow(label: 'Amount', value: '₹${features.amount}'),
+                                const ScopeInfoRow(label: 'Amount', value: '₹[REDACTED_AMOUNT]'),
                               if (features.urls.isNotEmpty)
                                 ScopeInfoRow(label: 'Website', value: features.urls.first),
                               if (features.phoneNumbers.isNotEmpty)
-                                ScopeInfoRow(label: 'Phone', value: features.phoneNumbers.first),
+                                const ScopeInfoRow(label: 'Phone', value: '[REDACTED_PHONE]'),
                               if (features.emails.isNotEmpty)
-                                ScopeInfoRow(label: 'Email', value: features.emails.first),
+                                const ScopeInfoRow(label: 'Email', value: '[REDACTED_EMAIL]'),
                               ScopeInfoRow(label: 'Organization', value: notification.packageName),
                               if (!features.hasDeadline &&
                                   features.amount == null &&
@@ -161,6 +163,10 @@ class NotificationDetailScreen extends StatelessWidget {
                             ],
                           ),
                         ),
+                        const SizedBox(height: AppSpacing.lg),
+                        _buildFeatureAttributionSection(context, theme),
+                        const SizedBox(height: AppSpacing.lg),
+                        _buildScoreEvolutionSection(context, theme),
                       ],
                     ),
                   ),
@@ -172,6 +178,102 @@ class NotificationDetailScreen extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildFeatureAttributionSection(BuildContext context, ThemeData theme) {
+    final rawAttributions = notification.extractedFeatures?['featureAttributions'] as List?;
+    final attributions = rawAttributions != null
+        ? rawAttributions
+            .whereType<Map<String, dynamic>>()
+            .map((r) => FeatureAttribution.fromMap(r))
+            .toList()
+        : <FeatureAttribution>[];
+
+    if (attributions.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return _DetailSection(
+      title: 'Feature Attribution Breakdown',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: attributions.map((attr) {
+          final isPositive = attr.direction == 'positive';
+          final color = isPositive ? Colors.green : (attr.direction == 'negative' ? Colors.redAccent : Colors.grey);
+          final icon = isPositive ? Icons.arrow_upward : (attr.direction == 'negative' ? Icons.arrow_downward : Icons.remove);
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4.0),
+            child: Row(
+              children: [
+                Icon(icon, size: 16, color: color),
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(attr.displayName, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold)),
+                      if (attr.description.isNotEmpty)
+                        Text(attr.description, style: theme.textTheme.bodySmall),
+                    ],
+                  ),
+                ),
+                Text(
+                  '${isPositive ? "+" : ""}${(attr.weight * 100).toStringAsFixed(0)}%',
+                  style: theme.textTheme.labelMedium?.copyWith(color: color, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildScoreEvolutionSection(BuildContext context, ThemeData theme) {
+    final rawEvolution = notification.extractedFeatures?['scoreEvolution'] as List?;
+    final steps = rawEvolution != null
+        ? rawEvolution
+            .whereType<Map<String, dynamic>>()
+            .map((r) => ScoreEvolutionStep.fromMap(r))
+            .toList()
+        : <ScoreEvolutionStep>[];
+
+    if (steps.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return _DetailSection(
+      title: 'Score Evolution Trace',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: steps.map((step) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(step.stage, style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold)),
+                    Text(
+                      '${(step.scoreBefore * 100).toStringAsFixed(0)}% → ${(step.scoreAfter * 100).toStringAsFixed(0)}%',
+                      style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                Text(step.action, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.primary)),
+                if (step.details.isNotEmpty)
+                  Text(step.details, style: theme.textTheme.bodySmall),
+                const Divider(height: 12),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
 
   void _handleAction(BuildContext context, SmartAction action) {
     bool shouldPop = false;
