@@ -5,6 +5,8 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/utils/pii_redactor.dart';
+import 'package:scope/core/utils/timestamp_utils.dart';
+import 'package:scope/core/utils/audit_logger.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -79,15 +81,24 @@ class GhostAI {
   }
 
   /// Public API: resolves look-again priority score for a notification.
-  static Future<GhostAIResult> predict(AppNotification notification) async {
-    return instance._predict(notification);
+  static Future<GhostAIResult> predict(
+    AppNotification notification, {
+    DateTime? now,
+  }) async {
+    return instance._predict(notification, now: now);
   }
 
-  Future<GhostAIResult> _predict(AppNotification notification) async {
+  Future<GhostAIResult> _predict(
+    AppNotification notification, {
+    DateTime? now,
+  }) async {
     final stopwatch = Stopwatch()..start();
 
     // 1. Feature extraction using the existing FeatureExtractor
-    final featureVector = FeatureExtractor.extractFromAppNotification(notification);
+    final featureVector = FeatureExtractor.extractFromAppNotification(
+      notification,
+      now: now,
+    );
 
     // 2. Model inference
     double predictedScore = 0.0;
@@ -151,9 +162,9 @@ class GhostAI {
     final hasOtp = featureVector[11] == 1.0; // contains_otp
     final hasDeadline = featureVector[27] == 1.0; // contains_deadline
 
-    if (hasOtp && _isOtpExpired(notification)) {
+    if (hasOtp && _isOtpExpired(notification, now: now)) {
       finalScore = 0.0;
-    } else if (hasDeadline && _isReminderExpired(notification)) {
+    } else if (hasDeadline && _isReminderExpired(notification, now: now)) {
       finalScore = 0.0;
     } else if (_isDuplicate(notification)) {
       finalScore = 0.0;
@@ -193,69 +204,176 @@ class GhostAI {
   }
 
   /// Parses Validity period of OTP and returns whether it is expired.
-  bool _isOtpExpired(AppNotification notification) {
-    final lower = notification.content.toLowerCase();
-    final regex = RegExp(
-      r'(?:valid|expires|active)\s+(?:for|in)?\s*(\d+)\s*(minute|minutes|min|mins|second|seconds|sec|secs)',
-      caseSensitive: false,
-    );
-    final match = regex.firstMatch(lower);
-    int durationMs = 600000; // Default 10 minutes
+  bool _isOtpExpired(AppNotification notification, {DateTime? now}) {
+    try {
+      final lower = '${notification.title} ${notification.content}'.toLowerCase();
+      final regex = RegExp(
+        r'(?:valid|expires|active)\s+(?:for|in)?\s*(\d+)\s*(minute|minutes|min|mins|second|seconds|sec|secs)',
+        caseSensitive: false,
+      );
+      final match = regex.firstMatch(lower);
+      int durationMs = 600000; // Default 10 minutes
 
-    if (match != null) {
-      final amount = int.tryParse(match.group(1) ?? '');
-      final unit = match.group(2)?.toLowerCase() ?? '';
-      if (amount != null) {
-        if (unit.startsWith('sec')) {
-          durationMs = amount * 1000;
-        } else {
-          durationMs = amount * 60 * 1000;
+      if (match != null) {
+        final amount = int.tryParse(match.group(1) ?? '');
+        final unit = match.group(2)?.toLowerCase() ?? '';
+        if (amount != null && amount > 0) {
+          if (unit.startsWith('sec')) {
+            durationMs = amount * 1000;
+          } else {
+            durationMs = amount * 60 * 1000;
+          }
         }
       }
+
+      final elapsedMs = TimestampUtils.getElapsedMs(notification.timestamp, now: now);
+      final isExpired = elapsedMs > durationMs;
+
+      ExpiryAuditLogger.instance.logExpiryEvaluation(
+        notificationId: notification.id,
+        type: 'OTP',
+        isExpired: isExpired,
+        reason: 'Elapsed: ${elapsedMs ~/ 1000}s, Duration: ${durationMs ~/ 1000}s',
+      );
+
+      return isExpired;
+    } catch (e) {
+      ExpiryAuditLogger.instance.logFallbackRecovery(
+        notificationId: notification.id,
+        component: 'GhostAI._isOtpExpired',
+        error: e.toString(),
+        fallbackAction: 'Assumed not expired',
+      );
+      return false;
+    }
+  }
+
+  /// Checks if the notification is a candidate for relative reminder expiry logic.
+  /// Prevents false-positive expiry evaluations on promotional, social, or general notifications.
+  bool _isReminderCandidate(AppNotification notification, String combinedText) {
+    final pkg = notification.packageName.toLowerCase();
+    final cat = (notification.classifiedCategory ?? notification.category ?? '').toLowerCase();
+
+    final isCalendarApp = pkg.contains('calendar') ||
+        pkg.contains('reminder') ||
+        pkg.contains('task') ||
+        pkg.contains('todo') ||
+        pkg.contains('keep') ||
+        pkg.contains('jira') ||
+        pkg.contains('clock') ||
+        pkg.contains('alarm') ||
+        pkg.contains('meet') ||
+        pkg.contains('zoom') ||
+        pkg.contains('teams');
+
+    final isReminderCategory = cat == 'reminder' ||
+        cat == 'event' ||
+        cat == 'alarm' ||
+        cat == 'task' ||
+        cat == 'calendar' ||
+        cat == 'work';
+
+    final hasReminderKeywords = combinedText.contains('reminder') ||
+        combinedText.contains('meeting') ||
+        combinedText.contains('standup') ||
+        combinedText.contains('appointment') ||
+        combinedText.contains('schedule') ||
+        combinedText.contains('deadline') ||
+        combinedText.contains('due') ||
+        combinedText.contains('starts in') ||
+        combinedText.contains('begins in') ||
+        combinedText.contains('valid until') ||
+        combinedText.contains('expires in') ||
+        combinedText.contains('payment due');
+
+    final isPromo = cat == 'promotions' ||
+        cat == 'promo' ||
+        pkg.contains('promo') ||
+        combinedText.contains('sale') ||
+        combinedText.contains('discount') ||
+        combinedText.contains('coupon') ||
+        combinedText.contains('off on');
+
+    if (isPromo && !hasReminderKeywords) {
+      return false;
     }
 
-    final elapsedMs = DateTime.now().millisecondsSinceEpoch - notification.timestamp;
-    return elapsedMs > durationMs;
+    return isCalendarApp || isReminderCategory || hasReminderKeywords;
   }
 
   /// Parses Relative deadline from text and returns whether it has expired.
-  bool _isReminderExpired(AppNotification notification) {
-    final lower = notification.content.toLowerCase();
-    final relativeRegex = RegExp(
-      r'\bin\s+(\d{1,4})\s*(minute|minutes|min|mins|hour|hours|hr|hrs|day|days)\b',
-      caseSensitive: false,
-    );
-    final match = relativeRegex.firstMatch(lower);
+  bool _isReminderExpired(AppNotification notification, {DateTime? now}) {
+    try {
+      final lowerContent = notification.content.toLowerCase();
+      final lowerTitle = notification.title.toLowerCase();
+      final combined = '$lowerTitle $lowerContent';
 
-    if (match != null) {
-      final amount = int.tryParse(match.group(1) ?? '');
-      final unit = match.group(2)?.toLowerCase() ?? '';
-      if (amount != null) {
-        int durationMs = 0;
-        if (unit.startsWith('min')) {
-          durationMs = amount * 60 * 1000;
-        } else if (unit.startsWith('hour') || unit.startsWith('hr')) {
-          durationMs = amount * 60 * 60 * 1000;
-        } else {
-          durationMs = amount * 24 * 60 * 60 * 1000;
+      if (!_isReminderCandidate(notification, combined)) {
+        return false;
+      }
+
+      final relativeRegex = RegExp(
+        r'\bin\s+(\d{1,4})\s*(minute|minutes|min|mins|hour|hours|hr|hrs|day|days)\b',
+        caseSensitive: false,
+      );
+      final match = relativeRegex.firstMatch(combined);
+
+      if (match != null) {
+        final amount = int.tryParse(match.group(1) ?? '');
+        final unit = match.group(2)?.toLowerCase() ?? '';
+        if (amount != null && amount > 0) {
+          int durationMs = 0;
+          if (unit.startsWith('min')) {
+            durationMs = amount * 60 * 1000;
+          } else if (unit.startsWith('hour') || unit.startsWith('hr')) {
+            durationMs = amount * 60 * 60 * 1000;
+          } else {
+            durationMs = amount * 24 * 60 * 60 * 1000;
+          }
+          final elapsedMs = TimestampUtils.getElapsedMs(notification.timestamp, now: now);
+          final isExpired = elapsedMs > durationMs;
+
+          ExpiryAuditLogger.instance.logExpiryEvaluation(
+            notificationId: notification.id,
+            type: 'RelativeReminder',
+            isExpired: isExpired,
+            reason: 'Elapsed: ${elapsedMs ~/ 1000}s, Duration: ${durationMs ~/ 1000}s',
+          );
+
+          return isExpired;
         }
-        final elapsedMs = DateTime.now().millisecondsSinceEpoch - notification.timestamp;
-        return elapsedMs > durationMs;
       }
-    }
 
-    // Expiry check for calendar days (today/tonight/tomorrow in past)
-    if (lower.contains('today') || lower.contains('tonight')) {
-      final notifDate = DateTime.fromMillisecondsSinceEpoch(notification.timestamp);
-      final nowDate = DateTime.now();
-      if (notifDate.year < nowDate.year ||
-          (notifDate.year == nowDate.year && notifDate.month < nowDate.month) ||
-          (notifDate.year == nowDate.year && notifDate.month == nowDate.month && notifDate.day < nowDate.day)) {
-        return true;
+      // Expiry check for calendar days (today/tonight in past)
+      if (combined.contains('today') || combined.contains('tonight')) {
+        final normMillis = TimestampUtils.normalizeToMillis(notification.timestamp, now: now);
+        final notifDate = DateTime.fromMillisecondsSinceEpoch(normMillis);
+        final referenceNow = now ?? DateTime.now();
+        final isPastDay = notifDate.year < referenceNow.year ||
+            (notifDate.year == referenceNow.year && notifDate.month < referenceNow.month) ||
+            (notifDate.year == referenceNow.year && notifDate.month == referenceNow.month && notifDate.day < referenceNow.day);
+
+        if (isPastDay) {
+          ExpiryAuditLogger.instance.logExpiryEvaluation(
+            notificationId: notification.id,
+            type: 'CalendarDayReminder',
+            isExpired: true,
+            reason: 'Notif date (${notifDate.toIso8601String()}) is before now (${referenceNow.toIso8601String()})',
+          );
+          return true;
+        }
       }
-    }
 
-    return false;
+      return false;
+    } catch (e) {
+      ExpiryAuditLogger.instance.logFallbackRecovery(
+        notificationId: notification.id,
+        component: 'GhostAI._isReminderExpired',
+        error: e.toString(),
+        fallbackAction: 'Assumed not expired',
+      );
+      return false;
+    }
   }
 
   /// Returns whether this notification is a duplicate within the sliding window.

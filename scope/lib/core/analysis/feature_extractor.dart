@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:scope/core/analysis/extracted_features.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/utils/timestamp_utils.dart';
 
 int _asInt(Object? value) {
   if (value is int) return value;
@@ -538,6 +539,7 @@ class FeatureExtractor {
     AppNotification notification, {
     String appName = '',
     AndroidNotificationMetadata? android,
+    DateTime? now,
   }) {
     return extractVector(
       NotificationFeatureInput.fromAppNotification(
@@ -545,11 +547,15 @@ class FeatureExtractor {
         appName: appName,
         android: android,
       ),
+      now: now,
     ).toList();
   }
 
   /// Extracts a fixed-width numerical feature vector from normalized input.
-  static FeatureVector extractVector(NotificationFeatureInput notification) {
+  static FeatureVector extractVector(
+    NotificationFeatureInput notification, {
+    DateTime? now,
+  }) {
     final title = normalize(notification.title);
     final body = normalize(notification.body);
     final combined = normalize('$title $body');
@@ -647,7 +653,11 @@ class FeatureExtractor {
       _bool(isPromotion),
       _bool(_isDuplicateCandidate(lower)),
       _bool(containsDeadline),
-      _deadlineMinutesRemaining(lower).toDouble(),
+      _deadlineMinutesRemaining(
+        lower,
+        timestampMillis: notification.timestampMillis,
+        now: now,
+      ).toDouble(),
       amount,
       (_currencyIds[currency] ?? 0).toDouble(),
       (otp?.length ?? 0).toDouble(),
@@ -740,7 +750,11 @@ class FeatureExtractor {
     return words.every((word) => RegExp(r'^[A-Z][a-z]+$').hasMatch(word));
   }
 
-  static int _deadlineMinutesRemaining(String lower) {
+  static int _deadlineMinutesRemaining(
+    String lower, {
+    int? timestampMillis,
+    DateTime? now,
+  }) {
     final match = _relativeDeadlineRegex.firstMatch(lower);
     if (match == null) {
       if (lower.contains('today') || lower.contains('tonight')) return 0;
@@ -749,9 +763,25 @@ class FeatureExtractor {
     }
     final amount = int.tryParse(match.group(1) ?? '') ?? 0;
     final unit = match.group(2) ?? '';
-    if (unit.startsWith('min')) return amount;
-    if (unit.startsWith('hour') || unit.startsWith('hr')) return amount * 60;
-    return amount * 1440;
+    int initialMinutes = 0;
+    if (unit.startsWith('min')) {
+      initialMinutes = amount;
+    } else if (unit.startsWith('hour') || unit.startsWith('hr')) {
+      initialMinutes = amount * 60;
+    } else {
+      initialMinutes = amount * 1440;
+    }
+
+    if (timestampMillis != null) {
+      final refNowMs = (now ?? DateTime.now()).millisecondsSinceEpoch;
+      final normTimestamp = TimestampUtils.normalizeToMillis(timestampMillis, now: now);
+      if (now != null || (refNowMs - normTimestamp).abs() <= 86400000) {
+        final elapsedMinutes = TimestampUtils.getElapsedMs(timestampMillis, now: now) ~/ 60000;
+        return math.max(0, initialMinutes - elapsedMinutes);
+      }
+    }
+
+    return initialMinutes;
   }
 
   static int _categoryId(String category, String lower) {
