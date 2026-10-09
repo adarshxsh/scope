@@ -79,21 +79,27 @@ class GhostAI {
   }
 
   /// Public API: resolves look-again priority score for a notification.
-  static Future<GhostAIResult> predict(AppNotification notification) async {
-    return instance._predict(notification);
+  static Future<GhostAIResult> predict(
+    AppNotification notification, {
+    bool isLowBattery = false,
+  }) async {
+    return instance._predict(notification, isLowBattery: isLowBattery);
   }
 
-  Future<GhostAIResult> _predict(AppNotification notification) async {
+  Future<GhostAIResult> _predict(
+    AppNotification notification, {
+    bool isLowBattery = false,
+  }) async {
     final stopwatch = Stopwatch()..start();
 
     // 1. Feature extraction using the existing FeatureExtractor
     final featureVector = FeatureExtractor.extractFromAppNotification(notification);
 
-    // 2. Model inference
+    // 2. Model inference (bypassed on low battery to preserve energy)
     double predictedScore = 0.0;
     int inferenceTimeUs = 0;
 
-    if (_interpreter != null) {
+    if (!isLowBattery && _interpreter != null) {
       final input = [featureVector];
       final output = List<double>.filled(1, 0.0).reshape([1, 1]);
 
@@ -105,7 +111,7 @@ class GhostAI {
       // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
       predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
     } else {
-      // Heuristic fallback if model not loaded
+      // Heuristic fallback if model not loaded or low battery state active
       predictedScore = _heuristicLookAgainScore(featureVector);
     }
 
@@ -320,13 +326,14 @@ class GhostAI {
     return false;
   }
 
-  /// Outputs structured AI execution reports in debug mode.
+  /// Outputs structured AI execution reports in debug mode without cleartext PII.
   void _logStructured(AppNotification notification, GhostAIResult result) {
     final redactedTitle = PiiRedactor.redactTitle(notification.title);
     final redactedContent = PiiRedactor.redactContent(notification.content);
     debugPrint('=== GHOST AI INFERENCE REPORT ===');
     debugPrint('Notification: "$redactedTitle" - "$redactedContent"');
     debugPrint('Package: ${notification.packageName}');
+    debugPrint('Title Length: ${notification.title.length}, Content Length: ${notification.content.length}');
     debugPrint('Feature Vector (First 15): ${result.featureVector.take(15).toList()}...');
     debugPrint('Inference Time: ${result.inferenceTimeUs} us');
     debugPrint('Raw Predicted Score: ${(result.predictedScore * 100).toStringAsFixed(2)}');
