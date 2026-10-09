@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="database" path="attention_os.db" />
+        <exclude domain="database" path="attention_os.db-journal" />
+        <exclude domain="database" path="attention_os.db-wal" />
+        <exclude domain="database" path="attention_os.db-shm" />
+        <exclude domain="file" path="rlhf_rules.json" />
+        <exclude domain="file" path="attention_os.db" />
+        <exclude domain="database" path="." />
+        <exclude domain="file" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="database" path="attention_os.db" />
+        <exclude domain="database" path="attention_os.db-journal" />
+        <exclude domain="database" path="attention_os.db-wal" />
+        <exclude domain="database" path="attention_os.db-shm" />
+        <exclude domain="file" path="rlhf_rules.json" />
+        <exclude domain="file" path="attention_os.db" />
+        <exclude domain="database" path="." />
+        <exclude domain="file" path="." />
+    </device-transfer>
+</data-extraction-rules>
