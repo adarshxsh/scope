@@ -86,101 +86,115 @@ class GhostAI {
   Future<GhostAIResult> _predict(AppNotification notification) async {
     final stopwatch = Stopwatch()..start();
 
-    // 1. Feature extraction using the existing FeatureExtractor
-    final featureVector = FeatureExtractor.extractFromAppNotification(notification);
+    try {
+      // 1. Feature extraction using the existing FeatureExtractor
+      final featureVector = FeatureExtractor.extractFromAppNotification(notification);
 
-    // 2. Model inference
-    double predictedScore = 0.0;
-    int inferenceTimeUs = 0;
+      // 2. Model inference
+      double predictedScore = 0.0;
+      int inferenceTimeUs = 0;
 
-    if (_interpreter != null) {
-      final input = [featureVector];
-      final output = List<double>.filled(1, 0.0).reshape([1, 1]);
+      if (_interpreter != null) {
+        final input = [featureVector];
+        final output = List<double>.filled(1, 0.0).reshape([1, 1]);
 
-      final inferStopwatch = Stopwatch()..start();
-      _interpreter!.run(input, output);
-      inferStopwatch.stop();
+        final inferStopwatch = Stopwatch()..start();
+        _interpreter!.run(input, output);
+        inferStopwatch.stop();
 
-      inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
-      // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
-      predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
-    } else {
-      // Heuristic fallback if model not loaded
-      predictedScore = _heuristicLookAgainScore(featureVector);
-    }
-
-    // 3. Rule matching
-    final ruleMatch = _ruleEngine.match(notification);
-    double? ruleScore;
-    if (ruleMatch != null) {
-      switch (ruleMatch.priority) {
-        case 'critical':
-          ruleScore = 1.0;
-          break;
-        case 'high':
-          ruleScore = 0.85;
-          break;
-        case 'medium':
-          ruleScore = 0.50;
-          break;
-        case 'low':
-        default:
-          ruleScore = 0.15;
-          break;
-      }
-    }
-
-    // 4. Score Fusion (rules + predictions)
-    double finalScore = predictedScore;
-    if (ruleScore != null && ruleMatch != null) {
-      // Immediate critical bypass triggers
-      final isCriticalBypass = ruleMatch.priority == 'critical' ||
-          ruleMatch.ruleId == 'otp_security' ||
-          ruleMatch.ruleId == 'finance_debit' ||
-          ruleMatch.ruleId == 'scholarship_portal';
-
-      if (isCriticalBypass) {
-        finalScore = 1.0;
+        inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
+        // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
+        predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
       } else {
-        // Average rule score and predicted score
-        finalScore = (predictedScore + ruleScore) / 2.0;
+        // Heuristic fallback if model not loaded
+        predictedScore = _heuristicLookAgainScore(featureVector);
       }
+
+      // 3. Rule matching
+      final ruleMatch = _ruleEngine.match(notification);
+      double? ruleScore;
+      if (ruleMatch != null) {
+        switch (ruleMatch.priority) {
+          case 'critical':
+            ruleScore = 1.0;
+            break;
+          case 'high':
+            ruleScore = 0.85;
+            break;
+          case 'medium':
+            ruleScore = 0.50;
+            break;
+          case 'low':
+          default:
+            ruleScore = 0.15;
+            break;
+        }
+      }
+
+      // 4. Score Fusion (rules + predictions)
+      double finalScore = predictedScore;
+      if (ruleScore != null && ruleMatch != null) {
+        // Immediate critical bypass triggers
+        final isCriticalBypass = ruleMatch.priority == 'critical' ||
+            ruleMatch.ruleId == 'otp_security' ||
+            ruleMatch.ruleId == 'finance_debit' ||
+            ruleMatch.ruleId == 'scholarship_portal';
+
+        if (isCriticalBypass) {
+          finalScore = 1.0;
+        } else {
+          // Average rule score and predicted score
+          finalScore = (predictedScore + ruleScore) / 2.0;
+        }
+      }
+
+      // 5. Apply deterministic overrides (expired OTP, expired reminders, duplicates, completed tasks)
+      final hasOtp = featureVector[11] == 1.0; // contains_otp
+      final hasDeadline = featureVector[27] == 1.0; // contains_deadline
+
+      if (hasOtp && _isOtpExpired(notification)) {
+        finalScore = 0.0;
+      } else if (hasDeadline && _isReminderExpired(notification)) {
+        finalScore = 0.0;
+      } else if (_isDuplicate(notification)) {
+        finalScore = 0.0;
+      } else if (_isCompletedTask(notification)) {
+        finalScore = 0.0;
+      }
+
+      stopwatch.stop();
+
+      // Cache the notification for future duplicate checks
+      _cacheNotification(notification);
+
+      final result = GhostAIResult(
+        reviewScore: finalScore,
+        confidence: 1.0,
+        inferenceTimeUs: inferenceTimeUs > 0 ? inferenceTimeUs : stopwatch.elapsedMicroseconds,
+        featureVector: featureVector,
+        predictedScore: predictedScore,
+        ruleScore: ruleScore,
+      );
+
+      // Structured logging in debug mode
+      if (kDebugMode) {
+        _logStructured(notification, result);
+      }
+
+      return result;
+    } catch (e) {
+      stopwatch.stop();
+      if (kDebugMode) {
+        debugPrint('GhostAI._predict isolated exception for pkg=${notification.packageName}: $e');
+      }
+      return GhostAIResult(
+        reviewScore: 0.35,
+        confidence: 0.0,
+        inferenceTimeUs: stopwatch.elapsedMicroseconds,
+        featureVector: List<double>.filled(63, 0.0),
+        predictedScore: 0.35,
+      );
     }
-
-    // 5. Apply deterministic overrides (expired OTP, expired reminders, duplicates, completed tasks)
-    final hasOtp = featureVector[11] == 1.0; // contains_otp
-    final hasDeadline = featureVector[27] == 1.0; // contains_deadline
-
-    if (hasOtp && _isOtpExpired(notification)) {
-      finalScore = 0.0;
-    } else if (hasDeadline && _isReminderExpired(notification)) {
-      finalScore = 0.0;
-    } else if (_isDuplicate(notification)) {
-      finalScore = 0.0;
-    } else if (_isCompletedTask(notification)) {
-      finalScore = 0.0;
-    }
-
-    stopwatch.stop();
-
-    // Cache the notification for future duplicate checks
-    _cacheNotification(notification);
-
-    final result = GhostAIResult(
-      reviewScore: finalScore,
-      confidence: 1.0,
-      inferenceTimeUs: inferenceTimeUs > 0 ? inferenceTimeUs : stopwatch.elapsedMicroseconds,
-      featureVector: featureVector,
-      predictedScore: predictedScore,
-      ruleScore: ruleScore,
-    );
-
-    // Structured logging in debug mode
-    if (kDebugMode) {
-      _logStructured(notification, result);
-    }
-
-    return result;
   }
 
   /// Helper to compute heuristic score if model is not loaded.
