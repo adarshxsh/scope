@@ -75,4 +75,92 @@ class NotificationBridge {
       // Not on Android — nothing to do
     }
   }
+
+  /// Sets the package exclusion blacklist on native Android side.
+  Future<bool> setPackageExclusionList(List<String> packages) async {
+    try {
+      final result = await _channel.invokeMethod<bool>(
+        'setPackageExclusionList',
+        {'packages': packages},
+      );
+      return result ?? true;
+    } on PlatformException catch (e) {
+      // ignore: avoid_print
+      print('NotificationBridge.setPackageExclusionList failed: ${e.message}');
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
+
+  /// Sets category exclusion rules on native Android side.
+  Future<bool> setCategoryExclusionRules(List<String> categories) async {
+    try {
+      final result = await _channel.invokeMethod<bool>(
+        'setCategoryExclusionRules',
+        {'categories': categories},
+      );
+      return result ?? true;
+    } on PlatformException catch (e) {
+      // ignore: avoid_print
+      print('NotificationBridge.setCategoryExclusionRules failed: ${e.message}');
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
+
+  /// Gets the current package exclusion list from native SharedPreferences.
+  Future<List<String>> getPackageExclusionList() async {
+    try {
+      final result = await _channel.invokeMethod<List<dynamic>>(
+        'getPackageExclusionList',
+      );
+      if (result == null) return [];
+      return result.whereType<String>().toList();
+    } on PlatformException catch (e) {
+      // ignore: avoid_print
+      print('NotificationBridge.getPackageExclusionList failed: ${e.message}');
+      return [];
+    } on MissingPluginException {
+      return [];
+    }
+  }
+
+  /// Gets current category exclusion rules from native SharedPreferences.
+  Future<List<String>> getCategoryExclusionRules() async {
+    try {
+      final result = await _channel.invokeMethod<List<dynamic>>(
+        'getCategoryExclusionRules',
+      );
+      if (result == null) return [];
+      return result.whereType<String>().toList();
+    } on PlatformException catch (e) {
+      // ignore: avoid_print
+      print('NotificationBridge.getCategoryExclusionRules failed: ${e.message}');
+      return [];
+    } on MissingPluginException {
+      return [];
+    }
+  }
+
+  /// Gets list of installed launchable apps from native PackageManager.
+  Future<List<Map<String, String>>> getInstalledApps() async {
+    try {
+      final result = await _channel.invokeMethod<List<dynamic>>(
+        'getInstalledApps',
+      );
+      if (result == null) return [];
+      return result
+          .whereType<Map>()
+          .map((map) => Map<String, String>.from(map))
+          .toList();
+    } on PlatformException catch (e) {
+      // ignore: avoid_print
+      print('NotificationBridge.getInstalledApps failed: ${e.message}');
+      return [];
+    } on MissingPluginException {
+      return [];
+    }
+  }
 }
