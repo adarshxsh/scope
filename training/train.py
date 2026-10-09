@@ -31,6 +31,7 @@ from training.evaluation.metrics import (
 from training.evaluation.plots import plot_regression_results, plot_training_history
 from training.export.tflite_exporter import (
     export_float32_tflite,
+    export_quantized_tflite,
     export_saved_model,
 )
 from training.models.mlp import build_baseline_mlp
@@ -127,10 +128,20 @@ def main() -> None:
     metrics = regression_metrics(splits.y_test, predictions)
 
     saved_model_dir = export_saved_model(model, export_dir / "saved_model")
-    tflite_path = export_float32_tflite(
+    tflite_path = export_quantized_tflite(
         saved_model_dir,
         export_dir / "ghost_ai.tflite",
     )
+
+    repo_root = Path(__file__).resolve().parent.parent
+    possible_asset_paths = [
+        repo_root / "scope" / "assets" / "model.tflite",
+        repo_root / "assets" / "model.tflite",
+        Path("scope/assets/model.tflite"),
+    ]
+    for asset_path in possible_asset_paths:
+        if asset_path.parent.exists():
+            asset_path.write_bytes(tflite_path.read_bytes())
 
     write_history_csv(history, output_dir / "history.csv")
     plot_training_history(history, evaluation_dir)
