@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 from typing import Callable
 
@@ -28,6 +29,12 @@ def export_float32_tflite(
     converter = tf.lite.TFLiteConverter.from_saved_model(str(saved_model_dir))
     model_bytes = converter.convert()
     output_path.write_bytes(model_bytes)
+
+    # Compute and write SHA-256 checksum file for runtime verification
+    sha256_hash = hashlib.sha256(model_bytes).hexdigest()
+    checksum_path = output_path.with_suffix(".tflite.sha256") if not str(output_path).endswith(".sha256") else Path(str(output_path) + ".sha256")
+    checksum_path.write_text(sha256_hash + "\n", encoding="utf-8")
+
     return output_path
 
 
