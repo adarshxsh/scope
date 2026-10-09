@@ -10,7 +10,7 @@ import android.util.Log
  * Extends [NotificationListenerService] which requires the user to manually
  * grant "Notification access" in system Settings.
  *
- * Captured notifications are placed in a thread-safe, bounded static [queue]
+ * Captured notifications are placed in a thread-safe, bounded static queue
  * which is drained by [MainActivity] when Flutter requests them via MethodChannel.
  *
  * Fortifications:
@@ -18,12 +18,19 @@ import android.util.Log
  *   - O(1) duplicate lookup using a hash set rather than O(N) linear scans.
  *   - Redacted logging: cleartext notification titles and contents are NEVER logged to logcat.
  *   - Telemetry metrics for monitoring captured, duplicate, and overflow evicted notification counts.
+ *   - Time-To-Live (TTL) eviction for stale notifications older than 15 minutes.
  */
 class NotificationCollectorService : NotificationListenerService() {
 
     companion object {
         private const val TAG = "NotifCollector"
         const val DEFAULT_MAX_QUEUE_CAPACITY = 500
+
+        /** Maximum allowed default queue size to prevent unbounded memory growth. */
+        const val MAX_QUEUE_SIZE = 100
+
+        /** Maximum time-to-live for queued notifications (15 minutes in milliseconds). */
+        const val MAX_AGE_MS = 15 * 60 * 1000L
 
         /** Capacity limit for the native notification queue. */
         @Volatile
@@ -55,8 +62,61 @@ class NotificationCollectorService : NotificationListenerService() {
         }
 
         /**
+         * Removes entries older than [MAX_AGE_MS] from the queue and deduplication set.
+         */
+        fun pruneExpired(now: Long = System.currentTimeMillis()) {
+            synchronized(lock) {
+                val iterator = queue.iterator()
+                while (iterator.hasNext()) {
+                    val item = iterator.next()
+                    if (now - item.timestamp > MAX_AGE_MS) {
+                        iterator.remove()
+                        seenKeys.remove(makeDedupKey(item.packageName, item.title, item.content))
+                    }
+                }
+            }
+        }
+
+        /**
+         * Adds a [NotificationData] item to the queue after pruning expired items,
+         * enforcing deduplication, and maintaining maximum queue capacity.
+         */
+        fun addNotification(data: NotificationData, now: Long = System.currentTimeMillis()) {
+            synchronized(lock) {
+                pruneExpired(now)
+
+                // Do not add item if it is already expired relative to current time
+                if (now - data.timestamp > MAX_AGE_MS) {
+                    return
+                }
+
+                val dedupKey = makeDedupKey(data.packageName, data.title, data.content)
+                if (seenKeys.contains(dedupKey)) {
+                    duplicateDroppedCount++
+                    Log.d(TAG, "Duplicate notification dropped for pkg=${data.packageName}")
+                    return
+                }
+
+                // Evict oldest notifications if queue size reaches maxQueueCapacity
+                while (queue.size >= maxQueueCapacity) {
+                    val evicted = queue.removeFirst()
+                    seenKeys.remove(makeDedupKey(evicted.packageName, evicted.title, evicted.content))
+                    overflowEvictedCount++
+                    Log.w(TAG, "Queue capacity reached ($maxQueueCapacity), evicted oldest notification")
+                }
+
+                queue.addLast(data)
+                seenKeys.add(dedupKey)
+                totalCapturedCount++
+
+                // Sanitize log: log non-sensitive metadata only (pkg, id, queue size)
+                Log.d(TAG, "Captured notification id=${data.id} pkg=${data.packageName} queueSize=${queue.size}")
+            }
+        }
+
+        /**
          * Enqueues a notification with duplicate detection and capacity bounding.
-         * Returns true if successfully enqueued, false if dropped as duplicate.
+         * Returns true if successfully enqueued, false if dropped as duplicate or expired.
          */
         fun enqueueNotification(
             packageName: String,
@@ -74,14 +134,6 @@ class NotificationCollectorService : NotificationListenerService() {
                     return false
                 }
 
-                // Evict oldest notifications if queue size reaches maxQueueCapacity
-                while (queue.size >= maxQueueCapacity) {
-                    val evicted = queue.removeFirst()
-                    seenKeys.remove(makeDedupKey(evicted.packageName, evicted.title, evicted.content))
-                    overflowEvictedCount++
-                    Log.w(TAG, "Queue capacity reached ($maxQueueCapacity), evicted oldest notification")
-                }
-
                 val data = NotificationData(
                     id = "notif_${++idCounter}",
                     packageName = packageName,
@@ -92,28 +144,35 @@ class NotificationCollectorService : NotificationListenerService() {
                     isOngoing = isOngoing
                 )
 
-                queue.addLast(data)
-                seenKeys.add(dedupKey)
-                totalCapturedCount++
-
-                // Sanitize log: log non-sensitive metadata only (pkg, id, queue size)
-                Log.d(TAG, "Captured notification id=${data.id} pkg=$packageName queueSize=${queue.size}")
-                return true
+                addNotification(data, timestamp)
+                return queue.contains(data)
             }
         }
 
         /**
-         * Drains all notifications from the queue and returns them.
+         * Drains all non-expired notifications from the queue and returns them.
          * Called by [MainActivity] when Flutter requests notifications.
          * After this call, the queue is empty.
          */
-        fun drainQueue(): List<NotificationData> {
+        fun drainQueue(now: Long = System.currentTimeMillis()): List<NotificationData> {
             synchronized(lock) {
+                pruneExpired(now)
                 val result = ArrayList<NotificationData>(queue)
                 queue.clear()
                 seenKeys.clear()
-                lastDrainedTimestamp = System.currentTimeMillis()
+                lastDrainedTimestamp = now
                 return result
+            }
+        }
+
+        /**
+         * Clears the queue and resets internal state (for testing).
+         */
+        fun clearQueue() {
+            synchronized(lock) {
+                queue.clear()
+                seenKeys.clear()
+                idCounter = 0L
             }
         }
 
@@ -169,7 +228,7 @@ class NotificationCollectorService : NotificationListenerService() {
         }
     }
 
-    private fun addSbnToQueue(sbn: StatusBarNotification) {
+    private fun addSbnToQueue(sbn: StatusBarNotification, now: Long = System.currentTimeMillis()) {
         try {
             val extras = sbn.notification?.extras
             val title = extras?.getCharSequence("android.title")?.toString() ?: ""
@@ -177,7 +236,7 @@ class NotificationCollectorService : NotificationListenerService() {
             val isOngoing = sbn.isOngoing
             val packageName = sbn.packageName ?: "unknown"
             val category = sbn.notification?.category
-            val timestamp = sbn.postTime
+            val timestamp = if (sbn.postTime > 0) sbn.postTime else now
 
             enqueueNotification(
                 packageName = packageName,
@@ -199,9 +258,8 @@ class NotificationCollectorService : NotificationListenerService() {
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         if (sbn == null) return
-        // Log for now; future phases may track dismissed notifications
-        val removedTitle = sbn.notification?.extras?.getCharSequence("android.title")?.toString()
-        Log.d(TAG, "Removed: ${sbn.packageName} - ${NotificationRedactor.redactTitle(removedTitle)}")
+        val pkg = sbn.packageName ?: "unknown"
+        Log.d(TAG, "Removed notification from pkg=$pkg")
     }
 
     override fun onListenerConnected() {
