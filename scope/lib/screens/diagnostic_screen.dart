@@ -341,9 +341,37 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Confidence Score: ${(notif.priorityScore != null ? (notif.priorityScore! * 100).toStringAsFixed(0) : "0")}% · Latency: ${notif.latencyMs ?? 0} ms',
+                      notif.isFallback
+                          ? 'Confidence Score: 0% (Fallback Mode) · Latency: ${notif.latencyMs ?? 0} ms'
+                          : 'Confidence Score: ${(notif.priorityScore != null ? (notif.priorityScore! * 100).toStringAsFixed(0) : "0")}% · Latency: ${notif.latencyMs ?? 0} ms',
                       style: theme.textTheme.bodySmall,
                     ),
+                    if (notif.isFallback) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.shade100,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.amber.shade700),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.warning_amber_rounded, color: Colors.amber.shade900, size: 16),
+                            const SizedBox(width: 6),
+                            Text(
+                              'HEURISTIC FALLBACK ACTIVE',
+                              style: TextStyle(
+                                color: Colors.amber.shade900,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

@@ -29,7 +29,8 @@ void main() {
       final result = await GhostAI.predict(notif);
 
       expect(result.reviewScore, equals(1.0)); // OTP heuristic is 1.0 and not expired
-      expect(result.confidence, equals(1.0));
+      expect(result.isFallback, isTrue);
+      expect(result.confidence, equals(0.0));
       expect(result.inferenceTimeUs, isPositive);
       expect(result.featureVector, isNotEmpty);
       expect(result.featureVector.length, equals(63));
