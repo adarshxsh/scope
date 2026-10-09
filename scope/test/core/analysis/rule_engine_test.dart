@@ -3,6 +3,8 @@ import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('RuleEngine', () {
     const String sampleJson = '''
     {
@@ -123,6 +125,61 @@ void main() {
       expect(result!.ruleId, equals('swiggy_promo'));
       expect(result.category, equals('promo'));
       expect(result.priority, equals('low'));
+    });
+
+    test('system critical rules evaluate before custom rules regardless of insertion', () {
+      const customRule = NotificationRule(
+        id: 'rlhf-override',
+        category: 'custom_cat',
+        priority: 'critical', // Will be capped to high
+        conditions: RuleCondition(
+          packages: ['com.hdfc.mobilebanking'],
+          titleKeywords: ['Alert'],
+        ),
+      );
+
+      engine.addReinforcementRule(customRule);
+
+      final notif = AppNotification(
+        id: '1',
+        packageName: 'com.hdfc.mobilebanking',
+        title: 'HDFC Bank Alert',
+        content: 'Your account has been debited Rs. 15,000.',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final result = engine.match(notif);
+      expect(result, isNotNull);
+      // System rule 'bank_debit' must take priority over custom rule
+      expect(result!.ruleId, equals('bank_debit'));
+      expect(result.isSystemRule, isTrue);
+    });
+
+    test('addReinforcementRule caps custom rule priority to high and sets isSystemRule to false', () {
+      const customRule = NotificationRule(
+        id: 'rlhf-critical-attempt',
+        category: 'custom_finance',
+        priority: 'critical',
+        conditions: RuleCondition(
+          keywords: ['custom_keyword'],
+        ),
+      );
+
+      engine.addReinforcementRule(customRule);
+
+      final notif = AppNotification(
+        id: '99',
+        packageName: 'com.custom.app',
+        title: 'Custom Title',
+        content: 'Text containing custom_keyword here',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final result = engine.match(notif);
+      expect(result, isNotNull);
+      expect(result!.ruleId, equals('rlhf-critical-attempt'));
+      expect(result.priority, equals('high'));
+      expect(result.isSystemRule, isFalse);
     });
   });
 }

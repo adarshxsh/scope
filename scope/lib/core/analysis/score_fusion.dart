@@ -9,12 +9,13 @@ class ScoreFusion {
     MatchedRuleResult? ruleResult,
     required AnalysisResult modelResult,
   }) {
-    // 1. Check for deterministic critical bypass rules
+    // 1. Check for deterministic critical bypass rules (restricted to system rules)
     if (ruleResult != null) {
-      final isBypass = ruleResult.priority == 'critical' ||
-          ruleResult.ruleId == 'otp_security' ||
-          ruleResult.ruleId == 'finance_debit' ||
-          ruleResult.ruleId == 'scholarship_portal';
+      final isBypass = ruleResult.isSystemRule &&
+          (ruleResult.priority == 'critical' ||
+              ruleResult.ruleId == 'otp_security' ||
+              ruleResult.ruleId == 'finance_debit' ||
+              ruleResult.ruleId == 'scholarship_portal');
 
       if (isBypass) {
         return AnalysisResult(
