@@ -236,8 +236,9 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
 
       updated.add(updatedItem);
 
-      // Save updated items to DB
-      if (_db != null) {
+      // Save updated items to DB only if state or priority score changed
+      if (_db != null &&
+          (updatedItem.state != item.state || updatedItem.priorityScore != item.priorityScore)) {
         await DriftNotificationStorage(_db).save(updatedItem);
         await _saveQueueEntry(updatedItem, expiry: updatedItem.snoozedUntil);
       }

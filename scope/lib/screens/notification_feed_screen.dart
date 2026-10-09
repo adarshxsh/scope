@@ -77,22 +77,33 @@ class _NotificationFeedScreenState extends State<NotificationFeedScreen> {
       // Pull new notifications from the Android side
       final newNotifications = await _bridge.getNotifications();
 
-      // Run raw notifications through the Ghost AI analysis engine before storing
+      // Run unanalyzed raw notifications through the Ghost AI analysis engine before storing
       final analyzedNotifications = <AppNotification>[];
       for (final raw in newNotifications) {
-        final analyzed = await _analysisEngine.analyze(raw);
-        analyzedNotifications.add(analyzed);
+        final isDuplicate = _notifications.any((n) =>
+            n.packageName == raw.packageName &&
+            n.timestamp == raw.timestamp &&
+            n.title == raw.title &&
+            n.content == raw.content);
+
+        if (!isDuplicate) {
+          final analyzed = await _analysisEngine.analyze(raw);
+          analyzedNotifications.add(analyzed);
+        }
       }
 
-      // Save to storage
+      // Save to storage if new notifications were analyzed
       if (analyzedNotifications.isNotEmpty) {
         await _storage.saveAll(analyzedNotifications);
-      }
-
-      // Get all stored (sorted newest first)
-      final all = await _storage.getAll();
-
-      if (mounted) {
+        final all = await _storage.getAll();
+        if (mounted) {
+          setState(() {
+            _notifications = all;
+            _isLoading = false;
+          });
+        }
+      } else if (_isLoading && mounted) {
+        final all = await _storage.getAll();
         setState(() {
           _notifications = all;
           _isLoading = false;
