@@ -6,7 +6,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('LiteRtClassifier', () {
-    test('initializes and falls back gracefully to heuristic classifier when asset loading fails', () async {
+    test('initializes and attempts loading category model asset, falling back gracefully if dynamic library missing', () async {
       final classifier = LiteRtClassifier();
       
       final notif = AppNotification(
@@ -42,6 +42,57 @@ void main() {
       expect(result.engineName, contains('fallback'));
       expect(result.score, equals(0.0));
       expect(result.isFallback, isTrue);
+    });
+
+    test('fallback correctly categorizes promotional offers', () async {
+      final classifier = LiteRtClassifier();
+      
+      final notif = AppNotification(
+        id: '3',
+        packageName: 'com.shopping.app',
+        title: 'Flash Sale',
+        content: 'Get 50% off on all items today only!',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final result = await classifier.analyze(notif);
+      
+      expect(result.category, equals('promo'));
+      expect(result.engineName, contains('fallback'));
+    });
+
+    test('fallback correctly categorizes system OTP alerts', () async {
+      final classifier = LiteRtClassifier();
+      
+      final notif = AppNotification(
+        id: '4',
+        packageName: 'com.auth.app',
+        title: 'Verification Code',
+        content: 'Your OTP code is 882715 for login verification.',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final result = await classifier.analyze(notif);
+      
+      expect(result.category, equals('sys'));
+      expect(result.engineName, contains('fallback'));
+    });
+
+    test('fallback correctly categorizes social interactions', () async {
+      final classifier = LiteRtClassifier();
+      
+      final notif = AppNotification(
+        id: '5',
+        packageName: 'com.instagram.android',
+        title: 'Social Notification',
+        content: 'Alice liked your photo on Instagram.',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final result = await classifier.analyze(notif);
+      
+      expect(result.category, equals('social'));
+      expect(result.engineName, contains('fallback'));
     });
   });
 }
