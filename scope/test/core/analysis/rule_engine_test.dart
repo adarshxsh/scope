@@ -1,8 +1,19 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  const MethodChannel channel = MethodChannel('plugins.flutter.io/path_provider');
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+    channel,
+    (MethodCall methodCall) async {
+      return '.';
+    },
+  );
+
   group('RuleEngine', () {
     const String sampleJson = '''
     {
@@ -123,6 +134,79 @@ void main() {
       expect(result!.ruleId, equals('swiggy_promo'));
       expect(result.category, equals('promo'));
       expect(result.priority, equals('low'));
+    });
+
+    test('Tier-1 system rules execute prior to Tier-2 custom rules and prevent shadowing', () {
+      // Add a custom rule that matches HDFC Bank Alert with promo category
+      final customRule = NotificationRule(
+        id: 'rlhf-12345',
+        category: 'promo',
+        priority: 'low',
+        conditions: const RuleCondition(
+          titleKeywords: ['Alert', 'HDFC'],
+          keywords: ['debited'],
+        ),
+      );
+
+      engine.addReinforcementRule(customRule);
+
+      final notif = AppNotification(
+        id: '1',
+        packageName: 'com.hdfc.mobilebanking',
+        title: 'HDFC Bank Alert',
+        content: 'Your account has been debited Rs. 15,000.',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final result = engine.match(notif);
+      expect(result, isNotNull);
+      expect(result!.ruleId, equals('bank_debit')); // System rule matched first
+      expect(result.isSystemRule, isTrue);
+      expect(result.priority, equals('critical'));
+    });
+
+    test('Custom rules attempting to set priority: "critical" are automatically capped to "high"', () {
+      final customRule = NotificationRule(
+        id: 'rlhf-critical-attempt',
+        category: 'msg',
+        priority: 'critical',
+        conditions: const RuleCondition(
+          keywords: ['unauthorized-access-signal'],
+        ),
+      );
+
+      engine.addReinforcementRule(customRule);
+
+      final notif = AppNotification(
+        id: '10',
+        packageName: 'com.test.app',
+        title: 'Security',
+        content: 'unauthorized-access-signal detected',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final result = engine.match(notif);
+      expect(result, isNotNull);
+      expect(result!.ruleId, equals('rlhf-critical-attempt'));
+      expect(result.priority, equals('high')); // Capped from critical to high
+      expect(result.isSystemRule, isFalse);
+    });
+
+    test('Custom rules attempting to use reserved IDs or missing rlhf- prefix are rejected', () {
+      // Attempting reserved system ID 'otp_security'
+      final reservedRule = NotificationRule(
+        id: 'otp_security',
+        category: 'sys',
+        priority: 'high',
+        conditions: const RuleCondition(
+          keywords: ['fake_otp_signal'],
+        ),
+      );
+
+      expect(
+        () => engine.addReinforcementRule(reservedRule),
+        throwsArgumentError,
+      );
     });
   });
 }
