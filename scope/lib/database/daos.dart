@@ -154,3 +154,39 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
     await delete(dailyBriefTable).go();
   }
 }
+
+@DriftAccessor(tables: [InferenceAuditLogsTable])
+class InferenceAuditLogDao extends DatabaseAccessor<AttentionDatabase> with _$InferenceAuditLogDaoMixin {
+  InferenceAuditLogDao(super.db);
+
+  Future<void> insertAuditLog(InferenceAuditLogEntry entry) async {
+    await into(inferenceAuditLogsTable).insert(entry, mode: InsertMode.insertOrReplace);
+  }
+
+  Future<InferenceAuditLogEntry?> getAuditLogForNotification(String notificationId) {
+    return (select(inferenceAuditLogsTable)..where((t) => t.notificationId.equals(notificationId))).getSingleOrNull();
+  }
+
+  Future<List<InferenceAuditLogEntry>> getAllAuditLogs() {
+    return (select(inferenceAuditLogsTable)
+          ..orderBy([(t) => OrderingTerm(expression: t.timestamp, mode: OrderingMode.desc)]))
+        .get();
+  }
+
+  Future<int> deleteOlderThan(int cutoffTimestamp) {
+    return (delete(inferenceAuditLogsTable)
+          ..where((t) => t.timestamp.isSmallerThanValue(cutoffTimestamp)))
+        .go();
+  }
+
+  Future<void> clearAll() async {
+    await delete(inferenceAuditLogsTable).go();
+  }
+
+  Future<int> getCount() async {
+    final countExpr = inferenceAuditLogsTable.id.count();
+    final query = selectOnly(inferenceAuditLogsTable)..addColumns([countExpr]);
+    final row = await query.getSingle();
+    return row.read(countExpr) ?? 0;
+  }
+}

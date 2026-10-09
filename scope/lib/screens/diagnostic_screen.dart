@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
+import 'package:scope/widgets/model_explainability_widget.dart';
 import 'package:scope/widgets/scope_card.dart';
 
 class DiagnosticScreen extends StatefulWidget {
@@ -350,6 +351,10 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
             ],
           ),
         ),
+        const SizedBox(height: 16),
+
+        // Interactive Model Explainability & Score Evolution
+        ModelExplainabilityWidget(notification: notif),
         const SizedBox(height: 16),
 
         // 1. Natural Language Explanation Card

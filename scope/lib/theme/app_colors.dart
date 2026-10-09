@@ -73,6 +73,17 @@ abstract final class AppColors {
   );
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
+  static Color success(BuildContext context) => complete;
+  static Color error(BuildContext context) => critical;
+  static Color warning(BuildContext context) => high;
+
+  static Color urgencyFromScore(double score) {
+    if (score >= 0.90) return critical;
+    if (score >= 0.70) return high;
+    if (score >= 0.25) return medium;
+    return low;
+  }
+
   static Color urgency(String? priority) => switch (priority) {
         'critical' => critical,
         'high'     => high,

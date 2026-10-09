@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:scope/core/analysis/explainability_engine.dart';
+import 'package:scope/core/analysis/extracted_features.dart';
+import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/theme/app_colors.dart';
 import 'package:scope/theme/app_spacing.dart';
 
-/// Explains why a notification matters.
+/// Interactive AI explainability widget displaying top feature attributions and score trace.
 class AIReasonWidget extends StatelessWidget {
   final AppNotification notification;
   final bool inverted;
@@ -14,62 +17,98 @@ class AIReasonWidget extends StatelessWidget {
     this.inverted = false,
   });
 
-  List<String> get _reasons {
-    final reasons = <String>[];
-    final features = notification.extractedFeatures;
+  List<FeatureAttribution> get _attributions {
+    final features = notification.extractedFeatures != null
+        ? ExtractedFeatures.fromMap(notification.extractedFeatures!)
+        : const ExtractedFeatures();
+    final featureVector = FeatureExtractor.extractFromAppNotification(notification);
 
-    if (features?['hasDeadline'] == true) reasons.add("There's a deadline coming up.");
-    if (features?['amount'] != null) reasons.add('I noticed a payment amount.');
-    if (features?['otp'] != null) reasons.add("Here's your security code.");
-    if (notification.priority == 'critical' || notification.priority == 'high') {
-      reasons.add('This seems important right now.');
-    }
-    if (notification.packageName.contains('gov')) reasons.add('This is from an official source.');
-    final urls = features?['urls'];
-    if (urls is List && urls.isNotEmpty) reasons.add("There's an action you can take.");
-
-    if (notification.explanation != null && notification.explanation!.isNotEmpty) {
-      final lines = notification.explanation!
-          .split('\n')
-          .map((l) => l.replaceAll(RegExp(r'^[-•*]\s*'), '').trim())
-          .where((l) => l.isNotEmpty)
-          .take(2);
-      reasons.addAll(lines);
-    }
-
-    if (reasons.isEmpty) reasons.add('Thought you might want to see this.');
-    return reasons.take(4).toList();
+    return ExplainabilityEngine.computeFeatureAttributions(
+      notification: notification,
+      features: features,
+      featureVector: featureVector,
+      overrideTriggers: [],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final titleStyle = inverted
-        ? theme.textTheme.titleSmall?.copyWith(color: Colors.white)
-        : theme.textTheme.titleSmall;
+        ? theme.textTheme.titleSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.bold)
+        : theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold);
     final bodyStyle = inverted
-        ? theme.textTheme.bodyMedium?.copyWith(color: Colors.white.withValues(alpha: 0.72))
+        ? theme.textTheme.bodyMedium?.copyWith(color: Colors.white.withValues(alpha: 0.85))
         : theme.textTheme.bodyMedium;
-    final iconColor = inverted ? Colors.white38 : AppColors.muted(context);
+
+    final attributions = _attributions;
+    final score = notification.priorityScore ?? 0.5;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Why this matters', style: titleStyle),
-        const SizedBox(height: AppSpacing.sm),
-        ..._reasons.map(
-          (reason) => Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.check_circle_outline, size: 16, color: iconColor),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(child: Text(reason, style: bodyStyle)),
-              ],
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Why this matters', style: titleStyle),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: (inverted ? Colors.white24 : AppColors.urgency(notification.priority)).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'Fused Score: ${(score * 100).toStringAsFixed(0)}%',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: inverted ? Colors.white : AppColors.urgency(notification.priority),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
-          ),
+          ],
         ),
+        const SizedBox(height: AppSpacing.sm),
+        if (attributions.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: Text('Thought you might want to see this.', style: bodyStyle),
+          )
+        else
+          ...attributions.take(3).map((attr) {
+            final isPos = attr.weight >= 0;
+            final chipColor = isPos
+                ? (inverted ? Colors.greenAccent : AppColors.success(context))
+                : (inverted ? Colors.orangeAccent : AppColors.error(context));
+            final weightStr = isPos ? '+${attr.weight.toStringAsFixed(2)}' : attr.weight.toStringAsFixed(2);
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+              child: Row(
+                children: [
+                  Icon(
+                    isPos ? Icons.arrow_upward : Icons.arrow_downward,
+                    size: 14,
+                    color: chipColor,
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Expanded(
+                    child: Text(
+                      attr.label,
+                      style: bodyStyle,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Text(
+                    weightStr,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: chipColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
       ],
     );
   }
