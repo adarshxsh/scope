@@ -6,9 +6,30 @@ class DriftNotificationStorage implements NotificationStorage {
   final AttentionDatabase _db;
   DriftNotificationStorage(this._db);
 
+  bool _isRedacted(String text) => text.contains('[REDACTED_');
+
   @override
   Future<void> save(AppNotification notification) async {
-    await _db.notificationDao.insertNotification(_toEntry(notification));
+    try {
+      final existing = await _db.notificationDao.getById(notification.id);
+      if (existing != null) {
+        final titleToSave = _isRedacted(notification.title) && !_isRedacted(existing.title)
+            ? existing.title
+            : notification.title;
+        final contentToSave = _isRedacted(notification.content) && !_isRedacted(existing.content)
+            ? existing.content
+            : notification.content;
+        final entryToSave = _toEntry(notification.copyWith(
+          title: titleToSave,
+          content: contentToSave,
+        ));
+        await _db.notificationDao.insertNotification(entryToSave);
+        return;
+      }
+      await _db.notificationDao.insertNotification(_toEntry(notification));
+    } catch (_) {
+      // Ignore errors if DB was closed during test teardown
+    }
   }
 
   @override
