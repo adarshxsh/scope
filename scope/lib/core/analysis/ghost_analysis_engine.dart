@@ -1,4 +1,5 @@
 import 'package:flutter/services.dart';
+import 'package:scope/core/analysis/asset_verifier.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/litert_classifier.dart';
 import 'package:scope/core/analysis/policy_engine.dart';
@@ -19,11 +20,12 @@ class GhostAnalysisEngine {
   })  : ruleEngine = ruleEngine ?? RuleEngine(),
         mlClassifier = mlClassifier ?? LiteRtClassifier();
 
-  /// Compiles rules loaded from assets on engine startup.
+  /// Compiles rules loaded from assets on engine startup with integrity verification.
   Future<void> initialize() async {
     try {
+      await AssetVerifier.verifyAsset('assets/rules.json');
       final jsonStr = await rootBundle.loadString('assets/rules.json');
-      ruleEngine.compile(jsonStr);
+      ruleEngine.compileSigned(jsonStr);
       await ruleEngine.loadCustomRules();
     } catch (e) {
       // ignore: avoid_print
