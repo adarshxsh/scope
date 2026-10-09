@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
+import 'package:scope/core/analysis/asset_verification_engine.dart';
+import 'package:scope/core/analysis/ghost_ai.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/widgets/scope_card.dart';
@@ -137,6 +139,8 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _buildInputFormCard(),
+            const SizedBox(height: 16),
+            _buildAssetIntegrityCard(),
             const SizedBox(height: 16),
             _buildActionSection(),
             const SizedBox(height: 20),
@@ -447,6 +451,107 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
         const SizedBox(height: 2),
         Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
       ],
+    );
+  }
+
+  Widget _buildAssetIntegrityCard() {
+    final theme = Theme.of(context);
+    final verifier = AssetVerificationEngine.instance;
+    final statuses = verifier.verificationStatuses;
+    final hashes = verifier.computedHashes;
+
+    final assets = [
+      'assets/model.tflite',
+      'assets/vocab.txt',
+      'assets/rules.json',
+    ];
+
+    return ScopeCard(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.verified_user, color: theme.colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                'Asset Integrity & Model Health',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const Divider(height: 20),
+          ...assets.map((asset) {
+            final status = statuses[asset] ?? AssetVerificationStatus.unverified;
+            final isVerified = status == AssetVerificationStatus.verified;
+            final isFailed = status == AssetVerificationStatus.failed;
+            final hash = hashes[asset];
+            final hashPrefix = hash != null && hash.length >= 8 ? '${hash.substring(0, 8)}...' : 'Pending';
+
+            Color statusColor = Colors.orange;
+            IconData statusIcon = Icons.hourglass_empty;
+            String statusText = 'Pending';
+
+            if (isVerified) {
+              statusColor = Colors.green;
+              statusIcon = Icons.check_circle;
+              statusText = 'Verified SHA-256';
+            } else if (isFailed) {
+              statusColor = Colors.red;
+              statusIcon = Icons.error;
+              statusText = 'Hash Mismatch / Failed';
+            }
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4.0),
+              child: Row(
+                children: [
+                  Icon(statusIcon, color: statusColor, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      asset,
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '$statusText ($hashPrefix)',
+                      style: TextStyle(
+                        color: statusColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildVersionItem(
+                'LiteRT Classifier',
+                _engine.mlClassifier.isModelLoaded ? 'Loaded (TFLite)' : 'Fallback Heuristic',
+              ),
+              _buildVersionItem(
+                'GhostAI Look-Again',
+                GhostAI.instance.isModelLoaded ? 'Loaded (TFLite)' : 'Fallback Heuristic',
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
