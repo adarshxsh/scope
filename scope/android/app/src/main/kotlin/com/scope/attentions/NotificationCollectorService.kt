@@ -79,11 +79,15 @@ class NotificationCollectorService : NotificationListenerService() {
          */
         fun drainQueue(now: Long = System.currentTimeMillis()): List<NotificationData> {
             val result = mutableListOf<NotificationData>()
-            while (true) {
-                val item = queue.poll() ?: break
-                if (now - item.timestamp <= MAX_AGE_MS) {
-                    result.add(item)
+            try {
+                while (true) {
+                    val item = queue.poll() ?: break
+                    if (now - item.timestamp <= MAX_AGE_MS) {
+                        result.add(item)
+                    }
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error draining notification queue", e)
             }
             return result
         }
@@ -110,6 +114,16 @@ class NotificationCollectorService : NotificationListenerService() {
             val isOngoing = sbn.isOngoing
             val packageName = sbn.packageName ?: "unknown"
             val timestamp = if (sbn.postTime > 0) sbn.postTime else now
+
+            // Enforce max capacity cap to prevent memory leaks
+            while (queue.size >= MAX_QUEUE_SIZE) {
+                val evicted = queue.poll()
+                if (evicted != null) {
+                    Log.w(TAG, "Queue capacity ($MAX_QUEUE_SIZE) reached. Evicted oldest notification from package: ${evicted.packageName}")
+                } else {
+                    break
+                }
+            }
 
             val data = NotificationData(
                 id = "notif_${++idCounter}",

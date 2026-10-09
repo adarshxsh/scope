@@ -307,8 +307,8 @@ void main() {
     });
 
     tearDown(() {
-      container.dispose();
       controller.dispose();
+      container.dispose();
     });
 
     test('adds test data and synchronizes controller notifications with Riverpod providers', () async {
@@ -339,6 +339,49 @@ void main() {
       controller.complete('c1');
       expect(controller.isCompleted('c1'), isTrue);
       expect(container.read(reviewQueueProvider).first.state, equals(ReviewState.REVIEWED));
+    });
+
+    test('enforces maxInMemoryQueueCapacity on load and add', () {
+      final notifier = container.read(reviewQueueProvider.notifier);
+      final manyNotifs = List.generate(
+        600,
+        (i) => AppNotification(
+          id: 'n_$i',
+          packageName: 'com.test',
+          title: 'Title $i',
+          content: 'Content $i',
+          timestamp: DateTime.now().millisecondsSinceEpoch + i,
+        ),
+      );
+
+      notifier.load(manyNotifs);
+      expect(container.read(reviewQueueProvider).length, equals(ReviewQueueNotifier.maxInMemoryQueueCapacity));
+
+      final extraNotif = AppNotification(
+        id: 'extra_1',
+        packageName: 'com.test.extra',
+        title: 'Extra Title',
+        content: 'Extra Content',
+        timestamp: DateTime.now().millisecondsSinceEpoch + 10000,
+      );
+
+      notifier.add(extraNotif);
+      expect(container.read(reviewQueueProvider).length, equals(ReviewQueueNotifier.maxInMemoryQueueCapacity));
+    });
+
+    test('disposing NotificationController closes provider subscription safely', () {
+      final tempController = NotificationController(container: container);
+      expect(() => tempController.dispose(), returnsNormally);
+
+      // Modify reviewQueueProvider after controller dispose — should not trigger disposed controller errors
+      final notif = AppNotification(
+        id: 'post_dispose_1',
+        packageName: 'com.test',
+        title: 'Post Dispose',
+        content: 'Content',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+      expect(() => container.read(reviewQueueProvider.notifier).add(notif), returnsNormally);
     });
   });
 }
