@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import 'package:scope/core/analysis/custom_rule_validator.dart';
 import 'package:scope/core/models/notification_model.dart';
 
 /// Condition definition for a notification classification rule.
@@ -47,10 +48,15 @@ class NotificationRule {
   });
 
   factory NotificationRule.fromMap(Map<String, dynamic> map) {
+    final id = map['id'] as String? ?? '';
+    var priority = map['priority'] as String? ?? '';
+    if (id.startsWith('rlhf-') && priority.toLowerCase() == 'critical') {
+      priority = 'high';
+    }
     return NotificationRule(
-      id: map['id'] as String? ?? '',
+      id: id,
       category: map['category'] as String? ?? '',
-      priority: map['priority'] as String? ?? '',
+      priority: priority,
       conditions: RuleCondition.fromMap(
         Map<String, dynamic>.from(map['conditions'] as Map? ?? const {}),
       ),
@@ -73,17 +79,19 @@ class MatchedRuleResult {
   final String category;
   final String priority;
   final String matchedSignal;
+  final bool isCustom;
 
   const MatchedRuleResult({
     required this.ruleId,
     required this.category,
     required this.priority,
     required this.matchedSignal,
+    this.isCustom = false,
   });
 
   @override
   String toString() => 'MatchedRuleResult(ruleId: $ruleId, category: $category, '
-      'priority: $priority, matchedSignal: $matchedSignal)';
+      'priority: $priority, matchedSignal: $matchedSignal, isCustom: $isCustom)';
 }
 
 /// Compiled rule engine matching raw notifications against in-memory patterns.
@@ -104,7 +112,18 @@ class RuleEngine {
 
   /// Prepends a user-defined reinforcement learning rule to the top of the evaluation chain.
   void addReinforcementRule(NotificationRule rule) {
-    _rules.insert(0, rule);
+    final sanitized = CustomRuleValidator.clampAndSanitizeRule(rule);
+    _rules.removeWhere((r) => r.id == sanitized.id);
+    _rules.insert(0, sanitized);
+
+    // Enforce custom rules count quota (max 50 per device)
+    final customRules = _rules.where((r) => r.id.startsWith('rlhf-')).toList();
+    if (customRules.length > CustomRuleValidator.maxCustomRules) {
+      final excessCount = customRules.length - CustomRuleValidator.maxCustomRules;
+      final idsToRemove = customRules.sublist(customRules.length - excessCount).map((r) => r.id).toSet();
+      _rules.removeWhere((r) => idsToRemove.contains(r.id));
+    }
+
     _saveCustomRules();
   }
 
@@ -115,14 +134,23 @@ class RuleEngine {
       final file = File('${dir.path}/rlhf_rules.json');
       if (await file.exists()) {
         final content = await file.readAsString();
-        final list = json.decode(content) as List<dynamic>;
-        final customRules = list.map((r) => NotificationRule.fromMap(Map<String, dynamic>.from(r))).toList();
-        // Insert custom rules at the top
-        _rules.insertAll(0, customRules);
+        final decoded = json.decode(content);
+        if (decoded is List) {
+          final customRules = CustomRuleValidator.validateAndSanitizeRules(decoded);
+          _rules.removeWhere((r) => r.id.startsWith('rlhf-'));
+          _rules.insertAll(0, customRules);
+        } else {
+          await file.writeAsString('[]');
+        }
       }
     } catch (e) {
       // ignore: avoid_print
-      print('Failed to load custom RLHF rules: $e');
+      print('Failed to load custom RLHF rules safely: $e');
+      try {
+        final dir = await getApplicationDocumentsDirectory();
+        final file = File('${dir.path}/rlhf_rules.json');
+        await file.writeAsString('[]');
+      } catch (_) {}
     }
   }
 
@@ -140,6 +168,16 @@ class RuleEngine {
       // ignore: avoid_print
       print('Failed to save custom RLHF rules: $e');
     }
+  }
+
+  /// Checks for exact word boundary match (\b...\b) of [keyword] in [text].
+  bool _hasWordBoundaryMatch(String text, String keyword) {
+    if (keyword.isEmpty) return false;
+    final escaped = RegExp.escape(keyword.toLowerCase());
+    final leadingBoundary = RegExp(r'^\w').hasMatch(keyword) ? r'\b' : '';
+    final trailingBoundary = RegExp(r'\w$').hasMatch(keyword) ? r'\b' : '';
+    final pattern = '$leadingBoundary$escaped$trailingBoundary';
+    return RegExp(pattern, caseSensitive: false).hasMatch(text);
   }
 
   /// Scans the database to find the first rule matching this notification.
@@ -161,7 +199,7 @@ class RuleEngine {
       String? matchedTitleWord;
       if (rule.conditions.titleKeywords.isNotEmpty) {
         for (final word in rule.conditions.titleKeywords) {
-          if (titleLower.contains(word.toLowerCase())) {
+          if (_hasWordBoundaryMatch(titleLower, word)) {
             titleMatch = true;
             matchedTitleWord = word;
             break;
@@ -174,7 +212,7 @@ class RuleEngine {
       String? matchedContentWord;
       if (rule.conditions.keywords.isNotEmpty) {
         for (final word in rule.conditions.keywords) {
-          if (contentLower.contains(word.toLowerCase())) {
+          if (_hasWordBoundaryMatch(contentLower, word)) {
             contentMatch = true;
             matchedContentWord = word;
             break;
@@ -213,6 +251,7 @@ class RuleEngine {
           category: rule.category,
           priority: rule.priority,
           matchedSignal: signals.join(' AND '),
+          isCustom: rule.id.startsWith('rlhf-'),
         );
       }
     }

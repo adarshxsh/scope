@@ -11,10 +11,12 @@ class ScoreFusion {
   }) {
     // 1. Check for deterministic critical bypass rules
     if (ruleResult != null) {
-      final isBypass = ruleResult.priority == 'critical' ||
-          ruleResult.ruleId == 'otp_security' ||
-          ruleResult.ruleId == 'finance_debit' ||
-          ruleResult.ruleId == 'scholarship_portal';
+      final isCustomRule = ruleResult.isCustom || ruleResult.ruleId.startsWith('rlhf-');
+      final isBypass = !isCustomRule &&
+          (ruleResult.ruleId == 'otp_security' ||
+              ruleResult.ruleId == 'finance_debit' ||
+              ruleResult.ruleId == 'scholarship_portal' ||
+              ruleResult.priority == 'critical');
 
       if (isBypass) {
         return AnalysisResult(
