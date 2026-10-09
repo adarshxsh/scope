@@ -1,10 +1,10 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/utils/pii_redactor.dart';
+import 'package:scope/core/analysis/model_asset_resolver.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -61,18 +61,30 @@ class GhostAI {
   Future<void> initialize() async {
     if (_interpreter != null) return;
     try {
-      // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      // 1. Load interpreter via ModelAssetResolver (local app support or asset fallback)
+      _interpreter = await ModelAssetResolver.resolveInterpreter(
+        fileName: 'model.tflite',
+        assetPath: 'assets/model.tflite',
+      );
+      if (_interpreter != null) {
+        debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      } else {
+        debugPrint('GhostAI: TFLite model resolution yielded null interpreter (running in heuristic mode).');
+      }
     } catch (e) {
       debugPrint('GhostAI: Failed to load TFLite model: $e');
     }
 
     try {
-      // 2. Load and compile rules database
-      final jsonStr = await rootBundle.loadString('assets/rules.json');
-      _ruleEngine.compile(jsonStr);
-      debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
+      // 2. Load and compile rules database via ModelAssetResolver
+      final jsonStr = await ModelAssetResolver.resolveRules(
+        fileName: 'rules.json',
+        assetPath: 'assets/rules.json',
+      );
+      if (jsonStr != null && jsonStr.isNotEmpty) {
+        _ruleEngine.compile(jsonStr);
+        debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
+      }
     } catch (e) {
       debugPrint('GhostAI: Failed to initialize rules database: $e');
     }
