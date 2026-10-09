@@ -124,5 +124,86 @@ void main() {
       expect(result.category, equals('promo'));
       expect(result.priority, equals('low'));
     });
+
+    test('addReinforcementRule sanitizes rule, demotes critical priority, and sets isCustom flag', () {
+      const customRule = NotificationRule(
+        id: 'user_custom_1',
+        category: 'social',
+        priority: 'critical',
+        conditions: RuleCondition(
+          keywords: ['party'],
+        ),
+      );
+
+      engine.addReinforcementRule(customRule);
+
+      final notif = AppNotification(
+        id: '10',
+        packageName: 'com.example.chat',
+        title: 'Event',
+        content: 'Join the weekend party!',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final matchResult = engine.match(notif);
+      expect(matchResult, isNotNull);
+      expect(matchResult!.ruleId, equals('rlhf-user_custom_1'));
+      expect(matchResult.priority, equals('high')); // Demoted from critical to high
+      expect(matchResult.isCustom, isTrue);
+      expect(matchResult.isSystemRule, isFalse);
+    });
+
+    test('addReinforcementRule ignores rules with empty condition strings or reserved system rule IDs', () {
+      const reservedRule = NotificationRule(
+        id: 'otp_security',
+        category: 'sys',
+        priority: 'critical',
+        conditions: RuleCondition(
+          keywords: ['spoof'],
+        ),
+      );
+
+      engine.addReinforcementRule(reservedRule);
+
+      final notif = AppNotification(
+        id: '11',
+        packageName: 'com.example.app',
+        title: 'Security',
+        content: 'This is a spoof message',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final result = engine.match(notif);
+      expect(result, isNull);
+    });
+
+    test('system rules take precedence over custom rules (Tier 1 vs Tier 2)', () {
+      const conflictingCustomRule = NotificationRule(
+        id: 'rlhf-debit-override',
+        category: 'promo',
+        priority: 'low',
+        conditions: RuleCondition(
+          titleKeywords: ['Alert'],
+          keywords: ['debited'],
+        ),
+        isCustom: true,
+      );
+
+      engine.addReinforcementRule(conflictingCustomRule);
+
+      final debitNotif = AppNotification(
+        id: '12',
+        packageName: 'com.hdfc.mobilebanking',
+        title: 'HDFC Bank Alert',
+        content: 'Your account has been debited Rs. 15,000.',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final matchResult = engine.match(debitNotif);
+      expect(matchResult, isNotNull);
+      expect(matchResult!.ruleId, equals('bank_debit')); // Tier 1 system rule wins
+      expect(matchResult.isCustom, isFalse);
+      expect(matchResult.isSystemRule, isTrue);
+    });
   });
 }
