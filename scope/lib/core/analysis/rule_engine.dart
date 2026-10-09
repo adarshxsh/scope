@@ -91,6 +91,9 @@ class RuleEngine {
   String version = '0.0.0';
   List<NotificationRule> _rules = [];
 
+  /// Exposes the compiled and loaded rules for inspection.
+  List<NotificationRule> get rules => List.unmodifiable(_rules);
+
   /// Compiles a raw JSON rules database into compiled memory structures.
   void compile(String jsonStr) {
     final parsed = json.decode(jsonStr) as Map<String, dynamic>;
@@ -103,12 +106,15 @@ class RuleEngine {
   }
 
   /// Prepends a user-defined reinforcement learning rule to the top of the evaluation chain.
+  /// Any existing rule with a matching identifier is removed from memory prior to insertion.
   void addReinforcementRule(NotificationRule rule) {
+    _rules.removeWhere((r) => r.id == rule.id);
     _rules.insert(0, rule);
     _saveCustomRules();
   }
 
   /// Loads custom rules from local storage and prepends them.
+  /// Incoming custom rules are deduplicated against existing in-memory rules before insertion.
   Future<void> loadCustomRules() async {
     try {
       final dir = await getApplicationDocumentsDirectory();
@@ -116,7 +122,21 @@ class RuleEngine {
       if (await file.exists()) {
         final content = await file.readAsString();
         final list = json.decode(content) as List<dynamic>;
-        final customRules = list.map((r) => NotificationRule.fromMap(Map<String, dynamic>.from(r))).toList();
+        final rawCustomRules = list
+            .map((r) => NotificationRule.fromMap(Map<String, dynamic>.from(r as Map)))
+            .toList();
+        
+        final customRules = <NotificationRule>[];
+        final loadedIds = <String>{};
+        for (final r in rawCustomRules) {
+          if (loadedIds.add(r.id)) {
+            customRules.add(r);
+          }
+        }
+
+        // Remove existing rules in memory with matching identifiers
+        _rules.removeWhere((r) => loadedIds.contains(r.id));
+        
         // Insert custom rules at the top
         _rules.insertAll(0, customRules);
       }
@@ -127,10 +147,16 @@ class RuleEngine {
   }
 
   /// Saves all custom RLHF rules to local storage.
+  /// Strictly unique custom rules indexed by identifier are persisted.
   Future<void> _saveCustomRules() async {
     try {
-      // Filter out base rules (assuming base rules don't have 'rlhf-' prefix in id)
-      final customRules = _rules.where((r) => r.id.startsWith('rlhf-')).toList();
+      final customRules = <NotificationRule>[];
+      final seenIds = <String>{};
+      for (final r in _rules) {
+        if (r.id.startsWith('rlhf-') && seenIds.add(r.id)) {
+          customRules.add(r);
+        }
+      }
       final list = customRules.map((r) => r.toMap()).toList();
       
       final dir = await getApplicationDocumentsDirectory();
