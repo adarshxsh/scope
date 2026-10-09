@@ -15,6 +15,8 @@ import 'package:scope/database/attention_database.dart';
 import 'package:scope/database/database_provider.dart';
 import 'package:scope/database/drift_notification_storage.dart';
 
+import 'package:scope/core/privacy/guardrails_service.dart';
+
 /// Session stats collected during a Focus review.
 class ReviewSessionStats {
   int notificationsReviewed = 0;
@@ -42,11 +44,13 @@ class NotificationController extends ChangeNotifier {
     NotificationBridge? bridge,
     NotificationStorage? storage,
     GhostAnalysisEngine? engine,
+    GuardrailService? guardrails,
     ProviderContainer? container,
   })  : _bridge = bridge ?? NotificationBridge(),
         _container = container ?? providerContainer,
         _storage = storage ?? DriftNotificationStorage(container?.read(databaseProvider) ?? providerContainer.read(databaseProvider)),
-        _engine = engine ?? GhostAnalysisEngine() {
+        _engine = engine ?? GhostAnalysisEngine(),
+        guardrails = guardrails ?? GuardrailService(container?.read(databaseProvider) ?? providerContainer.read(databaseProvider)) {
     _engine.initialize();
 
     // Listen to changes in Riverpod's reviewQueueProvider to keep legacy notifier list in sync
@@ -54,6 +58,9 @@ class NotificationController extends ChangeNotifier {
       _notifications = next;
       notifyListeners();
     });
+
+    // Listen to guardrail changes to trigger immediate UI refresh
+    this.guardrails.addListener(notifyListeners);
 
     // Populate initial notifications from storage, if any
     _loadInitialNotifications();
@@ -63,8 +70,10 @@ class NotificationController extends ChangeNotifier {
   final NotificationStorage _storage;
   final GhostAnalysisEngine _engine;
   final ProviderContainer _container;
+  final GuardrailService guardrails;
 
   List<AppNotification> _notifications = [];
+
   bool _isListenerEnabled = false;
   bool _isLoading = true;
   Timer? _pollTimer;
@@ -323,9 +332,18 @@ class NotificationController extends ChangeNotifier {
     final loaded = await _storage.getAll();
     if (_initialLoadCompleted) return;
 
-    if (_notifications.isEmpty) {
-      _notifications = loaded;
+    final filtered = loaded.where((n) => !guardrails.shouldDrop(n)).toList();
+    final toDelete = loaded.where((n) => guardrails.shouldDrop(n)).toList();
+    if (toDelete.isNotEmpty) {
+      await _storage.deleteByIds(toDelete.map((n) => n.id).toList());
     }
+
+    if (_notifications.isEmpty) {
+      _notifications = filtered;
+    } else {
+      _notifications = _notifications.where((n) => !guardrails.shouldDrop(n)).toList();
+    }
+
     if (_notifications.isNotEmpty) {
       final notifier = _container.read(reviewQueueProvider.notifier);
       notifier.load(_notifications);
@@ -391,6 +409,9 @@ class NotificationController extends ChangeNotifier {
         // Ignore ongoing background/system notifications (e.g. charging, media playback)
         if (raw.isOngoing) continue;
 
+        // Guardrail evaluation before AI processing or storage
+        if (guardrails.shouldDrop(raw)) continue;
+
         final isDuplicate = _notifications.any((n) =>
             n.packageName == raw.packageName &&
             n.timestamp == raw.timestamp &&
@@ -404,7 +425,10 @@ class NotificationController extends ChangeNotifier {
               n.title == raw.title &&
               n.content == raw.content);
           if (!inBatch) {
-            analyzed.add(await _engine.analyze(raw));
+            final processed = await _engine.analyze(raw);
+            if (!guardrails.shouldDrop(processed)) {
+              analyzed.add(processed);
+            }
           }
         }
       }
@@ -412,8 +436,9 @@ class NotificationController extends ChangeNotifier {
       if (analyzed.isNotEmpty) {
         await _storage.saveAll(analyzed);
         final loaded = await _storage.getAll();
+        final filtered = loaded.where((n) => !guardrails.shouldDrop(n)).toList();
         final notifier = _container.read(reviewQueueProvider.notifier);
-        notifier.load(loaded);
+        notifier.load(filtered);
         await notifier.rescore();
       }
 
@@ -433,6 +458,8 @@ class NotificationController extends ChangeNotifier {
     final analyzed = <AppNotification>[];
 
     for (final raw in testNotifs) {
+      if (guardrails.shouldDrop(raw)) continue;
+
       final isDuplicate = _notifications.any((n) =>
           n.packageName == raw.packageName &&
           n.timestamp == raw.timestamp &&
@@ -446,7 +473,10 @@ class NotificationController extends ChangeNotifier {
             n.title == raw.title &&
             n.content == raw.content);
         if (!inBatch) {
-          analyzed.add(await _engine.analyze(raw));
+          final processed = await _engine.analyze(raw);
+          if (!guardrails.shouldDrop(processed)) {
+            analyzed.add(processed);
+          }
         }
       }
     }
@@ -454,13 +484,54 @@ class NotificationController extends ChangeNotifier {
     if (analyzed.isNotEmpty) {
       await _storage.saveAll(analyzed);
       final loaded = await _storage.getAll();
+      final filtered = loaded.where((n) => !guardrails.shouldDrop(n)).toList();
       final notifier = _container.read(reviewQueueProvider.notifier);
-      notifier.load(loaded);
+      notifier.load(filtered);
       await notifier.rescore();
     }
 
     notifyListeners();
   }
+
+  /// Toggles a category guardrail and performs immediate retroactive purge if muted.
+  Future<void> toggleGuardrailCategory(SensitiveCategory category, bool muted) async {
+    await guardrails.toggleCategory(category, muted);
+    if (muted) {
+      await purgeMatchingGuardrails();
+    }
+  }
+
+  /// Toggles app package exclusion and performs immediate retroactive purge if excluded.
+  Future<void> toggleGuardrailPackage(String packageName, bool excluded) async {
+    await guardrails.togglePackage(packageName, excluded);
+    if (excluded) {
+      await purgeMatchingGuardrails();
+    }
+  }
+
+  /// Retroactively purges all stored historical records that match active guardrails.
+  Future<int> purgeMatchingGuardrails() async {
+    final allStored = await _storage.getAll();
+    final matching = allStored.where((n) => guardrails.shouldDrop(n)).toList();
+
+    if (matching.isNotEmpty) {
+      final ids = matching.map((n) => n.id).toList();
+      await _storage.deleteByIds(ids);
+
+      _notifications.removeWhere((n) => ids.contains(n.id));
+      _savedActionItems.removeWhere((item) => ids.contains(item.notification.id));
+      _focusSessionQueueIds.removeWhere((id) => ids.contains(id));
+
+      final notifier = _container.read(reviewQueueProvider.notifier);
+      for (final id in ids) {
+        notifier.remove(id);
+      }
+    }
+
+    notifyListeners();
+    return matching.length;
+  }
+
 
   Future<void> clearAll() async {
     await _storage.clear();
