@@ -16,6 +16,7 @@ import tensorflow as tf
 
 tf.config.set_visible_devices([], 'GPU')
 
+from training.dataset.schema import FEATURE_NAMES
 from training.config import (
     CATEGORICAL_LABELS,
     FEATURE_VECTOR_SIZE,
@@ -156,11 +157,12 @@ def main() -> None:
         "dataset_path": str(args.data),
         "sample_count": len(records),
         "feature_vector_size": FEATURE_VECTOR_SIZE,
+        "feature_names": list(FEATURE_NAMES),
         "feature_source": "Flutter deterministic FeatureExtractor",
         "python_feature_generation": False,
         "target": "look_again_score",
         "architecture": [
-            "Input(63)",
+            f"Input({FEATURE_VECTOR_SIZE})",
             "Normalization",
             "Dense(128, relu)",
             "Dropout(0.2)",

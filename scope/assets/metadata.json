@@ -1,8 +1,6 @@
-"""Dataset schema for Flutter-exported feature vectors."""
-
-from __future__ import annotations
-
-FEATURE_NAMES: tuple[str, ...] = (
+{
+  "feature_vector_size": 63,
+  "feature_names": [
     "title_length",
     "body_length",
     "word_count",
@@ -65,11 +63,21 @@ FEATURE_NAMES: tuple[str, ...] = (
     "transaction_present",
     "intent_id",
     "notification_type_id",
-    "category_id",
-)
-
-FEATURE_VECTOR_SIZE = len(FEATURE_NAMES)
-
-if len(FEATURE_NAMES) != FEATURE_VECTOR_SIZE:
-    raise AssertionError(f"Feature manifest count ({len(FEATURE_NAMES)}) must match FEATURE_VECTOR_SIZE ({FEATURE_VECTOR_SIZE}).")
-
+    "category_id"
+  ],
+  "feature_source": "Flutter deterministic FeatureExtractor",
+  "target": "look_again_score",
+  "flutter": {
+    "input_dtype": "float32",
+    "input_shape": [
+      1,
+      63
+    ],
+    "output_dtype": "float32",
+    "output_name": "look_again_score",
+    "output_shape": [
+      1,
+      1
+    ]
+  }
+}
