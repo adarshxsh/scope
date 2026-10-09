@@ -59,39 +59,33 @@ class _FocusScreenState extends State<FocusScreen> {
     setState(() => _selectedAction = action.type);
     await Future<void>.delayed(AppMotion.fast);
 
-    switch (action.type) {
-      case SmartActionType.archive:
-        widget.controller.archive(notification.id);
-      case SmartActionType.complete:
-        widget.controller.complete(notification.id);
-      case SmartActionType.addCalendar:
-      case SmartActionType.remind:
-      case SmartActionType.track:
-        widget.controller.saveActionItem(notification, action);
-        widget.controller.recordAction();
-        setState(() => _isTransitioning = false);
-        if (widget.controller.reviewQueue.isEmpty) _finishSession();
-        return;
-      case SmartActionType.pay:
-      case SmartActionType.download:
-      case SmartActionType.viewStatement:
-      case SmartActionType.reply:
-      case SmartActionType.join:
-      case SmartActionType.openUrl:
-      case SmartActionType.openApp:
-        if (!mounted) return;
-        await ScopeNavigator.push(
-          context,
-          NotificationDetailScreen(
-            notification: notification,
-            controller: widget.controller,
+    final result = await widget.controller.executeSmartAction(action, notification);
+
+    if (mounted) {
+      if (result.wasBlocked) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Blocked unsafe action: ${result.error ?? "Invalid link scheme"}'),
+            backgroundColor: Colors.redAccent,
+            duration: const Duration(seconds: 3),
           ),
         );
-        setState(() => _selectedAction = null);
-        return;
+      } else if (!result.success && result.error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not open: ${result.error}'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
     }
 
-    await _advance();
+    if (action.type == SmartActionType.archive || action.type == SmartActionType.complete) {
+      await _advance();
+    } else {
+      setState(() => _selectedAction = null);
+      if (widget.controller.reviewQueue.isEmpty) _finishSession();
+    }
   }
 
   Future<void> _advance() async {

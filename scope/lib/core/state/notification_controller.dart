@@ -2,12 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:scope/core/analysis/extracted_features.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/storage/notification_storage.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/core/utils/focus_area_mapper.dart';
+import 'package:scope/core/utils/smart_action_url_validator.dart';
 import 'package:scope/core/utils/smart_actions.dart';
 import 'package:scope/core/state/providers.dart';
 import 'package:drift/drift.dart';
@@ -22,6 +24,7 @@ class ReviewSessionStats {
   int calendarEventsCreated = 0;
   int remindersCreated = 0;
   int archived = 0;
+  int blockedActionsCount = 0;
 
   /// Rough estimate: ~45 seconds saved per reviewed notification.
   int get estimatedMinutesSaved => ((notificationsReviewed * 45) / 60).ceil();
@@ -530,6 +533,108 @@ class NotificationController extends ChangeNotifier {
       if (n.id == id) return n.state == ReviewState.REVIEWED;
     }
     return false;
+  }
+
+  NotificationBridge get bridge => _bridge;
+
+  /// Safely executes a [SmartAction] with URL scheme validation, intent launcher guardrails,
+  /// and diagnostic telemetry logging.
+  Future<SmartActionLaunchResult> executeSmartAction(
+    SmartAction action,
+    AppNotification notification,
+  ) async {
+    String? targetUrl = action.url;
+    if (targetUrl == null || targetUrl.isEmpty) {
+      if (notification.extractedFeatures != null) {
+        final features = ExtractedFeatures.fromMap(notification.extractedFeatures!);
+        if (features.urls.isNotEmpty) {
+          targetUrl = features.urls.first;
+        }
+      }
+    }
+
+    switch (action.type) {
+      case SmartActionType.openUrl:
+      case SmartActionType.pay:
+      case SmartActionType.join:
+      case SmartActionType.download:
+      case SmartActionType.viewStatement:
+      case SmartActionType.track:
+        if (targetUrl == null || targetUrl.isEmpty) {
+          final launchedApp = await _bridge.launchApp(action.packageName ?? notification.packageName);
+          recordAction();
+          return SmartActionLaunchResult(
+            success: launchedApp,
+            error: launchedApp ? null : 'No URL or app launcher available',
+          );
+        }
+
+        final validation = SmartActionUrlValidator.validate(targetUrl);
+        SmartActionUrlValidator.logDiagnostic(
+          action: action,
+          packageName: notification.packageName,
+          result: validation,
+        );
+
+        if (!validation.isValid) {
+          sessionStats.blockedActionsCount++;
+          notifyListeners();
+          return SmartActionLaunchResult(
+            success: false,
+            wasBlocked: validation.wasBlocked,
+            error: validation.errorReason,
+          );
+        }
+
+        final launched = await _bridge.launchUrl(validation.sanitizedUrl!);
+        if (launched) {
+          recordAction();
+          return const SmartActionLaunchResult(success: true);
+        } else {
+          final launchedApp = await _bridge.launchApp(action.packageName ?? notification.packageName);
+          if (launchedApp) {
+            recordAction();
+            return const SmartActionLaunchResult(success: true);
+          }
+          return const SmartActionLaunchResult(
+            success: false,
+            error: 'No app found to handle link',
+          );
+        }
+
+      case SmartActionType.openApp:
+        final pkg = action.packageName ?? notification.packageName;
+        final launched = await _bridge.launchApp(pkg);
+        recordAction();
+        return SmartActionLaunchResult(
+          success: launched,
+          error: launched ? null : 'Could not open app $pkg',
+        );
+
+      case SmartActionType.archive:
+        archive(notification.id);
+        return const SmartActionLaunchResult(success: true);
+
+      case SmartActionType.complete:
+        complete(notification.id);
+        return const SmartActionLaunchResult(success: true);
+
+      case SmartActionType.addCalendar:
+        saveActionItem(notification, action);
+        recordCalendarEvent();
+        return const SmartActionLaunchResult(success: true);
+
+      case SmartActionType.remind:
+        saveActionItem(notification, action);
+        recordReminder();
+        return const SmartActionLaunchResult(success: true);
+
+      case SmartActionType.reply:
+        saveActionItem(notification, action);
+        recordAction();
+        await _bridge.launchApp(notification.packageName);
+        return const SmartActionLaunchResult(success: true);
+    }
   }
 
   List<AppNotification> search(String query) {
