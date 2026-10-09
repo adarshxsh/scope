@@ -146,10 +146,30 @@ void main() {
       expect(values, isA<List<double>>());
       expect(values, hasLength(FeatureVector.size));
       expect(
-        values[FeatureVector.featureNames.indexOf('contains_question')],
+        values.getFeature('contains_question'),
         1.0,
       );
-      expect(values[FeatureVector.featureNames.indexOf('person_present')], 1.0);
+      expect(values.getFeature('person_present'), 1.0);
+    });
+
+    test('FeatureVector supports dynamic feature sizing and getFeature lookups', () {
+      final defaultLengthList = List<double>.filled(FeatureVector.featureNames.length, 0.5);
+      expect(() => FeatureVector(defaultLengthList), returnsNormally);
+
+      final customSize = 80;
+      final customList = List<double>.filled(customSize, 1.0);
+      expect(() => FeatureVector(customList, customSize), returnsNormally);
+
+      final vector = FeatureVector(defaultLengthList);
+      expect(vector.getFeature('non_existent_feature'), equals(0.0));
+      expect(vector.getFeature('non_existent_feature', defaultValue: -1.0), equals(-1.0));
+
+      final testList = List<double>.filled(FeatureVector.featureNames.length, 0.0);
+      final otpIndex = FeatureVector.featureNames.indexOf('contains_otp');
+      testList[otpIndex] = 1.0;
+
+      expect(testList.getFeature('contains_otp'), equals(1.0));
+      expect(FeatureVector(testList).getFeature('contains_otp'), equals(1.0));
     });
   });
 
