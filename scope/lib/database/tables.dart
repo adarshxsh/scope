@@ -65,3 +65,29 @@ class DailyBriefTable extends Table {
   IntColumn get remindersCreated => integer().withDefault(const Constant(0))();
   IntColumn get archivedCount => integer().withDefault(const Constant(0))();
 }
+
+@DataClassName('UserSettingsEntry')
+class UserSettingsTable extends Table {
+  IntColumn get id => integer().withDefault(const Constant(1))();
+  IntColumn get retentionDays => integer().withDefault(const Constant(7))();
+  BoolColumn get telemetryEnabled => boolean().withDefault(const Constant(true))();
+  IntColumn get storageQuotaMb => integer().withDefault(const Constant(25))();
+  IntColumn get maxRowCap => integer().withDefault(const Constant(5000))();
+  DateTimeColumn get lastUpdated => dateTime().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DataClassName('InferenceTelemetryEntry')
+class InferenceTelemetryTable extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get notificationId => text().nullable()();
+  TextColumn get eventType => text()();
+  IntColumn get timestamp => integer()();
+  IntColumn get latencyMs => integer().nullable()();
+  TextColumn get priority => text().nullable()();
+  RealColumn get fusedScore => real().nullable()();
+  TextColumn get metadata => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
