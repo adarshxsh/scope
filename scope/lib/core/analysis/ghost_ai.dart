@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
@@ -5,6 +6,7 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/utils/pii_redactor.dart';
+import 'package:scope/core/analysis/asset_verifier.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -61,16 +63,30 @@ class GhostAI {
   Future<void> initialize() async {
     if (_interpreter != null) return;
     try {
-      // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      // 1. Load model buffer and verify SHA-256
+      final modelByteData = await rootBundle.load('assets/model.tflite');
+      final modelBytes = modelByteData.buffer.asUint8List(
+        modelByteData.offsetInBytes,
+        modelByteData.lengthInBytes,
+      );
+      AssetVerifier.verifyAndGetBuffer('assets/model.tflite', modelBytes);
+
+      _interpreter = Interpreter.fromBuffer(modelBytes);
+      debugPrint('GhostAI: TFLite interpreter loaded successfully from verified buffer.');
     } catch (e) {
       debugPrint('GhostAI: Failed to load TFLite model: $e');
     }
 
     try {
-      // 2. Load and compile rules database
-      final jsonStr = await rootBundle.loadString('assets/rules.json');
+      // 2. Load rules buffer and verify SHA-256
+      final rulesByteData = await rootBundle.load('assets/rules.json');
+      final rulesBytes = rulesByteData.buffer.asUint8List(
+        rulesByteData.offsetInBytes,
+        rulesByteData.lengthInBytes,
+      );
+      AssetVerifier.verifyAndGetBuffer('assets/rules.json', rulesBytes);
+
+      final jsonStr = utf8.decode(rulesBytes);
       _ruleEngine.compile(jsonStr);
       debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
     } catch (e) {
