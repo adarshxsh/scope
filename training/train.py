@@ -151,16 +151,17 @@ def main() -> None:
     label_encoder_path = output_dir / "label_encoder.json"
     write_json(label_encoder_path, dataset.label_encoders)
 
+    feature_vector_size = int(splits.x_train.shape[1])
     metadata = {
         "created_at": datetime.now(timezone.utc).isoformat(),
         "dataset_path": str(args.data),
         "sample_count": len(records),
-        "feature_vector_size": FEATURE_VECTOR_SIZE,
+        "feature_vector_size": feature_vector_size,
         "feature_source": "Flutter deterministic FeatureExtractor",
         "python_feature_generation": False,
         "target": "look_again_score",
         "architecture": [
-            "Input(63)",
+            f"Input({feature_vector_size})",
             "Normalization",
             "Dense(128, relu)",
             "Dropout(0.2)",
@@ -185,7 +186,7 @@ def main() -> None:
         },
         "flutter": {
             "input_dtype": "float32",
-            "input_shape": [1, FEATURE_VECTOR_SIZE],
+            "input_shape": [1, feature_vector_size],
             "output_dtype": "float32",
             "output_shape": [1, 1],
             "output_name": "look_again_score",
