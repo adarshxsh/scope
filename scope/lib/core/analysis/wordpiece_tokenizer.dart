@@ -1,21 +1,95 @@
 /// WordPiece tokenizer implementation in pure Dart for BERT models.
 library;
 
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
+
+/// Exception thrown when vocabulary assets or structure fail validation checks.
+class VocabularyValidationException implements Exception {
+  final String message;
+  VocabularyValidationException(this.message);
+
+  @override
+  String toString() => 'VocabularyValidationException: $message';
+}
+
 class WordPieceTokenizer {
+  static const String defaultVocabSha256 =
+      '6229da7b5527533c901e57b32dafc3c6fd701114a407d1fe4f5da60af3b062c5';
+
   final Map<String, int> vocab;
   final int maxSeqLength;
+  final int padId;
+  final int unkId;
+  final int clsId;
+  final int sepId;
 
-  WordPieceTokenizer(this.vocab, {this.maxSeqLength = 64});
+  WordPieceTokenizer(this.vocab, {this.maxSeqLength = 64})
+      : padId = _getRequiredToken(vocab, '[PAD]'),
+        unkId = _getRequiredToken(vocab, '[UNK]'),
+        clsId = _getRequiredToken(vocab, '[CLS]'),
+        sepId = _getRequiredToken(vocab, '[SEP]');
+
+  static int _getRequiredToken(Map<String, int> vocab, String token) {
+    final id = vocab[token];
+    if (id == null) {
+      throw VocabularyValidationException(
+        'Missing required special token: $token',
+      );
+    }
+    return id;
+  }
 
   /// Loads vocabulary from a list of lines (e.g. from vocab.txt).
-  factory WordPieceTokenizer.fromLines(List<String> lines, {int maxSeqLength = 64}) {
-    final vocabMap = <String, int>{};
-    for (int i = 0; i < lines.length; i++) {
-      final line = lines[i].trim();
-      if (line.isNotEmpty) {
-        vocabMap[line] = i;
+  /// Performs SHA-256 validation (if [expectedHash] provided), line count bounds checking,
+  /// empty line validation, and required special token resolution.
+  factory WordPieceTokenizer.fromLines(
+    List<String> lines, {
+    int maxSeqLength = 64,
+    String? expectedHash,
+    int minLines = 4,
+    int? maxLines,
+  }) {
+    // 1. Verify SHA-256 hash if expectedHash is specified
+    if (expectedHash != null) {
+      final content = lines.join('\n');
+      final bytes = utf8.encode(content);
+      final digest = sha256.convert(bytes).toString().toLowerCase();
+      if (digest != expectedHash.toLowerCase()) {
+        throw VocabularyValidationException(
+          'SHA-256 digest mismatch. Expected $expectedHash, got $digest',
+        );
       }
     }
+
+    // Normalize: strip single trailing empty string from trailing newline if present
+    final effectiveLines = List<String>.from(lines);
+    if (effectiveLines.isNotEmpty && effectiveLines.last.isEmpty) {
+      effectiveLines.removeLast();
+    }
+
+    // 2. Validate line count bounds
+    if (effectiveLines.length < minLines ||
+        (maxLines != null && effectiveLines.length > maxLines)) {
+      throw VocabularyValidationException(
+        'Vocabulary line count (${effectiveLines.length}) is out of bounds '
+        '[min: $minLines, max: ${maxLines ?? "unlimited"}]',
+      );
+    }
+
+    // 3. Build vocab map while enforcing non-empty/non-whitespace lines
+    final vocabMap = <String, int>{};
+    for (int i = 0; i < effectiveLines.length; i++) {
+      final rawLine = effectiveLines[i];
+      final trimmed = rawLine.trim();
+      if (trimmed.isEmpty) {
+        throw VocabularyValidationException(
+          'Vocabulary contains empty or whitespace-only line at line ${i + 1}',
+        );
+      }
+      vocabMap[trimmed] = i;
+    }
+
     return WordPieceTokenizer(vocabMap, maxSeqLength: maxSeqLength);
   }
 
@@ -24,11 +98,6 @@ class WordPieceTokenizer {
   List<int> tokenize(String text) {
     final tokens = _basicTokenize(text);
     final List<int> ids = [];
-
-    final clsId = vocab['[CLS]'] ?? 101;
-    final sepId = vocab['[SEP]'] ?? 102;
-    final padId = vocab['[PAD]'] ?? 0;
-    final unkId = vocab['[UNK]'] ?? 100;
 
     ids.add(clsId);
 
