@@ -3,6 +3,7 @@ import 'package:scope/core/analysis/extracted_features.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/state/notification_controller.dart';
+import 'package:scope/core/storage/feedback_dataset_logger.dart';
 import 'package:scope/theme/app_colors.dart';
 import 'package:scope/theme/app_spacing.dart';
 import 'package:scope/widgets/primitives/scope_surface.dart';
@@ -88,27 +89,59 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     });
   }
 
-  void _submitFeedback(bool isReward) {
+  void _submitFeedback(bool isReward) async {
     if (_selectedNotification == null) return;
+    final n = _selectedNotification!;
 
     if (isReward) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Reward (+1) recorded! AI model confidence reinforced.'),
-          backgroundColor: Colors.green,
-        ),
+      await FeedbackDatasetLogger.instance.logFeedback(
+        notification: n,
+        feedbackType: 'reward',
+        userFeedback: '+1',
+        targetScore: 1.0,
       );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Reward (+1) recorded & persisted to dataset! AI model confidence reinforced.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     } else {
+      await FeedbackDatasetLogger.instance.logFeedback(
+        notification: n,
+        feedbackType: 'penalty',
+        userFeedback: '-1',
+        targetScore: 0.0,
+      );
       setState(() {
         _showCorrectionForm = true;
       });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Penalty (-1) recorded & persisted to dataset. Please set expected classification.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
     }
   }
 
-  void _applyReinforcementRule() {
+  void _applyReinforcementRule() async {
     if (_selectedNotification == null) return;
 
     final n = _selectedNotification!;
+
+    await FeedbackDatasetLogger.instance.logFeedback(
+      notification: n,
+      feedbackType: 'correction',
+      userFeedback: 'correction',
+      targetCategory: _selectedCategory,
+      targetPriority: _selectedPriority,
+    );
+
     // Extract defining keywords (e.g. words > 3 chars)
     final words = <String>[];
     for (final w in n.title.split(' ')) {
@@ -136,12 +169,14 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
       _showCorrectionForm = false;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Reinforcement Rule Learned! Similar messages will now be classified as $_selectedPriority ($_selectedCategory).'),
-        backgroundColor: AppColors.seed,
-      ),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Reinforcement Rule & Dataset Record Saved! Similar messages will now be classified as $_selectedPriority ($_selectedCategory).'),
+          backgroundColor: AppColors.seed,
+        ),
+      );
+    }
   }
 
   @override

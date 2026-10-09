@@ -60,15 +60,15 @@ def build_dataset(records: list[dict[str, Any]]) -> EncodedDataset:
         # 2. Get or construct labels
         raw_labels_dict = record.get("labels") or {}
         labels_val = {
-            "category": raw_labels_dict.get("category_class") or record.get("category") or "",
-            "intent": raw_labels_dict.get("intent") or record.get("intent") or "",
-            "urgency": raw_labels_dict.get("urgency") or record.get("urgency") or "",
+            "category": raw_labels_dict.get("category_class") or record.get("category") or "msg",
+            "intent": raw_labels_dict.get("intent") or record.get("intent") or "informational",
+            "urgency": raw_labels_dict.get("urgency") or record.get("urgency") or record.get("priority") or "medium",
             "requires_action": raw_labels_dict.get("requires_action") if raw_labels_dict.get("requires_action") is not None else record.get("requires_action", False),
             "is_promotion": raw_labels_dict.get("is_promotion") if raw_labels_dict.get("is_promotion") is not None else record.get("is_promotion", False),
             "is_duplicate_candidate": raw_labels_dict.get("is_duplicate_candidate") if raw_labels_dict.get("is_duplicate_candidate") is not None else record.get("is_duplicate_candidate", False),
             "is_recurring": raw_labels_dict.get("is_recurring") if raw_labels_dict.get("is_recurring") is not None else record.get("is_recurring", False),
             "look_again": raw_labels_dict.get("look_again") if raw_labels_dict.get("look_again") is not None else record.get("look_again", False),
-            "look_again_score": record.get("look_again_score") or raw_labels_dict.get("look_again_score") or 0.0
+            "look_again_score": record.get("look_again_score") if record.get("look_again_score") is not None else (raw_labels_dict.get("look_again_score") if raw_labels_dict.get("look_again_score") is not None else 0.5)
         }
         
         labels = _validate_labels(labels_val, sample_id)
