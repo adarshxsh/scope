@@ -185,4 +185,14 @@ class NotificationCollectorServiceTest {
         assertEquals(1, drained.size)
         assertEquals("3", drained[0].id)
     }
+
+    @Test
+    fun testSanitizeText() {
+        assertEquals("", NotificationCollectorService.sanitizeText(null))
+        assertEquals("", NotificationCollectorService.sanitizeText(""))
+        assertEquals("Hello world", NotificationCollectorService.sanitizeText("Hello world"))
+        assertEquals("User email: [REDACTED]", NotificationCollectorService.sanitizeText("User email: test@example.com"))
+        assertEquals("Card: [REDACTED]", NotificationCollectorService.sanitizeText("Card: 1234 5678 9101 1121"))
+        assertEquals("OTP code: [REDACTED]", NotificationCollectorService.sanitizeText("OTP code: 123456"))
+    }
 }
