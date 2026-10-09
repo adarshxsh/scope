@@ -54,7 +54,7 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
 
     // Persist to DB
     if (_db != null) {
-      DriftNotificationStorage(_db).save(newItem);
+      _safeSave(newItem);
       _saveQueueEntry(newItem);
     }
   }
@@ -63,7 +63,7 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
   void remove(String id) {
     state = state.where((n) => n.id != id).toList();
     if (_db != null) {
-      _db.reviewQueueDao.deleteItem(id);
+      _safeDeleteQueueItem(id);
     }
   }
 
@@ -74,7 +74,7 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
         if (n.id == notification.id) notification else n
     ];
     if (_db != null) {
-      DriftNotificationStorage(_db).save(notification);
+      _safeSave(notification);
       _saveQueueEntry(notification);
     }
   }
@@ -91,8 +91,8 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
     ];
     if (_db != null) {
       final item = state.firstWhere((n) => n.id == id);
-      DriftNotificationStorage(_db).save(item);
-      _db.reviewQueueDao.updateStatus(id, ReviewState.REVIEWED);
+      _safeSave(item);
+      _safeUpdateQueueStatus(id, ReviewState.REVIEWED);
     }
   }
 
@@ -108,8 +108,8 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
     ];
     if (_db != null) {
       final item = state.firstWhere((n) => n.id == id);
-      DriftNotificationStorage(_db).save(item);
-      _db.reviewQueueDao.updateStatus(id, newState);
+      _safeSave(item);
+      _safeUpdateQueueStatus(id, newState);
     }
   }
 
@@ -125,8 +125,8 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
     ];
     if (_db != null) {
       final item = state.firstWhere((n) => n.id == id);
-      DriftNotificationStorage(_db).save(item);
-      _db.reviewQueueDao.updateStatus(id, ReviewState.ARCHIVED);
+      _safeSave(item);
+      _safeUpdateQueueStatus(id, ReviewState.ARCHIVED);
     }
   }
 
@@ -142,8 +142,8 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
     ];
     if (_db != null) {
       final item = state.firstWhere((n) => n.id == id);
-      DriftNotificationStorage(_db).save(item);
-      _db.reviewQueueDao.updateStatus(id, ReviewState.EXPIRED);
+      _safeSave(item);
+      _safeUpdateQueueStatus(id, ReviewState.EXPIRED);
     }
   }
 
@@ -164,7 +164,7 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
     ];
     if (_db != null) {
       final item = state.firstWhere((n) => n.id == id);
-      DriftNotificationStorage(_db).save(item);
+      _safeSave(item);
       _saveQueueEntry(item, expiry: snoozedUntil);
     }
   }
@@ -250,20 +250,55 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
   void clear() {
     state = [];
     if (_db != null) {
-      _db.reviewQueueDao.clearAll();
+      _safeClearQueue();
     }
   }
 
+  Future<void> _safeSave(AppNotification item) async {
+    final db = _db;
+    if (db == null) return;
+    try {
+      await DriftNotificationStorage(db).save(item);
+    } catch (_) {}
+  }
+
+  Future<void> _safeDeleteQueueItem(String id) async {
+    final db = _db;
+    if (db == null) return;
+    try {
+      await db.reviewQueueDao.deleteItem(id);
+    } catch (_) {}
+  }
+
+  Future<void> _safeUpdateQueueStatus(String id, ReviewState status) async {
+    final db = _db;
+    if (db == null) return;
+    try {
+      await db.reviewQueueDao.updateStatus(id, status);
+    } catch (_) {}
+  }
+
+  Future<void> _safeClearQueue() async {
+    final db = _db;
+    if (db == null) return;
+    try {
+      await db.reviewQueueDao.clearAll();
+    } catch (_) {}
+  }
+
   Future<void> _saveQueueEntry(AppNotification n, {DateTime? expiry}) async {
-    if (_db == null) return;
-    await _db.reviewQueueDao.insertItem(ReviewQueueEntry(
-      id: 0,
-      notificationId: n.id,
-      priority: n.priority ?? 'medium',
-      enqueueTime: DateTime.now(),
-      expiryTime: expiry,
-      status: n.state,
-    ));
+    final db = _db;
+    if (db == null) return;
+    try {
+      await db.reviewQueueDao.insertItem(ReviewQueueEntry(
+        id: 0,
+        notificationId: n.id,
+        priority: n.priority ?? 'medium',
+        enqueueTime: DateTime.now(),
+        expiryTime: expiry,
+        status: n.state,
+      ));
+    } catch (_) {}
   }
 
   bool _checkCompletedKeywords(String title, String content) {
