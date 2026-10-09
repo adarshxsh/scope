@@ -73,12 +73,36 @@ class LiteRtClassifier implements NotificationAnalyzer {
     }
 
     try {
-      // Run model inference
-      // Assume input shape: [1, 64]
-      final input = [tokenIds];
-      
-      // Output logit tensor shape: [1, 5] (Promo, Social, System, Message, Finance)
-      final output = List<double>.filled(5, 0.0).reshape([1, 5]);
+      // Run model inference with dynamic shape adaptation
+      int expectedSeqLen = 64;
+      try {
+        final inputTensors = _interpreter!.getInputTensors();
+        if (inputTensors.isNotEmpty && inputTensors[0].shape.isNotEmpty) {
+          final shape = inputTensors[0].shape;
+          expectedSeqLen = shape.length >= 2 ? shape[1] : shape[0];
+        }
+      } catch (_) {}
+
+      final adaptedTokenIds = tokenIds.length == expectedSeqLen
+          ? tokenIds
+          : (tokenIds.length > expectedSeqLen
+              ? tokenIds.sublist(0, expectedSeqLen)
+              : [
+                  ...tokenIds,
+                  ...List<int>.filled(expectedSeqLen - tokenIds.length, 0)
+                ]);
+
+      final input = [adaptedTokenIds];
+
+      int numCategories = 5;
+      try {
+        final outputTensors = _interpreter!.getOutputTensors();
+        if (outputTensors.isNotEmpty && outputTensors[0].shape.isNotEmpty) {
+          numCategories = outputTensors[0].shape.last;
+        }
+      } catch (_) {}
+
+      final output = List<double>.filled(numCategories, 0.0).reshape([1, numCategories]);
 
       _interpreter!.run(input, output);
 
@@ -95,7 +119,7 @@ class LiteRtClassifier implements NotificationAnalyzer {
       }
 
       final categories = ['promo', 'social', 'sys', 'msg', 'finance'];
-      final predictedCategory = categories[bestIndex];
+      final predictedCategory = bestIndex < categories.length ? categories[bestIndex] : 'msg';
 
       return AnalysisResult(
         category: predictedCategory,

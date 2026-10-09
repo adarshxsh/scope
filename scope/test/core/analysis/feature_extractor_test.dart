@@ -151,6 +151,30 @@ void main() {
       );
       expect(values[FeatureVector.featureNames.indexOf('person_present')], 1.0);
     });
+
+    test('pads or truncates feature vector to target dimensions', () {
+      final input = List<double>.generate(63, (i) => i.toDouble());
+      final vector = FeatureVector(input);
+
+      // Truncate to 32 dimensions
+      final truncated = vector.padOrTruncate(32);
+      expect(truncated, hasLength(32));
+      expect(truncated, equals(input.sublist(0, 32)));
+
+      // Pad to 128 dimensions
+      final padded = vector.padOrTruncate(128);
+      expect(padded, hasLength(128));
+      expect(padded.sublist(0, 63), equals(input));
+      expect(padded.sublist(63).every((v) => v == 0.0), isTrue);
+
+      // Same dimension (63)
+      final same = vector.padOrTruncate(63);
+      expect(same, equals(input));
+
+      // Zero or negative dimension
+      expect(vector.padOrTruncate(0), isEmpty);
+      expect(vector.padOrTruncate(-5), isEmpty);
+    });
   });
 
   group('MetadataAnalyzer', () {
