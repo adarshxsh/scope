@@ -18,9 +18,25 @@ import 'package:scope/core/models/notification_model.dart';
 class NotificationBridge {
   /// The MethodChannel name must match the one registered in MainActivity.kt
   final MethodChannel _channel;
+  String? _sessionToken;
 
-  NotificationBridge({MethodChannel? channel})
-    : _channel = channel ?? const MethodChannel('com.scope.notifications');
+  NotificationBridge({MethodChannel? channel, String? sessionToken})
+    : _channel = channel ?? const MethodChannel('com.scope.notifications'),
+      _sessionToken = sessionToken;
+
+  /// Retrieves or initializes the session token from MainActivity.
+  Future<String?> getSessionToken() async {
+    if (_sessionToken != null) return _sessionToken;
+    try {
+      _sessionToken = await _channel.invokeMethod<String>('getSessionToken');
+    } on PlatformException catch (e) {
+      // ignore: avoid_print
+      print('NotificationBridge.getSessionToken failed: ${e.message}');
+    } on MissingPluginException {
+      // Happens when running on non-Android platforms or in tests without mock
+    }
+    return _sessionToken;
+  }
 
   /// Drains the notification queue from the Android side.
   ///
@@ -28,8 +44,10 @@ class NotificationBridge {
   /// Returns an empty list if the service isn't running or no new notifications.
   Future<List<AppNotification>> getNotifications() async {
     try {
+      final token = await getSessionToken();
       final result = await _channel.invokeMethod<List<dynamic>>(
         'getNotifications',
+        <String, dynamic>{'token': token},
       );
       if (result == null) return [];
 
@@ -53,7 +71,11 @@ class NotificationBridge {
   /// Returns false if the check fails (e.g., on non-Android platforms).
   Future<bool> isListenerEnabled() async {
     try {
-      final result = await _channel.invokeMethod<bool>('isListenerEnabled');
+      final token = await getSessionToken();
+      final result = await _channel.invokeMethod<bool>(
+        'isListenerEnabled',
+        <String, dynamic>{'token': token},
+      );
       return result ?? false;
     } on PlatformException {
       return false;
@@ -67,7 +89,11 @@ class NotificationBridge {
   /// The user must manually toggle permission for this app.
   Future<void> openNotificationSettings() async {
     try {
-      await _channel.invokeMethod<void>('openNotificationSettings');
+      final token = await getSessionToken();
+      await _channel.invokeMethod<void>(
+        'openNotificationSettings',
+        <String, dynamic>{'token': token},
+      );
     } on PlatformException catch (e) {
       // ignore: avoid_print
       print('NotificationBridge.openNotificationSettings failed: ${e.message}');
