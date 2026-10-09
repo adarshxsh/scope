@@ -4,17 +4,34 @@ import 'package:scope/database/attention_database.dart';
 
 class DriftNotificationStorage implements NotificationStorage {
   final AttentionDatabase _db;
-  DriftNotificationStorage(this._db);
+
+  DriftNotificationStorage(this._db, {int? maxCapacity}) {
+    if (maxCapacity != null) {
+      _db.notificationDao.maxCapacity = maxCapacity;
+    }
+  }
+
+  @override
+  int get maxCapacity => _db.notificationDao.maxCapacity;
+
+  @override
+  set maxCapacity(int capacity) {
+    _db.notificationDao.maxCapacity = capacity;
+  }
 
   @override
   Future<void> save(AppNotification notification) async {
-    await _db.notificationDao.insertNotification(_toEntry(notification));
+    try {
+      await _db.notificationDao.insertNotification(_toEntry(notification));
+    } catch (_) {}
   }
 
   @override
   Future<void> saveAll(List<AppNotification> notifications) async {
     final entries = notifications.map(_toEntry).toList();
-    await _db.notificationDao.insertAll(entries);
+    try {
+      await _db.notificationDao.insertAll(entries);
+    } catch (_) {}
   }
 
   @override

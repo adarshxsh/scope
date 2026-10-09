@@ -32,6 +32,12 @@ abstract class NotificationStorage {
 
   /// Returns the current count of stored notifications.
   Future<int> get count;
+
+  /// Gets the maximum row capacity limit (default: 5000).
+  int get maxCapacity => 5000;
+
+  /// Sets the maximum row capacity limit.
+  set maxCapacity(int capacity) {}
 }
 
 /// In-memory implementation of [NotificationStorage].
@@ -41,18 +47,50 @@ abstract class NotificationStorage {
 /// Will be replaced by a persistent backend in a later phase.
 class InMemoryNotificationStorage implements NotificationStorage {
   final List<AppNotification> _store = [];
+  int _maxCapacity;
+
+  InMemoryNotificationStorage({int maxCapacity = 5000}) : _maxCapacity = maxCapacity;
+
+  @override
+  int get maxCapacity => _maxCapacity;
+
+  @override
+  set maxCapacity(int capacity) {
+    _maxCapacity = capacity;
+    _pruneToCapacity();
+  }
 
   @override
   Future<void> save(AppNotification notification) async {
     // Remove existing entry with the same ID (upsert behavior)
     _store.removeWhere((n) => n.id == notification.id);
     _store.add(notification);
+    _pruneToCapacity();
   }
 
   @override
   Future<void> saveAll(List<AppNotification> notifications) async {
     for (final notification in notifications) {
-      await save(notification);
+      _store.removeWhere((n) => n.id == notification.id);
+      _store.add(notification);
+    }
+    _pruneToCapacity();
+  }
+
+  void _pruneToCapacity() {
+    if (_maxCapacity <= 0) return;
+    if (_store.length > _maxCapacity) {
+      final excess = _store.length - _maxCapacity;
+      // Sort candidates for deletion: non-active first, then oldest timestamp first.
+      _store.sort((a, b) {
+        final aActive = a.state == ReviewState.ACTIVE ? 1 : 0;
+        final bActive = b.state == ReviewState.ACTIVE ? 1 : 0;
+        if (aActive != bActive) {
+          return aActive.compareTo(bActive);
+        }
+        return a.timestamp.compareTo(b.timestamp);
+      });
+      _store.removeRange(0, excess);
     }
   }
 
