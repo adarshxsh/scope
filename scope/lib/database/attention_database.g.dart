@@ -2709,6 +2709,411 @@ class DailyBriefTableCompanion extends UpdateCompanion<DailyBriefEntry> {
   }
 }
 
+class $PrivacyLedgerTableTable extends PrivacyLedgerTable
+    with TableInfo<$PrivacyLedgerTableTable, PrivacyLedgerEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PrivacyLedgerTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<String> date = GeneratedColumn<String>(
+    'date',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _epsilonSpentMeta = const VerificationMeta(
+    'epsilonSpent',
+  );
+  @override
+  late final GeneratedColumn<double> epsilonSpent = GeneratedColumn<double>(
+    'epsilon_spent',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0.0),
+  );
+  static const VerificationMeta _deltaSpentMeta = const VerificationMeta(
+    'deltaSpent',
+  );
+  @override
+  late final GeneratedColumn<double> deltaSpent = GeneratedColumn<double>(
+    'delta_spent',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0.0),
+  );
+  static const VerificationMeta _queryCountMeta = const VerificationMeta(
+    'queryCount',
+  );
+  @override
+  late final GeneratedColumn<int> queryCount = GeneratedColumn<int>(
+    'query_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastUpdatedMeta = const VerificationMeta(
+    'lastUpdated',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastUpdated = GeneratedColumn<DateTime>(
+    'last_updated',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    date,
+    epsilonSpent,
+    deltaSpent,
+    queryCount,
+    lastUpdated,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'privacy_ledger_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PrivacyLedgerEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('date')) {
+      context.handle(
+        _dateMeta,
+        date.isAcceptableOrUnknown(data['date']!, _dateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dateMeta);
+    }
+    if (data.containsKey('epsilon_spent')) {
+      context.handle(
+        _epsilonSpentMeta,
+        epsilonSpent.isAcceptableOrUnknown(
+          data['epsilon_spent']!,
+          _epsilonSpentMeta,
+        ),
+      );
+    }
+    if (data.containsKey('delta_spent')) {
+      context.handle(
+        _deltaSpentMeta,
+        deltaSpent.isAcceptableOrUnknown(data['delta_spent']!, _deltaSpentMeta),
+      );
+    }
+    if (data.containsKey('query_count')) {
+      context.handle(
+        _queryCountMeta,
+        queryCount.isAcceptableOrUnknown(data['query_count']!, _queryCountMeta),
+      );
+    }
+    if (data.containsKey('last_updated')) {
+      context.handle(
+        _lastUpdatedMeta,
+        lastUpdated.isAcceptableOrUnknown(
+          data['last_updated']!,
+          _lastUpdatedMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PrivacyLedgerEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PrivacyLedgerEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      date: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}date'],
+      )!,
+      epsilonSpent: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}epsilon_spent'],
+      )!,
+      deltaSpent: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}delta_spent'],
+      )!,
+      queryCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}query_count'],
+      )!,
+      lastUpdated: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_updated'],
+      )!,
+    );
+  }
+
+  @override
+  $PrivacyLedgerTableTable createAlias(String alias) {
+    return $PrivacyLedgerTableTable(attachedDatabase, alias);
+  }
+}
+
+class PrivacyLedgerEntry extends DataClass
+    implements Insertable<PrivacyLedgerEntry> {
+  final int id;
+  final String date;
+  final double epsilonSpent;
+  final double deltaSpent;
+  final int queryCount;
+  final DateTime lastUpdated;
+  const PrivacyLedgerEntry({
+    required this.id,
+    required this.date,
+    required this.epsilonSpent,
+    required this.deltaSpent,
+    required this.queryCount,
+    required this.lastUpdated,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['date'] = Variable<String>(date);
+    map['epsilon_spent'] = Variable<double>(epsilonSpent);
+    map['delta_spent'] = Variable<double>(deltaSpent);
+    map['query_count'] = Variable<int>(queryCount);
+    map['last_updated'] = Variable<DateTime>(lastUpdated);
+    return map;
+  }
+
+  PrivacyLedgerTableCompanion toCompanion(bool nullToAbsent) {
+    return PrivacyLedgerTableCompanion(
+      id: Value(id),
+      date: Value(date),
+      epsilonSpent: Value(epsilonSpent),
+      deltaSpent: Value(deltaSpent),
+      queryCount: Value(queryCount),
+      lastUpdated: Value(lastUpdated),
+    );
+  }
+
+  factory PrivacyLedgerEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PrivacyLedgerEntry(
+      id: serializer.fromJson<int>(json['id']),
+      date: serializer.fromJson<String>(json['date']),
+      epsilonSpent: serializer.fromJson<double>(json['epsilonSpent']),
+      deltaSpent: serializer.fromJson<double>(json['deltaSpent']),
+      queryCount: serializer.fromJson<int>(json['queryCount']),
+      lastUpdated: serializer.fromJson<DateTime>(json['lastUpdated']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'date': serializer.toJson<String>(date),
+      'epsilonSpent': serializer.toJson<double>(epsilonSpent),
+      'deltaSpent': serializer.toJson<double>(deltaSpent),
+      'queryCount': serializer.toJson<int>(queryCount),
+      'lastUpdated': serializer.toJson<DateTime>(lastUpdated),
+    };
+  }
+
+  PrivacyLedgerEntry copyWith({
+    int? id,
+    String? date,
+    double? epsilonSpent,
+    double? deltaSpent,
+    int? queryCount,
+    DateTime? lastUpdated,
+  }) => PrivacyLedgerEntry(
+    id: id ?? this.id,
+    date: date ?? this.date,
+    epsilonSpent: epsilonSpent ?? this.epsilonSpent,
+    deltaSpent: deltaSpent ?? this.deltaSpent,
+    queryCount: queryCount ?? this.queryCount,
+    lastUpdated: lastUpdated ?? this.lastUpdated,
+  );
+  PrivacyLedgerEntry copyWithCompanion(PrivacyLedgerTableCompanion data) {
+    return PrivacyLedgerEntry(
+      id: data.id.present ? data.id.value : this.id,
+      date: data.date.present ? data.date.value : this.date,
+      epsilonSpent: data.epsilonSpent.present
+          ? data.epsilonSpent.value
+          : this.epsilonSpent,
+      deltaSpent: data.deltaSpent.present
+          ? data.deltaSpent.value
+          : this.deltaSpent,
+      queryCount: data.queryCount.present
+          ? data.queryCount.value
+          : this.queryCount,
+      lastUpdated: data.lastUpdated.present
+          ? data.lastUpdated.value
+          : this.lastUpdated,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PrivacyLedgerEntry(')
+          ..write('id: $id, ')
+          ..write('date: $date, ')
+          ..write('epsilonSpent: $epsilonSpent, ')
+          ..write('deltaSpent: $deltaSpent, ')
+          ..write('queryCount: $queryCount, ')
+          ..write('lastUpdated: $lastUpdated')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, date, epsilonSpent, deltaSpent, queryCount, lastUpdated);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PrivacyLedgerEntry &&
+          other.id == this.id &&
+          other.date == this.date &&
+          other.epsilonSpent == this.epsilonSpent &&
+          other.deltaSpent == this.deltaSpent &&
+          other.queryCount == this.queryCount &&
+          other.lastUpdated == this.lastUpdated);
+}
+
+class PrivacyLedgerTableCompanion extends UpdateCompanion<PrivacyLedgerEntry> {
+  final Value<int> id;
+  final Value<String> date;
+  final Value<double> epsilonSpent;
+  final Value<double> deltaSpent;
+  final Value<int> queryCount;
+  final Value<DateTime> lastUpdated;
+  const PrivacyLedgerTableCompanion({
+    this.id = const Value.absent(),
+    this.date = const Value.absent(),
+    this.epsilonSpent = const Value.absent(),
+    this.deltaSpent = const Value.absent(),
+    this.queryCount = const Value.absent(),
+    this.lastUpdated = const Value.absent(),
+  });
+  PrivacyLedgerTableCompanion.insert({
+    this.id = const Value.absent(),
+    required String date,
+    this.epsilonSpent = const Value.absent(),
+    this.deltaSpent = const Value.absent(),
+    this.queryCount = const Value.absent(),
+    this.lastUpdated = const Value.absent(),
+  }) : date = Value(date);
+  static Insertable<PrivacyLedgerEntry> custom({
+    Expression<int>? id,
+    Expression<String>? date,
+    Expression<double>? epsilonSpent,
+    Expression<double>? deltaSpent,
+    Expression<int>? queryCount,
+    Expression<DateTime>? lastUpdated,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (date != null) 'date': date,
+      if (epsilonSpent != null) 'epsilon_spent': epsilonSpent,
+      if (deltaSpent != null) 'delta_spent': deltaSpent,
+      if (queryCount != null) 'query_count': queryCount,
+      if (lastUpdated != null) 'last_updated': lastUpdated,
+    });
+  }
+
+  PrivacyLedgerTableCompanion copyWith({
+    Value<int>? id,
+    Value<String>? date,
+    Value<double>? epsilonSpent,
+    Value<double>? deltaSpent,
+    Value<int>? queryCount,
+    Value<DateTime>? lastUpdated,
+  }) {
+    return PrivacyLedgerTableCompanion(
+      id: id ?? this.id,
+      date: date ?? this.date,
+      epsilonSpent: epsilonSpent ?? this.epsilonSpent,
+      deltaSpent: deltaSpent ?? this.deltaSpent,
+      queryCount: queryCount ?? this.queryCount,
+      lastUpdated: lastUpdated ?? this.lastUpdated,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<String>(date.value);
+    }
+    if (epsilonSpent.present) {
+      map['epsilon_spent'] = Variable<double>(epsilonSpent.value);
+    }
+    if (deltaSpent.present) {
+      map['delta_spent'] = Variable<double>(deltaSpent.value);
+    }
+    if (queryCount.present) {
+      map['query_count'] = Variable<int>(queryCount.value);
+    }
+    if (lastUpdated.present) {
+      map['last_updated'] = Variable<DateTime>(lastUpdated.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PrivacyLedgerTableCompanion(')
+          ..write('id: $id, ')
+          ..write('date: $date, ')
+          ..write('epsilonSpent: $epsilonSpent, ')
+          ..write('deltaSpent: $deltaSpent, ')
+          ..write('queryCount: $queryCount, ')
+          ..write('lastUpdated: $lastUpdated')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AttentionDatabase extends GeneratedDatabase {
   _$AttentionDatabase(QueryExecutor e) : super(e);
   $AttentionDatabaseManager get managers => $AttentionDatabaseManager(this);
@@ -2722,6 +3127,8 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final $DailyBriefTableTable dailyBriefTable = $DailyBriefTableTable(
     this,
   );
+  late final $PrivacyLedgerTableTable privacyLedgerTable =
+      $PrivacyLedgerTableTable(this);
   late final NotificationDao notificationDao = NotificationDao(
     this as AttentionDatabase,
   );
@@ -2734,6 +3141,9 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final DailyBriefDao dailyBriefDao = DailyBriefDao(
     this as AttentionDatabase,
   );
+  late final PrivacyLedgerDao privacyLedgerDao = PrivacyLedgerDao(
+    this as AttentionDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2743,6 +3153,7 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
     reviewQueueTable,
     focusSessionsTable,
     dailyBriefTable,
+    privacyLedgerTable,
   ];
 }
 
@@ -3406,7 +3817,9 @@ class $$NotificationsTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$NotificationsTableTable, NotificationEntry>(
+                    table,
+                  ),
                   $$NotificationsTableTableReferences(db, table, e),
                 ),
               )
@@ -3749,7 +4162,7 @@ class $$ReviewQueueTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$ReviewQueueTableTable, ReviewQueueEntry>(table),
                   $$ReviewQueueTableTableReferences(db, table, e),
                 ),
               )
@@ -4021,7 +4434,18 @@ class $$FocusSessionsTableTableTableManager
                 duration: duration,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$FocusSessionsTableTable, FocusSessionEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $FocusSessionsTableTable,
+                    FocusSessionEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4273,7 +4697,16 @@ class $$DailyBriefTableTableTableManager
                 archivedCount: archivedCount,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$DailyBriefTableTable, DailyBriefEntry>(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $DailyBriefTableTable,
+                    DailyBriefEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4301,6 +4734,251 @@ typedef $$DailyBriefTableTableProcessedTableManager =
       DailyBriefEntry,
       PrefetchHooks Function()
     >;
+typedef $$PrivacyLedgerTableTableCreateCompanionBuilder =
+    PrivacyLedgerTableCompanion Function({
+      Value<int> id,
+      required String date,
+      Value<double> epsilonSpent,
+      Value<double> deltaSpent,
+      Value<int> queryCount,
+      Value<DateTime> lastUpdated,
+    });
+typedef $$PrivacyLedgerTableTableUpdateCompanionBuilder =
+    PrivacyLedgerTableCompanion Function({
+      Value<int> id,
+      Value<String> date,
+      Value<double> epsilonSpent,
+      Value<double> deltaSpent,
+      Value<int> queryCount,
+      Value<DateTime> lastUpdated,
+    });
+
+class $$PrivacyLedgerTableTableFilterComposer
+    extends Composer<_$AttentionDatabase, $PrivacyLedgerTableTable> {
+  $$PrivacyLedgerTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get epsilonSpent => $composableBuilder(
+    column: $table.epsilonSpent,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get deltaSpent => $composableBuilder(
+    column: $table.deltaSpent,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get queryCount => $composableBuilder(
+    column: $table.queryCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastUpdated => $composableBuilder(
+    column: $table.lastUpdated,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PrivacyLedgerTableTableOrderingComposer
+    extends Composer<_$AttentionDatabase, $PrivacyLedgerTableTable> {
+  $$PrivacyLedgerTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get epsilonSpent => $composableBuilder(
+    column: $table.epsilonSpent,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get deltaSpent => $composableBuilder(
+    column: $table.deltaSpent,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get queryCount => $composableBuilder(
+    column: $table.queryCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastUpdated => $composableBuilder(
+    column: $table.lastUpdated,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PrivacyLedgerTableTableAnnotationComposer
+    extends Composer<_$AttentionDatabase, $PrivacyLedgerTableTable> {
+  $$PrivacyLedgerTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<double> get epsilonSpent => $composableBuilder(
+    column: $table.epsilonSpent,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get deltaSpent => $composableBuilder(
+    column: $table.deltaSpent,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get queryCount => $composableBuilder(
+    column: $table.queryCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastUpdated => $composableBuilder(
+    column: $table.lastUpdated,
+    builder: (column) => column,
+  );
+}
+
+class $$PrivacyLedgerTableTableTableManager
+    extends
+        RootTableManager<
+          _$AttentionDatabase,
+          $PrivacyLedgerTableTable,
+          PrivacyLedgerEntry,
+          $$PrivacyLedgerTableTableFilterComposer,
+          $$PrivacyLedgerTableTableOrderingComposer,
+          $$PrivacyLedgerTableTableAnnotationComposer,
+          $$PrivacyLedgerTableTableCreateCompanionBuilder,
+          $$PrivacyLedgerTableTableUpdateCompanionBuilder,
+          (
+            PrivacyLedgerEntry,
+            BaseReferences<
+              _$AttentionDatabase,
+              $PrivacyLedgerTableTable,
+              PrivacyLedgerEntry
+            >,
+          ),
+          PrivacyLedgerEntry,
+          PrefetchHooks Function()
+        > {
+  $$PrivacyLedgerTableTableTableManager(
+    _$AttentionDatabase db,
+    $PrivacyLedgerTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PrivacyLedgerTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PrivacyLedgerTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PrivacyLedgerTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> date = const Value.absent(),
+                Value<double> epsilonSpent = const Value.absent(),
+                Value<double> deltaSpent = const Value.absent(),
+                Value<int> queryCount = const Value.absent(),
+                Value<DateTime> lastUpdated = const Value.absent(),
+              }) => PrivacyLedgerTableCompanion(
+                id: id,
+                date: date,
+                epsilonSpent: epsilonSpent,
+                deltaSpent: deltaSpent,
+                queryCount: queryCount,
+                lastUpdated: lastUpdated,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String date,
+                Value<double> epsilonSpent = const Value.absent(),
+                Value<double> deltaSpent = const Value.absent(),
+                Value<int> queryCount = const Value.absent(),
+                Value<DateTime> lastUpdated = const Value.absent(),
+              }) => PrivacyLedgerTableCompanion.insert(
+                id: id,
+                date: date,
+                epsilonSpent: epsilonSpent,
+                deltaSpent: deltaSpent,
+                queryCount: queryCount,
+                lastUpdated: lastUpdated,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$PrivacyLedgerTableTable, PrivacyLedgerEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $PrivacyLedgerTableTable,
+                    PrivacyLedgerEntry
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PrivacyLedgerTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AttentionDatabase,
+      $PrivacyLedgerTableTable,
+      PrivacyLedgerEntry,
+      $$PrivacyLedgerTableTableFilterComposer,
+      $$PrivacyLedgerTableTableOrderingComposer,
+      $$PrivacyLedgerTableTableAnnotationComposer,
+      $$PrivacyLedgerTableTableCreateCompanionBuilder,
+      $$PrivacyLedgerTableTableUpdateCompanionBuilder,
+      (
+        PrivacyLedgerEntry,
+        BaseReferences<
+          _$AttentionDatabase,
+          $PrivacyLedgerTableTable,
+          PrivacyLedgerEntry
+        >,
+      ),
+      PrivacyLedgerEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AttentionDatabaseManager {
   final _$AttentionDatabase _db;
@@ -4313,4 +4991,6 @@ class $AttentionDatabaseManager {
       $$FocusSessionsTableTableTableManager(_db, _db.focusSessionsTable);
   $$DailyBriefTableTableTableManager get dailyBriefTable =>
       $$DailyBriefTableTableTableManager(_db, _db.dailyBriefTable);
+  $$PrivacyLedgerTableTableTableManager get privacyLedgerTable =>
+      $$PrivacyLedgerTableTableTableManager(_db, _db.privacyLedgerTable);
 }
