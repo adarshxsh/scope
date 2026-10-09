@@ -74,19 +74,32 @@ class _NotificationFeedScreenState extends State<NotificationFeedScreen> {
 
   Future<void> _fetchNotifications() async {
     try {
-      // Pull new notifications from the Android side
-      final newNotifications = await _bridge.getNotifications();
+      final batch = await _bridge.fetchPendingNotifications();
+      if (batch != null && batch.notifications.isNotEmpty) {
+        final analyzedNotifications = <AppNotification>[];
+        for (final raw in batch.notifications) {
+          final analyzed = await _analysisEngine.analyze(raw);
+          analyzedNotifications.add(analyzed);
+        }
 
-      // Run raw notifications through the Ghost AI analysis engine before storing
-      final analyzedNotifications = <AppNotification>[];
-      for (final raw in newNotifications) {
-        final analyzed = await _analysisEngine.analyze(raw);
-        analyzedNotifications.add(analyzed);
-      }
+        if (analyzedNotifications.isNotEmpty) {
+          await _storage.saveAll(analyzedNotifications);
+        }
 
-      // Save to storage
-      if (analyzedNotifications.isNotEmpty) {
-        await _storage.saveAll(analyzedNotifications);
+        await _bridge.acknowledgeNotifications(batch.batchId);
+      } else {
+        // Fallback check
+        final newNotifications = await _bridge.getNotifications();
+        if (newNotifications.isNotEmpty) {
+          final analyzedNotifications = <AppNotification>[];
+          for (final raw in newNotifications) {
+            final analyzed = await _analysisEngine.analyze(raw);
+            analyzedNotifications.add(analyzed);
+          }
+          if (analyzedNotifications.isNotEmpty) {
+            await _storage.saveAll(analyzedNotifications);
+          }
+        }
       }
 
       // Get all stored (sorted newest first)
