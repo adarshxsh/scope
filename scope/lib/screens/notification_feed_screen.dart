@@ -43,6 +43,7 @@ class _NotificationFeedScreenState extends State<NotificationFeedScreen> {
   bool _isListenerEnabled = false;
   bool _isLoading = true;
   Timer? _pollTimer;
+  StreamSubscription<AppNotification>? _streamSubscription;
 
   @override
   void initState() {
@@ -58,13 +59,29 @@ class _NotificationFeedScreenState extends State<NotificationFeedScreen> {
       const Duration(seconds: 3),
       (_) => _fetchNotifications(),
     );
+
+    try {
+      _streamSubscription = _bridge.notificationStream.listen((raw) async {
+        final analyzed = await _analysisEngine.analyze(raw);
+        await _storage.saveAll([analyzed]);
+        final all = await _storage.getAll();
+        if (mounted) {
+          setState(() {
+            _notifications = all;
+            _isLoading = false;
+          });
+        }
+      }, onError: (_) {});
+    } catch (_) {}
   }
 
   @override
   void dispose() {
     _pollTimer?.cancel();
+    _streamSubscription?.cancel();
     super.dispose();
   }
+
 
   Future<void> _checkPermissionAndFetch() async {
     final enabled = await _bridge.isListenerEnabled();

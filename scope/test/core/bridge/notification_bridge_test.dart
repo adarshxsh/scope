@@ -129,5 +129,39 @@ void main() {
         await bridge.openNotificationSettings();
       });
     });
+
+    group('notificationStream', () {
+      test('streams parsed AppNotification events from EventChannel', () async {
+        const eventChannel = EventChannel('com.scope.notifications.stream.test');
+        final streamBridge = NotificationBridge(
+          channel: channel,
+          eventChannel: eventChannel,
+        );
+
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockStreamHandler(
+          eventChannel,
+          MockStreamHandler.inline(
+            onListen: (arguments, events) {
+              events.success({
+                'id': 'stream_1',
+                'packageName': 'com.stream.app',
+                'title': 'Streamed Title',
+                'content': 'Streamed Content',
+                'timestamp': 1700000000000,
+                'category': 'msg',
+                'isOngoing': false,
+              });
+            },
+          ),
+        );
+
+        final event = await streamBridge.notificationStream.first;
+        expect(event.id, 'stream_1');
+        expect(event.title, 'Streamed Title');
+        expect(event.packageName, 'com.stream.app');
+      });
+    });
   });
 }
+

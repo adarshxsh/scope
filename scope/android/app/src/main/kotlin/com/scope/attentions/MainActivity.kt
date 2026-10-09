@@ -1,37 +1,48 @@
 package com.scope.attentions
 
-import io.flutter.embedding.android.FlutterActivity
-import io.flutter.embedding.engine.FlutterEngine
-import io.flutter.plugin.common.MethodChannel
 import android.content.ComponentName
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
+import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.EventChannel
+import io.flutter.plugin.common.MethodChannel
 
 /**
  * Main entry point for the Flutter Android app.
  *
- * Registers a MethodChannel ("com.scope.notifications") that the Flutter side
- * uses to:
- *   - Pull captured notifications from [NotificationCollectorService]
- *   - Check if the notification listener permission is granted
- *   - Open the system notification listener settings
+ * Implements [EventChannel.StreamHandler] for "com.scope.notifications/stream"
+ * to stream incoming notifications and active panel sync directly to Flutter.
+ *
+ * Registers a MethodChannel ("com.scope.notifications") for checking permissions
+ * and opening system notification settings.
  */
-class MainActivity : FlutterActivity() {
+class MainActivity : FlutterActivity(), EventChannel.StreamHandler {
 
     companion object {
         private const val CHANNEL = "com.scope.notifications"
+        private const val STREAM_CHANNEL = "com.scope.notifications/stream"
     }
+
+    private var eventSink: EventChannel.EventSink? = null
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
+        EventChannel(flutterEngine.dartExecutor.binaryMessenger, STREAM_CHANNEL)
+            .setStreamHandler(this)
+
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
+                    @Suppress("DEPRECATION")
                     "getNotifications" -> {
-                        val notifications = NotificationCollectorService.drainQueue()
-                        val mapList = notifications.map { it.toMap() }
-                        result.success(mapList)
+                        // Deprecated: MethodChannel polling is deprecated in favor of EventChannel streaming.
+                        // Static queue removed; returns empty list.
+                        result.success(emptyList<Map<String, Any?>>())
                     }
 
                     "isListenerEnabled" -> {
@@ -47,6 +58,23 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+        eventSink = events
+        NotificationCollectorService.listener = { data ->
+            val map = data.toMap()
+            mainHandler.post {
+                eventSink?.success(map)
+            }
+        }
+        // Direct active notification panel sync upon stream connection without queue retention
+        NotificationCollectorService.syncActiveNotifications()
+    }
+
+    override fun onCancel(arguments: Any?) {
+        NotificationCollectorService.listener = null
+        eventSink = null
     }
 
     /**
@@ -70,3 +98,4 @@ class MainActivity : FlutterActivity() {
         startActivity(intent)
     }
 }
+
