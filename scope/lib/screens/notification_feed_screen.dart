@@ -5,13 +5,12 @@
 /// Shows a permission banner when listener access is not granted.
 library;
 
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/storage/notification_storage.dart';
-import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
+import 'package:scope/core/state/notification_controller.dart';
 import 'package:scope/screens/diagnostic_screen.dart';
 
 class NotificationFeedScreen extends StatefulWidget {
@@ -19,94 +18,62 @@ class NotificationFeedScreen extends StatefulWidget {
   final NotificationBridge? bridge;
   final NotificationStorage? storage;
   final GhostAnalysisEngine? engine;
+  final NotificationController? controller;
 
-  const NotificationFeedScreen({super.key, this.bridge, this.storage, this.engine});
+  const NotificationFeedScreen({
+    super.key,
+    this.bridge,
+    this.storage,
+    this.engine,
+    this.controller,
+  });
 
   @override
   State<NotificationFeedScreen> createState() => _NotificationFeedScreenState();
 }
 
 class _NotificationFeedScreenState extends State<NotificationFeedScreen> {
-  late final NotificationBridge _bridge;
-  late final NotificationStorage _storage;
-
-  GhostAnalysisEngine? _analysisEngineBacking;
-  GhostAnalysisEngine get _analysisEngine {
-    if (_analysisEngineBacking == null) {
-      _analysisEngineBacking = widget.engine ?? GhostAnalysisEngine();
-      _analysisEngineBacking!.initialize();
-    }
-    return _analysisEngineBacking!;
-  }
-
-  List<AppNotification> _notifications = [];
-  bool _isListenerEnabled = false;
-  bool _isLoading = true;
-  Timer? _pollTimer;
+  late final NotificationController _controller;
+  bool _createdController = false;
 
   @override
   void initState() {
     super.initState();
-    _bridge = widget.bridge ?? NotificationBridge();
-    _storage = widget.storage ?? InMemoryNotificationStorage();
-    // Pre-initialize rules asset loading
-    _analysisEngine.initialize();
+    if (widget.controller != null) {
+      _controller = widget.controller!;
+    } else {
+      _controller = NotificationController(
+        bridge: widget.bridge,
+        storage: widget.storage,
+        engine: widget.engine,
+      );
+      _createdController = true;
+    }
 
-    // Initial check + start polling
-    _checkPermissionAndFetch();
-    _pollTimer = Timer.periodic(
-      const Duration(seconds: 3),
-      (_) => _fetchNotifications(),
-    );
+    _controller.addListener(_onControllerChanged);
+    _controller.startPolling();
   }
 
-  @override
-  void dispose() {
-    _pollTimer?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _checkPermissionAndFetch() async {
-    final enabled = await _bridge.isListenerEnabled();
-    setState(() => _isListenerEnabled = enabled);
-    await _fetchNotifications();
-  }
-
-  Future<void> _fetchNotifications() async {
-    try {
-      // Pull new notifications from the Android side
-      final newNotifications = await _bridge.getNotifications();
-
-      // Run raw notifications through the Ghost AI analysis engine before storing
-      final analyzedNotifications = <AppNotification>[];
-      for (final raw in newNotifications) {
-        final analyzed = await _analysisEngine.analyze(raw);
-        analyzedNotifications.add(analyzed);
-      }
-
-      // Save to storage
-      if (analyzedNotifications.isNotEmpty) {
-        await _storage.saveAll(analyzedNotifications);
-      }
-
-      // Get all stored (sorted newest first)
-      final all = await _storage.getAll();
-
-      if (mounted) {
-        setState(() {
-          _notifications = all;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+  void _onControllerChanged() {
+    if (mounted) {
+      setState(() {});
     }
   }
 
   @override
+  void dispose() {
+    _controller.removeListener(_onControllerChanged);
+    if (_createdController) {
+      _controller.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final notifications = _controller.notifications;
+    final isListenerEnabled = _controller.isListenerEnabled;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('AttentionOS'),
@@ -117,7 +84,7 @@ class _NotificationFeedScreenState extends State<NotificationFeedScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => DiagnosticScreen(engine: _analysisEngine),
+                  builder: (context) => DiagnosticScreen(engine: _controller.engine),
                 ),
               );
             },
@@ -127,22 +94,7 @@ class _NotificationFeedScreenState extends State<NotificationFeedScreen> {
             icon: const Icon(Icons.science, size: 18),
             label: const Text('TEST'),
             onPressed: () async {
-              // Generate mock notifications directly in Dart
-              final generator = TestNotificationGenerator();
-              final testNotifs = generator.generateAll();
-              
-              // Run through analysis engine
-              final analyzedNotifs = <AppNotification>[];
-              for (final raw in testNotifs) {
-                final analyzed = await _analysisEngine.analyze(raw);
-                analyzedNotifs.add(analyzed);
-              }
-              
-              // Save them to local storage
-              await _storage.saveAll(analyzedNotifs);
-              
-              // Refresh the UI
-              await _fetchNotifications();
+              await _controller.generateTestData();
               
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -156,7 +108,7 @@ class _NotificationFeedScreenState extends State<NotificationFeedScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _checkPermissionAndFetch,
+            onPressed: () => _controller.refresh(),
             tooltip: 'Refresh',
           ),
         ],
@@ -164,7 +116,7 @@ class _NotificationFeedScreenState extends State<NotificationFeedScreen> {
       body: Column(
         children: [
           // Permission banner
-          if (!_isListenerEnabled)
+          if (!isListenerEnabled)
             MaterialBanner(
               content: const Text(
                 'Notification access is not enabled. '
@@ -176,32 +128,29 @@ class _NotificationFeedScreenState extends State<NotificationFeedScreen> {
               ),
               actions: [
                 TextButton(
-                  onPressed: () => _bridge.openNotificationSettings(),
+                  onPressed: () => _controller.openNotificationSettings(),
                   child: const Text('OPEN SETTINGS'),
                 ),
                 TextButton(
-                  onPressed: _checkPermissionAndFetch,
+                  onPressed: () => _controller.refresh(),
                   child: const Text('RE-CHECK'),
                 ),
               ],
             ),
 
           // Notification count header
-          if (_notifications.isNotEmpty)
+          if (notifications.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 children: [
                   Text(
-                    '${_notifications.length} notification(s) captured',
+                    '${notifications.length} notification(s) captured',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   const Spacer(),
                   TextButton(
-                    onPressed: () async {
-                      await _storage.clear();
-                      setState(() => _notifications = []);
-                    },
+                    onPressed: () => _controller.clearAll(),
                     child: const Text('CLEAR ALL'),
                   ),
                 ],
@@ -209,18 +158,18 @@ class _NotificationFeedScreenState extends State<NotificationFeedScreen> {
             ),
 
           // Main content
-          Expanded(child: _buildBody()),
+          Expanded(child: _buildBody(notifications)),
         ],
       ),
     );
   }
 
-  Widget _buildBody() {
-    if (_isLoading) {
+  Widget _buildBody(List<AppNotification> notifications) {
+    if (_controller.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_notifications.isEmpty) {
+    if (notifications.isEmpty) {
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -244,10 +193,10 @@ class _NotificationFeedScreenState extends State<NotificationFeedScreen> {
     }
 
     return ListView.builder(
-      itemCount: _notifications.length,
+      itemCount: notifications.length,
       padding: const EdgeInsets.symmetric(horizontal: 8),
       itemBuilder: (context, index) {
-        final notification = _notifications[index];
+        final notification = notifications[index];
         return _NotificationCard(notification: notification);
       },
     );

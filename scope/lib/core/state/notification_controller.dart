@@ -380,7 +380,13 @@ class NotificationController extends ChangeNotifier {
 
   Future<void> fetchNotifications() async {
     try {
-      final newNotifications = await _bridge.getNotifications();
+      final newNotifications = await _bridge.peekNotifications();
+      if (newNotifications.isEmpty) {
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
+
       final analyzed = <AppNotification>[];
 
       if (!_initialLoadCompleted) {
@@ -416,6 +422,9 @@ class NotificationController extends ChangeNotifier {
         notifier.load(loaded);
         await notifier.rescore();
       }
+
+      final idsToAck = newNotifications.map((n) => n.id).toList();
+      await _bridge.acknowledgeNotifications(idsToAck);
 
       _isLoading = false;
       notifyListeners();
