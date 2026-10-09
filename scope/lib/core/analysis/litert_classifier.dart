@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
@@ -5,6 +6,7 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/analysis_result.dart';
 import 'package:scope/core/analysis/notification_analyzer.dart';
 import 'package:scope/core/analysis/wordpiece_tokenizer.dart';
+import 'package:scope/core/analysis/asset_integrity_verifier.dart';
 
 /// Classifier using LiteRT (TensorFlow Lite) to classify text categories.
 class LiteRtClassifier implements NotificationAnalyzer {
@@ -12,16 +14,34 @@ class LiteRtClassifier implements NotificationAnalyzer {
   WordPieceTokenizer? _tokenizer;
   bool _isModelLoaded = false;
 
-  LiteRtClassifier() {
-    _initialize();
+  LiteRtClassifier({AssetBundle? bundle}) {
+    _initialize(bundle: bundle);
   }
 
-  Future<void> _initialize() async {
+  /// Exposes asset integrity status for vocabulary asset.
+  AssetIntegrityStatus get vocabIntegrityStatus =>
+      AssetIntegrityVerifier.instance.getStatusFor('assets/vocab.txt');
+
+  Future<void> initialize({AssetBundle? bundle}) async {
+    await _initialize(bundle: bundle);
+  }
+
+  Future<void> _initialize({AssetBundle? bundle}) async {
     try {
-      // 1. Load Vocab
-      final vocabStr = await rootBundle.loadString('assets/vocab.txt');
-      final lines = vocabStr.split('\n');
-      _tokenizer = WordPieceTokenizer.fromLines(lines);
+      // 1. Load & Verify Vocab asset
+      final vocabBytes = await AssetIntegrityVerifier.instance.loadAndVerifyAsset(
+        'assets/vocab.txt',
+        bundle: bundle,
+      );
+      if (vocabBytes != null) {
+        final vocabStr = utf8.decode(vocabBytes);
+        final lines = vocabStr.split('\n');
+        _tokenizer = WordPieceTokenizer.fromLines(lines);
+      } else {
+        _tokenizer = null;
+        // ignore: avoid_print
+        print('LiteRtClassifier: Asset integrity verification failed for assets/vocab.txt. Running in fallback mode.');
+      }
 
       // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
       _isModelLoaded = false;
@@ -30,14 +50,7 @@ class LiteRtClassifier implements NotificationAnalyzer {
       // ignore: avoid_print
       print('LiteRtClassifier failed to initialize: $e');
       _isModelLoaded = false;
-
-      // Ensure tokenizer is loaded even if interpreter fails (so we can test tokenization in fallback)
-      if (_tokenizer == null) {
-        try {
-          final vocabStr = await rootBundle.loadString('assets/vocab.txt');
-          _tokenizer = WordPieceTokenizer.fromLines(vocabStr.split('\n'));
-        } catch (_) {}
-      }
+      _tokenizer = null;
     }
   }
 

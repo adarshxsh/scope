@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/litert_classifier.dart';
@@ -7,6 +8,7 @@ import 'package:scope/core/analysis/score_fusion.dart';
 import 'package:scope/core/analysis/explanation_generator.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
+import 'package:scope/core/analysis/asset_integrity_verifier.dart';
 
 /// The central hub of Ghost AI coordinating all classification stages.
 class GhostAnalysisEngine {
@@ -19,18 +21,42 @@ class GhostAnalysisEngine {
   })  : ruleEngine = ruleEngine ?? RuleEngine(),
         mlClassifier = mlClassifier ?? LiteRtClassifier();
 
-  /// Compiles rules loaded from assets on engine startup.
-  Future<void> initialize() async {
+  /// Compiles rules loaded from assets on engine startup with SHA-256 asset integrity verification.
+  Future<void> initialize({AssetBundle? bundle}) async {
     try {
-      final jsonStr = await rootBundle.loadString('assets/rules.json');
-      ruleEngine.compile(jsonStr);
+      await AssetIntegrityVerifier.instance.initialize(bundle: bundle);
+    } catch (e) {
+      // ignore: avoid_print
+      print('GhostAnalysisEngine failed to initialize AssetIntegrityVerifier: $e');
+    }
+
+    try {
+      final rulesBytes = await AssetIntegrityVerifier.instance.loadAndVerifyAsset(
+        'assets/rules.json',
+        bundle: bundle,
+      );
+      if (rulesBytes != null) {
+        final jsonStr = utf8.decode(rulesBytes);
+        ruleEngine.compile(jsonStr);
+      } else {
+        // ignore: avoid_print
+        print('GhostAnalysisEngine: rules.json verification failed or missing.');
+      }
       await ruleEngine.loadCustomRules();
     } catch (e) {
       // ignore: avoid_print
       print('GhostAnalysisEngine failed to load rules asset: $e');
     }
+
     try {
-      await GhostAI.instance.initialize();
+      await mlClassifier.initialize(bundle: bundle);
+    } catch (e) {
+      // ignore: avoid_print
+      print('GhostAnalysisEngine failed to initialize LiteRtClassifier: $e');
+    }
+
+    try {
+      await GhostAI.instance.initialize(bundle: bundle);
     } catch (e) {
       // ignore: avoid_print
       print('GhostAnalysisEngine failed to initialize GhostAI: $e');
