@@ -6,6 +6,8 @@ part of 'daos.dart';
 mixin _$NotificationDaoMixin on DatabaseAccessor<AttentionDatabase> {
   $NotificationsTableTable get notificationsTable =>
       attachedDatabase.notificationsTable;
+  $ReviewQueueTableTable get reviewQueueTable =>
+      attachedDatabase.reviewQueueTable;
   NotificationDaoManager get managers => NotificationDaoManager(this);
 }
 
@@ -16,6 +18,11 @@ class NotificationDaoManager {
       $$NotificationsTableTableTableManager(
         _db.attachedDatabase,
         _db.notificationsTable,
+      );
+  $$ReviewQueueTableTableTableManager get reviewQueueTable =>
+      $$ReviewQueueTableTableTableManager(
+        _db.attachedDatabase,
+        _db.reviewQueueTable,
       );
 }
 
@@ -70,5 +77,36 @@ class DailyBriefDaoManager {
       $$DailyBriefTableTableTableManager(
         _db.attachedDatabase,
         _db.dailyBriefTable,
+      );
+}
+
+mixin _$RlhfRulesDaoMixin on DatabaseAccessor<AttentionDatabase> {
+  $RlhfRulesTableTable get rlhfRulesTable => attachedDatabase.rlhfRulesTable;
+  RlhfRulesDaoManager get managers => RlhfRulesDaoManager(this);
+}
+
+class RlhfRulesDaoManager {
+  final _$RlhfRulesDaoMixin _db;
+  RlhfRulesDaoManager(this._db);
+  $$RlhfRulesTableTableTableManager get rlhfRulesTable =>
+      $$RlhfRulesTableTableTableManager(
+        _db.attachedDatabase,
+        _db.rlhfRulesTable,
+      );
+}
+
+mixin _$OfflineSyncQueueDaoMixin on DatabaseAccessor<AttentionDatabase> {
+  $OfflineSyncQueueTableTable get offlineSyncQueueTable =>
+      attachedDatabase.offlineSyncQueueTable;
+  OfflineSyncQueueDaoManager get managers => OfflineSyncQueueDaoManager(this);
+}
+
+class OfflineSyncQueueDaoManager {
+  final _$OfflineSyncQueueDaoMixin _db;
+  OfflineSyncQueueDaoManager(this._db);
+  $$OfflineSyncQueueTableTableTableManager get offlineSyncQueueTable =>
+      $$OfflineSyncQueueTableTableTableManager(
+        _db.attachedDatabase,
+        _db.offlineSyncQueueTable,
       );
 }

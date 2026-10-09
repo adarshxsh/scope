@@ -104,7 +104,14 @@ class RuleEngine {
 
   /// Prepends a user-defined reinforcement learning rule to the top of the evaluation chain.
   void addReinforcementRule(NotificationRule rule) {
+    _rules.removeWhere((r) => r.id == rule.id);
     _rules.insert(0, rule);
+    _saveCustomRules();
+  }
+
+  /// Removes a custom RLHF rule by ID.
+  void removeReinforcementRule(String ruleId) {
+    _rules.removeWhere((r) => r.id == ruleId);
     _saveCustomRules();
   }
 
