@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
+import 'package:scope/core/analysis/ingestion_guardrail_filter.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/storage/notification_storage.dart';
@@ -43,10 +44,12 @@ class NotificationController extends ChangeNotifier {
     NotificationStorage? storage,
     GhostAnalysisEngine? engine,
     ProviderContainer? container,
+    IngestionGuardrailFilter? guardrailFilter,
   })  : _bridge = bridge ?? NotificationBridge(),
         _container = container ?? providerContainer,
         _storage = storage ?? DriftNotificationStorage(container?.read(databaseProvider) ?? providerContainer.read(databaseProvider)),
-        _engine = engine ?? GhostAnalysisEngine() {
+        _engine = engine ?? GhostAnalysisEngine(),
+        _guardrailFilter = guardrailFilter ?? IngestionGuardrailFilter() {
     _engine.initialize();
 
     // Listen to changes in Riverpod's reviewQueueProvider to keep legacy notifier list in sync
@@ -63,6 +66,16 @@ class NotificationController extends ChangeNotifier {
   final NotificationStorage _storage;
   final GhostAnalysisEngine _engine;
   final ProviderContainer _container;
+  final IngestionGuardrailFilter _guardrailFilter;
+
+  IngestionGuardrailConfig get guardrailConfig => _guardrailFilter.config;
+  IngestionTelemetry get ingestionTelemetry => _guardrailFilter.telemetry;
+
+  Future<void> updateGuardrailConfig(IngestionGuardrailConfig newConfig) async {
+    _guardrailFilter.config = newConfig;
+    await _bridge.updateIngestionGuardrails(newConfig);
+    notifyListeners();
+  }
 
   List<AppNotification> _notifications = [];
   bool _isListenerEnabled = false;
@@ -388,23 +401,28 @@ class NotificationController extends ChangeNotifier {
       }
 
       for (final raw in newNotifications) {
+        // Pre-ingestion guardrail evaluation (validation, blacklist/whitelist, sensitive category exclusion)
+        final eval = _guardrailFilter.evaluate(raw);
+        if (!eval.isAllowed || eval.sanitizedNotification == null) continue;
+        final sanitizedRaw = eval.sanitizedNotification!;
+
         // Ignore ongoing background/system notifications (e.g. charging, media playback)
-        if (raw.isOngoing) continue;
+        if (sanitizedRaw.isOngoing) continue;
 
         final isDuplicate = _notifications.any((n) =>
-            n.packageName == raw.packageName &&
-            n.timestamp == raw.timestamp &&
-            n.title == raw.title &&
-            n.content == raw.content);
+            n.packageName == sanitizedRaw.packageName &&
+            n.timestamp == sanitizedRaw.timestamp &&
+            n.title == sanitizedRaw.title &&
+            n.content == sanitizedRaw.content);
 
         if (!isDuplicate) {
           final inBatch = analyzed.any((n) =>
-              n.packageName == raw.packageName &&
-              n.timestamp == raw.timestamp &&
-              n.title == raw.title &&
-              n.content == raw.content);
+              n.packageName == sanitizedRaw.packageName &&
+              n.timestamp == sanitizedRaw.timestamp &&
+              n.title == sanitizedRaw.title &&
+              n.content == sanitizedRaw.content);
           if (!inBatch) {
-            analyzed.add(await _engine.analyze(raw));
+            analyzed.add(await _engine.analyze(sanitizedRaw));
           }
         }
       }
@@ -433,20 +451,24 @@ class NotificationController extends ChangeNotifier {
     final analyzed = <AppNotification>[];
 
     for (final raw in testNotifs) {
+      final eval = _guardrailFilter.evaluate(raw);
+      if (!eval.isAllowed || eval.sanitizedNotification == null) continue;
+      final sanitizedRaw = eval.sanitizedNotification!;
+
       final isDuplicate = _notifications.any((n) =>
-          n.packageName == raw.packageName &&
-          n.timestamp == raw.timestamp &&
-          n.title == raw.title &&
-          n.content == raw.content);
+          n.packageName == sanitizedRaw.packageName &&
+          n.timestamp == sanitizedRaw.timestamp &&
+          n.title == sanitizedRaw.title &&
+          n.content == sanitizedRaw.content);
 
       if (!isDuplicate) {
         final inBatch = analyzed.any((n) =>
-            n.packageName == raw.packageName &&
-            n.timestamp == raw.timestamp &&
-            n.title == raw.title &&
-            n.content == raw.content);
+            n.packageName == sanitizedRaw.packageName &&
+            n.timestamp == sanitizedRaw.timestamp &&
+            n.title == sanitizedRaw.title &&
+            n.content == sanitizedRaw.content);
         if (!inBatch) {
-          analyzed.add(await _engine.analyze(raw));
+          analyzed.add(await _engine.analyze(sanitizedRaw));
         }
       }
     }
