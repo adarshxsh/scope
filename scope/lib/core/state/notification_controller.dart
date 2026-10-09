@@ -70,6 +70,7 @@ class NotificationController extends ChangeNotifier {
   Timer? _pollTimer;
   Timer? _cleanupTimer;
   bool _isCleaningUp = false;
+  bool _isFetching = false;
 
   ReviewSessionStats sessionStats = ReviewSessionStats();
 
@@ -379,8 +380,17 @@ class NotificationController extends ChangeNotifier {
   Future<void> refresh() => _checkPermissionAndFetch();
 
   Future<void> fetchNotifications() async {
+    if (_isFetching) return;
+    _isFetching = true;
     try {
-      final newNotifications = await _bridge.getNotifications();
+      final newNotifications = await _bridge.peekNotifications();
+      if (newNotifications.isEmpty) {
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
+
+      final peekedIds = newNotifications.map((n) => n.id).toList();
       final analyzed = <AppNotification>[];
 
       if (!_initialLoadCompleted) {
@@ -417,11 +427,18 @@ class NotificationController extends ChangeNotifier {
         await notifier.rescore();
       }
 
+      // Explicit post-persistence acknowledgment token call
+      if (peekedIds.isNotEmpty) {
+        await _bridge.ackNotifications(peekedIds);
+      }
+
       _isLoading = false;
       notifyListeners();
     } catch (_) {
       _isLoading = false;
       notifyListeners();
+    } finally {
+      _isFetching = false;
     }
   }
 
