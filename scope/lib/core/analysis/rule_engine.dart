@@ -65,6 +65,16 @@ class NotificationRule {
       'conditions': conditions.toMap(),
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is NotificationRule &&
+          runtimeType == other.runtimeType &&
+          id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }
 
 /// The result returned by a successful rule engine match.
@@ -91,48 +101,143 @@ class RuleEngine {
   String version = '0.0.0';
   List<NotificationRule> _rules = [];
 
+  /// Unmodifiable view of currently loaded rules.
+  List<NotificationRule> get rules => List.unmodifiable(_rules);
+
+  /// Unmodifiable view of custom RLHF rules.
+  List<NotificationRule> get customRules =>
+      List.unmodifiable(_rules.where((r) => r.id.startsWith('rlhf-')));
+
+  /// Count of custom RLHF rules in memory.
+  int get customRuleCount =>
+      _rules.where((r) => r.id.startsWith('rlhf-')).length;
+
+  /// Total count of all loaded rules (base + custom).
+  int get totalRuleCount => _rules.length;
+
   /// Compiles a raw JSON rules database into compiled memory structures.
   void compile(String jsonStr) {
-    final parsed = json.decode(jsonStr) as Map<String, dynamic>;
-    version = parsed['version'] as String? ?? '0.0.0';
-    final rawRules = parsed['rules'] as List<dynamic>? ?? const [];
-    
-    _rules = rawRules
-        .map((r) => NotificationRule.fromMap(Map<String, dynamic>.from(r as Map)))
-        .toList();
+    try {
+      final parsed = json.decode(jsonStr) as Map<String, dynamic>;
+      version = parsed['version'] as String? ?? '0.0.0';
+      final rawRules = parsed['rules'] as List<dynamic>? ?? const [];
+
+      final seenIds = <String>{};
+      final baseRules = <NotificationRule>[];
+
+      for (final r in rawRules) {
+        if (r is Map) {
+          final rule = NotificationRule.fromMap(Map<String, dynamic>.from(r));
+          if (rule.id.isNotEmpty && seenIds.add(rule.id)) {
+            baseRules.add(rule);
+          }
+        }
+      }
+
+      _rules = baseRules;
+    } catch (e) {
+      // ignore: avoid_print
+      print('Failed to compile rules JSON: $e');
+    }
   }
 
   /// Prepends a user-defined reinforcement learning rule to the top of the evaluation chain.
-  void addReinforcementRule(NotificationRule rule) {
+  /// Deduplicates against existing rule identifiers to prevent duplicate accumulation in memory and storage.
+  Future<void> addReinforcementRule(NotificationRule rule) async {
+    if (rule.id.trim().isEmpty) {
+      return;
+    }
+
+    // Remove any existing rule with the same ID (whether base or custom)
+    _rules.removeWhere((r) => r.id == rule.id);
+
+    // Prepend rule to the top of evaluation chain
     _rules.insert(0, rule);
-    _saveCustomRules();
+
+    // Persist custom rules to storage
+    await _saveCustomRules();
   }
 
-  /// Loads custom rules from local storage and prepends them.
+  /// Removes a custom RLHF rule by identifier and updates local storage.
+  Future<void> removeReinforcementRule(String ruleId) async {
+    if (ruleId.trim().isEmpty) return;
+    _rules.removeWhere((r) => r.id == ruleId);
+    await _saveCustomRules();
+  }
+
+  /// Clears all custom RLHF rules and updates local storage.
+  Future<void> clearCustomRules() async {
+    _rules.removeWhere((r) => r.id.startsWith('rlhf-'));
+    await _saveCustomRules();
+  }
+
+  /// Loads custom rules from local storage, deduplicates them, and prepends them.
+  /// Corrupt or malformed JSON storage is handled by overwriting with empty array.
   Future<void> loadCustomRules() async {
     try {
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/rlhf_rules.json');
-      if (await file.exists()) {
-        final content = await file.readAsString();
-        final list = json.decode(content) as List<dynamic>;
-        final customRules = list.map((r) => NotificationRule.fromMap(Map<String, dynamic>.from(r))).toList();
-        // Insert custom rules at the top
-        _rules.insertAll(0, customRules);
+      if (!await file.exists()) {
+        return;
       }
+
+      final content = await file.readAsString();
+      dynamic decoded;
+      try {
+        decoded = json.decode(content);
+      } catch (parseError) {
+        // Corrupt or malformed JSON array; recover by overwriting file with empty array
+        // ignore: avoid_print
+        print('Corrupt RLHF rules JSON detected ($parseError); resetting storage.');
+        await file.writeAsString('[]');
+        return;
+      }
+
+      if (decoded is! List) {
+        // ignore: avoid_print
+        print('RLHF rules JSON is not a list; resetting storage.');
+        await file.writeAsString('[]');
+        return;
+      }
+
+      final seenIds = <String>{};
+      final customRules = <NotificationRule>[];
+
+      for (final item in decoded) {
+        if (item is Map) {
+          final rule = NotificationRule.fromMap(Map<String, dynamic>.from(item));
+          if (rule.id.isNotEmpty && seenIds.add(rule.id)) {
+            customRules.add(rule);
+          }
+        }
+      }
+
+      // Remove any existing custom rules (or rules with matching IDs) from memory before prepending
+      final customIds = customRules.map((r) => r.id).toSet();
+      _rules.removeWhere((r) => customIds.contains(r.id) || r.id.startsWith('rlhf-'));
+
+      // Prepend deduplicated custom rules at the top
+      _rules.insertAll(0, customRules);
     } catch (e) {
       // ignore: avoid_print
       print('Failed to load custom RLHF rules: $e');
     }
   }
 
-  /// Saves all custom RLHF rules to local storage.
+  /// Saves all custom RLHF rules to local storage without duplicates.
   Future<void> _saveCustomRules() async {
     try {
-      // Filter out base rules (assuming base rules don't have 'rlhf-' prefix in id)
-      final customRules = _rules.where((r) => r.id.startsWith('rlhf-')).toList();
+      final seenIds = <String>{};
+      final customRules = <NotificationRule>[];
+
+      for (final r in _rules) {
+        if (r.id.startsWith('rlhf-') && seenIds.add(r.id)) {
+          customRules.add(r);
+        }
+      }
+
       final list = customRules.map((r) => r.toMap()).toList();
-      
+
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/rlhf_rules.json');
       await file.writeAsString(json.encode(list));
