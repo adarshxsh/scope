@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:scope/core/analysis/ghost_ai.dart';
 import 'package:scope/core/state/notification_controller.dart';
 import 'package:scope/screens/ai_playground_screen.dart';
 import 'package:scope/screens/diagnostic_screen.dart';
@@ -18,6 +19,7 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final ghostAi = GhostAI.instance;
 
     return SafeArea(
       child: ScopeScreenBody(
@@ -38,6 +40,25 @@ class SettingsScreen extends StatelessWidget {
                     title: 'Ghost AI Engine',
                     subtitle: 'On-device hybrid analysis pipeline',
                     onTap: null,
+                  ),
+                  const Divider(height: 1, indent: 56),
+                  _SettingsTile(
+                    icon: Icons.memory_outlined,
+                    title: 'Active AI Model',
+                    subtitle: '${ghostAi.modelVersion} (${ghostAi.modelSource})',
+                    onTap: () async {
+                      await controller.reloadModel();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Model reloaded: ${GhostAI.instance.modelVersion} (${GhostAI.instance.modelSource})',
+                            ),
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    },
                   ),
                   const Divider(height: 1, indent: 56),
                   _SettingsTile(
@@ -75,6 +96,23 @@ class SettingsScreen extends StatelessWidget {
                           const SnackBar(
                             content: Text('Test notifications loaded'),
                             duration: Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                  const Divider(height: 1, indent: 56),
+                  _SettingsTile(
+                    icon: Icons.file_download_outlined,
+                    title: 'Export Training Dataset',
+                    subtitle: 'Export feature vectors & feedback into JSONL',
+                    onTap: () async {
+                      final file = await controller.exportDataset();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Dataset exported: ${file.path}'),
+                            duration: const Duration(seconds: 3),
                           ),
                         );
                       }
