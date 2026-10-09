@@ -44,6 +44,28 @@ class MainActivity : FlutterActivity() {
                         result.success(true)
                     }
 
+                    "getIngestionGuardrails" -> {
+                        NotificationCollectorService.ensureGuardrailsInitialized(this)
+                        val guardrailsMap = NotificationCollectorService.getGuardrailsMap()
+                        result.success(guardrailsMap)
+                    }
+
+                    "updateIngestionGuardrails" -> {
+                        val args = call.arguments as? Map<*, *>
+                        val blocked = (args?.get("blockedPackages") as? List<*>)?.filterIsInstance<String>()
+                        val allowed = (args?.get("allowedPackages") as? List<*>)?.filterIsInstance<String>()
+                        val whitelistMode = args?.get("isWhitelistMode") as? Boolean
+                        val otp = args?.get("excludeOtp") as? Boolean
+                        val finance = args?.get("excludeFinance") as? Boolean
+                        val health = args?.get("excludeHealth") as? Boolean
+                        val systemServices = args?.get("excludeSystemServices") as? Boolean
+
+                        val updatedMap = NotificationCollectorService.updateGuardrails(
+                            this, blocked, allowed, whitelistMode, otp, finance, health, systemServices
+                        )
+                        result.success(true)
+                    }
+
                     else -> result.notImplemented()
                 }
             }
