@@ -59,7 +59,7 @@ void main() {
           timestamp: DateTime.now().millisecondsSinceEpoch - 6 * 60 * 1000, // 6 minutes ago
         );
 
-        final result = await GhostAI.predict(expiredNotif);
+        final result = await GhostAI.predict(expiredNotif, referenceTime: DateTime.now());
         expect(result.reviewScore, equals(0.0)); // Overridden to 0
       });
 
@@ -72,7 +72,7 @@ void main() {
           timestamp: DateTime.now().millisecondsSinceEpoch - 11 * 60 * 1000, // 11 minutes ago
         );
 
-        final result = await GhostAI.predict(expiredNotifDefault);
+        final result = await GhostAI.predict(expiredNotifDefault, referenceTime: DateTime.now());
         expect(result.reviewScore, equals(0.0)); // Overridden to 0
       });
     });
@@ -100,7 +100,7 @@ void main() {
           timestamp: DateTime.now().millisecondsSinceEpoch - 12 * 60 * 1000, // 12 minutes ago
         );
 
-        final result = await GhostAI.predict(expiredReminder);
+        final result = await GhostAI.predict(expiredReminder, referenceTime: DateTime.now());
         expect(result.reviewScore, equals(0.0)); // Overridden to 0
       });
 
@@ -114,8 +114,77 @@ void main() {
           timestamp: yesterday.millisecondsSinceEpoch,
         );
 
-        final result = await GhostAI.predict(expiredTodayReminder);
+        final result = await GhostAI.predict(expiredTodayReminder, referenceTime: DateTime.now());
         expect(result.reviewScore, equals(0.0)); // Overridden to 0
+      });
+    });
+
+    group('Reference Timestamp Parameterization', () {
+      test('defaults referenceTime to notification timestamp preventing false expiration', () async {
+        final historicalOtp = AppNotification(
+          id: 'otp-hist',
+          packageName: 'com.whatsapp',
+          title: 'WhatsApp Code',
+          content: 'Your verification code is 882715. Expires in 5 minutes.',
+          timestamp: DateTime.now().millisecondsSinceEpoch - 30 * 60 * 1000, // 30 mins ago
+        );
+
+        // When referenceTime is omitted, defaults to notification.timestamp (t = 0 relative)
+        final result = await GhostAI.predict(historicalOtp);
+        expect(result.reviewScore, equals(1.0)); // Priority score preserved
+      });
+
+      test('evaluates expiry relative to supplied referenceTime', () async {
+        final baseTime = DateTime.now().subtract(const Duration(hours: 2));
+        final notif = AppNotification(
+          id: 'otp-ref',
+          packageName: 'com.whatsapp',
+          title: 'WhatsApp Code',
+          content: 'Your verification code is 882715. Expires in 5 minutes.',
+          timestamp: baseTime.millisecondsSinceEpoch,
+        );
+
+        // Evaluated 2 minutes after arrival -> fresh
+        final freshResult = await GhostAI.predict(
+          notif,
+          referenceTime: baseTime.add(const Duration(minutes: 2)),
+        );
+        expect(freshResult.reviewScore, equals(1.0));
+
+        // Evaluated 10 minutes after arrival -> expired
+        final expiredResult = await GhostAI.predict(
+          notif,
+          referenceTime: baseTime.add(const Duration(minutes: 10)),
+        );
+        expect(expiredResult.reviewScore, equals(0.0));
+      });
+
+      test('evaluates duplicate window relative to referenceTime', () async {
+        final baseTime = DateTime.now().subtract(const Duration(hours: 1));
+        final notif1 = AppNotification(
+          id: 'n1',
+          packageName: 'com.whatsapp',
+          title: 'Alice',
+          content: 'Hello world',
+          timestamp: baseTime.millisecondsSinceEpoch,
+        );
+
+        final notif2 = AppNotification(
+          id: 'n2',
+          packageName: 'com.whatsapp',
+          title: 'Alice',
+          content: 'Hello world',
+          timestamp: baseTime.add(const Duration(minutes: 2)).millisecondsSinceEpoch,
+        );
+
+        final res1 = await GhostAI.predict(notif1, referenceTime: baseTime);
+        final res2 = await GhostAI.predict(
+          notif2,
+          referenceTime: baseTime.add(const Duration(minutes: 2)),
+        );
+
+        expect(res1.reviewScore, equals(0.35));
+        expect(res2.reviewScore, equals(0.0)); // Identified as duplicate within 5 min window of refTime
       });
     });
 
