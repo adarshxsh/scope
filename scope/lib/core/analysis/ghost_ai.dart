@@ -57,6 +57,14 @@ class GhostAI {
   /// Returns whether the model is loaded.
   bool get isModelLoaded => _interpreter != null;
 
+  /// Setter for testing interpreter execution and error handling.
+  @visibleForTesting
+  set interpreter(Interpreter? interpreter) => _interpreter = interpreter;
+
+  /// Getter for testing interpreter instance.
+  @visibleForTesting
+  Interpreter? get interpreter => _interpreter;
+
   /// Initializes the TFLite interpreter and rules database once on startup.
   Future<void> initialize() async {
     if (_interpreter != null) return;
@@ -94,16 +102,26 @@ class GhostAI {
     int inferenceTimeUs = 0;
 
     if (_interpreter != null) {
-      final input = [featureVector];
-      final output = List<double>.filled(1, 0.0).reshape([1, 1]);
-
       final inferStopwatch = Stopwatch()..start();
-      _interpreter!.run(input, output);
-      inferStopwatch.stop();
+      try {
+        final input = [featureVector];
+        final output = List<double>.filled(1, 0.0).reshape([1, 1]);
 
-      inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
-      // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
-      predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+        _interpreter!.run(input, output);
+        inferStopwatch.stop();
+
+        inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
+        // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
+        predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+      } catch (e) {
+        if (inferStopwatch.isRunning) {
+          inferStopwatch.stop();
+        }
+        inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
+        debugPrint('GhostAI: Interpreter inference error: $e');
+        // Graceful fallback to heuristic look-again score on inference error
+        predictedScore = _heuristicLookAgainScore(featureVector);
+      }
     } else {
       // Heuristic fallback if model not loaded
       predictedScore = _heuristicLookAgainScore(featureVector);

@@ -1,6 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
 import 'package:scope/core/models/notification_model.dart';
+
+class ThrowingInterpreter extends Fake implements Interpreter {
+  @override
+  void run(Object input, Object output) {
+    throw Exception('Native TFLite execution failure');
+  }
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -231,6 +239,32 @@ void main() {
 
         final result = await GhostAI.predict(activeTask);
         expect(result.reviewScore, isPositive); // Not overridden
+      });
+    });
+
+    group('Interpreter Exception Handling', () {
+      tearDown(() {
+        GhostAI.instance.interpreter = null;
+      });
+
+      test('catches runtime exception during interpreter run and falls back to heuristics', () async {
+        GhostAI.instance.interpreter = ThrowingInterpreter();
+        expect(GhostAI.instance.isModelLoaded, isTrue);
+
+        final notif = AppNotification(
+          id: 'otp-error-test',
+          packageName: 'com.whatsapp',
+          title: 'WhatsApp Code',
+          content: 'Your verification code is 123456. Valid for 10 minutes.',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        final result = await GhostAI.predict(notif);
+
+        // Should catch the error without throwing, falling back to heuristic score (1.0 for OTP)
+        expect(result.reviewScore, equals(1.0));
+        expect(result.predictedScore, equals(1.0));
+        expect(result.featureVector, isNotEmpty);
       });
     });
   });
