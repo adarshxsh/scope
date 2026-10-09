@@ -1,5 +1,7 @@
+import 'dart:math';
 import 'package:drift/drift.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/privacy/privacy_budget_manager.dart';
 import 'package:scope/database/attention_database.dart';
 import 'package:scope/database/tables.dart';
 
@@ -81,18 +83,102 @@ class ReviewQueueDao extends DatabaseAccessor<AttentionDatabase> with _$ReviewQu
 
 @DriftAccessor(tables: [FocusSessionsTable])
 class FocusSessionDao extends DatabaseAccessor<AttentionDatabase> with _$FocusSessionDaoMixin {
-  FocusSessionDao(super.db);
+  final PrivacyBudgetManager? _privacyBudgetManager;
 
-  Future<void> insertSession(FocusSessionEntry entry) async {
+  FocusSessionDao(super.db, [PrivacyBudgetManager? privacyBudgetManager])
+      : _privacyBudgetManager = privacyBudgetManager;
+
+  PrivacyBudgetManager get privacyBudgetManager =>
+      _privacyBudgetManager ?? PrivacyBudgetManager(db: attachedDatabase);
+
+  Future<bool> insertSession(
+    FocusSessionEntry entry, {
+    double? opEpsilon,
+    Random? random,
+    bool injectNoise = false,
+  }) async {
+    final pbm = _privacyBudgetManager;
+    final shouldInject = injectNoise || pbm != null || opEpsilon != null;
+
+    if (shouldInject) {
+      final manager = pbm ?? PrivacyBudgetManager(db: attachedDatabase);
+      final eps = opEpsilon ?? PrivacyBudgetManager.defaultOpEpsilon;
+
+      final budgetConsumed = await manager.consumeBudget(eps);
+      if (!budgetConsumed) {
+        // Budget exhausted! Suppress write.
+        return false;
+      }
+
+      final noisyDuration = manager.applyNoisyDuration(
+        entry.duration,
+        epsilon: eps,
+        random: random,
+      );
+      final noisyInterruptions = manager.applyNoisyInterruptions(
+        entry.interruptions,
+        epsilon: eps,
+        random: random,
+      );
+
+      final noisyEntry = entry.copyWith(
+        duration: noisyDuration,
+        interruptions: noisyInterruptions,
+      );
+
+      await into(focusSessionsTable).insert(noisyEntry);
+      return true;
+    }
+
     await into(focusSessionsTable).insert(entry);
+    return true;
   }
 
   Future<FocusSessionEntry?> getActiveSession() {
     return (select(focusSessionsTable)..where((t) => t.sessionEnd.isNull())).getSingleOrNull();
   }
 
-  Future<void> updateSession(FocusSessionEntry entry) async {
+  Future<bool> updateSession(
+    FocusSessionEntry entry, {
+    double? opEpsilon,
+    Random? random,
+    bool injectNoise = false,
+  }) async {
+    final pbm = _privacyBudgetManager;
+    final shouldInject = injectNoise || pbm != null || opEpsilon != null;
+
+    if (shouldInject) {
+      final manager = pbm ?? PrivacyBudgetManager(db: attachedDatabase);
+      final eps = opEpsilon ?? PrivacyBudgetManager.defaultOpEpsilon;
+
+      final budgetConsumed = await manager.consumeBudget(eps);
+      if (!budgetConsumed) {
+        // Budget exhausted! Suppress write.
+        return false;
+      }
+
+      final noisyDuration = manager.applyNoisyDuration(
+        entry.duration,
+        epsilon: eps,
+        random: random,
+      );
+      final noisyInterruptions = manager.applyNoisyInterruptions(
+        entry.interruptions,
+        epsilon: eps,
+        random: random,
+      );
+
+      final noisyEntry = entry.copyWith(
+        duration: noisyDuration,
+        interruptions: noisyInterruptions,
+      );
+
+      await update(focusSessionsTable).replace(noisyEntry);
+      return true;
+    }
+
     await update(focusSessionsTable).replace(entry);
+    return true;
   }
 
   Future<List<FocusSessionEntry>> getAll() {
@@ -106,24 +192,106 @@ class FocusSessionDao extends DatabaseAccessor<AttentionDatabase> with _$FocusSe
 
 @DriftAccessor(tables: [DailyBriefTable])
 class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBriefDaoMixin {
-  DailyBriefDao(super.db);
+  final PrivacyBudgetManager? _privacyBudgetManager;
 
-  Future<void> insertOrUpdate(DailyBriefEntry entry) async {
+  DailyBriefDao(super.db, [PrivacyBudgetManager? privacyBudgetManager])
+      : _privacyBudgetManager = privacyBudgetManager;
+
+  PrivacyBudgetManager get privacyBudgetManager =>
+      _privacyBudgetManager ?? PrivacyBudgetManager(db: attachedDatabase);
+
+  Future<bool> insertOrUpdate(
+    DailyBriefEntry entry, {
+    double? opEpsilon,
+    Random? random,
+    bool injectNoise = false,
+  }) async {
+    final pbm = _privacyBudgetManager;
+    final shouldInject = injectNoise || pbm != null || opEpsilon != null;
+
+    if (shouldInject) {
+      final manager = pbm ?? PrivacyBudgetManager(db: attachedDatabase);
+      final eps = opEpsilon ?? PrivacyBudgetManager.defaultOpEpsilon;
+
+      final budgetConsumed = await manager.consumeBudget(eps);
+      if (!budgetConsumed) {
+        // Budget exhausted! Suppress write.
+        return false;
+      }
+
+      final noisyEntry = entry.copyWith(
+        notificationsReviewed: manager.applyNoisyCount(entry.notificationsReviewed, epsilon: eps, random: random),
+        actionsCompleted: manager.applyNoisyCount(entry.actionsCompleted, epsilon: eps, random: random),
+        calendarEventsCreated: manager.applyNoisyCount(entry.calendarEventsCreated, epsilon: eps, random: random),
+        remindersCreated: manager.applyNoisyCount(entry.remindersCreated, epsilon: eps, random: random),
+        archivedCount: manager.applyNoisyCount(entry.archivedCount, epsilon: eps, random: random),
+      );
+
+      await into(dailyBriefTable).insert(noisyEntry, mode: InsertMode.insertOrReplace);
+      return true;
+    }
+
     await into(dailyBriefTable).insert(entry, mode: InsertMode.insertOrReplace);
+    return true;
   }
 
   Future<DailyBriefEntry?> getBriefForDate(String date) {
     return (select(dailyBriefTable)..where((t) => t.date.equals(date))).getSingleOrNull();
   }
 
-  Future<void> incrementStats(
+  Future<bool> incrementStats(
     String date, {
     int reviewed = 0,
     int completed = 0,
     int calendar = 0,
     int reminders = 0,
     int archived = 0,
+    double? opEpsilon,
+    Random? random,
+    bool injectNoise = false,
   }) async {
+    final pbm = _privacyBudgetManager;
+    final shouldInject = injectNoise || pbm != null || opEpsilon != null;
+
+    if (shouldInject) {
+      final manager = pbm ?? PrivacyBudgetManager(db: attachedDatabase);
+      final eps = opEpsilon ?? PrivacyBudgetManager.defaultOpEpsilon;
+
+      final budgetConsumed = await manager.consumeBudget(eps);
+      if (!budgetConsumed) {
+        // Budget exhausted! Suppress write.
+        return false;
+      }
+
+      final noisyReviewed = reviewed > 0 ? manager.applyNoisyCount(reviewed, epsilon: eps, random: random) : 0;
+      final noisyCompleted = completed > 0 ? manager.applyNoisyCount(completed, epsilon: eps, random: random) : 0;
+      final noisyCalendar = calendar > 0 ? manager.applyNoisyCount(calendar, epsilon: eps, random: random) : 0;
+      final noisyReminders = reminders > 0 ? manager.applyNoisyCount(reminders, epsilon: eps, random: random) : 0;
+      final noisyArchived = archived > 0 ? manager.applyNoisyCount(archived, epsilon: eps, random: random) : 0;
+
+      final existing = await getBriefForDate(date);
+      if (existing != null) {
+        await update(dailyBriefTable).replace(existing.copyWith(
+          notificationsReviewed: existing.notificationsReviewed + noisyReviewed,
+          actionsCompleted: existing.actionsCompleted + noisyCompleted,
+          calendarEventsCreated: existing.calendarEventsCreated + noisyCalendar,
+          remindersCreated: existing.remindersCreated + noisyReminders,
+          archivedCount: existing.archivedCount + noisyArchived,
+        ));
+      } else {
+        await into(dailyBriefTable).insert(DailyBriefEntry(
+          id: 0,
+          date: date,
+          notificationsReviewed: noisyReviewed,
+          actionsCompleted: noisyCompleted,
+          calendarEventsCreated: noisyCalendar,
+          remindersCreated: noisyReminders,
+          archivedCount: noisyArchived,
+        ));
+      }
+      return true;
+    }
+
     final existing = await getBriefForDate(date);
     if (existing != null) {
       await update(dailyBriefTable).replace(existing.copyWith(
@@ -144,6 +312,7 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
         archivedCount: archived,
       ));
     }
+    return true;
   }
 
   Future<List<DailyBriefEntry>> getAll() {
@@ -152,5 +321,26 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
 
   Future<void> clearAll() async {
     await delete(dailyBriefTable).go();
+  }
+}
+
+@DriftAccessor(tables: [PrivacyBudgetTable])
+class PrivacyBudgetDao extends DatabaseAccessor<AttentionDatabase> with _$PrivacyBudgetDaoMixin {
+  PrivacyBudgetDao(super.db);
+
+  Future<PrivacyBudgetEntry?> getEntryForDate(String date) {
+    return (select(privacyBudgetTable)..where((t) => t.date.equals(date))).getSingleOrNull();
+  }
+
+  Future<void> upsertEntry(PrivacyBudgetEntry entry) async {
+    await into(privacyBudgetTable).insert(entry, mode: InsertMode.insertOrReplace);
+  }
+
+  Future<List<PrivacyBudgetEntry>> getAll() {
+    return select(privacyBudgetTable).get();
+  }
+
+  Future<void> clearAll() async {
+    await delete(privacyBudgetTable).go();
   }
 }
