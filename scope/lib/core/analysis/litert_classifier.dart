@@ -1,41 +1,75 @@
+import 'dart:convert';
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/analysis_result.dart';
 import 'package:scope/core/analysis/notification_analyzer.dart';
 import 'package:scope/core/analysis/wordpiece_tokenizer.dart';
+import 'package:scope/core/analysis/asset_integrity.dart';
 
 /// Classifier using LiteRT (TensorFlow Lite) to classify text categories.
 class LiteRtClassifier implements NotificationAnalyzer {
   Interpreter? _interpreter;
   WordPieceTokenizer? _tokenizer;
   bool _isModelLoaded = false;
+  Future<void>? _initFuture;
 
-  LiteRtClassifier() {
-    _initialize();
+  LiteRtClassifier({Map<String, String>? customHashes}) {
+    _initFuture = _initialize(customHashes: customHashes);
   }
 
-  Future<void> _initialize() async {
+  /// Explicit initialization method for tests or callers requiring custom asset hashes.
+  Future<void> initialize({Map<String, String>? customHashes}) async {
+    _initFuture = _initialize(customHashes: customHashes);
+    await _initFuture;
+  }
+
+  Future<void> _initialize({Map<String, String>? customHashes}) async {
     try {
-      // 1. Load Vocab
-      final vocabStr = await rootBundle.loadString('assets/vocab.txt');
+      // 1. Load & verify Vocab asset
+      final vocabData = await rootBundle.load('assets/vocab.txt');
+      final vocabBytes = vocabData.buffer.asUint8List(vocabData.offsetInBytes, vocabData.lengthInBytes);
+
+      if (!AssetIntegrity.verify('assets/vocab.txt', vocabBytes, customHashes: customHashes)) {
+        debugPrint('LiteRtClassifier failed integrity check for assets/vocab.txt');
+        _isModelLoaded = false;
+        return;
+      }
+
+      final vocabStr = utf8.decode(vocabBytes);
       final lines = vocabStr.split('\n');
       _tokenizer = WordPieceTokenizer.fromLines(lines);
 
-      // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
-      _isModelLoaded = false;
+      // 2. Load & verify Model asset
+      final modelData = await rootBundle.load('assets/model.tflite');
+      final modelBytes = modelData.buffer.asUint8List(modelData.offsetInBytes, modelData.lengthInBytes);
+
+      if (!AssetIntegrity.verify('assets/model.tflite', modelBytes, customHashes: customHashes)) {
+        debugPrint('LiteRtClassifier failed integrity check for assets/model.tflite');
+        _isModelLoaded = false;
+        return;
+      }
+
+      // 3. Instantiate Interpreter
+      _interpreter = Interpreter.fromBuffer(modelBytes);
+      _isModelLoaded = true;
+      debugPrint('LiteRtClassifier: TFLite interpreter initialized successfully.');
     } catch (e) {
       // Graceful degradation: Log and set flags so analyze runs in fallback mode
-      // ignore: avoid_print
-      print('LiteRtClassifier failed to initialize: $e');
+      debugPrint('LiteRtClassifier failed to initialize: $e');
       _isModelLoaded = false;
 
       // Ensure tokenizer is loaded even if interpreter fails (so we can test tokenization in fallback)
       if (_tokenizer == null) {
         try {
-          final vocabStr = await rootBundle.loadString('assets/vocab.txt');
-          _tokenizer = WordPieceTokenizer.fromLines(vocabStr.split('\n'));
+          final vocabData = await rootBundle.load('assets/vocab.txt');
+          final vocabBytes = vocabData.buffer.asUint8List(vocabData.offsetInBytes, vocabData.lengthInBytes);
+          if (AssetIntegrity.verify('assets/vocab.txt', vocabBytes, customHashes: customHashes)) {
+            final vocabStr = utf8.decode(vocabBytes);
+            _tokenizer = WordPieceTokenizer.fromLines(vocabStr.split('\n'));
+          }
         } catch (_) {}
       }
     }
@@ -50,6 +84,9 @@ class LiteRtClassifier implements NotificationAnalyzer {
     final combinedText = '${notification.title} ${notification.content}';
 
     // Ensure initialization finished
+    if (_initFuture != null) {
+      await _initFuture;
+    }
     if (_tokenizer == null) {
       await _initialize();
     }
