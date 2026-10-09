@@ -22,6 +22,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", type=Path, default=None, help="Output file path.")
     parser.add_argument("--ollama", action="store_true", help="Optionally call local Ollama for a small share of text variants.")
     parser.add_argument("--ollama-model", default="gemma3:9b", help="Local Ollama model name.")
+    parser.add_argument("--no-sanitize", action="store_true", help="Disable privacy sanitization controls (default: enabled).")
     parser.add_argument("--stats", action="store_true", help="Write summary statistics next to the dataset.")
     return parser.parse_args()
 
@@ -41,12 +42,13 @@ def main() -> None:
         seed=args.seed,
         use_ollama=args.ollama,
         ollama_model=args.ollama_model,
+        sanitize=not args.no_sanitize,
     )
     records = generator.generate(args.count)
 
     if args.stats:
         records, stats_records = tee(records)
-        stats = summarize(stats_records)
+        stats = summarize(stats_records, audit_stats=generator.sanitizer.audit_logger)
         stats_path = output.with_suffix(output.suffix + ".stats.json")
         stats_path.parent.mkdir(parents=True, exist_ok=True)
         stats_path.write_text(json.dumps(stats, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -57,6 +59,7 @@ def main() -> None:
         written = write_csv(output, records)
 
     print(f"Wrote {written} notifications to {output}")
+
 
 
 if __name__ == "__main__":
