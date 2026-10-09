@@ -65,3 +65,47 @@ class DailyBriefTable extends Table {
   IntColumn get remindersCreated => integer().withDefault(const Constant(0))();
   IntColumn get archivedCount => integer().withDefault(const Constant(0))();
 }
+
+@DataClassName('InferenceTelemetryEntry')
+class InferenceTelemetryTable extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get notificationId => text().nullable()();
+  IntColumn get quantizedTimestamp => integer()();
+  IntColumn get latencyMs => integer()();
+  TextColumn get modelVersion => text().nullable()();
+  TextColumn get ruleVersion => text().nullable()();
+  TextColumn get engineVersion => text().nullable()();
+  BoolColumn get isFallback => boolean().withDefault(const Constant(false))();
+  RealColumn get priorityScore => real()();
+  TextColumn get priorityLevel => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+@DataClassName('InferenceAuditLogEntry')
+class InferenceAuditLogsTable extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get timestamp => integer()();
+  TextColumn get eventType => text()();
+  TextColumn get logMessage => text()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+@DataClassName('PrivacyBudgetEntry')
+class PrivacyBudgetTable extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get entity => text().unique()();
+  RealColumn get allocatedEpsilon => real().withDefault(const Constant(2.0))();
+  RealColumn get consumedEpsilon => real().withDefault(const Constant(0.0))();
+  RealColumn get delta => real().withDefault(const Constant(1e-5))();
+  DateTimeColumn get lastUpdated => dateTime().withDefault(currentDateAndTime)();
+}
+
+@DataClassName('PrivacyLedgerEntry')
+class PrivacyLedgerTable extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get entity => text()();
+  RealColumn get epsilonSpent => real()();
+  TextColumn get operation => text()();
+  IntColumn get timestamp => integer()();
+}
+

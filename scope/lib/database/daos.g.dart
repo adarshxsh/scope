@@ -72,3 +72,41 @@ class DailyBriefDaoManager {
         _db.dailyBriefTable,
       );
 }
+
+mixin _$InferenceTelemetryDaoMixin on DatabaseAccessor<AttentionDatabase> {
+  $InferenceTelemetryTableTable get inferenceTelemetryTable =>
+      attachedDatabase.inferenceTelemetryTable;
+  $InferenceAuditLogsTableTable get inferenceAuditLogsTable =>
+      attachedDatabase.inferenceAuditLogsTable;
+  $PrivacyBudgetTableTable get privacyBudgetTable =>
+      attachedDatabase.privacyBudgetTable;
+  $PrivacyLedgerTableTable get privacyLedgerTable =>
+      attachedDatabase.privacyLedgerTable;
+  InferenceTelemetryDaoManager get managers =>
+      InferenceTelemetryDaoManager(this);
+}
+
+class InferenceTelemetryDaoManager {
+  final _$InferenceTelemetryDaoMixin _db;
+  InferenceTelemetryDaoManager(this._db);
+  $$InferenceTelemetryTableTableTableManager get inferenceTelemetryTable =>
+      $$InferenceTelemetryTableTableTableManager(
+        _db.attachedDatabase,
+        _db.inferenceTelemetryTable,
+      );
+  $$InferenceAuditLogsTableTableTableManager get inferenceAuditLogsTable =>
+      $$InferenceAuditLogsTableTableTableManager(
+        _db.attachedDatabase,
+        _db.inferenceAuditLogsTable,
+      );
+  $$PrivacyBudgetTableTableTableManager get privacyBudgetTable =>
+      $$PrivacyBudgetTableTableTableManager(
+        _db.attachedDatabase,
+        _db.privacyBudgetTable,
+      );
+  $$PrivacyLedgerTableTableTableManager get privacyLedgerTable =>
+      $$PrivacyLedgerTableTableTableManager(
+        _db.attachedDatabase,
+        _db.privacyLedgerTable,
+      );
+}
