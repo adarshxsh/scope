@@ -37,7 +37,10 @@ dependencies:
   tflite_flutter: ^0.12.1
   flutter_riverpod: ^2.3.6
   drift: ^2.10.0
+  sqlite3: ^3.5.2
   sqlite3_flutter_libs: ^0.5.15
+  sqlcipher_flutter_libs: ^0.7.0+eol
+  flutter_secure_storage: ^9.0.0
   path_provider: ^2.0.15
   path: ^1.8.3
   fl_chart: ^1.2.0
@@ -65,6 +68,11 @@ flutter_launcher_icons:
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
+
+hooks:
+  user_defines:
+    sqlite3:
+      source: sqlcipher
 
 # The following section is specific to Flutter packages.
 flutter:
