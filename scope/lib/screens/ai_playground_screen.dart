@@ -3,6 +3,7 @@ import 'package:scope/core/analysis/extracted_features.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/state/notification_controller.dart';
+import 'package:scope/core/utils/pii_redactor.dart';
 import 'package:scope/theme/app_colors.dart';
 import 'package:scope/theme/app_spacing.dart';
 import 'package:scope/widgets/primitives/scope_surface.dart';
@@ -22,6 +23,7 @@ class AiPlaygroundScreen extends StatefulWidget {
 class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
   AppNotification? _selectedNotification;
   bool _isCustomMode = false;
+  bool _showSensitiveData = false;
 
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
@@ -272,10 +274,21 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(n.title.isEmpty ? '(No title)' : n.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12), maxLines: 1),
+                  Text(
+                    _showSensitiveData
+                        ? (n.title.isEmpty ? '(No title)' : n.title)
+                        : PiiRedactor.redactText(n.title.isEmpty ? '(No title)' : n.title),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                    maxLines: 1,
+                  ),
                   const SizedBox(height: 2),
                   Expanded(
-                    child: Text(n.content, style: const TextStyle(fontSize: 11, color: Colors.white70), maxLines: 3, overflow: TextOverflow.ellipsis),
+                    child: Text(
+                      _showSensitiveData ? n.content : PiiRedactor.redactText(n.content),
+                      style: const TextStyle(fontSize: 11, color: Colors.white70),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),
@@ -297,8 +310,18 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     if (n.title.toLowerCase().contains('credited') || n.content.toLowerCase().contains('credited')) definingWords.add('credited');
     if (n.title.toLowerCase().contains('offer') || n.content.toLowerCase().contains('offer')) definingWords.add('offer');
     if (n.title.toLowerCase().contains('sale') || n.content.toLowerCase().contains('sale')) definingWords.add('sale');
-    if (features.otp != null) definingWords.add('OTP:${features.otp}');
-    if (features.amount != null) definingWords.add('Amount:Rs.${features.amount}');
+    if (features.otp != null) {
+      definingWords.add(_showSensitiveData ? 'OTP:${features.otp}' : 'OTP:${PiiRedactor.redactOtp(features.otp)}');
+    }
+    if (features.amount != null) {
+      definingWords.add(_showSensitiveData ? 'Amount:Rs.${features.amount}' : 'Amount:${PiiRedactor.redactAmount(features.amount)}');
+    }
+
+    final rawTargetText = '${n.title} - ${n.content}';
+    final displayTargetText = _showSensitiveData ? rawTargetText : PiiRedactor.redactText(rawTargetText);
+
+    final rawExplanation = n.explanation ?? 'Classified via heuristic rule matching.';
+    final displayExplanation = _showSensitiveData ? rawExplanation : PiiRedactor.redactText(rawExplanation);
 
     return ScopeSurface(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -309,12 +332,22 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Post-Mortem Trace', style: theme.textTheme.titleMedium),
-              Text('${n.latencyMs ?? 0} ms', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+              Row(
+                children: [
+                  const Text('Show Sensitive Data', style: TextStyle(color: Colors.white54, fontSize: 11)),
+                  Switch(
+                    value: _showSensitiveData,
+                    onChanged: (val) => setState(() => _showSensitiveData = val),
+                  ),
+                  const SizedBox(width: 8),
+                  Text('${n.latencyMs ?? 0} ms', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                ],
+              ),
             ],
           ),
           const Divider(height: 24),
           Text('Input Target:', style: theme.textTheme.labelLarge?.copyWith(color: Colors.white54)),
-          Text('${n.title} - ${n.content}', style: const TextStyle(fontSize: 14)),
+          Text(displayTargetText, style: const TextStyle(fontSize: 14)),
           const SizedBox(height: AppSpacing.md),
           
           Text('Most Defining Features / Tags:', style: theme.textTheme.labelLarge?.copyWith(color: Colors.white54)),
@@ -352,7 +385,7 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
           ),
           const SizedBox(height: AppSpacing.md),
           Text('AI Explanation:', style: theme.textTheme.labelLarge?.copyWith(color: Colors.white54)),
-          Text(n.explanation ?? 'Classified via heuristic rule matching.', style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.white70)),
+          Text(displayExplanation, style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.white70)),
           const Divider(height: 32),
 
           Text('Reinforcement Feedback Loop (RLHF)', style: theme.textTheme.titleSmall),

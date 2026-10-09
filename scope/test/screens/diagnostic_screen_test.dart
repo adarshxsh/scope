@@ -110,6 +110,19 @@ void main() {
       expect(find.text('CRITICAL'), findsOneWidget);
       expect(find.text('Pipeline Explanation Trace'), findsOneWidget);
       expect(find.text('Extracted Text Features'), findsOneWidget);
+
+      // Verify PII is redacted by default
+      expect(find.text('[REDACTED_OTP]'), findsWidgets);
+      expect(find.text('987652'), findsNothing);
+
+      // Toggle Show Sensitive Data switch on
+      final switchFinder = find.byType(Switch).last;
+      await tester.ensureVisible(switchFinder);
+      await tester.tap(switchFinder);
+      await tester.pumpAndSettle();
+
+      // Verify cleartext PII is now visible when toggled
+      expect(find.text('987652'), findsWidgets);
     });
   });
 }

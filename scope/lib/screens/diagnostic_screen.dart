@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
+import 'package:scope/core/utils/pii_redactor.dart';
 import 'package:scope/widgets/scope_card.dart';
 
 class DiagnosticScreen extends StatefulWidget {
@@ -23,6 +24,9 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
   final _packageController = TextEditingController();
   bool _isOngoing = false;
   String _selectedTemplate = 'Custom';
+
+  // Privacy Control
+  bool _showSensitiveData = false;
 
   // Analysis Outputs
   AppNotification? _analyzedNotification;
@@ -280,17 +284,41 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
     final phoneNumbers = features['phoneNumbers'] as List?;
     final phoneNumbersStr = phoneNumbers != null && phoneNumbers.isNotEmpty ? phoneNumbers.toString() : null;
 
+    // Redacted values when privacy mode is active (_showSensitiveData == false)
+    final displayOtp = _showSensitiveData ? otp : PiiRedactor.redactOtp(otp);
+    final displayAmountStr = _showSensitiveData ? amountStr : PiiRedactor.redactAmount(amount);
+    final displayUrlsStr = _showSensitiveData ? urlsStr : PiiRedactor.redactUrl(urlsStr);
+    final displayEmailsStr = _showSensitiveData ? emailsStr : PiiRedactor.redactEmail(emailsStr);
+    final displayPhoneNumbersStr = _showSensitiveData ? phoneNumbersStr : PiiRedactor.redactPhone(phoneNumbersStr);
+
+    final rawExplanation = notif.explanation ?? 'No explanation trace was generated.';
+    final displayExplanation = _showSensitiveData ? rawExplanation : PiiRedactor.redactText(rawExplanation);
+
     final theme = Theme.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Title banner
-        Text(
-          'Analysis Pipeline Results',
-          style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+        // Title banner and Privacy Toggle
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Analysis Pipeline Results',
+              style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            Row(
+              children: [
+                const Text('Show Sensitive Data', style: TextStyle(fontSize: 12)),
+                Switch(
+                  value: _showSensitiveData,
+                  onChanged: (val) => setState(() => _showSensitiveData = val),
+                ),
+              ],
+            ),
+          ],
         ),
         const SizedBox(height: 12),
 
@@ -368,7 +396,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
               ),
               const Divider(height: 20),
               Text(
-                notif.explanation ?? 'No explanation trace was generated.',
+                displayExplanation,
                 style: const TextStyle(height: 1.4),
               ),
             ],
@@ -391,12 +419,12 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
                 ],
               ),
               const Divider(height: 20),
-              _buildFeatureRow('OTP Code', otp),
-              _buildFeatureRow('Transaction Amount', amountStr),
+              _buildFeatureRow('OTP Code', displayOtp),
+              _buildFeatureRow('Transaction Amount', displayAmountStr),
               _buildFeatureRow('Has Deadline Warning', hasDeadline),
-              _buildFeatureRow('Hyperlinks (URLs)', urlsStr),
-              _buildFeatureRow('Emails', emailsStr),
-              _buildFeatureRow('Phone Numbers', phoneNumbersStr),
+              _buildFeatureRow('Hyperlinks (URLs)', displayUrlsStr),
+              _buildFeatureRow('Emails', displayEmailsStr),
+              _buildFeatureRow('Phone Numbers', displayPhoneNumbersStr),
             ],
           ),
         ),
