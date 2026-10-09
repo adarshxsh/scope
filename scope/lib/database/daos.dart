@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/privacy/privacy_budget_engine.dart';
 import 'package:scope/database/attention_database.dart';
 import 'package:scope/database/tables.dart';
 
@@ -102,6 +103,46 @@ class FocusSessionDao extends DatabaseAccessor<AttentionDatabase> with _$FocusSe
   Future<void> clearAll() async {
     await delete(focusSessionsTable).go();
   }
+
+  /// Budget-aware aggregate query method.
+  Future<PrivacyQueryResult<FocusSessionAggregateStats>> getBudgetAwareAggregateStats(
+    PrivacyBudgetEngine engine, {
+    double epsilonQuery = 0.1,
+  }) async {
+    final sessions = await getAll();
+    int rawTotalDuration = 0;
+    int rawTotalInterruptions = 0;
+    for (final s in sessions) {
+      rawTotalDuration += s.duration;
+      rawTotalInterruptions += s.interruptions;
+    }
+
+    final durationRes = await engine.evaluateIntQuery(
+      rawValue: rawTotalDuration,
+      sensitivity: 3600.0,
+      epsilonQuery: epsilonQuery / 2,
+      minVal: 0,
+    );
+
+    final interruptionsRes = await engine.evaluateIntQuery(
+      rawValue: rawTotalInterruptions,
+      sensitivity: 10.0,
+      epsilonQuery: epsilonQuery / 2,
+      minVal: 0,
+    );
+
+    return PrivacyQueryResult<FocusSessionAggregateStats>(
+      value: FocusSessionAggregateStats(
+        totalDurationSeconds: durationRes.value,
+        totalInterruptions: interruptionsRes.value,
+        sessionCount: sessions.length,
+      ),
+      bucketInterval: durationRes.isFallback ? 'Coarsened Fallback' : 'Laplace Noise Injected',
+      isFallback: durationRes.isFallback || interruptionsRes.isFallback,
+      remainingBudget: engine.remainingBudget,
+      consumedEpsilon: engine.consumedEpsilon,
+    );
+  }
 }
 
 @DriftAccessor(tables: [DailyBriefTable])
@@ -114,6 +155,71 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
 
   Future<DailyBriefEntry?> getBriefForDate(String date) {
     return (select(dailyBriefTable)..where((t) => t.date.equals(date))).getSingleOrNull();
+  }
+
+  /// Budget-aware aggregate query method for a specific date.
+  Future<PrivacyQueryResult<DailyBriefEntry>> getBudgetAwareBriefForDate(
+    String date,
+    PrivacyBudgetEngine engine, {
+    double epsilonQuery = 0.1,
+  }) async {
+    final brief = await getBriefForDate(date) ??
+        DailyBriefEntry(
+          id: 0,
+          date: date,
+          notificationsReviewed: 0,
+          actionsCompleted: 0,
+          calendarEventsCreated: 0,
+          remindersCreated: 0,
+          archivedCount: 0,
+        );
+
+    final reviewedRes = await engine.evaluateIntQuery(
+      rawValue: brief.notificationsReviewed,
+      sensitivity: 1.0,
+      epsilonQuery: epsilonQuery / 5,
+      minVal: 0,
+    );
+    final completedRes = await engine.evaluateIntQuery(
+      rawValue: brief.actionsCompleted,
+      sensitivity: 1.0,
+      epsilonQuery: epsilonQuery / 5,
+      minVal: 0,
+    );
+    final calendarRes = await engine.evaluateIntQuery(
+      rawValue: brief.calendarEventsCreated,
+      sensitivity: 1.0,
+      epsilonQuery: epsilonQuery / 5,
+      minVal: 0,
+    );
+    final remindersRes = await engine.evaluateIntQuery(
+      rawValue: brief.remindersCreated,
+      sensitivity: 1.0,
+      epsilonQuery: epsilonQuery / 5,
+      minVal: 0,
+    );
+    final archivedRes = await engine.evaluateIntQuery(
+      rawValue: brief.archivedCount,
+      sensitivity: 1.0,
+      epsilonQuery: epsilonQuery / 5,
+      minVal: 0,
+    );
+
+    final noisyBrief = brief.copyWith(
+      notificationsReviewed: reviewedRes.value,
+      actionsCompleted: completedRes.value,
+      calendarEventsCreated: calendarRes.value,
+      remindersCreated: remindersRes.value,
+      archivedCount: archivedRes.value,
+    );
+
+    return PrivacyQueryResult<DailyBriefEntry>(
+      value: noisyBrief,
+      bucketInterval: reviewedRes.isFallback ? 'Coarsened Fallback' : 'Laplace Noise Injected',
+      isFallback: reviewedRes.isFallback,
+      remainingBudget: engine.remainingBudget,
+      consumedEpsilon: engine.consumedEpsilon,
+    );
   }
 
   Future<void> incrementStats(
@@ -152,5 +258,41 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
 
   Future<void> clearAll() async {
     await delete(dailyBriefTable).go();
+  }
+}
+
+@DriftAccessor(tables: [PrivacyBudgetTable])
+class PrivacyBudgetDao extends DatabaseAccessor<AttentionDatabase> with _$PrivacyBudgetDaoMixin {
+  PrivacyBudgetDao(super.db);
+
+  Future<PrivacyBudgetEntry?> getBudgetForDate(String epochDate) {
+    return (select(privacyBudgetTable)..where((t) => t.epochDate.equals(epochDate))).getSingleOrNull();
+  }
+
+  Future<void> insertOrUpdateBudget(PrivacyBudgetEntry entry) async {
+    await into(privacyBudgetTable).insert(entry, mode: InsertMode.insertOrReplace);
+  }
+
+  Future<void> updateConsumedEpsilon(String epochDate, double consumed) async {
+    final existing = await getBudgetForDate(epochDate);
+    if (existing != null) {
+      await (update(privacyBudgetTable)..where((t) => t.epochDate.equals(epochDate)))
+          .write(PrivacyBudgetTableCompanion(consumedEpsilon: Value(consumed)));
+    } else {
+      await into(privacyBudgetTable).insert(PrivacyBudgetEntry(
+        id: 0,
+        epochDate: epochDate,
+        targetEpsilon: 1.0,
+        consumedEpsilon: consumed,
+      ));
+    }
+  }
+
+  Future<List<PrivacyBudgetEntry>> getAll() {
+    return select(privacyBudgetTable).get();
+  }
+
+  Future<void> clearAll() async {
+    await delete(privacyBudgetTable).go();
   }
 }
