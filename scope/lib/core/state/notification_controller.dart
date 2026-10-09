@@ -10,6 +10,7 @@ import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/core/utils/focus_area_mapper.dart';
 import 'package:scope/core/utils/smart_actions.dart';
 import 'package:scope/core/state/providers.dart';
+import 'package:scope/core/telemetry/telemetry_governance_manager.dart';
 import 'package:drift/drift.dart';
 import 'package:scope/database/attention_database.dart';
 import 'package:scope/database/database_provider.dart';
@@ -43,10 +44,12 @@ class NotificationController extends ChangeNotifier {
     NotificationStorage? storage,
     GhostAnalysisEngine? engine,
     ProviderContainer? container,
+    TelemetryGovernanceManager? telemetryGovernance,
   })  : _bridge = bridge ?? NotificationBridge(),
         _container = container ?? providerContainer,
         _storage = storage ?? DriftNotificationStorage(container?.read(databaseProvider) ?? providerContainer.read(databaseProvider)),
-        _engine = engine ?? GhostAnalysisEngine() {
+        _engine = engine ?? GhostAnalysisEngine(),
+        _telemetryGovernance = telemetryGovernance ?? TelemetryGovernanceManager() {
     _engine.initialize();
 
     // Listen to changes in Riverpod's reviewQueueProvider to keep legacy notifier list in sync
@@ -63,6 +66,7 @@ class NotificationController extends ChangeNotifier {
   final NotificationStorage _storage;
   final GhostAnalysisEngine _engine;
   final ProviderContainer _container;
+  final TelemetryGovernanceManager _telemetryGovernance;
 
   List<AppNotification> _notifications = [];
   bool _isListenerEnabled = false;
@@ -93,6 +97,29 @@ class NotificationController extends ChangeNotifier {
   bool get isListenerEnabled => _isListenerEnabled;
   bool get isLoading => _isLoading;
   GhostAnalysisEngine get engine => _engine;
+  TelemetryGovernanceManager get telemetryGovernance => _telemetryGovernance;
+  TelemetryAnonymizationLevel get anonymizationLevel => _telemetryGovernance.level;
+
+  void setAnonymizationLevel(TelemetryAnonymizationLevel level) {
+    _telemetryGovernance.level = level;
+    notifyListeners();
+  }
+
+  /// Processes raw hourly volume through telemetry governance (k-anonymity + Laplace noise).
+  List<int> getGovernedHourlyVolume(List<int> rawHourlyVolume) {
+    return _telemetryGovernance.processHourlyVolume(rawHourlyVolume);
+  }
+
+  /// Returns daily brief interaction statistics with Laplace noise injected.
+  GovernedDailyBriefStats get governedDailyBriefStats {
+    return _telemetryGovernance.processDailyBriefStats(
+      notificationsReviewed: sessionStats.notificationsReviewed,
+      actionsCompleted: sessionStats.actionsCompleted,
+      calendarEventsCreated: sessionStats.calendarEventsCreated,
+      remindersCreated: sessionStats.remindersCreated,
+      archivedCount: sessionStats.archived,
+    );
+  }
 
   bool get inFocusSession => _inFocusSession;
   List<String> get focusSessionQueueIds => List.unmodifiable(_focusSessionQueueIds);
@@ -195,7 +222,7 @@ class NotificationController extends ChangeNotifier {
   void startFocusSession() {
     _inFocusSession = true;
     _focusSessionQueueIds = reviewQueue.map((n) => n.id).toList();
-    _focusSessionStart = DateTime.now();
+    _focusSessionStart = _telemetryGovernance.quantizeTimestamp(DateTime.now());
     _focusSessionInterruptions = 0;
     resetSessionStats();
 
@@ -222,15 +249,18 @@ class NotificationController extends ChangeNotifier {
   void finishFocusSession() {
     _inFocusSession = false;
     final now = DateTime.now();
-    final durationSeconds = _focusSessionStart != null
-        ? now.difference(_focusSessionStart!).inSeconds
-        : 0;
+    final qStart = _focusSessionStart != null
+        ? _telemetryGovernance.quantizeTimestamp(_focusSessionStart!)
+        : _telemetryGovernance.quantizeTimestamp(now);
+    final qEnd = _telemetryGovernance.quantizeTimestamp(now);
+    final durationSeconds = qEnd.difference(qStart).inSeconds.clamp(0, 86400 * 30);
 
     final db = _container.read(databaseProvider);
     db.focusSessionDao.getActiveSession().then((active) {
       if (active != null) {
         db.focusSessionDao.updateSession(active.copyWith(
-          sessionEnd: Value(now),
+          sessionStart: qStart,
+          sessionEnd: Value(qEnd),
           completion: true,
           duration: durationSeconds,
           interruptions: _focusSessionInterruptions,
@@ -328,8 +358,10 @@ class NotificationController extends ChangeNotifier {
     }
     if (_notifications.isNotEmpty) {
       final notifier = _container.read(reviewQueueProvider.notifier);
-      notifier.load(_notifications);
-      await notifier.rescore();
+      if (notifier.state.isEmpty) {
+        notifier.load(_notifications);
+        await notifier.rescore();
+      }
     }
     _initialLoadCompleted = true;
     _isLoading = false;

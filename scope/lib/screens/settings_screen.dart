@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:scope/core/state/notification_controller.dart';
+import 'package:scope/core/telemetry/telemetry_governance_manager.dart';
 import 'package:scope/screens/ai_playground_screen.dart';
 import 'package:scope/screens/diagnostic_screen.dart';
 import 'package:scope/theme/app_spacing.dart';
@@ -42,9 +43,9 @@ class SettingsScreen extends StatelessWidget {
                   const Divider(height: 1, indent: 56),
                   _SettingsTile(
                     icon: Icons.shield_outlined,
-                    title: 'Privacy',
-                    subtitle: 'All analysis runs on your device',
-                    onTap: null,
+                    title: 'Telemetry Anonymization',
+                    subtitle: _anonymizationSubtitle(controller.anonymizationLevel),
+                    onTap: () => _showAnonymizationDialog(context),
                   ),
                   const Divider(height: 1, indent: 56),
                   _SettingsTile(
@@ -126,6 +127,76 @@ class SettingsScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  String _anonymizationSubtitle(TelemetryAnonymizationLevel level) {
+    switch (level) {
+      case TelemetryAnonymizationLevel.standard:
+        return 'Standard privacy (k-anonymity k=3, ε=1.0)';
+      case TelemetryAnonymizationLevel.strict:
+        return 'Strict differential privacy (k-anonymity k=5, ε=0.5)';
+      case TelemetryAnonymizationLevel.off:
+        return 'Off (Raw analytics metrics)';
+    }
+  }
+
+  void _showAnonymizationDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final currentLevel = controller.anonymizationLevel;
+        return AlertDialog(
+          title: const Text('Telemetry Governance'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              RadioListTile<TelemetryAnonymizationLevel>(
+                title: const Text('Standard Privacy'),
+                subtitle: const Text('k-anonymity (k=3), Laplace noise (ε=1.0)'),
+                value: TelemetryAnonymizationLevel.standard,
+                groupValue: currentLevel,
+                onChanged: (val) {
+                  if (val != null) {
+                    controller.setAnonymizationLevel(val);
+                    Navigator.pop(context);
+                  }
+                },
+              ),
+              RadioListTile<TelemetryAnonymizationLevel>(
+                title: const Text('Strict Differential Privacy'),
+                subtitle: const Text('k-anonymity (k=5), Laplace noise (ε=0.5)'),
+                value: TelemetryAnonymizationLevel.strict,
+                groupValue: currentLevel,
+                onChanged: (val) {
+                  if (val != null) {
+                    controller.setAnonymizationLevel(val);
+                    Navigator.pop(context);
+                  }
+                },
+              ),
+              RadioListTile<TelemetryAnonymizationLevel>(
+                title: const Text('Off (Raw Analytics)'),
+                subtitle: const Text('No noise injection or aggregation threshold'),
+                value: TelemetryAnonymizationLevel.off,
+                groupValue: currentLevel,
+                onChanged: (val) {
+                  if (val != null) {
+                    controller.setAnonymizationLevel(val);
+                    Navigator.pop(context);
+                  }
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
     );
   }
 }
