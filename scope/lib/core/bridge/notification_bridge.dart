@@ -19,8 +19,33 @@ class NotificationBridge {
   /// The MethodChannel name must match the one registered in MainActivity.kt
   final MethodChannel _channel;
 
-  NotificationBridge({MethodChannel? channel})
-    : _channel = channel ?? const MethodChannel('com.scope.notifications');
+  /// The EventChannel name must match the one registered in MainActivity.kt
+  final EventChannel _eventChannel;
+
+  Stream<AppNotification>? _notificationStream;
+
+  NotificationBridge({
+    MethodChannel? channel,
+    EventChannel? eventChannel,
+    Stream<AppNotification>? notificationStream,
+  })  : _channel = channel ?? const MethodChannel('com.scope.notifications'),
+        _eventChannel =
+            eventChannel ?? const EventChannel('com.scope.notifications/events'),
+        _notificationStream = notificationStream;
+
+  /// Reactive stream of pushed notification events from the native EventChannel.
+  Stream<AppNotification> get notificationStream {
+    _notificationStream ??= _eventChannel
+        .receiveBroadcastStream()
+        .where((dynamic event) => event is Map)
+        .map((dynamic event) =>
+            AppNotification.fromMap(Map<String, dynamic>.from(event as Map)))
+        .handleError((error) {
+          // ignore: avoid_print
+          print('NotificationBridge stream error: $error');
+        });
+    return _notificationStream!;
+  }
 
   /// Drains the notification queue from the Android side.
   ///
