@@ -5,7 +5,7 @@ import 'package:scope/database/attention_database.dart';
 /// Riverpod provider for the singleton database instance.
 final databaseProvider = Provider<AttentionDatabase>((ref) {
   final isTest = Platform.environment.containsKey('FLUTTER_TEST');
-  final db = isTest ? AttentionDatabase.inMemory() : AttentionDatabase();
+  final db = isTest ? AttentionDatabase.inMemory() : AttentionDatabase.withKeyManager();
   ref.onDispose(() => db.close());
   return db;
 });
