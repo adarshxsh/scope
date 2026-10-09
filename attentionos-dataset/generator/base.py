@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import random
 import re
 import uuid
@@ -9,6 +10,33 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Iterable
 from urllib import request
 from urllib.error import URLError
+from urllib.parse import urlparse
+
+LOOPBACK_HOSTS = {"localhost", "127.0.0.1", "::1"}
+
+
+def validate_ollama_url(url: str) -> str:
+    if not url:
+        raise ValueError("Ollama URL cannot be empty")
+
+    url_to_parse = url
+    if "://" not in url_to_parse:
+        url_to_parse = f"http://{url_to_parse}"
+
+    parsed = urlparse(url_to_parse)
+    scheme = (parsed.scheme or "").lower()
+    hostname = (parsed.hostname or "").lower()
+
+    if scheme not in ("http", "https"):
+        raise ValueError(f"Invalid URL scheme '{scheme}'. Only HTTP and HTTPS are permitted.")
+
+    if scheme == "http" and hostname not in LOOPBACK_HOSTS:
+        raise ValueError(
+            f"Cleartext HTTP traffic is prohibited for non-loopback host '{hostname}'. "
+            "HTTPS is required for external hosts."
+        )
+
+    return url_to_parse
 
 from faker import Faker
 from jinja2 import Template
@@ -159,13 +187,21 @@ SCENARIOS: tuple[Scenario, ...] = (
 
 
 class NotificationDatasetGenerator:
-    def __init__(self, seed: int = 42, use_ollama: bool = False, ollama_model: str = "gemma3:9b") -> None:
+    def __init__(
+        self,
+        seed: int = 42,
+        use_ollama: bool = False,
+        ollama_model: str = "gemma3:9b",
+        ollama_url: str | None = None,
+    ) -> None:
         self.seed = seed
         self.random = random.Random(seed)
         self.fake = Faker("en_IN")
         Faker.seed(seed)
         self.use_ollama = use_ollama
         self.ollama_model = ollama_model
+        resolved_url = ollama_url or os.environ.get("OLLAMA_HOST") or "http://localhost:11434"
+        self.ollama_url = validate_ollama_url(resolved_url)
         self.base_time = datetime(2026, 6, 26, 9, 0, 0, tzinfo=timezone.utc)
         self._weighted_scenarios = [scenario for scenario in SCENARIOS for _ in range(scenario.weight)]
         self._seen_text: set[str] = set()
@@ -286,8 +322,11 @@ class NotificationDatasetGenerator:
             "No real personal data."
         )
         payload = json.dumps({"model": self.ollama_model, "prompt": prompt, "stream": False}).encode("utf-8")
+        endpoint = self.ollama_url.rstrip("/")
+        if not endpoint.endswith("/api/generate"):
+            endpoint = f"{endpoint}/api/generate"
         try:
-            req = request.Request("http://localhost:11434/api/generate", data=payload, headers={"Content-Type": "application/json"})
+            req = request.Request(endpoint, data=payload, headers={"Content-Type": "application/json"})
             with request.urlopen(req, timeout=20) as response:
                 raw = json.loads(response.read().decode("utf-8")).get("response", "{}")
         except (URLError, TimeoutError, json.JSONDecodeError):
