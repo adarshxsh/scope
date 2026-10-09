@@ -52,6 +52,8 @@ void main() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
       switch (call.method) {
+        case 'getSessionToken':
+          return 'test_feed_screen_token';
         case 'isListenerEnabled':
           return isListenerEnabled;
         case 'getNotifications':
