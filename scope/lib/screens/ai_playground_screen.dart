@@ -348,23 +348,31 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     // Identify defining features (e.g. keywords)
     final definingWords = <String>[];
     if (n.title.toLowerCase().contains('sbi') ||
-        n.content.toLowerCase().contains('sbi'))
+        n.content.toLowerCase().contains('sbi')) {
       definingWords.add('sbi');
+    }
     if (n.title.toLowerCase().contains('debited') ||
-        n.content.toLowerCase().contains('debited'))
+        n.content.toLowerCase().contains('debited')) {
       definingWords.add('debited');
+    }
     if (n.title.toLowerCase().contains('credited') ||
-        n.content.toLowerCase().contains('credited'))
+        n.content.toLowerCase().contains('credited')) {
       definingWords.add('credited');
+    }
     if (n.title.toLowerCase().contains('offer') ||
-        n.content.toLowerCase().contains('offer'))
+        n.content.toLowerCase().contains('offer')) {
       definingWords.add('offer');
+    }
     if (n.title.toLowerCase().contains('sale') ||
-        n.content.toLowerCase().contains('sale'))
+        n.content.toLowerCase().contains('sale')) {
       definingWords.add('sale');
-    if (features.otp != null) definingWords.add('OTP:${features.otp}');
-    if (features.amount != null)
+    }
+    if (features.otp != null) {
+      definingWords.add('OTP:${features.otp}');
+    }
+    if (features.amount != null) {
       definingWords.add('Amount:Rs.${features.amount}');
+    }
 
     return ScopeSurface(
       padding: const EdgeInsets.all(AppSpacing.lg),

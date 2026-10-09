@@ -199,8 +199,9 @@ class _InsightsScreenState extends State<InsightsScreen> {
                               showTitles: true,
                               getTitlesWidget: (value, meta) {
                                 // Show title every 6 hours
-                                if (value % 6 != 0)
+                                if (value % 6 != 0) {
                                   return const SizedBox.shrink();
+                                }
                                 return Padding(
                                   padding: const EdgeInsets.only(top: 8.0),
                                   child: Text(
