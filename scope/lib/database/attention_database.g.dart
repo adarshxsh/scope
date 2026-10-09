@@ -2709,6 +2709,323 @@ class DailyBriefTableCompanion extends UpdateCompanion<DailyBriefEntry> {
   }
 }
 
+class $UserSettingsTableTable extends UserSettingsTable
+    with TableInfo<$UserSettingsTableTable, UserSettingsEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $UserSettingsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _retentionDaysMeta = const VerificationMeta(
+    'retentionDays',
+  );
+  @override
+  late final GeneratedColumn<int> retentionDays = GeneratedColumn<int>(
+    'retention_days',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(7),
+  );
+  static const VerificationMeta _telemetryEnabledMeta = const VerificationMeta(
+    'telemetryEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> telemetryEnabled = GeneratedColumn<bool>(
+    'telemetry_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("telemetry_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _storageQuotaLimitMeta = const VerificationMeta(
+    'storageQuotaLimit',
+  );
+  @override
+  late final GeneratedColumn<int> storageQuotaLimit = GeneratedColumn<int>(
+    'storage_quota_limit',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1000),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    retentionDays,
+    telemetryEnabled,
+    storageQuotaLimit,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'user_settings_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<UserSettingsEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('retention_days')) {
+      context.handle(
+        _retentionDaysMeta,
+        retentionDays.isAcceptableOrUnknown(
+          data['retention_days']!,
+          _retentionDaysMeta,
+        ),
+      );
+    }
+    if (data.containsKey('telemetry_enabled')) {
+      context.handle(
+        _telemetryEnabledMeta,
+        telemetryEnabled.isAcceptableOrUnknown(
+          data['telemetry_enabled']!,
+          _telemetryEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('storage_quota_limit')) {
+      context.handle(
+        _storageQuotaLimitMeta,
+        storageQuotaLimit.isAcceptableOrUnknown(
+          data['storage_quota_limit']!,
+          _storageQuotaLimitMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  UserSettingsEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return UserSettingsEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      retentionDays: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}retention_days'],
+      )!,
+      telemetryEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}telemetry_enabled'],
+      )!,
+      storageQuotaLimit: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}storage_quota_limit'],
+      )!,
+    );
+  }
+
+  @override
+  $UserSettingsTableTable createAlias(String alias) {
+    return $UserSettingsTableTable(attachedDatabase, alias);
+  }
+}
+
+class UserSettingsEntry extends DataClass
+    implements Insertable<UserSettingsEntry> {
+  final int id;
+  final int retentionDays;
+  final bool telemetryEnabled;
+  final int storageQuotaLimit;
+  const UserSettingsEntry({
+    required this.id,
+    required this.retentionDays,
+    required this.telemetryEnabled,
+    required this.storageQuotaLimit,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['retention_days'] = Variable<int>(retentionDays);
+    map['telemetry_enabled'] = Variable<bool>(telemetryEnabled);
+    map['storage_quota_limit'] = Variable<int>(storageQuotaLimit);
+    return map;
+  }
+
+  UserSettingsTableCompanion toCompanion(bool nullToAbsent) {
+    return UserSettingsTableCompanion(
+      id: Value(id),
+      retentionDays: Value(retentionDays),
+      telemetryEnabled: Value(telemetryEnabled),
+      storageQuotaLimit: Value(storageQuotaLimit),
+    );
+  }
+
+  factory UserSettingsEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return UserSettingsEntry(
+      id: serializer.fromJson<int>(json['id']),
+      retentionDays: serializer.fromJson<int>(json['retentionDays']),
+      telemetryEnabled: serializer.fromJson<bool>(json['telemetryEnabled']),
+      storageQuotaLimit: serializer.fromJson<int>(json['storageQuotaLimit']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'retentionDays': serializer.toJson<int>(retentionDays),
+      'telemetryEnabled': serializer.toJson<bool>(telemetryEnabled),
+      'storageQuotaLimit': serializer.toJson<int>(storageQuotaLimit),
+    };
+  }
+
+  UserSettingsEntry copyWith({
+    int? id,
+    int? retentionDays,
+    bool? telemetryEnabled,
+    int? storageQuotaLimit,
+  }) => UserSettingsEntry(
+    id: id ?? this.id,
+    retentionDays: retentionDays ?? this.retentionDays,
+    telemetryEnabled: telemetryEnabled ?? this.telemetryEnabled,
+    storageQuotaLimit: storageQuotaLimit ?? this.storageQuotaLimit,
+  );
+  UserSettingsEntry copyWithCompanion(UserSettingsTableCompanion data) {
+    return UserSettingsEntry(
+      id: data.id.present ? data.id.value : this.id,
+      retentionDays: data.retentionDays.present
+          ? data.retentionDays.value
+          : this.retentionDays,
+      telemetryEnabled: data.telemetryEnabled.present
+          ? data.telemetryEnabled.value
+          : this.telemetryEnabled,
+      storageQuotaLimit: data.storageQuotaLimit.present
+          ? data.storageQuotaLimit.value
+          : this.storageQuotaLimit,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UserSettingsEntry(')
+          ..write('id: $id, ')
+          ..write('retentionDays: $retentionDays, ')
+          ..write('telemetryEnabled: $telemetryEnabled, ')
+          ..write('storageQuotaLimit: $storageQuotaLimit')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, retentionDays, telemetryEnabled, storageQuotaLimit);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is UserSettingsEntry &&
+          other.id == this.id &&
+          other.retentionDays == this.retentionDays &&
+          other.telemetryEnabled == this.telemetryEnabled &&
+          other.storageQuotaLimit == this.storageQuotaLimit);
+}
+
+class UserSettingsTableCompanion extends UpdateCompanion<UserSettingsEntry> {
+  final Value<int> id;
+  final Value<int> retentionDays;
+  final Value<bool> telemetryEnabled;
+  final Value<int> storageQuotaLimit;
+  const UserSettingsTableCompanion({
+    this.id = const Value.absent(),
+    this.retentionDays = const Value.absent(),
+    this.telemetryEnabled = const Value.absent(),
+    this.storageQuotaLimit = const Value.absent(),
+  });
+  UserSettingsTableCompanion.insert({
+    this.id = const Value.absent(),
+    this.retentionDays = const Value.absent(),
+    this.telemetryEnabled = const Value.absent(),
+    this.storageQuotaLimit = const Value.absent(),
+  });
+  static Insertable<UserSettingsEntry> custom({
+    Expression<int>? id,
+    Expression<int>? retentionDays,
+    Expression<bool>? telemetryEnabled,
+    Expression<int>? storageQuotaLimit,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (retentionDays != null) 'retention_days': retentionDays,
+      if (telemetryEnabled != null) 'telemetry_enabled': telemetryEnabled,
+      if (storageQuotaLimit != null) 'storage_quota_limit': storageQuotaLimit,
+    });
+  }
+
+  UserSettingsTableCompanion copyWith({
+    Value<int>? id,
+    Value<int>? retentionDays,
+    Value<bool>? telemetryEnabled,
+    Value<int>? storageQuotaLimit,
+  }) {
+    return UserSettingsTableCompanion(
+      id: id ?? this.id,
+      retentionDays: retentionDays ?? this.retentionDays,
+      telemetryEnabled: telemetryEnabled ?? this.telemetryEnabled,
+      storageQuotaLimit: storageQuotaLimit ?? this.storageQuotaLimit,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (retentionDays.present) {
+      map['retention_days'] = Variable<int>(retentionDays.value);
+    }
+    if (telemetryEnabled.present) {
+      map['telemetry_enabled'] = Variable<bool>(telemetryEnabled.value);
+    }
+    if (storageQuotaLimit.present) {
+      map['storage_quota_limit'] = Variable<int>(storageQuotaLimit.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UserSettingsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('retentionDays: $retentionDays, ')
+          ..write('telemetryEnabled: $telemetryEnabled, ')
+          ..write('storageQuotaLimit: $storageQuotaLimit')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AttentionDatabase extends GeneratedDatabase {
   _$AttentionDatabase(QueryExecutor e) : super(e);
   $AttentionDatabaseManager get managers => $AttentionDatabaseManager(this);
@@ -2722,6 +3039,8 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final $DailyBriefTableTable dailyBriefTable = $DailyBriefTableTable(
     this,
   );
+  late final $UserSettingsTableTable userSettingsTable =
+      $UserSettingsTableTable(this);
   late final NotificationDao notificationDao = NotificationDao(
     this as AttentionDatabase,
   );
@@ -2734,6 +3053,9 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final DailyBriefDao dailyBriefDao = DailyBriefDao(
     this as AttentionDatabase,
   );
+  late final UserSettingsDao userSettingsDao = UserSettingsDao(
+    this as AttentionDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2743,6 +3065,7 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
     reviewQueueTable,
     focusSessionsTable,
     dailyBriefTable,
+    userSettingsTable,
   ];
 }
 
@@ -3406,7 +3729,9 @@ class $$NotificationsTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$NotificationsTableTable, NotificationEntry>(
+                    table,
+                  ),
                   $$NotificationsTableTableReferences(db, table, e),
                 ),
               )
@@ -3749,7 +4074,7 @@ class $$ReviewQueueTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$ReviewQueueTableTable, ReviewQueueEntry>(table),
                   $$ReviewQueueTableTableReferences(db, table, e),
                 ),
               )
@@ -4021,7 +4346,18 @@ class $$FocusSessionsTableTableTableManager
                 duration: duration,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$FocusSessionsTableTable, FocusSessionEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $FocusSessionsTableTable,
+                    FocusSessionEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4273,7 +4609,16 @@ class $$DailyBriefTableTableTableManager
                 archivedCount: archivedCount,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$DailyBriefTableTable, DailyBriefEntry>(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $DailyBriefTableTable,
+                    DailyBriefEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4301,6 +4646,211 @@ typedef $$DailyBriefTableTableProcessedTableManager =
       DailyBriefEntry,
       PrefetchHooks Function()
     >;
+typedef $$UserSettingsTableTableCreateCompanionBuilder =
+    UserSettingsTableCompanion Function({
+      Value<int> id,
+      Value<int> retentionDays,
+      Value<bool> telemetryEnabled,
+      Value<int> storageQuotaLimit,
+    });
+typedef $$UserSettingsTableTableUpdateCompanionBuilder =
+    UserSettingsTableCompanion Function({
+      Value<int> id,
+      Value<int> retentionDays,
+      Value<bool> telemetryEnabled,
+      Value<int> storageQuotaLimit,
+    });
+
+class $$UserSettingsTableTableFilterComposer
+    extends Composer<_$AttentionDatabase, $UserSettingsTableTable> {
+  $$UserSettingsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get retentionDays => $composableBuilder(
+    column: $table.retentionDays,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get telemetryEnabled => $composableBuilder(
+    column: $table.telemetryEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get storageQuotaLimit => $composableBuilder(
+    column: $table.storageQuotaLimit,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$UserSettingsTableTableOrderingComposer
+    extends Composer<_$AttentionDatabase, $UserSettingsTableTable> {
+  $$UserSettingsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get retentionDays => $composableBuilder(
+    column: $table.retentionDays,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get telemetryEnabled => $composableBuilder(
+    column: $table.telemetryEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get storageQuotaLimit => $composableBuilder(
+    column: $table.storageQuotaLimit,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$UserSettingsTableTableAnnotationComposer
+    extends Composer<_$AttentionDatabase, $UserSettingsTableTable> {
+  $$UserSettingsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get retentionDays => $composableBuilder(
+    column: $table.retentionDays,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get telemetryEnabled => $composableBuilder(
+    column: $table.telemetryEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get storageQuotaLimit => $composableBuilder(
+    column: $table.storageQuotaLimit,
+    builder: (column) => column,
+  );
+}
+
+class $$UserSettingsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AttentionDatabase,
+          $UserSettingsTableTable,
+          UserSettingsEntry,
+          $$UserSettingsTableTableFilterComposer,
+          $$UserSettingsTableTableOrderingComposer,
+          $$UserSettingsTableTableAnnotationComposer,
+          $$UserSettingsTableTableCreateCompanionBuilder,
+          $$UserSettingsTableTableUpdateCompanionBuilder,
+          (
+            UserSettingsEntry,
+            BaseReferences<
+              _$AttentionDatabase,
+              $UserSettingsTableTable,
+              UserSettingsEntry
+            >,
+          ),
+          UserSettingsEntry,
+          PrefetchHooks Function()
+        > {
+  $$UserSettingsTableTableTableManager(
+    _$AttentionDatabase db,
+    $UserSettingsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$UserSettingsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$UserSettingsTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$UserSettingsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> retentionDays = const Value.absent(),
+                Value<bool> telemetryEnabled = const Value.absent(),
+                Value<int> storageQuotaLimit = const Value.absent(),
+              }) => UserSettingsTableCompanion(
+                id: id,
+                retentionDays: retentionDays,
+                telemetryEnabled: telemetryEnabled,
+                storageQuotaLimit: storageQuotaLimit,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> retentionDays = const Value.absent(),
+                Value<bool> telemetryEnabled = const Value.absent(),
+                Value<int> storageQuotaLimit = const Value.absent(),
+              }) => UserSettingsTableCompanion.insert(
+                id: id,
+                retentionDays: retentionDays,
+                telemetryEnabled: telemetryEnabled,
+                storageQuotaLimit: storageQuotaLimit,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$UserSettingsTableTable, UserSettingsEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $UserSettingsTableTable,
+                    UserSettingsEntry
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$UserSettingsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AttentionDatabase,
+      $UserSettingsTableTable,
+      UserSettingsEntry,
+      $$UserSettingsTableTableFilterComposer,
+      $$UserSettingsTableTableOrderingComposer,
+      $$UserSettingsTableTableAnnotationComposer,
+      $$UserSettingsTableTableCreateCompanionBuilder,
+      $$UserSettingsTableTableUpdateCompanionBuilder,
+      (
+        UserSettingsEntry,
+        BaseReferences<
+          _$AttentionDatabase,
+          $UserSettingsTableTable,
+          UserSettingsEntry
+        >,
+      ),
+      UserSettingsEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AttentionDatabaseManager {
   final _$AttentionDatabase _db;
@@ -4313,4 +4863,6 @@ class $AttentionDatabaseManager {
       $$FocusSessionsTableTableTableManager(_db, _db.focusSessionsTable);
   $$DailyBriefTableTableTableManager get dailyBriefTable =>
       $$DailyBriefTableTableTableManager(_db, _db.dailyBriefTable);
+  $$UserSettingsTableTableTableManager get userSettingsTable =>
+      $$UserSettingsTableTableTableManager(_db, _db.userSettingsTable);
 }

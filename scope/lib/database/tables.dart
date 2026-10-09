@@ -65,3 +65,15 @@ class DailyBriefTable extends Table {
   IntColumn get remindersCreated => integer().withDefault(const Constant(0))();
   IntColumn get archivedCount => integer().withDefault(const Constant(0))();
 }
+
+@DataClassName('UserSettingsEntry')
+class UserSettingsTable extends Table {
+  IntColumn get id => integer().withDefault(const Constant(1))();
+  IntColumn get retentionDays => integer().withDefault(const Constant(7))();
+  BoolColumn get telemetryEnabled => boolean().withDefault(const Constant(true))();
+  IntColumn get storageQuotaLimit => integer().withDefault(const Constant(1000))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
