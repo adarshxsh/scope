@@ -12,12 +12,47 @@ enum QueueSortOrder {
 }
 
 class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
+  static const int maxActiveNotificationsQuota = 500;
   final AttentionDatabase? _db;
   ReviewQueueNotifier([this._db]) : super([]);
 
   /// Load a list of notifications directly (used on startup recovery).
   void load(List<AppNotification> list) {
     state = list;
+    _enforceActiveQuota();
+  }
+
+  /// Enforces memory quota limits on active notifications to adhere to SQLite and memory constraints.
+  void _enforceActiveQuota() {
+    final activeItems = state.where((n) => n.state == ReviewState.ACTIVE).toList();
+    if (activeItems.length <= maxActiveNotificationsQuota) return;
+
+    final overflowCount = activeItems.length - maxActiveNotificationsQuota;
+    // Sort active items by priority (low first) then timestamp ascending (oldest first)
+    activeItems.sort((a, b) {
+      final pMap = {'low': 0, 'medium': 1, 'high': 2, 'critical': 3};
+      final pA = pMap[a.priority ?? 'medium'] ?? 1;
+      final pB = pMap[b.priority ?? 'medium'] ?? 1;
+      if (pA != pB) return pA.compareTo(pB);
+      return a.timestamp.compareTo(b.timestamp);
+    });
+
+    final toExpireIds = activeItems.take(overflowCount).map((n) => n.id).toSet();
+    final now = DateTime.now();
+
+    state = [
+      for (final n in state)
+        if (toExpireIds.contains(n.id))
+          n.copyWith(state: ReviewState.EXPIRED, lastUpdated: now)
+        else
+          n
+    ];
+
+    if (_db != null) {
+      for (final id in toExpireIds) {
+        _db.reviewQueueDao.updateStatus(id, ReviewState.EXPIRED);
+      }
+    }
   }
 
   /// Add a notification to the review queue.
@@ -50,6 +85,7 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
         lastUpdated: now,
       );
       state = [...state, newItem];
+      _enforceActiveQuota();
     }
 
     // Persist to DB

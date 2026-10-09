@@ -75,4 +75,39 @@ class NotificationBridge {
       // Not on Android — nothing to do
     }
   }
+
+  /// Synchronizes the list of excluded package names with the native Android service.
+  Future<bool> setExcludedPackages(List<String> packages) async {
+    try {
+      final result = await _channel.invokeMethod<bool>('setExcludedPackages', {
+        'packages': packages,
+      });
+      return result ?? true;
+    } on PlatformException catch (e) {
+      // ignore: avoid_print
+      print('NotificationBridge.setExcludedPackages failed: ${e.message}');
+      return false;
+    } on MissingPluginException {
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Retrieves the current list of excluded package names from the native side.
+  Future<List<String>> getExcludedPackages() async {
+    try {
+      final result = await _channel.invokeMethod<List<dynamic>>('getExcludedPackages');
+      if (result == null) return [];
+      return result.whereType<String>().toList();
+    } on PlatformException catch (e) {
+      // ignore: avoid_print
+      print('NotificationBridge.getExcludedPackages failed: ${e.message}');
+      return [];
+    } on MissingPluginException {
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
 }
