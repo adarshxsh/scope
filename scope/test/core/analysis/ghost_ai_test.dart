@@ -233,5 +233,23 @@ void main() {
         expect(result.reviewScore, isPositive); // Not overridden
       });
     });
+
+    group('Inference Guardrails & Dimension Adaptation', () {
+      test('handles short or custom vector dimensions safely', () async {
+        final notif = AppNotification(
+          id: 'custom-dim-notif',
+          packageName: 'com.test',
+          title: 'Test Title',
+          content: 'Test content for prediction',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        final result = await GhostAI.predict(notif);
+        expect(result.featureVector.length, equals(63));
+        expect(result.reviewScore.isFinite, isTrue);
+        expect(result.reviewScore, greaterThanOrEqualTo(0.0));
+        expect(result.reviewScore, lessThanOrEqualTo(1.0));
+      });
+    });
   });
 }

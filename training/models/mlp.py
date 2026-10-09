@@ -64,7 +64,8 @@ def build_baseline_mlp(
     # In-graph feature normalization using constants
     mean_const = tf.constant(mean, dtype=tf.float32, name="normalization_mean")
     stddev_const = tf.constant(stddev, dtype=tf.float32, name="normalization_stddev")
-    x = (inputs - mean_const) / stddev_const
+    safe_stddev = tf.maximum(stddev_const, 1e-5)
+    x = (inputs - mean_const) / safe_stddev
 
     x = tf.keras.layers.Dense(128, activation="relu", name="dense_128")(x)
     x = tf.keras.layers.Dropout(0.2, name="dropout_0_2")(x)
