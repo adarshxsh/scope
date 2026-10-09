@@ -1,14 +1,48 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
 import 'package:scope/core/models/notification_model.dart';
+
+class FakeInterpreter extends Fake implements Interpreter {
+  final List<int> _shape;
+  bool runCalled = false;
+
+  FakeInterpreter({List<int>? shape}) : _shape = shape ?? [1, 63];
+
+  @override
+  Tensor getInputTensor(int index) {
+    return FakeTensor(_shape);
+  }
+
+  @override
+  void run(Object input, Object output) {
+    runCalled = true;
+    if (output is List && output.isNotEmpty && output[0] is List) {
+      output[0][0] = 75.0; // Predict 75.0 (scaled to 0.75)
+    }
+  }
+}
+
+class FakeTensor extends Fake implements Tensor {
+  final List<int> _shape;
+  FakeTensor(this._shape);
+
+  @override
+  List<int> get shape => _shape;
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('GhostAI Tests', () {
-    // Clear duplicate cache before each test to prevent test cross-contamination
+    // Clear duplicate cache and reset interpreter before each test to prevent cross-contamination
     setUp(() {
       GhostAI.instance.clearCache();
+      GhostAI.instance.setInterpreterForTesting(null);
+    });
+
+    tearDown(() {
+      GhostAI.instance.setInterpreterForTesting(null);
     });
 
     test('initialization handles missing assets and falls back gracefully', () async {
@@ -34,6 +68,52 @@ void main() {
       expect(result.featureVector, isNotEmpty);
       expect(result.featureVector.length, equals(63));
       expect(result.predictedScore, equals(1.0)); // Heuristic fallback score for OTP
+    });
+
+    group('Dynamic TFLite Shape Inspection and Fallback', () {
+      test('correctly inspects expectedInputSize and executes model on shape match', () async {
+        final fakeInterpreter = FakeInterpreter(shape: [1, 63]);
+        GhostAI.instance.setInterpreterForTesting(fakeInterpreter);
+
+        expect(GhostAI.instance.isModelLoaded, isTrue);
+        expect(GhostAI.instance.expectedInputSize, equals(63));
+
+        final notif = AppNotification(
+          id: 'test-1',
+          packageName: 'com.example.app',
+          title: 'Hello',
+          content: 'Normal message',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        final result = await GhostAI.predict(notif);
+
+        expect(fakeInterpreter.runCalled, isTrue);
+        expect(result.predictedScore, equals(0.75));
+      });
+
+      test('safely falls back to heuristics on shape mismatch without crashing', () async {
+        final fakeInterpreter = FakeInterpreter(shape: [1, 128]);
+        GhostAI.instance.setInterpreterForTesting(fakeInterpreter);
+
+        expect(GhostAI.instance.isModelLoaded, isTrue);
+        expect(GhostAI.instance.expectedInputSize, equals(128));
+
+        final notif = AppNotification(
+          id: 'test-2',
+          packageName: 'com.example.app',
+          title: 'Hello',
+          content: 'Normal message',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        // Feature vector size extracted is 63, expected is 128
+        final result = await GhostAI.predict(notif);
+
+        // Should not call run() on mismatch, should fall back to heuristic
+        expect(fakeInterpreter.runCalled, isFalse);
+        expect(result.predictedScore, equals(0.35)); // Default heuristic score
+      });
     });
 
     group('Expired OTP Overrides', () {

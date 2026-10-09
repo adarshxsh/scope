@@ -101,7 +101,7 @@ class NotificationFeatureInput {
 
 /// Fixed-width numerical feature vector ready for TensorFlow Lite inference.
 class FeatureVector {
-  static const List<String> featureNames = [
+  static List<String> featureNames = [
     'title_length',
     'body_length',
     'word_count',
@@ -167,16 +167,16 @@ class FeatureVector {
     'category_id',
   ];
 
-  static const int size = 63;
+  static int get size => featureNames.length;
 
   final List<double> values;
 
   FeatureVector(Iterable<double> values) : values = List.unmodifiable(values) {
-    if (this.values.length != size) {
+    if (this.values.isEmpty || this.values.length != featureNames.length) {
       throw ArgumentError.value(
         this.values.length,
         'values.length',
-        'FeatureVector must contain exactly $size values.',
+        'FeatureVector must contain exactly ${featureNames.length} values.',
       );
     }
     if (this.values.any((value) => value.isNaN || value.isInfinite)) {
