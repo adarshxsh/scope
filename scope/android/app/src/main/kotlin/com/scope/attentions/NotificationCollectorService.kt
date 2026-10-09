@@ -3,6 +3,7 @@ package com.scope.attentions
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
@@ -25,6 +26,17 @@ class NotificationCollectorService : NotificationListenerService() {
     companion object {
         private const val TAG = "NotifCollector"
 
+        /** Default set of blacklisted packages that are excluded prior to queuing. */
+        private val defaultBlacklistedPackages = setOf(
+            "com.android.systemui.volume",
+            "com.android.providers.downloads"
+        )
+
+        /** Configurable set of excluded package names. */
+        private val blacklistedPackages = ConcurrentHashMap.newKeySet<String>().apply {
+            addAll(defaultBlacklistedPackages)
+        }
+
         /** Maximum allowed queue size to prevent unbounded memory growth. */
         const val MAX_QUEUE_SIZE = 100
 
@@ -37,6 +49,16 @@ class NotificationCollectorService : NotificationListenerService() {
         /** Counter for generating simple unique IDs within a session. */
         private var idCounter = 0L
 
+        fun addBlacklistedPackage(pkg: String) {
+            blacklistedPackages.add(pkg)
+        }
+
+        fun removeBlacklistedPackage(pkg: String) {
+            blacklistedPackages.remove(pkg)
+        }
+
+        fun getBlacklistedPackages(): Set<String> = HashSet(blacklistedPackages)
+
         /**
          * Removes entries older than [MAX_AGE_MS] from the queue.
          */
@@ -45,10 +67,14 @@ class NotificationCollectorService : NotificationListenerService() {
         }
 
         /**
-         * Adds a [NotificationData] item to the queue after pruning expired items
-         * and enforcing maximum queue capacity.
+         * Adds a [NotificationData] item to the queue after pruning expired items,
+         * checking blacklisted packages, and enforcing maximum queue capacity.
          */
         fun addNotification(data: NotificationData, now: Long = System.currentTimeMillis()) {
+            if (blacklistedPackages.contains(data.packageName)) {
+                return
+            }
+
             pruneExpired(now)
 
             // Do not add item if it is already expired relative to current time
@@ -104,11 +130,18 @@ class NotificationCollectorService : NotificationListenerService() {
 
     private fun addSbnToQueue(sbn: StatusBarNotification, now: Long = System.currentTimeMillis()) {
         try {
+            val packageName = sbn.packageName ?: "unknown"
+
+            // Exclusion check: Reject blacklisted packages prior to queuing
+            if (blacklistedPackages.contains(packageName)) {
+                Log.d(TAG, "Excluded notification from blacklisted package: $packageName")
+                return
+            }
+
             val extras = sbn.notification.extras
             val title = extras?.getCharSequence("android.title")?.toString() ?: ""
             val text = extras?.getCharSequence("android.text")?.toString() ?: ""
             val isOngoing = sbn.isOngoing
-            val packageName = sbn.packageName ?: "unknown"
             val timestamp = if (sbn.postTime > 0) sbn.postTime else now
 
             val data = NotificationData(
@@ -124,7 +157,7 @@ class NotificationCollectorService : NotificationListenerService() {
             addNotification(data, now)
             Log.d(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
         } catch (e: Exception) {
-            Log.e(TAG, "Error capturing/adding notification", e)
+            Log.e(TAG, "Error capturing/adding notification: ${e.javaClass.simpleName}")
         }
     }
 
