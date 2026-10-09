@@ -57,8 +57,11 @@ class NotificationDao extends DatabaseAccessor<AttentionDatabase> with _$Notific
 class ReviewQueueDao extends DatabaseAccessor<AttentionDatabase> with _$ReviewQueueDaoMixin {
   ReviewQueueDao(super.db);
 
-  Future<void> insertItem(ReviewQueueEntry entry) async {
-    await into(reviewQueueTable).insert(entry, mode: InsertMode.insertOrReplace);
+  Future<void> insertItem(ReviewQueueTableCompanion companion) async {
+    if (companion.id.present) {
+      throw ArgumentError('The primary key "id" must not be specified when inserting a new item into the review queue.');
+    }
+    await into(reviewQueueTable).insert(companion, mode: InsertMode.insertOrReplace);
   }
 
   Future<List<ReviewQueueEntry>> getAll() {
@@ -83,8 +86,11 @@ class ReviewQueueDao extends DatabaseAccessor<AttentionDatabase> with _$ReviewQu
 class FocusSessionDao extends DatabaseAccessor<AttentionDatabase> with _$FocusSessionDaoMixin {
   FocusSessionDao(super.db);
 
-  Future<void> insertSession(FocusSessionEntry entry) async {
-    await into(focusSessionsTable).insert(entry);
+  Future<void> insertSession(FocusSessionsTableCompanion companion) async {
+    if (companion.id.present) {
+      throw ArgumentError('The primary key "id" must not be specified when inserting a new session.');
+    }
+    await into(focusSessionsTable).insert(companion);
   }
 
   Future<FocusSessionEntry?> getActiveSession() {
@@ -108,8 +114,11 @@ class FocusSessionDao extends DatabaseAccessor<AttentionDatabase> with _$FocusSe
 class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBriefDaoMixin {
   DailyBriefDao(super.db);
 
-  Future<void> insertOrUpdate(DailyBriefEntry entry) async {
-    await into(dailyBriefTable).insert(entry, mode: InsertMode.insertOrReplace);
+  Future<void> insertOrUpdate(DailyBriefTableCompanion companion) async {
+    if (companion.id.present) {
+      throw ArgumentError('The primary key "id" must not be specified when inserting/updating a new daily brief.');
+    }
+    await into(dailyBriefTable).insert(companion, mode: InsertMode.insertOrReplace);
   }
 
   Future<DailyBriefEntry?> getBriefForDate(String date) {
@@ -134,14 +143,13 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
         archivedCount: existing.archivedCount + archived,
       ));
     } else {
-      await into(dailyBriefTable).insert(DailyBriefEntry(
-        id: 0,
+      await into(dailyBriefTable).insert(DailyBriefTableCompanion.insert(
         date: date,
-        notificationsReviewed: reviewed,
-        actionsCompleted: completed,
-        calendarEventsCreated: calendar,
-        remindersCreated: reminders,
-        archivedCount: archived,
+        notificationsReviewed: Value(reviewed),
+        actionsCompleted: Value(completed),
+        calendarEventsCreated: Value(calendar),
+        remindersCreated: Value(reminders),
+        archivedCount: Value(archived),
       ));
     }
   }

@@ -4,6 +4,7 @@ import 'package:scope/core/analysis/ghost_ai.dart';
 import 'package:scope/database/attention_database.dart';
 import 'package:scope/database/database_provider.dart';
 import 'package:scope/database/drift_notification_storage.dart';
+import 'package:drift/drift.dart';
 
 enum QueueSortOrder {
   reviewScore,
@@ -256,12 +257,11 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
 
   Future<void> _saveQueueEntry(AppNotification n, {DateTime? expiry}) async {
     if (_db == null) return;
-    await _db.reviewQueueDao.insertItem(ReviewQueueEntry(
-      id: 0,
+    await _db.reviewQueueDao.insertItem(ReviewQueueTableCompanion.insert(
       notificationId: n.id,
       priority: n.priority ?? 'medium',
       enqueueTime: DateTime.now(),
-      expiryTime: expiry,
+      expiryTime: expiry != null ? Value(expiry) : const Value.absent(),
       status: n.state,
     ));
   }
