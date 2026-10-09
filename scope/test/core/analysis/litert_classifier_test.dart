@@ -43,5 +43,23 @@ void main() {
       expect(result.score, equals(0.0));
       expect(result.isFallback, isTrue);
     });
+
+    test('recovers gracefully without throwing exceptions when vocabulary validation fails', () async {
+      final classifier = LiteRtClassifier();
+      final notif = AppNotification(
+        id: '3',
+        packageName: 'com.whatsapp',
+        title: 'Security Code',
+        content: 'Your verification OTP is 492018.',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final result = await classifier.analyze(notif);
+
+      expect(result, isNotNull);
+      expect(result.category, equals('sys'));
+      expect(result.engineName, contains('fallback'));
+      expect(result.matchedSignals, isNotEmpty);
+    });
   });
 }
