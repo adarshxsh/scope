@@ -38,10 +38,18 @@ dependencies:
   flutter_riverpod: ^2.3.6
   drift: ^2.10.0
   sqlite3_flutter_libs: ^0.5.15
+  sqlcipher_flutter_libs: ^0.7.0+eol
+  flutter_secure_storage: ^9.0.0
+  sqlite3: ^2.4.1
   path_provider: ^2.0.15
   path: ^1.8.3
   fl_chart: ^1.2.0
   google_fonts: ^8.1.0
+
+dependency_overrides:
+  drift: 2.15.0
+  drift_dev: 2.15.0
+  sqlite3: 2.4.5
 
 dev_dependencies:
   flutter_test:
