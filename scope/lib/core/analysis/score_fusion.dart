@@ -9,8 +9,8 @@ class ScoreFusion {
     MatchedRuleResult? ruleResult,
     required AnalysisResult modelResult,
   }) {
-    // 1. Check for deterministic critical bypass rules
-    if (ruleResult != null) {
+    // 1. Check for deterministic critical bypass rules (only base system rules eligible)
+    if (ruleResult != null && !ruleResult.isCustom) {
       final isBypass = ruleResult.priority == 'critical' ||
           ruleResult.ruleId == 'otp_security' ||
           ruleResult.ruleId == 'finance_debit' ||
