@@ -3,6 +3,7 @@ import 'package:scope/core/analysis/extracted_features.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/state/notification_controller.dart';
+import 'package:scope/core/utils/privacy_redactor.dart';
 import 'package:scope/theme/app_colors.dart';
 import 'package:scope/theme/app_spacing.dart';
 import 'package:scope/widgets/primitives/scope_surface.dart';
@@ -22,6 +23,7 @@ class AiPlaygroundScreen extends StatefulWidget {
 class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
   AppNotification? _selectedNotification;
   bool _isCustomMode = false;
+  bool _showSensitiveData = false;
 
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
@@ -289,6 +291,7 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
   Widget _buildPostMortemPanel(AppNotification n, ThemeData theme) {
     final featuresMap = n.extractedFeatures ?? {};
     final features = ExtractedFeatures.fromMap(featuresMap);
+    final redactor = const PrivacyRedactor();
 
     // Identify defining features (e.g. keywords)
     final definingWords = <String>[];
@@ -297,8 +300,12 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     if (n.title.toLowerCase().contains('credited') || n.content.toLowerCase().contains('credited')) definingWords.add('credited');
     if (n.title.toLowerCase().contains('offer') || n.content.toLowerCase().contains('offer')) definingWords.add('offer');
     if (n.title.toLowerCase().contains('sale') || n.content.toLowerCase().contains('sale')) definingWords.add('sale');
-    if (features.otp != null) definingWords.add('OTP:${features.otp}');
-    if (features.amount != null) definingWords.add('Amount:Rs.${features.amount}');
+    if (features.otp != null) {
+      definingWords.add('OTP:${_showSensitiveData ? features.otp : redactor.maskOtp(features.otp)}');
+    }
+    if (features.amount != null) {
+      definingWords.add('Amount:Rs.${_showSensitiveData ? features.amount : redactor.maskAmount(features.amount)}');
+    }
 
     return ScopeSurface(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -317,7 +324,29 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
           Text('${n.title} - ${n.content}', style: const TextStyle(fontSize: 14)),
           const SizedBox(height: AppSpacing.md),
           
-          Text('Most Defining Features / Tags:', style: theme.textTheme.labelLarge?.copyWith(color: Colors.white54)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Most Defining Features / Tags:', style: theme.textTheme.labelLarge?.copyWith(color: Colors.white54)),
+              Row(
+                children: [
+                  Text(
+                    _showSensitiveData ? 'Unmasked' : 'Masked',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: _showSensitiveData ? Colors.orange : Colors.green,
+                    ),
+                  ),
+                  Switch(
+                    key: const Key('ai_playground_unmask_toggle'),
+                    value: _showSensitiveData,
+                    onChanged: (val) => setState(() => _showSensitiveData = val),
+                  ),
+                ],
+              ),
+            ],
+          ),
           const SizedBox(height: 4),
           Wrap(
             spacing: 6,
