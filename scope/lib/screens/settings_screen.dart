@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:scope/core/privacy/ingestion_guardrail_controller.dart';
+import 'package:scope/core/privacy/ingestion_policy.dart';
 import 'package:scope/core/state/notification_controller.dart';
 import 'package:scope/screens/ai_playground_screen.dart';
 import 'package:scope/screens/diagnostic_screen.dart';
@@ -57,6 +59,12 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppSpacing.sectionGap),
+            const SectionLabel(label: 'Privacy & Ingestion Guardrails'),
+            const SizedBox(height: AppSpacing.md),
+            _PrivacyGuardrailsPanel(
+              guardrailController: controller.guardrailController,
+            ),
+            const SizedBox(height: AppSpacing.sectionGap),
             const SectionLabel(label: 'Developer'),
             const SizedBox(height: AppSpacing.md),
             ScopeSurface(
@@ -67,7 +75,7 @@ class SettingsScreen extends StatelessWidget {
                   _SettingsTile(
                     icon: Icons.science_outlined,
                     title: 'Load Test Data',
-                    subtitle: 'Generate 10 analyzed notifications',
+                    subtitle: 'Generate analyzed notifications',
                     onTap: () async {
                       await controller.generateTestData();
                       if (context.mounted) {
@@ -130,6 +138,185 @@ class SettingsScreen extends StatelessWidget {
   }
 }
 
+class _PrivacyGuardrailsPanel extends StatelessWidget {
+  final IngestionGuardrailController guardrailController;
+
+  const _PrivacyGuardrailsPanel({required this.guardrailController});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: guardrailController,
+      builder: (context, _) {
+        final policy = guardrailController.policy;
+        final blockedPackages = policy.blockedPackages;
+        final excludedCategories = policy.excludedCategories;
+
+        final presetApps = [
+          {'name': 'WhatsApp', 'package': 'com.whatsapp'},
+          {'name': 'Telegram', 'package': 'org.telegram.messenger'},
+          {'name': 'Instagram', 'package': 'com.instagram.android'},
+          {'name': 'Paytm / Banking', 'package': 'net.one97.paytm'},
+          {'name': 'Amazon Shopping', 'package': 'in.amazon.mShop.android.shopping'},
+        ];
+
+        return ScopeSurface(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          elevated: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Category Exclusions',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                'Notifications in excluded categories are dropped prior to database commit.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Exclude Finance'),
+                subtitle: const Text('Bank alerts, transaction updates'),
+                value: excludedCategories.any((c) => c.toLowerCase() == 'finance'),
+                onChanged: (_) => guardrailController.toggleCategoryExclusion('finance'),
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Exclude Health'),
+                subtitle: const Text('Medical appointments, health alerts'),
+                value: excludedCategories.any((c) => c.toLowerCase() == 'health'),
+                onChanged: (_) => guardrailController.toggleCategoryExclusion('health'),
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Exclude Social'),
+                subtitle: const Text('Likes, comments, social updates'),
+                value: excludedCategories.any((c) => c.toLowerCase() == 'social'),
+                onChanged: (_) => guardrailController.toggleCategoryExclusion('social'),
+              ),
+              const Divider(height: AppSpacing.lg),
+              Text(
+                'Sensitive Controls',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('OTP Masking'),
+                subtitle: const Text('Redact OTP codes before local storage'),
+                value: policy.otpMaskingEnabled,
+                onChanged: (val) => guardrailController.setOtpMasking(val),
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Financial Protection Mode'),
+                subtitle: const Text('Block all sensitive banking and OTP content'),
+                value: policy.financialProtectionEnabled,
+                onChanged: (val) => guardrailController.setFinancialProtection(val),
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Block System Noise'),
+                subtitle: const Text('Drop ongoing alerts and status updates'),
+                value: policy.blockSystemNoise,
+                onChanged: (val) => guardrailController.setBlockSystemNoise(val),
+              ),
+              const Divider(height: AppSpacing.lg),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'App Blocklist',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  TextButton.icon(
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Add Package'),
+                    onPressed: () => _showAddPackageDialog(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                'Blocked packages are discarded in volatile memory.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              ...presetApps.map((app) {
+                final pkg = app['package']!;
+                final name = app['name']!;
+                final isBlocked = blockedPackages.any((p) => p.toLowerCase() == pkg.toLowerCase());
+                return SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(name),
+                  subtitle: Text(pkg),
+                  value: isBlocked,
+                  onChanged: (_) => guardrailController.togglePackageBlock(pkg),
+                );
+              }),
+              if (blockedPackages.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  'Custom Blocked Packages:',
+                  style: Theme.of(context).textTheme.labelSmall,
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Wrap(
+                  spacing: 8,
+                  children: blockedPackages.map((pkg) {
+                    return Chip(
+                      label: Text(pkg, style: const TextStyle(fontSize: 12)),
+                      onDeleted: () => guardrailController.togglePackageBlock(pkg),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showAddPackageDialog(BuildContext context) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Block App Package'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              hintText: 'e.g. com.example.sensitiveapp',
+              labelText: 'Package Name ID',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final pkg = controller.text.trim();
+                if (pkg.isNotEmpty) {
+                  guardrailController.togglePackageBlock(pkg);
+                }
+                Navigator.of(context).pop();
+              },
+              child: const Text('Block'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
 class _SettingsTile extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -155,3 +342,4 @@ class _SettingsTile extends StatelessWidget {
     );
   }
 }
+
