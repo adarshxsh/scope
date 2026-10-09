@@ -7,6 +7,7 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/database/tables.dart';
 import 'package:scope/database/daos.dart';
 import 'package:scope/database/converters.dart';
+import 'package:scope/database/database_key_manager.dart';
 
 part 'attention_database.g.dart';
 
@@ -25,7 +26,8 @@ part 'attention_database.g.dart';
   ],
 )
 class AttentionDatabase extends _$AttentionDatabase {
-  AttentionDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
+  AttentionDatabase([QueryExecutor? executor, DatabaseKeyManager? keyManager])
+      : super(executor ?? _openConnection(keyManager));
 
   factory AttentionDatabase.inMemory() {
     return AttentionDatabase(NativeDatabase.memory());
@@ -52,10 +54,22 @@ class AttentionDatabase extends _$AttentionDatabase {
   }
 }
 
-QueryExecutor _openConnection() {
+QueryExecutor _openConnection([DatabaseKeyManager? keyManager]) {
   return LazyDatabase(() async {
+    final manager = keyManager ?? DatabaseKeyManager();
+    final passphrase = await manager.getOrCreateKey();
+    if (passphrase.isEmpty) {
+      throw DatabaseKeyException('Database encryption passphrase cannot be empty.');
+    }
+
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'attention_os.db'));
-    return NativeDatabase(file);
+
+    return NativeDatabase(
+      file,
+      setup: (rawDb) {
+        rawDb.execute("PRAGMA key = '$passphrase';");
+      },
+    );
   });
 }
