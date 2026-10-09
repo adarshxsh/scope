@@ -1,30 +1,31 @@
+import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
+import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('GhostAnalysisEngine', () {
-    const String sampleJson = '''
-    {
-      "version": "1.0",
-      "rules": [
-        {
-          "id": "bank_debit",
-          "category": "finance",
-          "priority": "critical",
-          "conditions": {
-            "keywords": ["debited", "spent"]
-          }
-        }
-      ]
-    }
-    ''';
-
     late GhostAnalysisEngine engine;
 
     setUp(() {
+      final samplePayload = {
+        'rules': [
+          {
+            'id': 'bank_debit',
+            'category': 'finance',
+            'priority': 'critical',
+            'conditions': {
+              'keywords': ['debited', 'spent'],
+            },
+          },
+        ],
+      };
+      final signedEnvelope = RuleEngine.createSignedEnvelope(samplePayload, version: '1.0');
+      final sampleJson = json.encode(signedEnvelope);
+
       engine = GhostAnalysisEngine();
       engine.ruleEngine.compile(sampleJson);
     });
