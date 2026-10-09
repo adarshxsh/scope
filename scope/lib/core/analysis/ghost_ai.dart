@@ -4,6 +4,7 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
+import 'package:scope/core/analysis/thermal_guardrail_service.dart';
 import 'package:scope/core/utils/pii_redactor.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
@@ -26,6 +27,9 @@ class GhostAIResult {
   /// Rule match score (0.0 to 1.0) output by the rule engine.
   final double? ruleScore;
 
+  /// Indicates whether heuristic fast-path fallback was invoked instead of full TFLite model execution.
+  final bool usedFastPath;
+
   const GhostAIResult({
     required this.reviewScore,
     this.confidence,
@@ -33,6 +37,7 @@ class GhostAIResult {
     required this.featureVector,
     required this.predictedScore,
     this.ruleScore,
+    this.usedFastPath = false,
   });
 }
 
@@ -41,6 +46,11 @@ class GhostAI {
   static GhostAI? _instance;
   Interpreter? _interpreter;
   final RuleEngine _ruleEngine = RuleEngine();
+
+  // Sliding window latency tracker (last 20 inference execution times in us)
+  final List<int> _inferenceLatencyHistoryUs = [];
+  static const int _maxLatencyWindowSize = 20;
+  static const int _latencyThresholdUs = 15000; // 15ms threshold
 
   // Slide-cache for duplicate detection
   final List<AppNotification> _processedNotifications = [];
@@ -56,6 +66,35 @@ class GhostAI {
 
   /// Returns whether the model is loaded.
   bool get isModelLoaded => _interpreter != null;
+
+  /// Returns an unmodifiable list of the last up to 20 inference execution times in microseconds.
+  List<int> get inferenceLatencyHistory => List.unmodifiable(_inferenceLatencyHistoryUs);
+
+  /// Computes the rolling average inference latency in microseconds over the sliding window.
+  double get rollingAverageInferenceLatencyUs {
+    if (_inferenceLatencyHistoryUs.isEmpty) return 0.0;
+    final total = _inferenceLatencyHistoryUs.reduce((a, b) => a + b);
+    return total / _inferenceLatencyHistoryUs.length;
+  }
+
+  /// Computes the rolling average inference latency in milliseconds over the sliding window.
+  double get rollingAverageInferenceLatencyMs => rollingAverageInferenceLatencyUs / 1000.0;
+
+  /// Returns whether the 20-sample rolling average inference latency exceeds 15ms (15,000 us).
+  bool get isLatencyExceeded => rollingAverageInferenceLatencyUs > _latencyThresholdUs;
+
+  /// Records an inference execution time in microseconds into the 20-sample sliding window.
+  void recordInferenceTime(int microseconds) {
+    _inferenceLatencyHistoryUs.add(microseconds);
+    if (_inferenceLatencyHistoryUs.length > _maxLatencyWindowSize) {
+      _inferenceLatencyHistoryUs.removeAt(0);
+    }
+  }
+
+  /// Clears the latency sliding window history (used for unit tests).
+  void clearLatencyHistory() {
+    _inferenceLatencyHistoryUs.clear();
+  }
 
   /// Initializes the TFLite interpreter and rules database once on startup.
   Future<void> initialize() async {
@@ -89,11 +128,16 @@ class GhostAI {
     // 1. Feature extraction using the existing FeatureExtractor
     final featureVector = FeatureExtractor.extractFromAppNotification(notification);
 
-    // 2. Model inference
+    // 2. Resource monitoring & fast-path evaluation check
+    final isThermalThrottled = ThermalGuardrailService.instance.isThrottled;
+    final isLatencyElevated = isLatencyExceeded;
+    final bool shouldBypassTfLite = isThermalThrottled || isLatencyElevated || !isModelLoaded;
+
     double predictedScore = 0.0;
     int inferenceTimeUs = 0;
+    bool usedFastPath = false;
 
-    if (_interpreter != null) {
+    if (!shouldBypassTfLite && _interpreter != null) {
       final input = [featureVector];
       final output = List<double>.filled(1, 0.0).reshape([1, 1]);
 
@@ -102,11 +146,19 @@ class GhostAI {
       inferStopwatch.stop();
 
       inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
+      recordInferenceTime(inferenceTimeUs);
       // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
       predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+      usedFastPath = false;
     } else {
-      // Heuristic fallback if model not loaded
+      // Fast-path heuristic fallback triggered due to thermal state, latency threshold, or uninitialized model
+      final fastPathStopwatch = Stopwatch()..start();
       predictedScore = _heuristicLookAgainScore(featureVector);
+      fastPathStopwatch.stop();
+
+      inferenceTimeUs = fastPathStopwatch.elapsedMicroseconds;
+      recordInferenceTime(inferenceTimeUs);
+      usedFastPath = true;
     }
 
     // 3. Rule matching
@@ -173,6 +225,7 @@ class GhostAI {
       featureVector: featureVector,
       predictedScore: predictedScore,
       ruleScore: ruleScore,
+      usedFastPath: usedFastPath,
     );
 
     // Structured logging in debug mode
@@ -329,6 +382,7 @@ class GhostAI {
     debugPrint('Package: ${notification.packageName}');
     debugPrint('Feature Vector (First 15): ${result.featureVector.take(15).toList()}...');
     debugPrint('Inference Time: ${result.inferenceTimeUs} us');
+    debugPrint('Fast-Path Fallback: ${result.usedFastPath}');
     debugPrint('Raw Predicted Score: ${(result.predictedScore * 100).toStringAsFixed(2)}');
     debugPrint('Rule Score: ${result.ruleScore != null ? (result.ruleScore! * 100).toStringAsFixed(2) : "N/A"}');
     debugPrint('Final Fused Score: ${(result.reviewScore * 100).toStringAsFixed(2)}');

@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:scope/core/analysis/ghost_ai.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
+import 'package:scope/core/analysis/thermal_guardrail_service.dart';
 import 'package:scope/core/models/notification_model.dart';
 
 void main() {
@@ -27,6 +29,9 @@ void main() {
     setUp(() {
       engine = GhostAnalysisEngine();
       engine.ruleEngine.compile(sampleJson);
+      GhostAI.instance.clearCache();
+      GhostAI.instance.clearLatencyHistory();
+      ThermalGuardrailService.instance.reset();
     });
 
     test('orchestrates pipeline and classifies bank debit notification as critical', () async {
@@ -76,6 +81,22 @@ void main() {
 
       expect(analyzed.priority, equals('low'));
       expect(analyzed.classifiedCategory, equals('promo'));
+    });
+
+    test('tags modelVersion as 1.0.0-tflite-fastpath during thermal throttling or fast-path fallback', () async {
+      ThermalGuardrailService.instance.setThermalState(ThermalState.throttled);
+
+      final notif = AppNotification(
+        id: '4',
+        packageName: 'com.whatsapp',
+        title: 'Test Message',
+        content: 'Meeting at 5 PM today',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final analyzed = await engine.analyze(notif);
+
+      expect(analyzed.modelVersion, equals('1.0.0-tflite-fastpath'));
     });
   });
 }
