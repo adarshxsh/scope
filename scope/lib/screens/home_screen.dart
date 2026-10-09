@@ -73,8 +73,12 @@ class HomeScreen extends StatelessWidget {
                         Text(greeting, style: theme.textTheme.headlineLarge),
                         const SizedBox(height: AppSpacing.lg),
                         DailyBriefCard(
-                          reviewedCount: controller.notifications.length,
-                          actionCount: controller.actionCountToday,
+                          reviewedCount: controller.sanitizedDailySummary.notificationsReviewed > 0
+                              ? controller.sanitizedDailySummary.notificationsReviewed
+                              : controller.notifications.length,
+                          actionCount: controller.sanitizedDailySummary.actionsCompleted > 0
+                              ? controller.sanitizedDailySummary.actionsCompleted
+                              : controller.actionCountToday,
                           deadlineCount: controller.deadlineCount,
                           financialUpdateCount: controller.financialUpdateCount,
                           estimatedMinutes: controller.estimatedReviewMinutes,

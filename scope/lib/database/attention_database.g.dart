@@ -1889,6 +1889,17 @@ class $FocusSessionsTableTable extends FocusSessionsTable
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _durationCategoryMeta = const VerificationMeta(
+    'durationCategory',
+  );
+  @override
+  late final GeneratedColumn<String> durationCategory = GeneratedColumn<String>(
+    'duration_category',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1897,6 +1908,7 @@ class $FocusSessionsTableTable extends FocusSessionsTable
     interruptions,
     completion,
     duration,
+    durationCategory,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1953,6 +1965,15 @@ class $FocusSessionsTableTable extends FocusSessionsTable
     } else if (isInserting) {
       context.missing(_durationMeta);
     }
+    if (data.containsKey('duration_category')) {
+      context.handle(
+        _durationCategoryMeta,
+        durationCategory.isAcceptableOrUnknown(
+          data['duration_category']!,
+          _durationCategoryMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1986,6 +2007,10 @@ class $FocusSessionsTableTable extends FocusSessionsTable
         DriftSqlType.int,
         data['${effectivePrefix}duration'],
       )!,
+      durationCategory: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}duration_category'],
+      ),
     );
   }
 
@@ -2003,6 +2028,7 @@ class FocusSessionEntry extends DataClass
   final int interruptions;
   final bool completion;
   final int duration;
+  final String? durationCategory;
   const FocusSessionEntry({
     required this.id,
     required this.sessionStart,
@@ -2010,6 +2036,7 @@ class FocusSessionEntry extends DataClass
     required this.interruptions,
     required this.completion,
     required this.duration,
+    this.durationCategory,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2022,6 +2049,9 @@ class FocusSessionEntry extends DataClass
     map['interruptions'] = Variable<int>(interruptions);
     map['completion'] = Variable<bool>(completion);
     map['duration'] = Variable<int>(duration);
+    if (!nullToAbsent || durationCategory != null) {
+      map['duration_category'] = Variable<String>(durationCategory);
+    }
     return map;
   }
 
@@ -2035,6 +2065,9 @@ class FocusSessionEntry extends DataClass
       interruptions: Value(interruptions),
       completion: Value(completion),
       duration: Value(duration),
+      durationCategory: durationCategory == null && nullToAbsent
+          ? const Value.absent()
+          : Value(durationCategory),
     );
   }
 
@@ -2050,6 +2083,7 @@ class FocusSessionEntry extends DataClass
       interruptions: serializer.fromJson<int>(json['interruptions']),
       completion: serializer.fromJson<bool>(json['completion']),
       duration: serializer.fromJson<int>(json['duration']),
+      durationCategory: serializer.fromJson<String?>(json['durationCategory']),
     );
   }
   @override
@@ -2062,6 +2096,7 @@ class FocusSessionEntry extends DataClass
       'interruptions': serializer.toJson<int>(interruptions),
       'completion': serializer.toJson<bool>(completion),
       'duration': serializer.toJson<int>(duration),
+      'durationCategory': serializer.toJson<String?>(durationCategory),
     };
   }
 
@@ -2072,6 +2107,7 @@ class FocusSessionEntry extends DataClass
     int? interruptions,
     bool? completion,
     int? duration,
+    Value<String?> durationCategory = const Value.absent(),
   }) => FocusSessionEntry(
     id: id ?? this.id,
     sessionStart: sessionStart ?? this.sessionStart,
@@ -2079,6 +2115,9 @@ class FocusSessionEntry extends DataClass
     interruptions: interruptions ?? this.interruptions,
     completion: completion ?? this.completion,
     duration: duration ?? this.duration,
+    durationCategory: durationCategory.present
+        ? durationCategory.value
+        : this.durationCategory,
   );
   FocusSessionEntry copyWithCompanion(FocusSessionsTableCompanion data) {
     return FocusSessionEntry(
@@ -2096,6 +2135,9 @@ class FocusSessionEntry extends DataClass
           ? data.completion.value
           : this.completion,
       duration: data.duration.present ? data.duration.value : this.duration,
+      durationCategory: data.durationCategory.present
+          ? data.durationCategory.value
+          : this.durationCategory,
     );
   }
 
@@ -2107,7 +2149,8 @@ class FocusSessionEntry extends DataClass
           ..write('sessionEnd: $sessionEnd, ')
           ..write('interruptions: $interruptions, ')
           ..write('completion: $completion, ')
-          ..write('duration: $duration')
+          ..write('duration: $duration, ')
+          ..write('durationCategory: $durationCategory')
           ..write(')'))
         .toString();
   }
@@ -2120,6 +2163,7 @@ class FocusSessionEntry extends DataClass
     interruptions,
     completion,
     duration,
+    durationCategory,
   );
   @override
   bool operator ==(Object other) =>
@@ -2130,7 +2174,8 @@ class FocusSessionEntry extends DataClass
           other.sessionEnd == this.sessionEnd &&
           other.interruptions == this.interruptions &&
           other.completion == this.completion &&
-          other.duration == this.duration);
+          other.duration == this.duration &&
+          other.durationCategory == this.durationCategory);
 }
 
 class FocusSessionsTableCompanion extends UpdateCompanion<FocusSessionEntry> {
@@ -2140,6 +2185,7 @@ class FocusSessionsTableCompanion extends UpdateCompanion<FocusSessionEntry> {
   final Value<int> interruptions;
   final Value<bool> completion;
   final Value<int> duration;
+  final Value<String?> durationCategory;
   const FocusSessionsTableCompanion({
     this.id = const Value.absent(),
     this.sessionStart = const Value.absent(),
@@ -2147,6 +2193,7 @@ class FocusSessionsTableCompanion extends UpdateCompanion<FocusSessionEntry> {
     this.interruptions = const Value.absent(),
     this.completion = const Value.absent(),
     this.duration = const Value.absent(),
+    this.durationCategory = const Value.absent(),
   });
   FocusSessionsTableCompanion.insert({
     this.id = const Value.absent(),
@@ -2155,6 +2202,7 @@ class FocusSessionsTableCompanion extends UpdateCompanion<FocusSessionEntry> {
     this.interruptions = const Value.absent(),
     this.completion = const Value.absent(),
     required int duration,
+    this.durationCategory = const Value.absent(),
   }) : sessionStart = Value(sessionStart),
        duration = Value(duration);
   static Insertable<FocusSessionEntry> custom({
@@ -2164,6 +2212,7 @@ class FocusSessionsTableCompanion extends UpdateCompanion<FocusSessionEntry> {
     Expression<int>? interruptions,
     Expression<bool>? completion,
     Expression<int>? duration,
+    Expression<String>? durationCategory,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2172,6 +2221,7 @@ class FocusSessionsTableCompanion extends UpdateCompanion<FocusSessionEntry> {
       if (interruptions != null) 'interruptions': interruptions,
       if (completion != null) 'completion': completion,
       if (duration != null) 'duration': duration,
+      if (durationCategory != null) 'duration_category': durationCategory,
     });
   }
 
@@ -2182,6 +2232,7 @@ class FocusSessionsTableCompanion extends UpdateCompanion<FocusSessionEntry> {
     Value<int>? interruptions,
     Value<bool>? completion,
     Value<int>? duration,
+    Value<String?>? durationCategory,
   }) {
     return FocusSessionsTableCompanion(
       id: id ?? this.id,
@@ -2190,6 +2241,7 @@ class FocusSessionsTableCompanion extends UpdateCompanion<FocusSessionEntry> {
       interruptions: interruptions ?? this.interruptions,
       completion: completion ?? this.completion,
       duration: duration ?? this.duration,
+      durationCategory: durationCategory ?? this.durationCategory,
     );
   }
 
@@ -2214,6 +2266,9 @@ class FocusSessionsTableCompanion extends UpdateCompanion<FocusSessionEntry> {
     if (duration.present) {
       map['duration'] = Variable<int>(duration.value);
     }
+    if (durationCategory.present) {
+      map['duration_category'] = Variable<String>(durationCategory.value);
+    }
     return map;
   }
 
@@ -2225,7 +2280,8 @@ class FocusSessionsTableCompanion extends UpdateCompanion<FocusSessionEntry> {
           ..write('sessionEnd: $sessionEnd, ')
           ..write('interruptions: $interruptions, ')
           ..write('completion: $completion, ')
-          ..write('duration: $duration')
+          ..write('duration: $duration, ')
+          ..write('durationCategory: $durationCategory')
           ..write(')'))
         .toString();
   }
@@ -3406,7 +3462,9 @@ class $$NotificationsTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$NotificationsTableTable, NotificationEntry>(
+                    table,
+                  ),
                   $$NotificationsTableTableReferences(db, table, e),
                 ),
               )
@@ -3749,7 +3807,7 @@ class $$ReviewQueueTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$ReviewQueueTableTable, ReviewQueueEntry>(table),
                   $$ReviewQueueTableTableReferences(db, table, e),
                 ),
               )
@@ -3823,6 +3881,7 @@ typedef $$FocusSessionsTableTableCreateCompanionBuilder =
       Value<int> interruptions,
       Value<bool> completion,
       required int duration,
+      Value<String?> durationCategory,
     });
 typedef $$FocusSessionsTableTableUpdateCompanionBuilder =
     FocusSessionsTableCompanion Function({
@@ -3832,6 +3891,7 @@ typedef $$FocusSessionsTableTableUpdateCompanionBuilder =
       Value<int> interruptions,
       Value<bool> completion,
       Value<int> duration,
+      Value<String?> durationCategory,
     });
 
 class $$FocusSessionsTableTableFilterComposer
@@ -3870,6 +3930,11 @@ class $$FocusSessionsTableTableFilterComposer
 
   ColumnFilters<int> get duration => $composableBuilder(
     column: $table.duration,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get durationCategory => $composableBuilder(
+    column: $table.durationCategory,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -3912,6 +3977,11 @@ class $$FocusSessionsTableTableOrderingComposer
     column: $table.duration,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get durationCategory => $composableBuilder(
+    column: $table.durationCategory,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$FocusSessionsTableTableAnnotationComposer
@@ -3948,6 +4018,11 @@ class $$FocusSessionsTableTableAnnotationComposer
 
   GeneratedColumn<int> get duration =>
       $composableBuilder(column: $table.duration, builder: (column) => column);
+
+  GeneratedColumn<String> get durationCategory => $composableBuilder(
+    column: $table.durationCategory,
+    builder: (column) => column,
+  );
 }
 
 class $$FocusSessionsTableTableTableManager
@@ -3996,6 +4071,7 @@ class $$FocusSessionsTableTableTableManager
                 Value<int> interruptions = const Value.absent(),
                 Value<bool> completion = const Value.absent(),
                 Value<int> duration = const Value.absent(),
+                Value<String?> durationCategory = const Value.absent(),
               }) => FocusSessionsTableCompanion(
                 id: id,
                 sessionStart: sessionStart,
@@ -4003,6 +4079,7 @@ class $$FocusSessionsTableTableTableManager
                 interruptions: interruptions,
                 completion: completion,
                 duration: duration,
+                durationCategory: durationCategory,
               ),
           createCompanionCallback:
               ({
@@ -4012,6 +4089,7 @@ class $$FocusSessionsTableTableTableManager
                 Value<int> interruptions = const Value.absent(),
                 Value<bool> completion = const Value.absent(),
                 required int duration,
+                Value<String?> durationCategory = const Value.absent(),
               }) => FocusSessionsTableCompanion.insert(
                 id: id,
                 sessionStart: sessionStart,
@@ -4019,9 +4097,21 @@ class $$FocusSessionsTableTableTableManager
                 interruptions: interruptions,
                 completion: completion,
                 duration: duration,
+                durationCategory: durationCategory,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$FocusSessionsTableTable, FocusSessionEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $FocusSessionsTableTable,
+                    FocusSessionEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4273,7 +4363,16 @@ class $$DailyBriefTableTableTableManager
                 archivedCount: archivedCount,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$DailyBriefTableTable, DailyBriefEntry>(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $DailyBriefTableTable,
+                    DailyBriefEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
