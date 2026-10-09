@@ -122,9 +122,9 @@ class NotificationCollectorService : NotificationListenerService() {
             )
 
             addNotification(data, now)
-            Log.d(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
+            Log.d(TAG, "Captured: ${data.packageName} - ${PiiLogSanitizer.sanitize(data.title, label = "title")}")
         } catch (e: Exception) {
-            Log.e(TAG, "Error capturing/adding notification", e)
+            Log.e(TAG, "Error capturing/adding notification: ${PiiLogSanitizer.sanitizeException(e)}")
         }
     }
 
@@ -136,8 +136,8 @@ class NotificationCollectorService : NotificationListenerService() {
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         if (sbn == null) return
         // Log for now; future phases may track dismissed notifications
-        val removedTitle = sbn.notification.extras?.getCharSequence("android.title")?.toString()
-        Log.d(TAG, "Removed: ${sbn.packageName} - ${NotificationRedactor.redactTitle(removedTitle)}")
+        val title = sbn.notification.extras?.getCharSequence("android.title")?.toString()
+        Log.d(TAG, "Removed: ${sbn.packageName} - ${PiiLogSanitizer.sanitize(title, label = "title")}")
     }
 
     override fun onListenerConnected() {
@@ -152,7 +152,7 @@ class NotificationCollectorService : NotificationListenerService() {
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error fetching active notifications on connect", e)
+            Log.e(TAG, "Error fetching active notifications on connect: ${PiiLogSanitizer.sanitizeException(e)}")
         }
     }
 
