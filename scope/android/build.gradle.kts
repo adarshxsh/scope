@@ -17,6 +17,13 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
+    if (project.name != "app") {
+        tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+            compilerOptions {
+                jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+            }
+        }
+    }
 }
 
 subprojects {

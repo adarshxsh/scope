@@ -4,6 +4,7 @@ import 'package:drift/native.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/storage/backup_exclusion_helper.dart';
 import 'package:scope/database/tables.dart';
 import 'package:scope/database/daos.dart';
 import 'package:scope/database/converters.dart';
@@ -56,6 +57,8 @@ QueryExecutor _openConnection() {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'attention_os.db'));
-    return NativeDatabase(file);
+    final db = NativeDatabase(file);
+    await BackupExclusionHelper.excludeFromBackup(file.path);
+    return db;
   });
 }
