@@ -1,6 +1,18 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
+import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
+
+class ExceptionInterpreter implements Interpreter {
+  @override
+  void run(Object input, Object output) {
+    throw Exception('Simulated TFLite interpreter execution exception');
+  }
+
+  @override
+  noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -231,6 +243,48 @@ void main() {
 
         final result = await GhostAI.predict(activeTask);
         expect(result.reviewScore, isPositive); // Not overridden
+      });
+    });
+
+    group('Interpreter Exception Handling & Fallback', () {
+      tearDown(() {
+        GhostAI.instance.interpreter = null;
+      });
+
+      test('gracefully falls back to heuristic scoring when interpreter throws an exception', () async {
+        GhostAI.instance.interpreter = ExceptionInterpreter();
+
+        final notif = AppNotification(
+          id: 'exception-test-notif',
+          packageName: 'com.whatsapp',
+          title: 'WhatsApp Code',
+          content: 'Your verification code is 882715. Valid for 10 minutes.',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        final result = await GhostAI.predict(notif);
+
+        expect(result.reviewScore, equals(1.0)); // OTP heuristic score
+        expect(result.predictedScore, equals(1.0));
+        expect(result.featureVector.length, equals(63));
+      });
+
+      test('upstream GhostAnalysisEngine receives valid result when interpreter throws', () async {
+        GhostAI.instance.interpreter = ExceptionInterpreter();
+
+        final engine = GhostAnalysisEngine();
+        final notif = AppNotification(
+          id: 'upstream-test-notif',
+          packageName: 'com.whatsapp',
+          title: 'WhatsApp Code',
+          content: 'Your verification code is 882715. Valid for 10 minutes.',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        final analyzed = await engine.analyze(notif);
+
+        expect(analyzed.priority, equals('critical'));
+        expect(analyzed.priorityScore, equals(1.0));
       });
     });
   });
