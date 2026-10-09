@@ -2,6 +2,7 @@ package com.scope.attentions
 
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import android.content.ComponentName
 import android.content.Intent
@@ -10,20 +11,26 @@ import android.provider.Settings
 /**
  * Main entry point for the Flutter Android app.
  *
- * Registers a MethodChannel ("com.scope.notifications") that the Flutter side
- * uses to:
- *   - Pull captured notifications from [NotificationCollectorService]
- *   - Check if the notification listener permission is granted
- *   - Open the system notification listener settings
+ * Registers MethodChannels and EventChannels for notification ingestion
+ * and device resource state (thermal and battery status).
  */
 class MainActivity : FlutterActivity() {
 
     companion object {
         private const val CHANNEL = "com.scope.notifications"
+        private const val RESOURCE_CHANNEL = "com.scope.notifications/resource_state"
     }
+
+    private var resourceMonitor: ResourceMonitor? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        val monitor = ResourceMonitor(applicationContext)
+        resourceMonitor = monitor
+
+        EventChannel(flutterEngine.dartExecutor.binaryMessenger, RESOURCE_CHANNEL)
+            .setStreamHandler(monitor)
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
             .setMethodCallHandler { call, result ->
@@ -44,9 +51,19 @@ class MainActivity : FlutterActivity() {
                         result.success(true)
                     }
 
+                    "getResourceState" -> {
+                        result.success(monitor.getCurrentResourceMap())
+                    }
+
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        resourceMonitor?.stop()
+        resourceMonitor = null
+        super.cleanUpFlutterEngine(flutterEngine)
     }
 
     /**

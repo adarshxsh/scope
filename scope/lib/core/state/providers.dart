@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
+import 'package:scope/core/state/resource_state_controller.dart';
 import 'package:scope/database/attention_database.dart';
 import 'package:scope/database/database_provider.dart';
 import 'package:scope/database/drift_notification_storage.dart';
@@ -340,4 +341,8 @@ final sortedReviewQueueProvider = Provider<List<AppNotification>>((ref) {
   }
 
   return activeItems;
+});
+
+final resourceStateControllerProvider = ChangeNotifierProvider<ResourceStateController>((ref) {
+  return ResourceStateController.instance;
 });
