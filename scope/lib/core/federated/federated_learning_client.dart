@@ -13,6 +13,7 @@ class FederatedLearningClient {
   final double defaultEpsilonStep;
   final double targetDelta;
   final SyncGuardrails syncGuardrails;
+  final int maxBufferSize;
 
   final List<ClientGradientUpdate> _bufferedUpdates = [];
   bool _isWifiConnected = true;
@@ -24,6 +25,7 @@ class FederatedLearningClient {
     this.defaultEpsilonStep = 0.1,
     this.targetDelta = 1e-5,
     this.syncGuardrails = const SyncGuardrails(),
+    this.maxBufferSize = 100,
   }) : privacyBudgetTracker = privacyBudgetTracker ?? PrivacyBudgetTracker();
 
   static FederatedLearningClient get instance =>
@@ -68,8 +70,31 @@ class FederatedLearningClient {
       );
     }
 
+    if (predictedScore.isNaN ||
+        predictedScore.isInfinite ||
+        targetScore.isNaN ||
+        targetScore.isInfinite) {
+      throw ArgumentError('Predicted score and target score must be finite numbers');
+    }
+
+    for (int i = 0; i < featureVector.length; i++) {
+      if (featureVector[i].isNaN || featureVector[i].isInfinite) {
+        throw ArgumentError(
+          'Feature vector contains non-finite value at index $i: ${featureVector[i]}',
+        );
+      }
+    }
+
     final epsilon = epsilonStep ?? defaultEpsilonStep;
     final clippingC = customClippingC ?? clippingThresholdC;
+
+    if (epsilon <= 0 || epsilon.isNaN || epsilon.isInfinite) {
+      throw ArgumentError('Epsilon step must be a positive finite number');
+    }
+
+    if (clippingC <= 0 || clippingC.isNaN || clippingC.isInfinite) {
+      throw ArgumentError('Clipping threshold C must be a positive finite number');
+    }
 
     // 1. Check Privacy Budget
     if (!privacyBudgetTracker.canConsume(epsilon)) {
@@ -152,7 +177,10 @@ class FederatedLearningClient {
       timestamp: DateTime.now(),
     );
 
-    // Buffer update
+    // Buffer update with FIFO eviction to respect memory quota
+    while (_bufferedUpdates.length >= maxBufferSize && _bufferedUpdates.isNotEmpty) {
+      _bufferedUpdates.removeAt(0);
+    }
     _bufferedUpdates.add(update);
     return update;
   }
