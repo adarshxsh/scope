@@ -44,6 +44,25 @@ class MainActivity : FlutterActivity() {
                         result.success(true)
                     }
 
+                    "syncIngestionPolicy" -> {
+                        val prefs = getSharedPreferences("scope_guardrails", MODE_PRIVATE)
+                        val blockedPackages = call.argument<List<String>>("blockedPackages") ?: emptyList()
+                        val excludedCategories = call.argument<List<String>>("excludedCategories") ?: emptyList()
+                        val blockOngoing = call.argument<Boolean>("blockSystemNoise") ?: true
+                        val financialProtection = call.argument<Boolean>("financialProtectionEnabled") ?: false
+                        val otpMasking = call.argument<Boolean>("otpMaskingEnabled") ?: false
+
+                        prefs.edit()
+                            .putStringSet("blocked_packages", blockedPackages.toSet())
+                            .putStringSet("excluded_categories", excludedCategories.toSet())
+                            .putBoolean("block_ongoing", blockOngoing)
+                            .putBoolean("financial_protection", financialProtection)
+                            .putBoolean("otp_masking", otpMasking)
+                            .apply()
+
+                        result.success(true)
+                    }
+
                     else -> result.notImplemented()
                 }
             }

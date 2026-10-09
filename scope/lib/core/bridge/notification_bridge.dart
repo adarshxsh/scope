@@ -75,4 +75,21 @@ class NotificationBridge {
       // Not on Android — nothing to do
     }
   }
+
+  /// Syncs the Flutter ingestion policy to native Android SharedPreferences.
+  Future<bool> syncIngestionPolicy(Map<String, dynamic> policyData) async {
+    try {
+      final result = await _channel.invokeMethod<bool>(
+        'syncIngestionPolicy',
+        policyData,
+      );
+      return result ?? false;
+    } on PlatformException catch (e) {
+      // ignore: avoid_print
+      print('NotificationBridge.syncIngestionPolicy failed: ${e.message}');
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
 }
