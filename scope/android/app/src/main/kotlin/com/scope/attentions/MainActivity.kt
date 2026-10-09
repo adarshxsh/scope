@@ -28,8 +28,23 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
+                    "peekNotifications" -> {
+                        val limit = call.argument<Int>("limit")
+                        val notifications = NotificationCollectorService.peekQueue(limit)
+                        val mapList = notifications.map { it.toMap() }
+                        result.success(mapList)
+                    }
+
+                    "ackNotifications" -> {
+                        val rawIds = call.argument<List<String>>("ids")
+                            ?: (call.arguments as? List<*>)?.filterIsInstance<String>()
+                            ?: emptyList()
+                        val count = NotificationCollectorService.ackQueue(rawIds)
+                        result.success(count)
+                    }
+
                     "getNotifications" -> {
-                        val notifications = NotificationCollectorService.drainQueue()
+                        val notifications = NotificationCollectorService.peekQueue()
                         val mapList = notifications.map { it.toMap() }
                         result.success(mapList)
                     }

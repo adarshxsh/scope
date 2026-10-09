@@ -38,6 +38,7 @@ class NotificationCollectorService : NotificationListenerService() {
         private var idCounter = 0L
 
         /**
+        /**
          * Removes entries older than [MAX_AGE_MS] from the queue.
          */
         fun pruneExpired(now: Long = System.currentTimeMillis()) {
@@ -73,10 +74,42 @@ class NotificationCollectorService : NotificationListenerService() {
         }
 
         /**
-         * Drains all non-expired notifications from the queue and returns them.
-         * Called by [MainActivity] when Flutter requests notifications.
-         * After this call, the queue is empty.
+         * Returns a non-destructive list of captured notifications without draining the queue.
+         * If [limit] is provided and positive, returns at most [limit] notifications.
          */
+        fun peekQueue(limit: Int? = null, now: Long = System.currentTimeMillis()): List<NotificationData> {
+            pruneExpired(now)
+            val snapshot = queue.filter { now - it.timestamp <= MAX_AGE_MS }
+            return if (limit != null && limit > 0) {
+                snapshot.take(limit)
+            } else {
+                snapshot
+            }
+        }
+
+        /**
+         * Acknowledges and removes notifications from the queue matching the given [ids].
+         * Returns the number of items successfully pruned from memory.
+         */
+        fun ackQueue(ids: Collection<String>): Int {
+            if (ids.isEmpty()) return 0
+            val idsSet = ids.toSet()
+            var removedCount = 0
+            queue.removeIf { item ->
+                val matches = idsSet.contains(item.id)
+                if (matches) {
+                    removedCount++
+                }
+                matches
+            }
+            return removedCount
+        }
+
+        /**
+         * Drains all non-expired notifications from the queue and returns them.
+         * Deprecated in favor of two-phase [peekQueue] and [ackQueue].
+         */
+        @Deprecated("Use peekQueue and ackQueue instead")
         fun drainQueue(now: Long = System.currentTimeMillis()): List<NotificationData> {
             val result = mutableListOf<NotificationData>()
             while (true) {
