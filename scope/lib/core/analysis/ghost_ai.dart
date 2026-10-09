@@ -74,7 +74,9 @@ class GhostAI {
       _ruleEngine.compile(jsonStr);
       debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
     } catch (e) {
-      debugPrint('GhostAI: Failed to initialize rules database: $e');
+      debugPrint('AUDIT: Rule engine signature verification failed or rules asset corrupted ($e). Falling back to safe default rules.');
+      _ruleEngine.compileFallbackRules();
+      debugPrint('GhostAI: Rule engine initialized with safe fallback rules (version: ${_ruleEngine.version}).');
     }
   }
 
