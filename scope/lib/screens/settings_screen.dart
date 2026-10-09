@@ -48,6 +48,13 @@ class SettingsScreen extends StatelessWidget {
                   ),
                   const Divider(height: 1, indent: 56),
                   _SettingsTile(
+                    icon: Icons.lock_clock_outlined,
+                    title: 'Federated Learning Audit Log',
+                    subtitle: 'DP-FedAvg active (ε = ${controller.flManager.cumulativeEpsilonSpent.toStringAsFixed(2)})',
+                    onTap: () => _showAuditLogModal(context, controller),
+                  ),
+                  const Divider(height: 1, indent: 56),
+                  _SettingsTile(
                     icon: Icons.notifications_active_outlined,
                     title: 'Notification Access',
                     subtitle: controller.isListenerEnabled ? 'Enabled' : 'Not enabled',
@@ -126,6 +133,86 @@ class SettingsScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  void _showAuditLogModal(BuildContext context, NotificationController controller) {
+    final flManager = controller.flManager;
+    final logs = flManager.auditLogs.reversed.toList();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Federated Learning Audit Log',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+                Text(
+                  'Privacy Budget Spent (ε): ${flManager.cumulativeEpsilonSpent.toStringAsFixed(4)} / ${flManager.dp.config.maxPrivacyBudgetEpsilon}',
+                  style: const TextStyle(fontSize: 12, color: Colors.white70),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                if (logs.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                    child: Center(
+                      child: Text(
+                        'No local federated learning rounds recorded yet.\nSubmit AI Playground feedback to trigger local DP training.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white54, fontSize: 13),
+                      ),
+                    ),
+                  )
+                else
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: logs.length,
+                      separatorBuilder: (context, index) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final log = logs[index];
+                        final isSuccess = log.status == 'success';
+                        return ListTile(
+                          dense: true,
+                          leading: Icon(
+                            isSuccess ? Icons.check_circle_outline : Icons.warning_amber_rounded,
+                            color: isSuccess ? Colors.green : Colors.amber,
+                          ),
+                          title: Text('Round: ${log.roundId} [${log.status}]'),
+                          subtitle: Text(
+                            '${log.details}\nSamples: ${log.sampleCount} | Norm: ${log.initialGradientNorm.toStringAsFixed(2)} -> ${log.clippedGradientNorm.toStringAsFixed(2)} | Noise: ${log.noiseScale.toStringAsFixed(3)}',
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -92,9 +92,18 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     if (_selectedNotification == null) return;
 
     if (isReward) {
+      final flResult = widget.controller.recordFLFeedback(
+        notification: _selectedNotification!,
+        targetScore: 1.0,
+      );
+
+      final dpMsg = flResult != null && flResult.success
+          ? ' (DP-FedAvg updated local weights safely)'
+          : '';
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Reward (+1) recorded! AI model confidence reinforced.'),
+        SnackBar(
+          content: Text('Reward (+1) recorded! AI model confidence reinforced$dpMsg.'),
           backgroundColor: Colors.green,
         ),
       );
@@ -132,13 +141,35 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
 
     widget.controller.engine.ruleEngine.addReinforcementRule(newRule);
 
+    final double targetScore;
+    switch (_selectedPriority.toLowerCase()) {
+      case 'critical':
+        targetScore = 1.0;
+        break;
+      case 'high':
+        targetScore = 0.8;
+        break;
+      case 'medium':
+        targetScore = 0.5;
+        break;
+      case 'low':
+      default:
+        targetScore = 0.1;
+        break;
+    }
+
+    widget.controller.recordFLFeedback(
+      notification: n,
+      targetScore: targetScore,
+    );
+
     setState(() {
       _showCorrectionForm = false;
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Reinforcement Rule Learned! Similar messages will now be classified as $_selectedPriority ($_selectedCategory).'),
+        content: Text('Reinforcement Rule Learned & DP Local Weights Updated! Similar messages will now be classified as $_selectedPriority ($_selectedCategory).'),
         backgroundColor: AppColors.seed,
       ),
     );
