@@ -68,8 +68,8 @@ FEATURE_NAMES: tuple[str, ...] = (
     "category_id",
 )
 
-FEATURE_VECTOR_SIZE = 63
+FEATURE_VECTOR_SIZE = len(FEATURE_NAMES)
 
 if len(FEATURE_NAMES) != FEATURE_VECTOR_SIZE:
-    raise AssertionError("Feature manifest must contain exactly 63 features.")
+    raise AssertionError(f"Feature manifest length {len(FEATURE_NAMES)} must match FEATURE_VECTOR_SIZE {FEATURE_VECTOR_SIZE}.")
 
