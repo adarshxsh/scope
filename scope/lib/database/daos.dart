@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/state/telemetry_governance_engine.dart';
 import 'package:scope/database/attention_database.dart';
 import 'package:scope/database/tables.dart';
 
@@ -81,10 +82,16 @@ class ReviewQueueDao extends DatabaseAccessor<AttentionDatabase> with _$ReviewQu
 
 @DriftAccessor(tables: [FocusSessionsTable])
 class FocusSessionDao extends DatabaseAccessor<AttentionDatabase> with _$FocusSessionDaoMixin {
-  FocusSessionDao(super.db);
+  final TelemetryGovernanceEngine? _governanceEngine;
+
+  FocusSessionDao(super.db, [TelemetryGovernanceEngine? governanceEngine])
+      : _governanceEngine = governanceEngine;
+
+  TelemetryGovernanceEngine get engine => _governanceEngine ?? TelemetryGovernanceEngine();
 
   Future<void> insertSession(FocusSessionEntry entry) async {
-    await into(focusSessionsTable).insert(entry);
+    final governed = engine.governFocusSession(entry);
+    await into(focusSessionsTable).insert(governed);
   }
 
   Future<FocusSessionEntry?> getActiveSession() {
@@ -92,7 +99,8 @@ class FocusSessionDao extends DatabaseAccessor<AttentionDatabase> with _$FocusSe
   }
 
   Future<void> updateSession(FocusSessionEntry entry) async {
-    await update(focusSessionsTable).replace(entry);
+    final governed = engine.governFocusSession(entry);
+    await update(focusSessionsTable).replace(governed);
   }
 
   Future<List<FocusSessionEntry>> getAll() {
@@ -106,10 +114,17 @@ class FocusSessionDao extends DatabaseAccessor<AttentionDatabase> with _$FocusSe
 
 @DriftAccessor(tables: [DailyBriefTable])
 class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBriefDaoMixin {
-  DailyBriefDao(super.db);
+  final TelemetryGovernanceEngine? _governanceEngine;
 
-  Future<void> insertOrUpdate(DailyBriefEntry entry) async {
-    await into(dailyBriefTable).insert(entry, mode: InsertMode.insertOrReplace);
+  DailyBriefDao(super.db, [TelemetryGovernanceEngine? governanceEngine])
+      : _governanceEngine = governanceEngine;
+
+  TelemetryGovernanceEngine get engine => _governanceEngine ?? TelemetryGovernanceEngine();
+
+  Future<void> insertOrUpdate(DailyBriefEntry entry, {TelemetryGovernanceEngine? governanceEngine}) async {
+    final gov = governanceEngine ?? engine;
+    final governed = gov.governDailyBrief(entry);
+    await into(dailyBriefTable).insert(governed, mode: InsertMode.insertOrReplace);
   }
 
   Future<DailyBriefEntry?> getBriefForDate(String date) {
@@ -123,25 +138,34 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
     int calendar = 0,
     int reminders = 0,
     int archived = 0,
+    TelemetryGovernanceEngine? governanceEngine,
   }) async {
+    final gov = governanceEngine ?? engine;
+
+    final noisedReviewed = reviewed != 0 ? gov.applyLaplaceNoise(reviewed) : 0;
+    final noisedCompleted = completed != 0 ? gov.applyLaplaceNoise(completed) : 0;
+    final noisedCalendar = calendar != 0 ? gov.applyLaplaceNoise(calendar) : 0;
+    final noisedReminders = reminders != 0 ? gov.applyLaplaceNoise(reminders) : 0;
+    final noisedArchived = archived != 0 ? gov.applyLaplaceNoise(archived) : 0;
+
     final existing = await getBriefForDate(date);
     if (existing != null) {
       await update(dailyBriefTable).replace(existing.copyWith(
-        notificationsReviewed: existing.notificationsReviewed + reviewed,
-        actionsCompleted: existing.actionsCompleted + completed,
-        calendarEventsCreated: existing.calendarEventsCreated + calendar,
-        remindersCreated: existing.remindersCreated + reminders,
-        archivedCount: existing.archivedCount + archived,
+        notificationsReviewed: existing.notificationsReviewed + noisedReviewed,
+        actionsCompleted: existing.actionsCompleted + noisedCompleted,
+        calendarEventsCreated: existing.calendarEventsCreated + noisedCalendar,
+        remindersCreated: existing.remindersCreated + noisedReminders,
+        archivedCount: existing.archivedCount + noisedArchived,
       ));
     } else {
       await into(dailyBriefTable).insert(DailyBriefEntry(
         id: 0,
         date: date,
-        notificationsReviewed: reviewed,
-        actionsCompleted: completed,
-        calendarEventsCreated: calendar,
-        remindersCreated: reminders,
-        archivedCount: archived,
+        notificationsReviewed: noisedReviewed,
+        actionsCompleted: noisedCompleted,
+        calendarEventsCreated: noisedCalendar,
+        remindersCreated: noisedReminders,
+        archivedCount: noisedArchived,
       ));
     }
   }

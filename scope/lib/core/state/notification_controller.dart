@@ -14,6 +14,7 @@ import 'package:drift/drift.dart';
 import 'package:scope/database/attention_database.dart';
 import 'package:scope/database/database_provider.dart';
 import 'package:scope/database/drift_notification_storage.dart';
+import 'package:scope/core/state/telemetry_governance_engine.dart';
 
 /// Session stats collected during a Focus review.
 class ReviewSessionStats {
@@ -43,10 +44,12 @@ class NotificationController extends ChangeNotifier {
     NotificationStorage? storage,
     GhostAnalysisEngine? engine,
     ProviderContainer? container,
+    TelemetryGovernanceEngine? telemetryGovernanceEngine,
   })  : _bridge = bridge ?? NotificationBridge(),
         _container = container ?? providerContainer,
         _storage = storage ?? DriftNotificationStorage(container?.read(databaseProvider) ?? providerContainer.read(databaseProvider)),
-        _engine = engine ?? GhostAnalysisEngine() {
+        _engine = engine ?? GhostAnalysisEngine(),
+        _telemetryGovernanceEngine = telemetryGovernanceEngine ?? TelemetryGovernanceEngine() {
     _engine.initialize();
 
     // Listen to changes in Riverpod's reviewQueueProvider to keep legacy notifier list in sync
@@ -63,6 +66,7 @@ class NotificationController extends ChangeNotifier {
   final NotificationStorage _storage;
   final GhostAnalysisEngine _engine;
   final ProviderContainer _container;
+  final TelemetryGovernanceEngine _telemetryGovernanceEngine;
 
   List<AppNotification> _notifications = [];
   bool _isListenerEnabled = false;
@@ -93,6 +97,8 @@ class NotificationController extends ChangeNotifier {
   bool get isListenerEnabled => _isListenerEnabled;
   bool get isLoading => _isLoading;
   GhostAnalysisEngine get engine => _engine;
+  TelemetryGovernanceEngine get telemetryGovernanceEngine => _telemetryGovernanceEngine;
+  String get _todayDateString => DateTime.now().toIso8601String().substring(0, 10);
 
   bool get inFocusSession => _inFocusSession;
   List<String> get focusSessionQueueIds => List.unmodifiable(_focusSessionQueueIds);
@@ -478,6 +484,12 @@ class NotificationController extends ChangeNotifier {
     _container.read(reviewQueueProvider.notifier).archive(id);
     _savedActionItems.removeWhere((item) => item.notification.id == id);
     sessionStats.archived++;
+    final db = _container.read(databaseProvider);
+    _telemetryGovernanceEngine.recordDailyBriefMetric(
+      db.dailyBriefDao,
+      _todayDateString,
+      archived: 1,
+    );
     notifyListeners();
   }
 
@@ -485,6 +497,12 @@ class NotificationController extends ChangeNotifier {
     _container.read(reviewQueueProvider.notifier).reviewed(id);
     _savedActionItems.removeWhere((item) => item.notification.id == id);
     sessionStats.actionsCompleted++;
+    final db = _container.read(databaseProvider);
+    _telemetryGovernanceEngine.recordDailyBriefMetric(
+      db.dailyBriefDao,
+      _todayDateString,
+      completed: 1,
+    );
     notifyListeners();
   }
 
@@ -495,21 +513,45 @@ class NotificationController extends ChangeNotifier {
 
   void recordCalendarEvent() {
     sessionStats.calendarEventsCreated++;
+    final db = _container.read(databaseProvider);
+    _telemetryGovernanceEngine.recordDailyBriefMetric(
+      db.dailyBriefDao,
+      _todayDateString,
+      calendar: 1,
+    );
     notifyListeners();
   }
 
   void recordReminder() {
     sessionStats.remindersCreated++;
+    final db = _container.read(databaseProvider);
+    _telemetryGovernanceEngine.recordDailyBriefMetric(
+      db.dailyBriefDao,
+      _todayDateString,
+      reminders: 1,
+    );
     notifyListeners();
   }
 
   void recordReviewed() {
     sessionStats.notificationsReviewed++;
+    final db = _container.read(databaseProvider);
+    _telemetryGovernanceEngine.recordDailyBriefMetric(
+      db.dailyBriefDao,
+      _todayDateString,
+      reviewed: 1,
+    );
     notifyListeners();
   }
 
   void recordAction() {
     sessionStats.actionsCompleted++;
+    final db = _container.read(databaseProvider);
+    _telemetryGovernanceEngine.recordDailyBriefMetric(
+      db.dailyBriefDao,
+      _todayDateString,
+      completed: 1,
+    );
     notifyListeners();
   }
 
