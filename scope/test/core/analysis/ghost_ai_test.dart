@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
 import 'package:scope/core/models/notification_model.dart';
@@ -231,6 +232,27 @@ void main() {
 
         final result = await GhostAI.predict(activeTask);
         expect(result.reviewScore, isPositive); // Not overridden
+      });
+    });
+
+    group('Dynamic Dimension Adaptation & Hot Reload', () {
+      test('hot reload handles invalid model bytes gracefully', () async {
+        final success = await GhostAI.instance.hotReloadModelFromBytes(Uint8List.fromList([1, 2, 3, 4]));
+        expect(success, isFalse);
+      });
+
+      test('predict continues to function with fallback when model is uninitialized or fails', () async {
+        final notif = AppNotification(
+          id: 'test-dim-1',
+          packageName: 'com.whatsapp',
+          title: 'Meeting',
+          content: 'Discuss project deadline tomorrow',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        final result = await GhostAI.predict(notif);
+        expect(result.reviewScore, isNotNull);
+        expect(result.featureVector.length, equals(63));
       });
     });
   });
