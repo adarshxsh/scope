@@ -172,22 +172,37 @@ class FeatureVector {
   final List<double> values;
 
   FeatureVector(Iterable<double> values) : values = List.unmodifiable(values) {
-    if (this.values.length != size) {
-      throw ArgumentError.value(
-        this.values.length,
-        'values.length',
-        'FeatureVector must contain exactly $size values.',
-      );
+    if (this.values.isEmpty) {
+      throw ArgumentError('FeatureVector cannot be empty.');
     }
     if (this.values.any((value) => value.isNaN || value.isInfinite)) {
       throw ArgumentError('FeatureVector cannot contain NaN or infinity.');
     }
   }
 
+  /// Returns a new [FeatureVector] padded with zeros or truncated to [targetDimension].
+  FeatureVector padOrTruncate(int targetDimension) {
+    if (targetDimension <= 0) {
+      throw ArgumentError('targetDimension must be greater than zero.');
+    }
+    if (values.length == targetDimension) {
+      return this;
+    }
+    if (values.length > targetDimension) {
+      return FeatureVector(values.sublist(0, targetDimension));
+    }
+    final padded = List<double>.from(values, growable: true);
+    while (padded.length < targetDimension) {
+      padded.add(0.0);
+    }
+    return FeatureVector(padded);
+  }
+
   List<double> toList() => List<double>.from(values, growable: false);
 
   Map<String, double> toNamedMap() => {
-    for (var i = 0; i < featureNames.length; i++) featureNames[i]: values[i],
+    for (var i = 0; i < values.length; i++)
+      i < featureNames.length ? featureNames[i] : 'feature_$i': values[i],
   };
 }
 

@@ -81,6 +81,7 @@ def main() -> None:
     splits = split_dataset(dataset.features, dataset.target, SplitConfig(), args.seed)
 
     # Calculate mean and variance using numpy to perform direct graph-level normalization
+    feature_vector_size = splits.x_train.shape[1]
     mean_val = np.mean(splits.x_train, axis=0)
     variance_val = np.var(splits.x_train, axis=0)
     # Avoid division-by-zero overflow in constant folding
@@ -96,6 +97,7 @@ def main() -> None:
         mean=mean_val.tolist(),
         stddev=stddev_val.tolist(),
         learning_rate=config.learning_rate,
+        feature_dim=feature_vector_size,
     )
 
     callbacks = [
@@ -155,12 +157,12 @@ def main() -> None:
         "created_at": datetime.now(timezone.utc).isoformat(),
         "dataset_path": str(args.data),
         "sample_count": len(records),
-        "feature_vector_size": FEATURE_VECTOR_SIZE,
+        "feature_vector_size": feature_vector_size,
         "feature_source": "Flutter deterministic FeatureExtractor",
         "python_feature_generation": False,
         "target": "look_again_score",
         "architecture": [
-            "Input(63)",
+            f"Input({feature_vector_size})",
             "Normalization",
             "Dense(128, relu)",
             "Dropout(0.2)",
