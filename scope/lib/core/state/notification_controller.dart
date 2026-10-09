@@ -71,6 +71,9 @@ class NotificationController extends ChangeNotifier {
   Timer? _cleanupTimer;
   bool _isCleaningUp = false;
 
+  int _retentionDays = 7;
+  bool _telemetryEnabled = true;
+
   ReviewSessionStats sessionStats = ReviewSessionStats();
 
   FocusFilterType _filterType = FocusFilterType.none;
@@ -93,6 +96,30 @@ class NotificationController extends ChangeNotifier {
   bool get isListenerEnabled => _isListenerEnabled;
   bool get isLoading => _isLoading;
   GhostAnalysisEngine get engine => _engine;
+
+  int get retentionDays => _retentionDays;
+  bool get telemetryEnabled => _telemetryEnabled;
+
+  Future<void> setRetentionDays(int days) async {
+    if (_retentionDays == days) return;
+    _retentionDays = days;
+    notifyListeners();
+    try {
+      final db = _container.read(databaseProvider);
+      await db.userSettingsDao.setRetentionDays(days);
+    } catch (_) {}
+    await runBackgroundCleanup();
+  }
+
+  Future<void> setTelemetryEnabled(bool enabled) async {
+    if (_telemetryEnabled == enabled) return;
+    _telemetryEnabled = enabled;
+    notifyListeners();
+    try {
+      final db = _container.read(databaseProvider);
+      await db.userSettingsDao.setTelemetryEnabled(enabled);
+    } catch (_) {}
+  }
 
   bool get inFocusSession => _inFocusSession;
   List<String> get focusSessionQueueIds => List.unmodifiable(_focusSessionQueueIds);
@@ -199,14 +226,16 @@ class NotificationController extends ChangeNotifier {
     _focusSessionInterruptions = 0;
     resetSessionStats();
 
-    final db = _container.read(databaseProvider);
-    db.focusSessionDao.insertSession(FocusSessionEntry(
-      id: 0,
-      sessionStart: _focusSessionStart!,
-      interruptions: 0,
-      completion: false,
-      duration: 0,
-    ));
+    if (_telemetryEnabled) {
+      final db = _container.read(databaseProvider);
+      db.focusSessionDao.insertSession(FocusSessionEntry(
+        id: 0,
+        sessionStart: _focusSessionStart!,
+        interruptions: 0,
+        completion: false,
+        duration: 0,
+      ));
+    }
 
     notifyListeners();
   }
@@ -226,17 +255,19 @@ class NotificationController extends ChangeNotifier {
         ? now.difference(_focusSessionStart!).inSeconds
         : 0;
 
-    final db = _container.read(databaseProvider);
-    db.focusSessionDao.getActiveSession().then((active) {
-      if (active != null) {
-        db.focusSessionDao.updateSession(active.copyWith(
-          sessionEnd: Value(now),
-          completion: true,
-          duration: durationSeconds,
-          interruptions: _focusSessionInterruptions,
-        ));
-      }
-    });
+    if (_telemetryEnabled) {
+      final db = _container.read(databaseProvider);
+      db.focusSessionDao.getActiveSession().then((active) {
+        if (active != null) {
+          db.focusSessionDao.updateSession(active.copyWith(
+            sessionEnd: Value(now),
+            completion: true,
+            duration: durationSeconds,
+            interruptions: _focusSessionInterruptions,
+          ));
+        }
+      });
+    }
 
     _focusSessionQueueIds.clear();
     clearFilter();
@@ -318,8 +349,17 @@ class NotificationController extends ChangeNotifier {
     }
   }
 
+  Future<void> _loadSettings() async {
+    try {
+      final db = _container.read(databaseProvider);
+      _retentionDays = await db.userSettingsDao.getRetentionDays(defaultValue: 7);
+      _telemetryEnabled = await db.userSettingsDao.getTelemetryEnabled(defaultValue: true);
+    } catch (_) {}
+  }
+
   Future<void> _loadInitialNotifications() async {
     if (_initialLoadCompleted) return;
+    await _loadSettings();
     final loaded = await _storage.getAll();
     if (_initialLoadCompleted) return;
 
@@ -345,7 +385,7 @@ class NotificationController extends ChangeNotifier {
     });
   }
 
-  /// Cleans up old notifications (older than 7 days) and orphaned review queue items.
+  /// Cleans up old notifications, focus sessions, and daily briefs older than the user retention window.
   Future<void> runBackgroundCleanup() async {
     if (_isCleaningUp) return;
 
@@ -358,7 +398,7 @@ class NotificationController extends ChangeNotifier {
         if (_isDisposed) return;
       }
 
-      final cutoff = DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch;
+      final cutoff = DateTime.now().subtract(Duration(days: _retentionDays)).millisecondsSinceEpoch;
       final db = _container.read(databaseProvider);
       
       // Execute the single-step atomic transaction
@@ -474,10 +514,33 @@ class NotificationController extends ChangeNotifier {
 
   void openNotificationSettings() => _bridge.openNotificationSettings();
 
+  void _logDailyBriefStat({
+    int reviewed = 0,
+    int completed = 0,
+    int calendar = 0,
+    int reminders = 0,
+    int archived = 0,
+  }) {
+    if (!_telemetryEnabled) return;
+    try {
+      final todayStr = DateTime.now().toIso8601String().split('T').first;
+      final db = _container.read(databaseProvider);
+      db.dailyBriefDao.incrementStats(
+        todayStr,
+        reviewed: reviewed,
+        completed: completed,
+        calendar: calendar,
+        reminders: reminders,
+        archived: archived,
+      );
+    } catch (_) {}
+  }
+
   void archive(String id) {
     _container.read(reviewQueueProvider.notifier).archive(id);
     _savedActionItems.removeWhere((item) => item.notification.id == id);
     sessionStats.archived++;
+    _logDailyBriefStat(archived: 1);
     notifyListeners();
   }
 
@@ -485,6 +548,7 @@ class NotificationController extends ChangeNotifier {
     _container.read(reviewQueueProvider.notifier).reviewed(id);
     _savedActionItems.removeWhere((item) => item.notification.id == id);
     sessionStats.actionsCompleted++;
+    _logDailyBriefStat(completed: 1);
     notifyListeners();
   }
 
@@ -495,21 +559,25 @@ class NotificationController extends ChangeNotifier {
 
   void recordCalendarEvent() {
     sessionStats.calendarEventsCreated++;
+    _logDailyBriefStat(calendar: 1);
     notifyListeners();
   }
 
   void recordReminder() {
     sessionStats.remindersCreated++;
+    _logDailyBriefStat(reminders: 1);
     notifyListeners();
   }
 
   void recordReviewed() {
     sessionStats.notificationsReviewed++;
+    _logDailyBriefStat(reviewed: 1);
     notifyListeners();
   }
 
   void recordAction() {
     sessionStats.actionsCompleted++;
+    _logDailyBriefStat(completed: 1);
     notifyListeners();
   }
 

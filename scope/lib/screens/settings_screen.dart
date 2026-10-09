@@ -21,44 +21,93 @@ class SettingsScreen extends StatelessWidget {
 
     return SafeArea(
       child: ScopeScreenBody(
-        child: ListView(
-          padding: const EdgeInsets.only(bottom: AppSpacing.xl),
-          children: [
-            const SectionHeader(
-              title: 'Settings',
-              subtitle: 'AI, privacy, and developer tools.',
-            ),
-            ScopeSurface(
-              padding: EdgeInsets.zero,
-              elevated: false,
-              child: Column(
-                children: [
-                  _SettingsTile(
-                    icon: Icons.psychology_outlined,
-                    title: 'Ghost AI Engine',
-                    subtitle: 'On-device hybrid analysis pipeline',
-                    onTap: null,
+        child: ListenableBuilder(
+          listenable: controller,
+          builder: (context, _) {
+            return ListView(
+              padding: const EdgeInsets.only(bottom: AppSpacing.xl),
+              children: [
+                const SectionHeader(
+                  title: 'Settings',
+                  subtitle: 'AI, privacy, and developer tools.',
+                ),
+                ScopeSurface(
+                  padding: EdgeInsets.zero,
+                  elevated: false,
+                  child: Column(
+                    children: [
+                      _SettingsTile(
+                        icon: Icons.psychology_outlined,
+                        title: 'Ghost AI Engine',
+                        subtitle: 'On-device hybrid analysis pipeline',
+                        onTap: null,
+                      ),
+                      const Divider(height: 1, indent: 56),
+                      _SettingsTile(
+                        icon: Icons.shield_outlined,
+                        title: 'Privacy',
+                        subtitle: 'All analysis runs on your device',
+                        onTap: null,
+                      ),
+                      const Divider(height: 1, indent: 56),
+                      _SettingsTile(
+                        icon: Icons.notifications_active_outlined,
+                        title: 'Notification Access',
+                        subtitle: controller.isListenerEnabled ? 'Enabled' : 'Not enabled',
+                        onTap: controller.openNotificationSettings,
+                      ),
+                    ],
                   ),
-                  const Divider(height: 1, indent: 56),
-                  _SettingsTile(
-                    icon: Icons.shield_outlined,
-                    title: 'Privacy',
-                    subtitle: 'All analysis runs on your device',
-                    onTap: null,
+                ),
+                const SizedBox(height: AppSpacing.sectionGap),
+                const SectionLabel(label: 'Retention & Telemetry'),
+                const SizedBox(height: AppSpacing.md),
+                ScopeSurface(
+                  padding: EdgeInsets.zero,
+                  elevated: false,
+                  child: Column(
+                    children: [
+                      ListTile(
+                        leading: const ScopeIconBox(icon: Icons.history_outlined, size: ScopeIconBoxSize.sm),
+                        title: Text('Retention Duration', style: theme.textTheme.titleSmall),
+                        subtitle: Text('${controller.retentionDays} Days retention window'),
+                        trailing: DropdownButtonHideUnderline(
+                          child: DropdownButton<int>(
+                            key: const Key('retention_dropdown'),
+                            value: controller.retentionDays,
+                            items: const [
+                              DropdownMenuItem(value: 3, child: Text('3 Days')),
+                              DropdownMenuItem(value: 7, child: Text('7 Days')),
+                              DropdownMenuItem(value: 14, child: Text('14 Days')),
+                              DropdownMenuItem(value: 30, child: Text('30 Days')),
+                            ],
+                            onChanged: (val) {
+                              if (val != null) {
+                                controller.setRetentionDays(val);
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                      const Divider(height: 1, indent: 56),
+                      SwitchListTile(
+                        key: const Key('telemetry_switch'),
+                        secondary: const ScopeIconBox(icon: Icons.analytics_outlined, size: ScopeIconBoxSize.sm),
+                        title: Text('Telemetry Collection', style: theme.textTheme.titleSmall),
+                        subtitle: Text(
+                          controller.telemetryEnabled ? 'Enabled' : 'Disabled',
+                        ),
+                        value: controller.telemetryEnabled,
+                        onChanged: (val) {
+                          controller.setTelemetryEnabled(val);
+                        },
+                      ),
+                    ],
                   ),
-                  const Divider(height: 1, indent: 56),
-                  _SettingsTile(
-                    icon: Icons.notifications_active_outlined,
-                    title: 'Notification Access',
-                    subtitle: controller.isListenerEnabled ? 'Enabled' : 'Not enabled',
-                    onTap: controller.openNotificationSettings,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sectionGap),
-            const SectionLabel(label: 'Developer'),
-            const SizedBox(height: AppSpacing.md),
+                ),
+                const SizedBox(height: AppSpacing.sectionGap),
+                const SectionLabel(label: 'Developer'),
+                const SizedBox(height: AppSpacing.md),
             ScopeSurface(
               padding: EdgeInsets.zero,
               elevated: false,
@@ -124,9 +173,11 @@ class SettingsScreen extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
           ],
-        ),
-      ),
-    );
+        );
+      },
+    ),
+  ),
+);
   }
 }
 
