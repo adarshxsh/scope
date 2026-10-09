@@ -122,7 +122,9 @@ class NotificationCollectorService : NotificationListenerService() {
             )
 
             addNotification(data, now)
-            Log.d(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, "Captured: ${data.packageName} - ${data.id}")
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error capturing/adding notification", e)
         }
@@ -136,8 +138,9 @@ class NotificationCollectorService : NotificationListenerService() {
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         if (sbn == null) return
         // Log for now; future phases may track dismissed notifications
-        val removedTitle = sbn.notification.extras?.getCharSequence("android.title")?.toString()
-        Log.d(TAG, "Removed: ${sbn.packageName} - ${NotificationRedactor.redactTitle(removedTitle)}")
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "Removed: ${sbn.packageName ?: "unknown"}")
+        }
     }
 
     override fun onListenerConnected() {
@@ -146,7 +149,9 @@ class NotificationCollectorService : NotificationListenerService() {
         try {
             val activeNotifs = activeNotifications
             if (activeNotifs != null) {
-                Log.d(TAG, "Syncing ${activeNotifs.size} existing notifications from panel")
+                if (BuildConfig.DEBUG) {
+                    Log.d(TAG, "Syncing ${activeNotifs.size} existing notifications from panel")
+                }
                 for (sbn in activeNotifs) {
                     addSbnToQueue(sbn)
                 }
