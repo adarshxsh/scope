@@ -105,8 +105,10 @@ class NotificationCollectorService : NotificationListenerService() {
     private fun addSbnToQueue(sbn: StatusBarNotification, now: Long = System.currentTimeMillis()) {
         try {
             val extras = sbn.notification.extras
-            val title = extras?.getCharSequence("android.title")?.toString() ?: ""
-            val text = extras?.getCharSequence("android.text")?.toString() ?: ""
+            val rawTitle = extras?.getCharSequence("android.title")?.toString() ?: ""
+            val rawText = extras?.getCharSequence("android.text")?.toString() ?: ""
+            val title = NotificationRedactor.redactTitle(rawTitle)
+            val text = NotificationRedactor.redactContent(rawText)
             val isOngoing = sbn.isOngoing
             val packageName = sbn.packageName ?: "unknown"
             val timestamp = if (sbn.postTime > 0) sbn.postTime else now
@@ -122,7 +124,7 @@ class NotificationCollectorService : NotificationListenerService() {
             )
 
             addNotification(data, now)
-            Log.d(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
+            Log.d(TAG, "Captured: ${data.packageName} - ${data.title}")
         } catch (e: Exception) {
             Log.e(TAG, "Error capturing/adding notification", e)
         }

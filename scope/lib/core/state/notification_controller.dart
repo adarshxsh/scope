@@ -8,6 +8,7 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/storage/notification_storage.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/core/utils/focus_area_mapper.dart';
+import 'package:scope/core/utils/pii_redactor.dart';
 import 'package:scope/core/utils/smart_actions.dart';
 import 'package:scope/core/state/providers.dart';
 import 'package:drift/drift.dart';
@@ -319,18 +320,22 @@ class NotificationController extends ChangeNotifier {
   }
 
   Future<void> _loadInitialNotifications() async {
-    if (_initialLoadCompleted) return;
+    if (_initialLoadCompleted || _isDisposed) return;
     final loaded = await _storage.getAll();
-    if (_initialLoadCompleted) return;
+    if (_initialLoadCompleted || _isDisposed) return;
 
     if (_notifications.isEmpty) {
-      _notifications = loaded;
+      _notifications = loaded.map((n) => n.copyWith(
+        title: PiiRedactor.redactTitle(n.title),
+        content: PiiRedactor.redactContent(n.content),
+      )).toList();
     }
-    if (_notifications.isNotEmpty) {
+    if (_notifications.isNotEmpty && !_isDisposed) {
       final notifier = _container.read(reviewQueueProvider.notifier);
       notifier.load(_notifications);
       await notifier.rescore();
     }
+    if (_isDisposed) return;
     _initialLoadCompleted = true;
     _isLoading = false;
     notifyListeners();

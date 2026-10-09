@@ -148,8 +148,8 @@ class GhostAI {
     }
 
     // 5. Apply deterministic overrides (expired OTP, expired reminders, duplicates, completed tasks)
-    final hasOtp = featureVector[11] == 1.0; // contains_otp
-    final hasDeadline = featureVector[27] == 1.0; // contains_deadline
+    final hasOtp = featureVector[11] == 1.0 || (notification.extractedFeatures?['otp'] != null);
+    final hasDeadline = featureVector[27] == 1.0 || (notification.extractedFeatures?['hasDeadline'] == true);
 
     if (hasOtp && _isOtpExpired(notification)) {
       finalScore = 0.0;
