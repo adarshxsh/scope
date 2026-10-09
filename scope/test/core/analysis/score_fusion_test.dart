@@ -109,5 +109,31 @@ void main() {
       expect(fused.engineName, equals('litert_model (fallback)'));
       expect(fused.isFallback, isTrue);
     });
+
+    test('model result with fallback in engineName sets isFallback true and bypasses blending', () {
+      final rule = MatchedRuleResult(
+        ruleId: 'custom_rule_3',
+        category: 'promo',
+        priority: 'low',
+        matchedSignal: 'Matched promo keyword',
+      );
+
+      final fallbackByNameResult = AnalysisResult(
+        category: 'promo',
+        score: 0.50,
+        engineName: 'litert_model (fallback on error)',
+        matchedSignals: ['Inference error'],
+        latencyMs: 1,
+        isFallback: false, // Legacy or misflagged result
+      );
+
+      final fused = ScoreFusion.fuse(
+        ruleResult: rule,
+        modelResult: fallbackByNameResult,
+      );
+
+      expect(fused.score, equals(0.85)); // Bypasses blending 0.50
+      expect(fused.engineName, contains('ml fallback'));
+    });
   });
 }
