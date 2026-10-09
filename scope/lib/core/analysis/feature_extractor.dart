@@ -672,6 +672,7 @@ class FeatureExtractor {
   }
 
   static String? _extractOtp(String text) {
+    if (text.contains('[REDACTED_OTP]')) return '[REDACTED_OTP]';
     if (!_containsKeyword(text.toLowerCase(), _otpWords)) return null;
     for (final match in _otpRegex.allMatches(text)) {
       final value = match.group(0);

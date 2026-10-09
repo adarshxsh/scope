@@ -194,6 +194,30 @@ void main() {
       final item = container.read(reviewQueueProvider).first;
       expect(item.state, equals(ReviewState.ARCHIVED));
     });
+
+    test('add() and load() sanitize PII tokens in provider state', () {
+      final rawNotif = AppNotification(
+        id: 'pii-queue',
+        packageName: 'com.bank.app',
+        title: 'Statement for user@domain.com',
+        content: r'Card 4000-1234-5678-9010 debited $500.00. OTP 998877. Call 800-555-0199.',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      notifier.add(rawNotif);
+
+      final stored = container.read(reviewQueueProvider).first;
+      expect(stored.title, contains('[REDACTED_EMAIL]'));
+      expect(stored.title, isNot(contains('user@domain.com')));
+      expect(stored.content, contains('[REDACTED_CARD]'));
+      expect(stored.content, contains('[REDACTED_AMOUNT]'));
+      expect(stored.content, contains('[REDACTED_OTP]'));
+      expect(stored.content, contains('[REDACTED_PHONE]'));
+      expect(stored.content, isNot(contains('4000-1234-5678-9010')));
+      expect(stored.content, isNot(contains('500.00')));
+      expect(stored.content, isNot(contains('998877')));
+      expect(stored.content, isNot(contains('800-555-0199')));
+    });
   });
 
   group('Queue Sorting and Filtering Tests', () {

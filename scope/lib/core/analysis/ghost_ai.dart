@@ -265,10 +265,13 @@ class GhostAI {
     // Prune stale duplicates older than 5 minutes
     _processedNotifications.removeWhere((n) => now - n.timestamp > _duplicateWindowMs);
 
+    final redactedTitle = PiiRedactor.redactTitle(notification.title);
+    final redactedContent = PiiRedactor.redactContent(notification.content);
+
     for (final oldNotif in _processedNotifications) {
       if (oldNotif.packageName == notification.packageName &&
-          oldNotif.title == notification.title &&
-          oldNotif.content == notification.content &&
+          oldNotif.title == redactedTitle &&
+          oldNotif.content == redactedContent &&
           oldNotif.id != notification.id) {
         return true;
       }
@@ -278,8 +281,12 @@ class GhostAI {
 
   /// Caches the notification for duplicate checking.
   void _cacheNotification(AppNotification notification) {
-    if (_processedNotifications.any((n) => n.id == notification.id)) return;
-    _processedNotifications.add(notification);
+    final redacted = notification.copyWith(
+      title: PiiRedactor.redactTitle(notification.title),
+      content: PiiRedactor.redactContent(notification.content),
+    );
+    if (_processedNotifications.any((n) => n.id == redacted.id)) return;
+    _processedNotifications.add(redacted);
     if (_processedNotifications.length > _maxCacheSize) {
       _processedNotifications.removeAt(0);
     }
