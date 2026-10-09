@@ -79,6 +79,12 @@ class AppNotification {
   /// Time when the notification was last updated in the queue.
   final DateTime? lastUpdated;
 
+  /// Whether this notification analysis was executed in fallback mode.
+  final bool isFallback;
+
+  /// Reason for entering fallback state, if applicable.
+  final String? fallbackReason;
+
   const AppNotification({
     required this.id,
     required this.packageName,
@@ -99,6 +105,8 @@ class AppNotification {
     this.state = ReviewState.ACTIVE,
     this.snoozedUntil,
     this.lastUpdated,
+    this.isFallback = false,
+    this.fallbackReason,
   });
 
   /// Generates a stable unique ID based on notification properties.
@@ -168,6 +176,8 @@ class AppNotification {
       lastUpdated: map['lastUpdated'] != null
           ? DateTime.fromMillisecondsSinceEpoch(map['lastUpdated'] as int)
           : null,
+      isFallback: map['isFallback'] as bool? ?? false,
+      fallbackReason: map['fallbackReason'] as String?,
     );
   }
 
@@ -193,6 +203,8 @@ class AppNotification {
       'state': state.name,
       'snoozedUntil': snoozedUntil?.millisecondsSinceEpoch,
       'lastUpdated': lastUpdated?.millisecondsSinceEpoch,
+      'isFallback': isFallback,
+      'fallbackReason': fallbackReason,
     };
   }
 
@@ -218,6 +230,8 @@ class AppNotification {
         other.state == state &&
         other.snoozedUntil == snoozedUntil &&
         other.lastUpdated == lastUpdated &&
+        other.isFallback == isFallback &&
+        other.fallbackReason == fallbackReason &&
         _mapsEqual(other.extractedFeatures, extractedFeatures);
   }
 
@@ -233,7 +247,7 @@ class AppNotification {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
         id,
         packageName,
         title,
@@ -252,8 +266,10 @@ class AppNotification {
         state,
         snoozedUntil,
         lastUpdated,
+        isFallback,
+        fallbackReason,
         extractedFeatures?.length,
-      );
+      ]);
 
   @override
   String toString() {
@@ -266,6 +282,7 @@ class AppNotification {
         'ruleVersion: $ruleVersion, modelVersion: $modelVersion, '
         'engineVersion: $engineVersion, state: $state, '
         'snoozedUntil: $snoozedUntil, lastUpdated: $lastUpdated, '
+        'isFallback: $isFallback, fallbackReason: $fallbackReason, '
         'extractedFeatures: $extractedFeatures)';
   }
 
@@ -290,6 +307,8 @@ class AppNotification {
     ReviewState? state,
     DateTime? snoozedUntil,
     DateTime? lastUpdated,
+    bool? isFallback,
+    String? fallbackReason,
   }) {
     return AppNotification(
       id: id ?? this.id,
@@ -311,6 +330,8 @@ class AppNotification {
       state: state ?? this.state,
       snoozedUntil: snoozedUntil ?? this.snoozedUntil,
       lastUpdated: lastUpdated ?? this.lastUpdated,
+      isFallback: isFallback ?? this.isFallback,
+      fallbackReason: fallbackReason ?? this.fallbackReason,
     );
   }
 }

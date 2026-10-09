@@ -69,6 +69,7 @@ class LiteRtClassifier implements NotificationAnalyzer {
         ],
         latencyMs: stopwatch.elapsedMilliseconds,
         isFallback: true,
+        fallbackReason: 'Model asset uninitialized',
       );
     }
 
@@ -115,6 +116,7 @@ class LiteRtClassifier implements NotificationAnalyzer {
         matchedSignals: ['Inference error: $e'],
         latencyMs: stopwatch.elapsedMilliseconds,
         isFallback: true,
+        fallbackReason: 'Inference error: $e',
       );
     }
   }
