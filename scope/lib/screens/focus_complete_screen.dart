@@ -63,7 +63,10 @@ class _FocusCompleteScreenState extends State<FocusCompleteScreen> {
                       ),
                     ),
                     const SizedBox(height: AppSpacing.lg),
-                    Text('Review Complete', style: theme.textTheme.headlineLarge),
+                    Text(
+                      'Review Complete',
+                      style: theme.textTheme.headlineLarge,
+                    ),
                     const SizedBox(height: AppSpacing.sm),
                     Text('Great work!', style: theme.textTheme.bodyMedium),
                     const SizedBox(height: AppSpacing.lg),
@@ -85,9 +88,18 @@ class _FocusCompleteScreenState extends State<FocusCompleteScreen> {
                       ),
                       child: Column(
                         children: [
-                          ScopeRow.metric(label: 'Completed', count: stats.actionsCompleted),
-                          ScopeRow.metric(label: 'Reminders Created', count: stats.remindersCreated),
-                          ScopeRow.metric(label: 'Archived', count: stats.archived),
+                          ScopeRow.metric(
+                            label: 'Completed',
+                            count: stats.actionsCompleted,
+                          ),
+                          ScopeRow.metric(
+                            label: 'Reminders Created',
+                            count: stats.remindersCreated,
+                          ),
+                          ScopeRow.metric(
+                            label: 'Archived',
+                            count: stats.archived,
+                          ),
                           ScopeRow.metric(
                             label: 'Estimated Time Saved',
                             count: stats.estimatedMinutesSaved,

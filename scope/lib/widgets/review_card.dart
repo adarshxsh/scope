@@ -57,7 +57,9 @@ class ReviewCard extends StatelessWidget {
     final features = notification.extractedFeatures != null
         ? ExtractedFeatures.fromMap(notification.extractedFeatures!)
         : const ExtractedFeatures();
-    final quickActions = actions.where((a) => a.type != SmartActionType.archive).toList();
+    final quickActions = actions
+        .where((a) => a.type != SmartActionType.archive)
+        .toList();
 
     final titleStyle = inverted
         ? theme.textTheme.headlineSmall?.copyWith(
@@ -69,17 +71,19 @@ class ReviewCard extends StatelessWidget {
             fontWeight: isCritical ? FontWeight.bold : null,
             fontSize: isCritical ? 26 : (isLow ? 20 : 24),
           );
-          
+
     final bodyStyle = inverted
         ? theme.textTheme.bodyLarge?.copyWith(
             color: Colors.white.withValues(alpha: isLow ? 0.6 : 0.78),
             fontSize: isLow ? 14 : 16,
           )
         : theme.textTheme.bodyLarge?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(alpha: isLow ? 0.6 : 0.78),
+            color: theme.colorScheme.onSurface.withValues(
+              alpha: isLow ? 0.6 : 0.78,
+            ),
             fontSize: isLow ? 14 : 16,
           );
-          
+
     final metaStyle = inverted
         ? theme.textTheme.bodySmall?.copyWith(color: Colors.white38)
         : theme.textTheme.labelLarge;
@@ -92,12 +96,18 @@ class ReviewCard extends StatelessWidget {
           children: [
             if (onAction != null)
               IconButton(
-                icon: Icon(Icons.close_rounded, size: 20, color: inverted ? Colors.white54 : null),
-                onPressed: () => onAction!(const SmartAction(
-                  label: 'Archive',
-                  icon: Icons.archive,
-                  type: SmartActionType.archive,
-                )),
+                icon: Icon(
+                  Icons.close_rounded,
+                  size: 20,
+                  color: inverted ? Colors.white54 : null,
+                ),
+                onPressed: () => onAction!(
+                  const SmartAction(
+                    label: 'Archive',
+                    icon: Icons.archive,
+                    type: SmartActionType.archive,
+                  ),
+                ),
                 tooltip: 'Archive',
                 visualDensity: VisualDensity.compact,
               ),
@@ -108,10 +118,16 @@ class ReviewCard extends StatelessWidget {
         SizedBox(height: isLow ? AppSpacing.sm : AppSpacing.md),
         if (notification.priority != null && notification.priority != 'low')
           Padding(
-            padding: EdgeInsets.only(bottom: isLow ? AppSpacing.sm : AppSpacing.md),
+            padding: EdgeInsets.only(
+              bottom: isLow ? AppSpacing.sm : AppSpacing.md,
+            ),
             child: Text(
               notification.priority?.toUpperCase() ?? '',
-              style: metaStyle?.copyWith(color: accent, letterSpacing: 0.8, fontWeight: isCritical ? FontWeight.bold : null),
+              style: metaStyle?.copyWith(
+                color: accent,
+                letterSpacing: 0.8,
+                fontWeight: isCritical ? FontWeight.bold : null,
+              ),
             ),
           ),
         Text(
@@ -138,7 +154,10 @@ class ReviewCard extends StatelessWidget {
         const SizedBox(height: AppSpacing.lg),
         Divider(color: inverted ? Colors.white12 : null, height: 1),
         const SizedBox(height: AppSpacing.md),
-        SectionLabel(label: 'Quick Actions', color: inverted ? Colors.white38 : null),
+        SectionLabel(
+          label: 'Quick Actions',
+          color: inverted ? Colors.white38 : null,
+        ),
         const SizedBox(height: AppSpacing.md),
         Wrap(
           spacing: AppSpacing.sm,
@@ -179,7 +198,11 @@ class DetectedInfoPanel extends StatelessWidget {
   final ExtractedFeatures features;
   final bool inverted;
 
-  const DetectedInfoPanel({super.key, required this.features, this.inverted = false});
+  const DetectedInfoPanel({
+    super.key,
+    required this.features,
+    this.inverted = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -195,13 +218,29 @@ class DetectedInfoPanel extends StatelessWidget {
         Text('Detected', style: titleStyle),
         const SizedBox(height: AppSpacing.sm),
         if (features.hasDeadline)
-          _DetectedLine(icon: Icons.event, text: 'Deadline detected', color: rowColor),
+          _DetectedLine(
+            icon: Icons.event,
+            text: 'Deadline detected',
+            color: rowColor,
+          ),
         if (features.amount != null)
-          _DetectedLine(icon: Icons.currency_rupee, text: '₹${features.amount}', color: rowColor),
+          _DetectedLine(
+            icon: Icons.currency_rupee,
+            text: '₹${features.amount}',
+            color: rowColor,
+          ),
         if (features.urls.isNotEmpty)
-          _DetectedLine(icon: Icons.link, text: features.urls.first, color: rowColor),
+          _DetectedLine(
+            icon: Icons.link,
+            text: features.urls.first,
+            color: rowColor,
+          ),
         if (features.phoneNumbers.isNotEmpty)
-          _DetectedLine(icon: Icons.phone, text: features.phoneNumbers.first, color: rowColor),
+          _DetectedLine(
+            icon: Icons.phone,
+            text: features.phoneNumbers.first,
+            color: rowColor,
+          ),
       ],
     );
   }
@@ -222,7 +261,14 @@ class _DetectedLine extends StatelessWidget {
         children: [
           Icon(icon, size: 16, color: color ?? AppColors.muted(context)),
           const SizedBox(width: AppSpacing.sm),
-          Expanded(child: Text(text, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: color))),
+          Expanded(
+            child: Text(
+              text,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: color),
+            ),
+          ),
         ],
       ),
     );

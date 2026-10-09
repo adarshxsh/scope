@@ -17,15 +17,11 @@ part 'attention_database.g.dart';
     FocusSessionsTable,
     DailyBriefTable,
   ],
-  daos: [
-    NotificationDao,
-    ReviewQueueDao,
-    FocusSessionDao,
-    DailyBriefDao,
-  ],
+  daos: [NotificationDao, ReviewQueueDao, FocusSessionDao, DailyBriefDao],
 )
 class AttentionDatabase extends _$AttentionDatabase {
-  AttentionDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
+  AttentionDatabase([QueryExecutor? executor])
+    : super(executor ?? _openConnection());
 
   factory AttentionDatabase.inMemory() {
     return AttentionDatabase(NativeDatabase.memory());
@@ -39,14 +35,17 @@ class AttentionDatabase extends _$AttentionDatabase {
   Future<void> runSetBasedCleanup(int cutoffTimestamp) async {
     await transaction(() async {
       // 1. Delete expired notifications based on cutoff timestamp
-      await (delete(notificationsTable)..where((t) => t.timestamp.isSmallerThanValue(cutoffTimestamp))).go();
+      await (delete(
+        notificationsTable,
+      )..where((t) => t.timestamp.isSmallerThanValue(cutoffTimestamp))).go();
 
       // 2. Delete orphaned review queue entries in a set-based query
-      final orphanedQuery = delete(reviewQueueTable)..where((t) {
-        final hasNotification = selectOnly(notificationsTable)
-          ..addColumns([notificationsTable.id]);
-        return t.notificationId.isNotInQuery(hasNotification);
-      });
+      final orphanedQuery = delete(reviewQueueTable)
+        ..where((t) {
+          final hasNotification = selectOnly(notificationsTable)
+            ..addColumns([notificationsTable.id]);
+          return t.notificationId.isNotInQuery(hasNotification);
+        });
       await orphanedQuery.go();
     });
   }

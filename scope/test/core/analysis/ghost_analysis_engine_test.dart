@@ -29,39 +29,49 @@ void main() {
       engine.ruleEngine.compile(sampleJson);
     });
 
-    test('orchestrates pipeline and classifies bank debit notification as critical', () async {
-      final notif = AppNotification(
-        id: '1',
-        packageName: 'com.example.bank',
-        title: 'Transaction Alert',
-        content: 'Your account has been debited Rs. 5,000 for your premium purchase.',
-        timestamp: DateTime.now().millisecondsSinceEpoch,
-      );
+    test(
+      'orchestrates pipeline and classifies bank debit notification as critical',
+      () async {
+        final notif = AppNotification(
+          id: '1',
+          packageName: 'com.example.bank',
+          title: 'Transaction Alert',
+          content:
+              'Your account has been debited Rs. 5,000 for your premium purchase.',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
 
-      final analyzed = await engine.analyze(notif);
+        final analyzed = await engine.analyze(notif);
 
-      expect(analyzed.priority, equals('critical'));
-      expect(analyzed.classifiedCategory, equals('finance'));
-      expect(analyzed.explanation, contains('Amount: Found transaction amount'));
-      expect(analyzed.latencyMs, isNotNull);
-      expect(analyzed.extractedFeatures, isNotNull);
-      expect(analyzed.extractedFeatures!['amount'], equals(5000.0));
-    });
+        expect(analyzed.priority, equals('critical'));
+        expect(analyzed.classifiedCategory, equals('finance'));
+        expect(
+          analyzed.explanation,
+          contains('Amount: Found transaction amount'),
+        );
+        expect(analyzed.latencyMs, isNotNull);
+        expect(analyzed.extractedFeatures, isNotNull);
+        expect(analyzed.extractedFeatures!['amount'], equals(5000.0));
+      },
+    );
 
-    test('orchestrates pipeline and classifies OTP messages as critical priority', () async {
-      final notif = AppNotification(
-        id: '2',
-        packageName: 'com.whatsapp',
-        title: 'WhatsApp verification',
-        content: 'Your registration code is 882715.',
-        timestamp: DateTime.now().millisecondsSinceEpoch,
-      );
+    test(
+      'orchestrates pipeline and classifies OTP messages as critical priority',
+      () async {
+        final notif = AppNotification(
+          id: '2',
+          packageName: 'com.whatsapp',
+          title: 'WhatsApp verification',
+          content: 'Your registration code is 882715.',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
 
-      final analyzed = await engine.analyze(notif);
+        final analyzed = await engine.analyze(notif);
 
-      expect(analyzed.priority, equals('critical'));
-      expect(analyzed.extractedFeatures!['otp'], equals('882715'));
-    });
+        expect(analyzed.priority, equals('critical'));
+        expect(analyzed.extractedFeatures!['otp'], equals('882715'));
+      },
+    );
 
     test('categorizes low priority promo keywords as low', () async {
       final notif = AppNotification(

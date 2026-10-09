@@ -6,11 +6,7 @@ class SlideFadeSwitcher extends StatelessWidget {
   final Widget child;
   final Object? transitionKey;
 
-  const SlideFadeSwitcher({
-    super.key,
-    required this.child,
-    this.transitionKey,
-  });
+  const SlideFadeSwitcher({super.key, required this.child, this.transitionKey});
 
   @override
   Widget build(BuildContext context) {
@@ -32,16 +28,10 @@ class SlideFadeSwitcher extends StatelessWidget {
       layoutBuilder: (currentChild, previousChildren) {
         return Stack(
           alignment: Alignment.topCenter,
-          children: [
-            ...previousChildren,
-            ?currentChild,
-          ],
+          children: [...previousChildren, ?currentChild],
         );
       },
-      child: KeyedSubtree(
-        key: ValueKey(transitionKey),
-        child: child,
-      ),
+      child: KeyedSubtree(key: ValueKey(transitionKey), child: child),
     );
   }
 }

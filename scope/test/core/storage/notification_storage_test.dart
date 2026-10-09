@@ -89,12 +89,15 @@ void main() {
         expect(result[2].id, 'old');
       });
 
-      test('returns a copy (modifying result does not affect storage)', () async {
-        await storage.save(makeNotification(id: 'n1'));
-        final result = await storage.getAll();
-        result.clear();
-        expect(await storage.count, 1);
-      });
+      test(
+        'returns a copy (modifying result does not affect storage)',
+        () async {
+          await storage.save(makeNotification(id: 'n1'));
+          final result = await storage.getAll();
+          result.clear();
+          expect(await storage.count, 1);
+        },
+      );
     });
 
     group('deleteOlderThan', () {

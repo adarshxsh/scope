@@ -254,7 +254,8 @@ class PolicyEngine {
     );
     if (categoryPriority == 'low') {
       priority = 'low';
-    } else if (categoryPriority == 'critical' && _isHigherThan('critical', priority)) {
+    } else if (categoryPriority == 'critical' &&
+        _isHigherThan('critical', priority)) {
       // Feature evidence (OTP, amount, deadline) warrants critical — promote.
       // The Critical gate in step 4 will validate this.
       priority = 'critical';
@@ -267,11 +268,30 @@ class PolicyEngine {
     // Step 3: Apply deterministic ceiling overrides (package + content)
     priority = _applyPackageCeiling(notification, priority, _mediaPackages);
     priority = _applySocialCeiling(notification, priority);
-    priority = _applyPackageCeiling(notification, priority, _entertainmentPackages);
+    priority = _applyPackageCeiling(
+      notification,
+      priority,
+      _entertainmentPackages,
+    );
     priority = _applyPackageCeiling(notification, priority, _promoPackages);
-    priority = _applyContentCeiling(notification, priority, _mediaPlaybackKeywords, 'low');
-    priority = _applyContentCeiling(notification, priority, _entertainmentRecoKeywords, 'low');
-    priority = _applyContentCeiling(notification, priority, _promoContentKeywords, 'low');
+    priority = _applyContentCeiling(
+      notification,
+      priority,
+      _mediaPlaybackKeywords,
+      'low',
+    );
+    priority = _applyContentCeiling(
+      notification,
+      priority,
+      _entertainmentRecoKeywords,
+      'low',
+    );
+    priority = _applyContentCeiling(
+      notification,
+      priority,
+      _promoContentKeywords,
+      'low',
+    );
 
     // Step 4: Critical whitelist gate
     priority = _applyCriticalGate(priority, features, notification);
@@ -374,7 +394,8 @@ class PolicyEngine {
     final text = '${notification.title} ${notification.content}'.toLowerCase();
 
     // Preserve DMs and mentions — these are direct user interactions
-    final isDm = text.contains('sent you a message') ||
+    final isDm =
+        text.contains('sent you a message') ||
         text.contains('direct message') ||
         text.contains('dm from') ||
         text.contains('mentioned you') ||
@@ -387,8 +408,9 @@ class PolicyEngine {
     }
 
     // Check for social engagement keywords
-    final isSocialEngagement =
-        _socialEngagementKeywords.any((kw) => text.contains(kw));
+    final isSocialEngagement = _socialEngagementKeywords.any(
+      (kw) => text.contains(kw),
+    );
 
     if (isSocialEngagement && _isHigherThan(currentPriority, 'low')) {
       return 'low';
@@ -440,8 +462,9 @@ class PolicyEngine {
 
     // Check for critical evidence keywords in text
     final text = '${notification.title} ${notification.content}'.toLowerCase();
-    final hasCriticalEvidence =
-        _criticalEvidenceKeywords.any((kw) => text.contains(kw));
+    final hasCriticalEvidence = _criticalEvidenceKeywords.any(
+      (kw) => text.contains(kw),
+    );
     if (hasCriticalEvidence) return 'critical';
 
     // No strong evidence found — downgrade to high
@@ -479,14 +502,17 @@ class PolicyEngine {
 
     // Deadline with relevant category
     if (features.hasDeadline &&
-        (category == 'scholarship' || category == 'finance' || category == 'email')) {
+        (category == 'scholarship' ||
+            category == 'finance' ||
+            category == 'email')) {
       return 'high';
     }
 
     // Check for high evidence keywords in text
     final text = '${notification.title} ${notification.content}'.toLowerCase();
-    final hasHighEvidence =
-        _highEvidenceKeywords.any((kw) => text.contains(kw));
+    final hasHighEvidence = _highEvidenceKeywords.any(
+      (kw) => text.contains(kw),
+    );
     if (hasHighEvidence) return 'high';
 
     // No evidence found — downgrade to medium

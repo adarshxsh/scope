@@ -5,11 +5,7 @@ import 'package:scope/database/attention_database.dart';
 import 'package:scope/database/database_provider.dart';
 import 'package:scope/database/drift_notification_storage.dart';
 
-enum QueueSortOrder {
-  reviewScore,
-  deadline,
-  lastUpdated,
-}
+enum QueueSortOrder { reviewScore, deadline, lastUpdated }
 
 class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
   final AttentionDatabase? _db;
@@ -24,10 +20,12 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
   /// Merges duplicate notifications (same packageName, title, content).
   void add(AppNotification notification) {
     final now = DateTime.now();
-    final index = state.indexWhere((n) =>
-        n.packageName == notification.packageName &&
-        n.title == notification.title &&
-        n.content == notification.content);
+    final index = state.indexWhere(
+      (n) =>
+          n.packageName == notification.packageName &&
+          n.title == notification.title &&
+          n.content == notification.content,
+    );
 
     AppNotification newItem;
     if (index >= 0) {
@@ -41,7 +39,7 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
       );
       state = [
         for (int i = 0; i < state.length; i++)
-          if (i == index) newItem else state[i]
+          if (i == index) newItem else state[i],
       ];
     } else {
       // Add new notification
@@ -71,7 +69,7 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
   void update(AppNotification notification) {
     state = [
       for (final n in state)
-        if (n.id == notification.id) notification else n
+        if (n.id == notification.id) notification else n,
     ];
     if (_db != null) {
       DriftNotificationStorage(_db).save(notification);
@@ -87,7 +85,7 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
         if (n.id == id)
           n.copyWith(state: ReviewState.REVIEWED, lastUpdated: now)
         else
-          n
+          n,
     ];
     if (_db != null) {
       final item = state.firstWhere((n) => n.id == id);
@@ -101,10 +99,7 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
     final now = DateTime.now();
     state = [
       for (final n in state)
-        if (n.id == id)
-          n.copyWith(state: newState, lastUpdated: now)
-        else
-          n
+        if (n.id == id) n.copyWith(state: newState, lastUpdated: now) else n,
     ];
     if (_db != null) {
       final item = state.firstWhere((n) => n.id == id);
@@ -121,7 +116,7 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
         if (n.id == id)
           n.copyWith(state: ReviewState.ARCHIVED, lastUpdated: now)
         else
-          n
+          n,
     ];
     if (_db != null) {
       final item = state.firstWhere((n) => n.id == id);
@@ -138,7 +133,7 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
         if (n.id == id)
           n.copyWith(state: ReviewState.EXPIRED, lastUpdated: now)
         else
-          n
+          n,
     ];
     if (_db != null) {
       final item = state.firstWhere((n) => n.id == id);
@@ -160,7 +155,7 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
             lastUpdated: now,
           )
         else
-          n
+          n,
     ];
     if (_db != null) {
       final item = state.firstWhere((n) => n.id == id);
@@ -176,7 +171,8 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
 
     for (final item in state) {
       // Don't re-score/auto-expire archived or reviewed notifications
-      if (item.state == ReviewState.ARCHIVED || item.state == ReviewState.REVIEWED) {
+      if (item.state == ReviewState.ARCHIVED ||
+          item.state == ReviewState.REVIEWED) {
         updated.add(item);
         continue;
       }
@@ -199,7 +195,8 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
       );
 
       // 3. Auto-expire OTPs
-      final hasOtp = updatedItem.extractedFeatures?['otp'] != null ||
+      final hasOtp =
+          updatedItem.extractedFeatures?['otp'] != null ||
           updatedItem.title.toLowerCase().contains('otp') ||
           updatedItem.content.toLowerCase().contains('otp');
       if (hasOtp && ghostResult.reviewScore == 0.0) {
@@ -207,29 +204,37 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
       }
 
       // 4. Auto-expire reminders
-      final hasDeadline = updatedItem.extractedFeatures?['hasDeadline'] == true ||
+      final hasDeadline =
+          updatedItem.extractedFeatures?['hasDeadline'] == true ||
           updatedItem.title.toLowerCase().contains('deadline') ||
           updatedItem.content.toLowerCase().contains('deadline') ||
           updatedItem.title.toLowerCase().contains('reminder') ||
           updatedItem.content.toLowerCase().contains('reminder') ||
-          RegExp(r'\bin\s+(\d{1,4})\s*(minute|minutes|min|mins|hour|hours|hr|hrs|day|days)\b', caseSensitive: false)
-              .hasMatch(updatedItem.content.toLowerCase());
+          RegExp(
+            r'\bin\s+(\d{1,4})\s*(minute|minutes|min|mins|hour|hours|hr|hrs|day|days)\b',
+            caseSensitive: false,
+          ).hasMatch(updatedItem.content.toLowerCase());
       if (hasDeadline && ghostResult.reviewScore == 0.0) {
         updatedItem = updatedItem.copyWith(state: ReviewState.EXPIRED);
       }
 
       // 5. Remove completed payment reminders (transition to ARCHIVED)
       final isFinance =
-          (updatedItem.classifiedCategory ?? updatedItem.category ?? '').toLowerCase() == 'finance' ||
-              updatedItem.extractedFeatures?['amount'] != null ||
-              updatedItem.title.toLowerCase().contains('bill') ||
-              updatedItem.title.toLowerCase().contains('payment') ||
-              updatedItem.title.toLowerCase().contains('finance') ||
-              updatedItem.content.toLowerCase().contains('bill') ||
-              updatedItem.content.toLowerCase().contains('payment') ||
-              updatedItem.content.toLowerCase().contains('finance') ||
-              updatedItem.content.toLowerCase().contains('rs');
-      final isCompleted = _checkCompletedKeywords(updatedItem.title, updatedItem.content);
+          (updatedItem.classifiedCategory ?? updatedItem.category ?? '')
+                  .toLowerCase() ==
+              'finance' ||
+          updatedItem.extractedFeatures?['amount'] != null ||
+          updatedItem.title.toLowerCase().contains('bill') ||
+          updatedItem.title.toLowerCase().contains('payment') ||
+          updatedItem.title.toLowerCase().contains('finance') ||
+          updatedItem.content.toLowerCase().contains('bill') ||
+          updatedItem.content.toLowerCase().contains('payment') ||
+          updatedItem.content.toLowerCase().contains('finance') ||
+          updatedItem.content.toLowerCase().contains('rs');
+      final isCompleted = _checkCompletedKeywords(
+        updatedItem.title,
+        updatedItem.content,
+      );
       if (isFinance && isCompleted) {
         updatedItem = updatedItem.copyWith(state: ReviewState.ARCHIVED);
       }
@@ -256,14 +261,16 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
 
   Future<void> _saveQueueEntry(AppNotification n, {DateTime? expiry}) async {
     if (_db == null) return;
-    await _db.reviewQueueDao.insertItem(ReviewQueueEntry(
-      id: 0,
-      notificationId: n.id,
-      priority: n.priority ?? 'medium',
-      enqueueTime: DateTime.now(),
-      expiryTime: expiry,
-      status: n.state,
-    ));
+    await _db.reviewQueueDao.insertItem(
+      ReviewQueueEntry(
+        id: 0,
+        notificationId: n.id,
+        priority: n.priority ?? 'medium',
+        enqueueTime: DateTime.now(),
+        expiryTime: expiry,
+        status: n.state,
+      ),
+    );
   }
 
   bool _checkCompletedKeywords(String title, String content) {
@@ -273,19 +280,22 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
       r'\b(completed|done|finished|resolved|successful|delivered|succeeded)\b',
       caseSensitive: false,
     );
-    return completedRegex.hasMatch(lowerTitle) || completedRegex.hasMatch(lowerContent);
+    return completedRegex.hasMatch(lowerTitle) ||
+        completedRegex.hasMatch(lowerContent);
   }
 }
 
 // Global Provider Container for ChangeNotifier integration
 ProviderContainer? _globalProviderContainerInstance;
-ProviderContainer get providerContainer => _globalProviderContainerInstance ??= ProviderContainer();
+ProviderContainer get providerContainer =>
+    _globalProviderContainerInstance ??= ProviderContainer();
 
 // Providers
-final reviewQueueProvider = StateNotifierProvider<ReviewQueueNotifier, List<AppNotification>>((ref) {
-  final db = ref.watch(databaseProvider);
-  return ReviewQueueNotifier(db);
-});
+final reviewQueueProvider =
+    StateNotifierProvider<ReviewQueueNotifier, List<AppNotification>>((ref) {
+      final db = ref.watch(databaseProvider);
+      return ReviewQueueNotifier(db);
+    });
 
 final reviewQueueSortOrderProvider = StateProvider<QueueSortOrder>((ref) {
   return QueueSortOrder.reviewScore;
@@ -316,24 +326,30 @@ final sortedReviewQueueProvider = Provider<List<AppNotification>>((ref) {
       break;
     case QueueSortOrder.deadline:
       activeItems.sort((a, b) {
-        final aRemaining = a.extractedFeatures?['deadline_minutes_remaining'] as num? ?? -1;
-        final bRemaining = b.extractedFeatures?['deadline_minutes_remaining'] as num? ?? -1;
-        
+        final aRemaining =
+            a.extractedFeatures?['deadline_minutes_remaining'] as num? ?? -1;
+        final bRemaining =
+            b.extractedFeatures?['deadline_minutes_remaining'] as num? ?? -1;
+
         final aHas = aRemaining >= 0;
         final bHas = bRemaining >= 0;
-        
+
         if (aHas && bHas) {
           return aRemaining.compareTo(bRemaining); // Ascending
         }
         if (aHas) return -1;
         if (bHas) return 1;
-        return b.timestamp.compareTo(a.timestamp); // Fallback to timestamp descending
+        return b.timestamp.compareTo(
+          a.timestamp,
+        ); // Fallback to timestamp descending
       });
       break;
     case QueueSortOrder.lastUpdated:
       activeItems.sort((a, b) {
-        final timeA = a.lastUpdated ?? DateTime.fromMillisecondsSinceEpoch(a.timestamp);
-        final timeB = b.lastUpdated ?? DateTime.fromMillisecondsSinceEpoch(b.timestamp);
+        final timeA =
+            a.lastUpdated ?? DateTime.fromMillisecondsSinceEpoch(a.timestamp);
+        final timeB =
+            b.lastUpdated ?? DateTime.fromMillisecondsSinceEpoch(b.timestamp);
         return timeB.compareTo(timeA); // Descending
       });
       break;

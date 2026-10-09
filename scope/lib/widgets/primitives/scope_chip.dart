@@ -36,11 +36,19 @@ class ScopeChip extends StatelessWidget {
 
     final fill = inverted
         ? Colors.white.withValues(alpha: selected ? 0.16 : 0.08)
-        : (useAccent ? base.withValues(alpha: selected ? 0.12 : 0.06) : theme.colorScheme.onSurface.withValues(alpha: selected ? 0.08 : 0.04));
+        : (useAccent
+              ? base.withValues(alpha: selected ? 0.12 : 0.06)
+              : theme.colorScheme.onSurface.withValues(
+                  alpha: selected ? 0.08 : 0.04,
+                ));
 
     final border = inverted
         ? Colors.white.withValues(alpha: selected ? 0.35 : 0.14)
-        : (useAccent ? base.withValues(alpha: selected ? 0.4 : 0.15) : theme.colorScheme.onSurface.withValues(alpha: selected ? 0.2 : 0.08));
+        : (useAccent
+              ? base.withValues(alpha: selected ? 0.4 : 0.15)
+              : theme.colorScheme.onSurface.withValues(
+                  alpha: selected ? 0.2 : 0.08,
+                ));
 
     final labelColor = inverted
         ? Colors.white.withValues(alpha: selected ? 1 : 0.85)
@@ -48,7 +56,9 @@ class ScopeChip extends StatelessWidget {
 
     final iconColor = inverted
         ? Colors.white.withValues(alpha: 0.9)
-        : (useAccent ? base : theme.colorScheme.onSurface.withValues(alpha: 0.55));
+        : (useAccent
+              ? base
+              : theme.colorScheme.onSurface.withValues(alpha: 0.55));
 
     return Semantics(
       button: true,

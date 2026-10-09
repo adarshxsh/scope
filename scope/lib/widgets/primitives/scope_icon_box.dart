@@ -23,16 +23,16 @@ class ScopeIconBox extends StatelessWidget {
   });
 
   double get _boxSize => switch (size) {
-        ScopeIconBoxSize.sm => 32,
-        ScopeIconBoxSize.md => 40,
-        ScopeIconBoxSize.lg => 48,
-      };
+    ScopeIconBoxSize.sm => 32,
+    ScopeIconBoxSize.md => 40,
+    ScopeIconBoxSize.lg => 48,
+  };
 
   double get _iconSize => switch (size) {
-        ScopeIconBoxSize.sm => 16,
-        ScopeIconBoxSize.md => 20,
-        ScopeIconBoxSize.lg => 24,
-      };
+    ScopeIconBoxSize.sm => 16,
+    ScopeIconBoxSize.md => 20,
+    ScopeIconBoxSize.lg => 24,
+  };
 
   @override
   Widget build(BuildContext context) {
