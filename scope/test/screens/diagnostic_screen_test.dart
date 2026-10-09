@@ -110,6 +110,19 @@ void main() {
       expect(find.text('CRITICAL'), findsOneWidget);
       expect(find.text('Pipeline Explanation Trace'), findsOneWidget);
       expect(find.text('Extracted Text Features'), findsOneWidget);
+
+      // Verify that OTP feature row is masked by default (••••52)
+      expect(find.text('••••52'), findsOneWidget);
+      expect(find.text('987652'), findsNothing);
+
+      // Toggle privacy button in AppBar to show cleartext sensitive data
+      final privacyToggle = find.byKey(const Key('diagnostic_privacy_toggle'));
+      await tester.tap(privacyToggle);
+      await tester.pumpAndSettle();
+
+      // Verify cleartext OTP code is now rendered
+      expect(find.text('987652'), findsOneWidget);
+      expect(find.text('••••52'), findsNothing);
     });
   });
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
+import 'package:scope/core/utils/pii_redactor.dart';
 import 'package:scope/widgets/scope_card.dart';
 
 class DiagnosticScreen extends StatefulWidget {
@@ -28,6 +29,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
   AppNotification? _analyzedNotification;
   bool _isAnalyzing = false;
   bool _isEngineReady = false;
+  bool _showSensitiveData = false;
 
   @override
   void initState() {
@@ -118,6 +120,16 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       appBar: AppBar(
         title: const Text('Ghost AI Diagnostics'),
         actions: [
+          IconButton(
+            key: const Key('diagnostic_privacy_toggle'),
+            tooltip: _showSensitiveData ? 'Hide Sensitive Data' : 'Show Sensitive Data',
+            icon: Icon(_showSensitiveData ? Icons.visibility : Icons.visibility_off),
+            onPressed: () {
+              setState(() {
+                _showSensitiveData = !_showSensitiveData;
+              });
+            },
+          ),
           if (!_isEngineReady)
             const Center(
               child: Padding(
@@ -388,15 +400,33 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
                   const SizedBox(width: 8),
                   const Text('Extracted Text Features',
                       style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Spacer(),
+                  Row(
+                    children: [
+                      Text(
+                        _showSensitiveData ? 'Show Sensitive Data' : 'Hide Sensitive Data',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      Switch(
+                        key: const Key('diagnostic_privacy_switch'),
+                        value: _showSensitiveData,
+                        onChanged: (val) {
+                          setState(() {
+                            _showSensitiveData = val;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
                 ],
               ),
               const Divider(height: 20),
-              _buildFeatureRow('OTP Code', otp),
-              _buildFeatureRow('Transaction Amount', amountStr),
+              _buildFeatureRow('OTP Code', _showSensitiveData ? otp : (otp != null ? PiiRedactor.redactOtp(otp) : null)),
+              _buildFeatureRow('Transaction Amount', _showSensitiveData ? amountStr : (amountStr != null ? PiiRedactor.redactAmount(amountStr) : null)),
               _buildFeatureRow('Has Deadline Warning', hasDeadline),
-              _buildFeatureRow('Hyperlinks (URLs)', urlsStr),
-              _buildFeatureRow('Emails', emailsStr),
-              _buildFeatureRow('Phone Numbers', phoneNumbersStr),
+              _buildFeatureRow('Hyperlinks (URLs)', _showSensitiveData ? urlsStr : (urlsStr != null ? PiiRedactor.redactUrl(urlsStr) : null)),
+              _buildFeatureRow('Emails', _showSensitiveData ? emailsStr : (emailsStr != null ? PiiRedactor.redactEmail(emailsStr) : null)),
+              _buildFeatureRow('Phone Numbers', _showSensitiveData ? phoneNumbersStr : (phoneNumbersStr != null ? PiiRedactor.redactPhoneNumber(phoneNumbersStr) : null)),
             ],
           ),
         ),
