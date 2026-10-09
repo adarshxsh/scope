@@ -13,7 +13,7 @@ import 'package:scope/widgets/section_header.dart';
 import 'package:scope/widgets/smart_action_chip.dart';
 
 /// Detail view — never auto-opens the originating app.
-class NotificationDetailScreen extends StatelessWidget {
+class NotificationDetailScreen extends StatefulWidget {
   final AppNotification notification;
   final NotificationController controller;
 
@@ -23,23 +23,50 @@ class NotificationDetailScreen extends StatelessWidget {
     required this.controller,
   });
 
-  String get _summary {
-    if (notification.explanation != null && notification.explanation!.isNotEmpty) {
-      return notification.explanation!.split('\n').first.replaceAll(RegExp(r'^[-•*]\s*'), '');
+  @override
+  State<NotificationDetailScreen> createState() => _NotificationDetailScreenState();
+}
+
+class _NotificationDetailScreenState extends State<NotificationDetailScreen> {
+  AppNotification? _unredactedNotification;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUnredacted();
+  }
+
+  Future<void> _loadUnredacted() async {
+    try {
+      final fetched = await widget.controller.getNotificationById(widget.notification.id);
+      if (mounted && fetched != null) {
+        setState(() {
+          _unredactedNotification = fetched;
+        });
+      }
+    } catch (_) {
+      // ignore
     }
-    return notification.content.isNotEmpty
-        ? notification.content
+  }
+
+  String _getSummary(AppNotification notif) {
+    if (notif.explanation != null && notif.explanation!.isNotEmpty) {
+      return notif.explanation!.split('\n').first.replaceAll(RegExp(r'^[-•*]\s*'), '');
+    }
+    return notif.content.isNotEmpty
+        ? notif.content
         : 'No additional summary available.';
   }
 
   @override
   Widget build(BuildContext context) {
+    final notif = _unredactedNotification ?? widget.notification;
     final theme = Theme.of(context);
-    final features = notification.extractedFeatures != null
-        ? ExtractedFeatures.fromMap(notification.extractedFeatures!)
+    final features = notif.extractedFeatures != null
+        ? ExtractedFeatures.fromMap(notif.extractedFeatures!)
         : const ExtractedFeatures();
-    final actions = SmartActions.forNotification(notification);
-    final urgencyColor = AppColors.urgency(notification.priority);
+    final actions = SmartActions.forNotification(notif);
+    final urgencyColor = AppColors.urgency(notif.priority);
 
     return Scaffold(
       appBar: AppBar(
@@ -62,17 +89,17 @@ class NotificationDetailScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        notification.title.isNotEmpty ? notification.title : notification.packageName,
+                        notif.title.isNotEmpty ? notif.title : notif.packageName,
                         style: theme.textTheme.titleMedium,
                       ),
                       Text(
-                        notification.packageName,
+                        notif.packageName,
                         style: theme.textTheme.bodySmall,
                       ),
                     ],
                   ),
                 ),
-                if (notification.priority != null && notification.priority != 'low')
+                if (notif.priority != null && notif.priority != 'low')
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
@@ -81,7 +108,7 @@ class NotificationDetailScreen extends StatelessWidget {
                       border: Border.all(color: urgencyColor.withValues(alpha: 0.3)),
                     ),
                     child: Text(
-                      notification.priority!.toUpperCase(),
+                      notif.priority!.toUpperCase(),
                       style: theme.textTheme.labelLarge?.copyWith(
                         color: urgencyColor,
                         fontWeight: FontWeight.bold,
@@ -99,11 +126,11 @@ class NotificationDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(_summary, style: theme.textTheme.bodyLarge),
+                  Text(_getSummary(notif), style: theme.textTheme.bodyLarge),
                   const SizedBox(height: AppSpacing.md),
                   const Divider(),
                   const SizedBox(height: AppSpacing.md),
-                  AIReasonWidget(notification: notification),
+                  AIReasonWidget(notification: notif),
                 ],
               ),
             ),
@@ -117,7 +144,7 @@ class NotificationDetailScreen extends StatelessWidget {
                   .map(
                     (action) => SmartActionChip(
                       action: action,
-                      onPressed: () => _handleAction(context, action),
+                      onPressed: () => _handleAction(context, action, notif),
                     ),
                   )
                   .toList(),
@@ -134,7 +161,7 @@ class NotificationDetailScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _DetailSection(title: 'Raw Message', child: Text(notification.content, style: theme.textTheme.bodyMedium)),
+                        _DetailSection(title: 'Raw Message', child: Text(notif.content, style: theme.textTheme.bodyMedium)),
                         const SizedBox(height: AppSpacing.md),
                         _DetailSection(
                           title: 'What I found',
@@ -151,7 +178,7 @@ class NotificationDetailScreen extends StatelessWidget {
                                 ScopeInfoRow(label: 'Phone', value: features.phoneNumbers.first),
                               if (features.emails.isNotEmpty)
                                 ScopeInfoRow(label: 'Email', value: features.emails.first),
-                              ScopeInfoRow(label: 'Organization', value: notification.packageName),
+                              ScopeInfoRow(label: 'Organization', value: notif.packageName),
                               if (!features.hasDeadline &&
                                   features.amount == null &&
                                   features.urls.isEmpty &&
@@ -173,35 +200,35 @@ class NotificationDetailScreen extends StatelessWidget {
     );
   }
 
-  void _handleAction(BuildContext context, SmartAction action) {
+  void _handleAction(BuildContext context, SmartAction action, AppNotification notif) {
     bool shouldPop = false;
     switch (action.type) {
       case SmartActionType.archive:
-        controller.archive(notification.id);
+        widget.controller.archive(notif.id);
         shouldPop = true;
         break;
       case SmartActionType.complete:
-        controller.complete(notification.id);
+        widget.controller.complete(notif.id);
         shouldPop = true;
         break;
       case SmartActionType.addCalendar:
-        controller.saveActionItem(notification, action);
-        controller.recordCalendarEvent();
+        widget.controller.saveActionItem(notif, action);
+        widget.controller.recordCalendarEvent();
         shouldPop = true;
         break;
       case SmartActionType.remind:
-        controller.saveActionItem(notification, action);
-        controller.recordReminder();
+        widget.controller.saveActionItem(notif, action);
+        widget.controller.recordReminder();
         shouldPop = true;
         break;
       case SmartActionType.track:
-        controller.saveActionItem(notification, action);
-        controller.recordAction();
+        widget.controller.saveActionItem(notif, action);
+        widget.controller.recordAction();
         shouldPop = true;
         break;
       default:
-        controller.recordAction();
-        controller.complete(notification.id); // Mark complete since we are executing it
+        widget.controller.recordAction();
+        widget.controller.complete(notif.id); // Mark complete since we are executing it
         shouldPop = true;
         break;
     }

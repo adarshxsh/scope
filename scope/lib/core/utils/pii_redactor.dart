@@ -34,7 +34,7 @@ class PiiRedactor {
 
   // Phone numbers pattern
   static final RegExp _phoneRegex = RegExp(
-    r'\b(?:\+\d{1,3}[- ]?)?\(?\d{3}\)?[- ]?\d{3}[- ]?\d{4}\b',
+    r'(?:\+\d{1,3}[- ]?)?\(?\d{3}\)?[- ]?\d{3}[- ]?\d{4}\b',
   );
 
   // Passcodes & OTPs pattern (4-8 digit numbers)
