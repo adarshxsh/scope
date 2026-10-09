@@ -7,6 +7,8 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/database/tables.dart';
 import 'package:scope/database/daos.dart';
 import 'package:scope/database/converters.dart';
+import 'package:scope/database/secure_key_manager.dart';
+import 'package:scope/database/database_encryption_helper.dart';
 
 part 'attention_database.g.dart';
 
@@ -29,6 +31,10 @@ class AttentionDatabase extends _$AttentionDatabase {
 
   factory AttentionDatabase.inMemory() {
     return AttentionDatabase(NativeDatabase.memory());
+  }
+
+  factory AttentionDatabase.encrypted(String passphrase, {File? file}) {
+    return AttentionDatabase(_openConnectionWithPassphrase(passphrase, file: file));
   }
 
   @override
@@ -54,8 +60,28 @@ class AttentionDatabase extends _$AttentionDatabase {
 
 QueryExecutor _openConnection() {
   return LazyDatabase(() async {
+    final keyManager = SecureDatabaseKeyManager();
+    final passphrase = await keyManager.getOrCreatePassphrase();
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'attention_os.db'));
-    return NativeDatabase(file);
+
+    return _openConnectionWithPassphrase(passphrase, file: file);
   });
 }
+
+QueryExecutor _openConnectionWithPassphrase(String passphrase, {File? file}) {
+  return LazyDatabase(() async {
+    final dbFile = file ?? File(p.join((await getApplicationDocumentsDirectory()).path, 'attention_os.db'));
+
+    // Re-encrypt existing unencrypted database file if needed
+    await DatabaseEncryptionHelper.ensureDatabaseEncrypted(dbFile, passphrase);
+
+    return NativeDatabase(
+      dbFile,
+      setup: (rawDb) {
+        rawDb.execute("PRAGMA key = '$passphrase';");
+      },
+    );
+  });
+}
+
