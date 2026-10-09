@@ -4,7 +4,7 @@ import android.util.Log
 
 /**
  * Utility for redacting sensitive PII and authentication details from notification titles
- * and content before writing to system Logcat buffers.
+ * and content before writing to system Logcat buffers or enqueuing.
  */
 object NotificationRedactor {
 

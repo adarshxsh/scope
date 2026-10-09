@@ -58,4 +58,18 @@ class NotificationRedactorTest {
         assertTrue(redacted.contains("[REDACTED_AMOUNT]"))
         assertFalse(redacted.contains("1,250.00"))
     }
+
+    @Test
+    fun testRedactMultipleSensitiveFields() {
+        val input = "Sent $100.00 to user@example.com with OTP 987654 for card 4532-1122-3344-5566"
+        val redacted = NotificationRedactor.redact(input)
+        assertTrue(redacted.contains("[REDACTED_AMOUNT]"))
+        assertTrue(redacted.contains("[REDACTED_EMAIL]"))
+        assertTrue(redacted.contains("[REDACTED_OTP]"))
+        assertTrue(redacted.contains("[REDACTED_CARD]"))
+        assertFalse(redacted.contains("100.00"))
+        assertFalse(redacted.contains("user@example.com"))
+        assertFalse(redacted.contains("987654"))
+        assertFalse(redacted.contains("4532-1122-3344-5566"))
+    }
 }
