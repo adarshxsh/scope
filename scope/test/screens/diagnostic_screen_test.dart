@@ -110,6 +110,18 @@ void main() {
       expect(find.text('CRITICAL'), findsOneWidget);
       expect(find.text('Pipeline Explanation Trace'), findsOneWidget);
       expect(find.text('Extracted Text Features'), findsOneWidget);
+
+      // Verify OTP is masked by default
+      expect(find.text('[REDACTED OTP]'), findsAtLeastNWidgets(1));
+
+      // Toggle Privacy Mode OFF
+      final privacyToggle = find.byIcon(Icons.visibility_off);
+      expect(privacyToggle, findsOneWidget);
+      await tester.tap(privacyToggle);
+      await tester.pumpAndSettle();
+
+      // Verify unmasked OTP is displayed in developer debug mode
+      expect(find.text('987652'), findsAtLeastNWidgets(1));
     });
   });
 }
