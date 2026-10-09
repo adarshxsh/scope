@@ -2,12 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
+import 'package:scope/core/telemetry/inference_telemetry_buffer.dart';
+import 'package:scope/database/attention_database.dart';
 import 'package:scope/widgets/scope_card.dart';
 
 class DiagnosticScreen extends StatefulWidget {
   final GhostAnalysisEngine? engine;
+  final AttentionDatabase? db;
+  final InferenceTelemetryBuffer? telemetryBuffer;
 
-  const DiagnosticScreen({super.key, this.engine});
+  const DiagnosticScreen({
+    super.key,
+    this.engine,
+    this.db,
+    this.telemetryBuffer,
+  });
 
   @override
   State<DiagnosticScreen> createState() => _DiagnosticScreenState();
@@ -15,6 +24,9 @@ class DiagnosticScreen extends StatefulWidget {
 
 class _DiagnosticScreenState extends State<DiagnosticScreen> {
   late final GhostAnalysisEngine _engine;
+  AttentionDatabase? _db;
+  late final InferenceTelemetryBuffer _telemetryBuffer;
+  List<InferenceTelemetryEntry> _historicalTelemetry = [];
   final _generator = TestNotificationGenerator();
 
   // Input Controllers
@@ -33,13 +45,34 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
   void initState() {
     super.initState();
     _engine = widget.engine ?? GhostAnalysisEngine();
+    _db = widget.db;
+    _telemetryBuffer = widget.telemetryBuffer ?? InferenceTelemetryBuffer.instance;
     _initEngine();
   }
 
   Future<void> _initEngine() async {
     await _engine.initialize();
+    if (_db == null) {
+      try {
+        _db = AttentionDatabase.inMemory();
+      } catch (_) {}
+    }
+    await _loadHistoricalTelemetry();
     if (mounted) {
       setState(() => _isEngineReady = true);
+    }
+  }
+
+  Future<void> _loadHistoricalTelemetry() async {
+    if (_db != null) {
+      try {
+        final list = await _db!.inferenceTelemetryDao.getAll();
+        if (mounted) {
+          setState(() {
+            _historicalTelemetry = list;
+          });
+        }
+      } catch (_) {}
     }
   }
 
@@ -88,6 +121,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
     );
 
     final result = await _engine.analyze(raw);
+    await _loadHistoricalTelemetry();
 
     if (mounted) {
       setState(() {
@@ -140,12 +174,123 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
             const SizedBox(height: 16),
             _buildActionSection(),
             const SizedBox(height: 20),
+            _buildTelemetryDashboardCard(),
+            const SizedBox(height: 20),
             if (_analyzedNotification != null) ...[
               _buildResultsDashboard(),
               const SizedBox(height: 30),
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildMetricTile(String label, String value) {
+    return Column(
+      children: [
+        Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        const SizedBox(height: 2),
+        Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 11)),
+      ],
+    );
+  }
+
+  Widget _buildTelemetryDashboardCard() {
+    final stats = _telemetryBuffer.getRealtimeSessionStats();
+
+    return ScopeCard(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.speed, color: Theme.of(context).colorScheme.primary),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Model Performance Telemetry',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.sync, size: 20),
+                    tooltip: 'Flush Buffer to Drift DB',
+                    onPressed: () async {
+                      if (_db != null) {
+                        await _telemetryBuffer.flush(_db!);
+                        await _loadHistoricalTelemetry();
+                        setState(() {});
+                      }
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, size: 20),
+                    tooltip: 'Clear In-Memory Buffer',
+                    onPressed: () {
+                      _telemetryBuffer.clear();
+                      setState(() {});
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const Divider(height: 20),
+          const Text('Session In-Memory Ring Buffer Stats',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildMetricTile('Inferences', '${stats.totalInferences}'),
+              _buildMetricTile('Fallback %', '${stats.fallbackPercentage.toStringAsFixed(1)}%'),
+              _buildMetricTile('Errors', '${stats.errorCount}'),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Text('Session Latency Distribution (Microseconds)',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildMetricTile('p50 Latency', '${stats.p50LatencyUs} µs'),
+              _buildMetricTile('p90 Latency', '${stats.p90LatencyUs} µs'),
+              _buildMetricTile('p95 Latency', '${stats.p95LatencyUs} µs'),
+            ],
+          ),
+          if (_historicalTelemetry.isNotEmpty) ...[
+            const Divider(height: 24),
+            const Text('Historical Persistent Summary (Drift DB)',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            const SizedBox(height: 8),
+            ..._historicalTelemetry.take(3).map((entry) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Flush: ${entry.totalInferences} samples',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      Text(
+                        'p50: ${entry.p50LatencyUs}µs | p90: ${entry.p90LatencyUs}µs | p95: ${entry.p95LatencyUs}µs',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                )),
+          ],
+        ],
       ),
     );
   }
