@@ -5,6 +5,7 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/utils/pii_redactor.dart';
+import 'package:scope/core/analysis/asset_verifier.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -58,19 +59,29 @@ class GhostAI {
   bool get isModelLoaded => _interpreter != null;
 
   /// Initializes the TFLite interpreter and rules database once on startup.
-  Future<void> initialize() async {
+  Future<void> initialize({AssetBundle? bundle}) async {
     if (_interpreter != null) return;
     try {
-      // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
+      // 1. Verify asset SHA-256 digests
+      await AssetVerifier.verifyAsset('assets/model.tflite', bundle: bundle);
+      await AssetVerifier.verifyAsset('assets/vocab.txt', bundle: bundle);
+      await AssetVerifier.verifyAsset('assets/rules.json', bundle: bundle);
+
+      // 2. Load interpreter from assets
+      if (bundle != null) {
+        final bytes = await AssetVerifier.verifyAndLoadBytes('assets/model.tflite', bundle: bundle);
+        _interpreter = Interpreter.fromBuffer(bytes);
+      } else {
+        _interpreter = await Interpreter.fromAsset('assets/model.tflite');
+      }
       debugPrint('GhostAI: TFLite interpreter loaded successfully.');
     } catch (e) {
       debugPrint('GhostAI: Failed to load TFLite model: $e');
     }
 
     try {
-      // 2. Load and compile rules database
-      final jsonStr = await rootBundle.loadString('assets/rules.json');
+      // 3. Load and compile rules database
+      final jsonStr = await (bundle ?? rootBundle).loadString('assets/rules.json');
       _ruleEngine.compile(jsonStr);
       debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
     } catch (e) {
