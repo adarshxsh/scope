@@ -2709,6 +2709,608 @@ class DailyBriefTableCompanion extends UpdateCompanion<DailyBriefEntry> {
   }
 }
 
+class $UserSettingsTableTable extends UserSettingsTable
+    with TableInfo<$UserSettingsTableTable, UserSettingsEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $UserSettingsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _retentionDaysMeta = const VerificationMeta(
+    'retentionDays',
+  );
+  @override
+  late final GeneratedColumn<int> retentionDays = GeneratedColumn<int>(
+    'retention_days',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(7),
+  );
+  static const VerificationMeta _maxNotificationRowsMeta =
+      const VerificationMeta('maxNotificationRows');
+  @override
+  late final GeneratedColumn<int> maxNotificationRows = GeneratedColumn<int>(
+    'max_notification_rows',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(5000),
+  );
+  static const VerificationMeta _maxStorageQuotaBytesMeta =
+      const VerificationMeta('maxStorageQuotaBytes');
+  @override
+  late final GeneratedColumn<int> maxStorageQuotaBytes = GeneratedColumn<int>(
+    'max_storage_quota_bytes',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(25 * 1024 * 1024),
+  );
+  static const VerificationMeta _storageHighWaterMarkBytesMeta =
+      const VerificationMeta('storageHighWaterMarkBytes');
+  @override
+  late final GeneratedColumn<int> storageHighWaterMarkBytes =
+      GeneratedColumn<int>(
+        'storage_high_water_mark_bytes',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(20 * 1024 * 1024),
+      );
+  static const VerificationMeta _autoCleanupEnabledMeta =
+      const VerificationMeta('autoCleanupEnabled');
+  @override
+  late final GeneratedColumn<bool> autoCleanupEnabled = GeneratedColumn<bool>(
+    'auto_cleanup_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("auto_cleanup_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _lastCleanupTimeMeta = const VerificationMeta(
+    'lastCleanupTime',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastCleanupTime =
+      GeneratedColumn<DateTime>(
+        'last_cleanup_time',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _totalCleanedRowsMeta = const VerificationMeta(
+    'totalCleanedRows',
+  );
+  @override
+  late final GeneratedColumn<int> totalCleanedRows = GeneratedColumn<int>(
+    'total_cleaned_rows',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _lastCleanedCountMeta = const VerificationMeta(
+    'lastCleanedCount',
+  );
+  @override
+  late final GeneratedColumn<int> lastCleanedCount = GeneratedColumn<int>(
+    'last_cleaned_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    retentionDays,
+    maxNotificationRows,
+    maxStorageQuotaBytes,
+    storageHighWaterMarkBytes,
+    autoCleanupEnabled,
+    lastCleanupTime,
+    totalCleanedRows,
+    lastCleanedCount,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'user_settings_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<UserSettingsEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('retention_days')) {
+      context.handle(
+        _retentionDaysMeta,
+        retentionDays.isAcceptableOrUnknown(
+          data['retention_days']!,
+          _retentionDaysMeta,
+        ),
+      );
+    }
+    if (data.containsKey('max_notification_rows')) {
+      context.handle(
+        _maxNotificationRowsMeta,
+        maxNotificationRows.isAcceptableOrUnknown(
+          data['max_notification_rows']!,
+          _maxNotificationRowsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('max_storage_quota_bytes')) {
+      context.handle(
+        _maxStorageQuotaBytesMeta,
+        maxStorageQuotaBytes.isAcceptableOrUnknown(
+          data['max_storage_quota_bytes']!,
+          _maxStorageQuotaBytesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('storage_high_water_mark_bytes')) {
+      context.handle(
+        _storageHighWaterMarkBytesMeta,
+        storageHighWaterMarkBytes.isAcceptableOrUnknown(
+          data['storage_high_water_mark_bytes']!,
+          _storageHighWaterMarkBytesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('auto_cleanup_enabled')) {
+      context.handle(
+        _autoCleanupEnabledMeta,
+        autoCleanupEnabled.isAcceptableOrUnknown(
+          data['auto_cleanup_enabled']!,
+          _autoCleanupEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_cleanup_time')) {
+      context.handle(
+        _lastCleanupTimeMeta,
+        lastCleanupTime.isAcceptableOrUnknown(
+          data['last_cleanup_time']!,
+          _lastCleanupTimeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('total_cleaned_rows')) {
+      context.handle(
+        _totalCleanedRowsMeta,
+        totalCleanedRows.isAcceptableOrUnknown(
+          data['total_cleaned_rows']!,
+          _totalCleanedRowsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_cleaned_count')) {
+      context.handle(
+        _lastCleanedCountMeta,
+        lastCleanedCount.isAcceptableOrUnknown(
+          data['last_cleaned_count']!,
+          _lastCleanedCountMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  UserSettingsEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return UserSettingsEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      retentionDays: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}retention_days'],
+      )!,
+      maxNotificationRows: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}max_notification_rows'],
+      )!,
+      maxStorageQuotaBytes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}max_storage_quota_bytes'],
+      )!,
+      storageHighWaterMarkBytes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}storage_high_water_mark_bytes'],
+      )!,
+      autoCleanupEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}auto_cleanup_enabled'],
+      )!,
+      lastCleanupTime: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_cleanup_time'],
+      ),
+      totalCleanedRows: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}total_cleaned_rows'],
+      )!,
+      lastCleanedCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_cleaned_count'],
+      )!,
+    );
+  }
+
+  @override
+  $UserSettingsTableTable createAlias(String alias) {
+    return $UserSettingsTableTable(attachedDatabase, alias);
+  }
+}
+
+class UserSettingsEntry extends DataClass
+    implements Insertable<UserSettingsEntry> {
+  final int id;
+  final int retentionDays;
+  final int maxNotificationRows;
+  final int maxStorageQuotaBytes;
+  final int storageHighWaterMarkBytes;
+  final bool autoCleanupEnabled;
+  final DateTime? lastCleanupTime;
+  final int totalCleanedRows;
+  final int lastCleanedCount;
+  const UserSettingsEntry({
+    required this.id,
+    required this.retentionDays,
+    required this.maxNotificationRows,
+    required this.maxStorageQuotaBytes,
+    required this.storageHighWaterMarkBytes,
+    required this.autoCleanupEnabled,
+    this.lastCleanupTime,
+    required this.totalCleanedRows,
+    required this.lastCleanedCount,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['retention_days'] = Variable<int>(retentionDays);
+    map['max_notification_rows'] = Variable<int>(maxNotificationRows);
+    map['max_storage_quota_bytes'] = Variable<int>(maxStorageQuotaBytes);
+    map['storage_high_water_mark_bytes'] = Variable<int>(
+      storageHighWaterMarkBytes,
+    );
+    map['auto_cleanup_enabled'] = Variable<bool>(autoCleanupEnabled);
+    if (!nullToAbsent || lastCleanupTime != null) {
+      map['last_cleanup_time'] = Variable<DateTime>(lastCleanupTime);
+    }
+    map['total_cleaned_rows'] = Variable<int>(totalCleanedRows);
+    map['last_cleaned_count'] = Variable<int>(lastCleanedCount);
+    return map;
+  }
+
+  UserSettingsTableCompanion toCompanion(bool nullToAbsent) {
+    return UserSettingsTableCompanion(
+      id: Value(id),
+      retentionDays: Value(retentionDays),
+      maxNotificationRows: Value(maxNotificationRows),
+      maxStorageQuotaBytes: Value(maxStorageQuotaBytes),
+      storageHighWaterMarkBytes: Value(storageHighWaterMarkBytes),
+      autoCleanupEnabled: Value(autoCleanupEnabled),
+      lastCleanupTime: lastCleanupTime == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastCleanupTime),
+      totalCleanedRows: Value(totalCleanedRows),
+      lastCleanedCount: Value(lastCleanedCount),
+    );
+  }
+
+  factory UserSettingsEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return UserSettingsEntry(
+      id: serializer.fromJson<int>(json['id']),
+      retentionDays: serializer.fromJson<int>(json['retentionDays']),
+      maxNotificationRows: serializer.fromJson<int>(
+        json['maxNotificationRows'],
+      ),
+      maxStorageQuotaBytes: serializer.fromJson<int>(
+        json['maxStorageQuotaBytes'],
+      ),
+      storageHighWaterMarkBytes: serializer.fromJson<int>(
+        json['storageHighWaterMarkBytes'],
+      ),
+      autoCleanupEnabled: serializer.fromJson<bool>(json['autoCleanupEnabled']),
+      lastCleanupTime: serializer.fromJson<DateTime?>(json['lastCleanupTime']),
+      totalCleanedRows: serializer.fromJson<int>(json['totalCleanedRows']),
+      lastCleanedCount: serializer.fromJson<int>(json['lastCleanedCount']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'retentionDays': serializer.toJson<int>(retentionDays),
+      'maxNotificationRows': serializer.toJson<int>(maxNotificationRows),
+      'maxStorageQuotaBytes': serializer.toJson<int>(maxStorageQuotaBytes),
+      'storageHighWaterMarkBytes': serializer.toJson<int>(
+        storageHighWaterMarkBytes,
+      ),
+      'autoCleanupEnabled': serializer.toJson<bool>(autoCleanupEnabled),
+      'lastCleanupTime': serializer.toJson<DateTime?>(lastCleanupTime),
+      'totalCleanedRows': serializer.toJson<int>(totalCleanedRows),
+      'lastCleanedCount': serializer.toJson<int>(lastCleanedCount),
+    };
+  }
+
+  UserSettingsEntry copyWith({
+    int? id,
+    int? retentionDays,
+    int? maxNotificationRows,
+    int? maxStorageQuotaBytes,
+    int? storageHighWaterMarkBytes,
+    bool? autoCleanupEnabled,
+    Value<DateTime?> lastCleanupTime = const Value.absent(),
+    int? totalCleanedRows,
+    int? lastCleanedCount,
+  }) => UserSettingsEntry(
+    id: id ?? this.id,
+    retentionDays: retentionDays ?? this.retentionDays,
+    maxNotificationRows: maxNotificationRows ?? this.maxNotificationRows,
+    maxStorageQuotaBytes: maxStorageQuotaBytes ?? this.maxStorageQuotaBytes,
+    storageHighWaterMarkBytes:
+        storageHighWaterMarkBytes ?? this.storageHighWaterMarkBytes,
+    autoCleanupEnabled: autoCleanupEnabled ?? this.autoCleanupEnabled,
+    lastCleanupTime: lastCleanupTime.present
+        ? lastCleanupTime.value
+        : this.lastCleanupTime,
+    totalCleanedRows: totalCleanedRows ?? this.totalCleanedRows,
+    lastCleanedCount: lastCleanedCount ?? this.lastCleanedCount,
+  );
+  UserSettingsEntry copyWithCompanion(UserSettingsTableCompanion data) {
+    return UserSettingsEntry(
+      id: data.id.present ? data.id.value : this.id,
+      retentionDays: data.retentionDays.present
+          ? data.retentionDays.value
+          : this.retentionDays,
+      maxNotificationRows: data.maxNotificationRows.present
+          ? data.maxNotificationRows.value
+          : this.maxNotificationRows,
+      maxStorageQuotaBytes: data.maxStorageQuotaBytes.present
+          ? data.maxStorageQuotaBytes.value
+          : this.maxStorageQuotaBytes,
+      storageHighWaterMarkBytes: data.storageHighWaterMarkBytes.present
+          ? data.storageHighWaterMarkBytes.value
+          : this.storageHighWaterMarkBytes,
+      autoCleanupEnabled: data.autoCleanupEnabled.present
+          ? data.autoCleanupEnabled.value
+          : this.autoCleanupEnabled,
+      lastCleanupTime: data.lastCleanupTime.present
+          ? data.lastCleanupTime.value
+          : this.lastCleanupTime,
+      totalCleanedRows: data.totalCleanedRows.present
+          ? data.totalCleanedRows.value
+          : this.totalCleanedRows,
+      lastCleanedCount: data.lastCleanedCount.present
+          ? data.lastCleanedCount.value
+          : this.lastCleanedCount,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UserSettingsEntry(')
+          ..write('id: $id, ')
+          ..write('retentionDays: $retentionDays, ')
+          ..write('maxNotificationRows: $maxNotificationRows, ')
+          ..write('maxStorageQuotaBytes: $maxStorageQuotaBytes, ')
+          ..write('storageHighWaterMarkBytes: $storageHighWaterMarkBytes, ')
+          ..write('autoCleanupEnabled: $autoCleanupEnabled, ')
+          ..write('lastCleanupTime: $lastCleanupTime, ')
+          ..write('totalCleanedRows: $totalCleanedRows, ')
+          ..write('lastCleanedCount: $lastCleanedCount')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    retentionDays,
+    maxNotificationRows,
+    maxStorageQuotaBytes,
+    storageHighWaterMarkBytes,
+    autoCleanupEnabled,
+    lastCleanupTime,
+    totalCleanedRows,
+    lastCleanedCount,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is UserSettingsEntry &&
+          other.id == this.id &&
+          other.retentionDays == this.retentionDays &&
+          other.maxNotificationRows == this.maxNotificationRows &&
+          other.maxStorageQuotaBytes == this.maxStorageQuotaBytes &&
+          other.storageHighWaterMarkBytes == this.storageHighWaterMarkBytes &&
+          other.autoCleanupEnabled == this.autoCleanupEnabled &&
+          other.lastCleanupTime == this.lastCleanupTime &&
+          other.totalCleanedRows == this.totalCleanedRows &&
+          other.lastCleanedCount == this.lastCleanedCount);
+}
+
+class UserSettingsTableCompanion extends UpdateCompanion<UserSettingsEntry> {
+  final Value<int> id;
+  final Value<int> retentionDays;
+  final Value<int> maxNotificationRows;
+  final Value<int> maxStorageQuotaBytes;
+  final Value<int> storageHighWaterMarkBytes;
+  final Value<bool> autoCleanupEnabled;
+  final Value<DateTime?> lastCleanupTime;
+  final Value<int> totalCleanedRows;
+  final Value<int> lastCleanedCount;
+  const UserSettingsTableCompanion({
+    this.id = const Value.absent(),
+    this.retentionDays = const Value.absent(),
+    this.maxNotificationRows = const Value.absent(),
+    this.maxStorageQuotaBytes = const Value.absent(),
+    this.storageHighWaterMarkBytes = const Value.absent(),
+    this.autoCleanupEnabled = const Value.absent(),
+    this.lastCleanupTime = const Value.absent(),
+    this.totalCleanedRows = const Value.absent(),
+    this.lastCleanedCount = const Value.absent(),
+  });
+  UserSettingsTableCompanion.insert({
+    this.id = const Value.absent(),
+    this.retentionDays = const Value.absent(),
+    this.maxNotificationRows = const Value.absent(),
+    this.maxStorageQuotaBytes = const Value.absent(),
+    this.storageHighWaterMarkBytes = const Value.absent(),
+    this.autoCleanupEnabled = const Value.absent(),
+    this.lastCleanupTime = const Value.absent(),
+    this.totalCleanedRows = const Value.absent(),
+    this.lastCleanedCount = const Value.absent(),
+  });
+  static Insertable<UserSettingsEntry> custom({
+    Expression<int>? id,
+    Expression<int>? retentionDays,
+    Expression<int>? maxNotificationRows,
+    Expression<int>? maxStorageQuotaBytes,
+    Expression<int>? storageHighWaterMarkBytes,
+    Expression<bool>? autoCleanupEnabled,
+    Expression<DateTime>? lastCleanupTime,
+    Expression<int>? totalCleanedRows,
+    Expression<int>? lastCleanedCount,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (retentionDays != null) 'retention_days': retentionDays,
+      if (maxNotificationRows != null)
+        'max_notification_rows': maxNotificationRows,
+      if (maxStorageQuotaBytes != null)
+        'max_storage_quota_bytes': maxStorageQuotaBytes,
+      if (storageHighWaterMarkBytes != null)
+        'storage_high_water_mark_bytes': storageHighWaterMarkBytes,
+      if (autoCleanupEnabled != null)
+        'auto_cleanup_enabled': autoCleanupEnabled,
+      if (lastCleanupTime != null) 'last_cleanup_time': lastCleanupTime,
+      if (totalCleanedRows != null) 'total_cleaned_rows': totalCleanedRows,
+      if (lastCleanedCount != null) 'last_cleaned_count': lastCleanedCount,
+    });
+  }
+
+  UserSettingsTableCompanion copyWith({
+    Value<int>? id,
+    Value<int>? retentionDays,
+    Value<int>? maxNotificationRows,
+    Value<int>? maxStorageQuotaBytes,
+    Value<int>? storageHighWaterMarkBytes,
+    Value<bool>? autoCleanupEnabled,
+    Value<DateTime?>? lastCleanupTime,
+    Value<int>? totalCleanedRows,
+    Value<int>? lastCleanedCount,
+  }) {
+    return UserSettingsTableCompanion(
+      id: id ?? this.id,
+      retentionDays: retentionDays ?? this.retentionDays,
+      maxNotificationRows: maxNotificationRows ?? this.maxNotificationRows,
+      maxStorageQuotaBytes: maxStorageQuotaBytes ?? this.maxStorageQuotaBytes,
+      storageHighWaterMarkBytes:
+          storageHighWaterMarkBytes ?? this.storageHighWaterMarkBytes,
+      autoCleanupEnabled: autoCleanupEnabled ?? this.autoCleanupEnabled,
+      lastCleanupTime: lastCleanupTime ?? this.lastCleanupTime,
+      totalCleanedRows: totalCleanedRows ?? this.totalCleanedRows,
+      lastCleanedCount: lastCleanedCount ?? this.lastCleanedCount,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (retentionDays.present) {
+      map['retention_days'] = Variable<int>(retentionDays.value);
+    }
+    if (maxNotificationRows.present) {
+      map['max_notification_rows'] = Variable<int>(maxNotificationRows.value);
+    }
+    if (maxStorageQuotaBytes.present) {
+      map['max_storage_quota_bytes'] = Variable<int>(
+        maxStorageQuotaBytes.value,
+      );
+    }
+    if (storageHighWaterMarkBytes.present) {
+      map['storage_high_water_mark_bytes'] = Variable<int>(
+        storageHighWaterMarkBytes.value,
+      );
+    }
+    if (autoCleanupEnabled.present) {
+      map['auto_cleanup_enabled'] = Variable<bool>(autoCleanupEnabled.value);
+    }
+    if (lastCleanupTime.present) {
+      map['last_cleanup_time'] = Variable<DateTime>(lastCleanupTime.value);
+    }
+    if (totalCleanedRows.present) {
+      map['total_cleaned_rows'] = Variable<int>(totalCleanedRows.value);
+    }
+    if (lastCleanedCount.present) {
+      map['last_cleaned_count'] = Variable<int>(lastCleanedCount.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UserSettingsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('retentionDays: $retentionDays, ')
+          ..write('maxNotificationRows: $maxNotificationRows, ')
+          ..write('maxStorageQuotaBytes: $maxStorageQuotaBytes, ')
+          ..write('storageHighWaterMarkBytes: $storageHighWaterMarkBytes, ')
+          ..write('autoCleanupEnabled: $autoCleanupEnabled, ')
+          ..write('lastCleanupTime: $lastCleanupTime, ')
+          ..write('totalCleanedRows: $totalCleanedRows, ')
+          ..write('lastCleanedCount: $lastCleanedCount')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AttentionDatabase extends GeneratedDatabase {
   _$AttentionDatabase(QueryExecutor e) : super(e);
   $AttentionDatabaseManager get managers => $AttentionDatabaseManager(this);
@@ -2722,6 +3324,8 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final $DailyBriefTableTable dailyBriefTable = $DailyBriefTableTable(
     this,
   );
+  late final $UserSettingsTableTable userSettingsTable =
+      $UserSettingsTableTable(this);
   late final NotificationDao notificationDao = NotificationDao(
     this as AttentionDatabase,
   );
@@ -2734,6 +3338,9 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final DailyBriefDao dailyBriefDao = DailyBriefDao(
     this as AttentionDatabase,
   );
+  late final UserSettingsDao userSettingsDao = UserSettingsDao(
+    this as AttentionDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2743,6 +3350,7 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
     reviewQueueTable,
     focusSessionsTable,
     dailyBriefTable,
+    userSettingsTable,
   ];
 }
 
@@ -3406,7 +4014,9 @@ class $$NotificationsTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$NotificationsTableTable, NotificationEntry>(
+                    table,
+                  ),
                   $$NotificationsTableTableReferences(db, table, e),
                 ),
               )
@@ -3749,7 +4359,7 @@ class $$ReviewQueueTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$ReviewQueueTableTable, ReviewQueueEntry>(table),
                   $$ReviewQueueTableTableReferences(db, table, e),
                 ),
               )
@@ -4021,7 +4631,18 @@ class $$FocusSessionsTableTableTableManager
                 duration: duration,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$FocusSessionsTableTable, FocusSessionEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $FocusSessionsTableTable,
+                    FocusSessionEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4273,7 +4894,16 @@ class $$DailyBriefTableTableTableManager
                 archivedCount: archivedCount,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$DailyBriefTableTable, DailyBriefEntry>(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $DailyBriefTableTable,
+                    DailyBriefEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4301,6 +4931,316 @@ typedef $$DailyBriefTableTableProcessedTableManager =
       DailyBriefEntry,
       PrefetchHooks Function()
     >;
+typedef $$UserSettingsTableTableCreateCompanionBuilder =
+    UserSettingsTableCompanion Function({
+      Value<int> id,
+      Value<int> retentionDays,
+      Value<int> maxNotificationRows,
+      Value<int> maxStorageQuotaBytes,
+      Value<int> storageHighWaterMarkBytes,
+      Value<bool> autoCleanupEnabled,
+      Value<DateTime?> lastCleanupTime,
+      Value<int> totalCleanedRows,
+      Value<int> lastCleanedCount,
+    });
+typedef $$UserSettingsTableTableUpdateCompanionBuilder =
+    UserSettingsTableCompanion Function({
+      Value<int> id,
+      Value<int> retentionDays,
+      Value<int> maxNotificationRows,
+      Value<int> maxStorageQuotaBytes,
+      Value<int> storageHighWaterMarkBytes,
+      Value<bool> autoCleanupEnabled,
+      Value<DateTime?> lastCleanupTime,
+      Value<int> totalCleanedRows,
+      Value<int> lastCleanedCount,
+    });
+
+class $$UserSettingsTableTableFilterComposer
+    extends Composer<_$AttentionDatabase, $UserSettingsTableTable> {
+  $$UserSettingsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get retentionDays => $composableBuilder(
+    column: $table.retentionDays,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get maxNotificationRows => $composableBuilder(
+    column: $table.maxNotificationRows,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get maxStorageQuotaBytes => $composableBuilder(
+    column: $table.maxStorageQuotaBytes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get storageHighWaterMarkBytes => $composableBuilder(
+    column: $table.storageHighWaterMarkBytes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get autoCleanupEnabled => $composableBuilder(
+    column: $table.autoCleanupEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastCleanupTime => $composableBuilder(
+    column: $table.lastCleanupTime,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get totalCleanedRows => $composableBuilder(
+    column: $table.totalCleanedRows,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastCleanedCount => $composableBuilder(
+    column: $table.lastCleanedCount,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$UserSettingsTableTableOrderingComposer
+    extends Composer<_$AttentionDatabase, $UserSettingsTableTable> {
+  $$UserSettingsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get retentionDays => $composableBuilder(
+    column: $table.retentionDays,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get maxNotificationRows => $composableBuilder(
+    column: $table.maxNotificationRows,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get maxStorageQuotaBytes => $composableBuilder(
+    column: $table.maxStorageQuotaBytes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get storageHighWaterMarkBytes => $composableBuilder(
+    column: $table.storageHighWaterMarkBytes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get autoCleanupEnabled => $composableBuilder(
+    column: $table.autoCleanupEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastCleanupTime => $composableBuilder(
+    column: $table.lastCleanupTime,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get totalCleanedRows => $composableBuilder(
+    column: $table.totalCleanedRows,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastCleanedCount => $composableBuilder(
+    column: $table.lastCleanedCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$UserSettingsTableTableAnnotationComposer
+    extends Composer<_$AttentionDatabase, $UserSettingsTableTable> {
+  $$UserSettingsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get retentionDays => $composableBuilder(
+    column: $table.retentionDays,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get maxNotificationRows => $composableBuilder(
+    column: $table.maxNotificationRows,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get maxStorageQuotaBytes => $composableBuilder(
+    column: $table.maxStorageQuotaBytes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get storageHighWaterMarkBytes => $composableBuilder(
+    column: $table.storageHighWaterMarkBytes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get autoCleanupEnabled => $composableBuilder(
+    column: $table.autoCleanupEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastCleanupTime => $composableBuilder(
+    column: $table.lastCleanupTime,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get totalCleanedRows => $composableBuilder(
+    column: $table.totalCleanedRows,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get lastCleanedCount => $composableBuilder(
+    column: $table.lastCleanedCount,
+    builder: (column) => column,
+  );
+}
+
+class $$UserSettingsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AttentionDatabase,
+          $UserSettingsTableTable,
+          UserSettingsEntry,
+          $$UserSettingsTableTableFilterComposer,
+          $$UserSettingsTableTableOrderingComposer,
+          $$UserSettingsTableTableAnnotationComposer,
+          $$UserSettingsTableTableCreateCompanionBuilder,
+          $$UserSettingsTableTableUpdateCompanionBuilder,
+          (
+            UserSettingsEntry,
+            BaseReferences<
+              _$AttentionDatabase,
+              $UserSettingsTableTable,
+              UserSettingsEntry
+            >,
+          ),
+          UserSettingsEntry,
+          PrefetchHooks Function()
+        > {
+  $$UserSettingsTableTableTableManager(
+    _$AttentionDatabase db,
+    $UserSettingsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$UserSettingsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$UserSettingsTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$UserSettingsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> retentionDays = const Value.absent(),
+                Value<int> maxNotificationRows = const Value.absent(),
+                Value<int> maxStorageQuotaBytes = const Value.absent(),
+                Value<int> storageHighWaterMarkBytes = const Value.absent(),
+                Value<bool> autoCleanupEnabled = const Value.absent(),
+                Value<DateTime?> lastCleanupTime = const Value.absent(),
+                Value<int> totalCleanedRows = const Value.absent(),
+                Value<int> lastCleanedCount = const Value.absent(),
+              }) => UserSettingsTableCompanion(
+                id: id,
+                retentionDays: retentionDays,
+                maxNotificationRows: maxNotificationRows,
+                maxStorageQuotaBytes: maxStorageQuotaBytes,
+                storageHighWaterMarkBytes: storageHighWaterMarkBytes,
+                autoCleanupEnabled: autoCleanupEnabled,
+                lastCleanupTime: lastCleanupTime,
+                totalCleanedRows: totalCleanedRows,
+                lastCleanedCount: lastCleanedCount,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> retentionDays = const Value.absent(),
+                Value<int> maxNotificationRows = const Value.absent(),
+                Value<int> maxStorageQuotaBytes = const Value.absent(),
+                Value<int> storageHighWaterMarkBytes = const Value.absent(),
+                Value<bool> autoCleanupEnabled = const Value.absent(),
+                Value<DateTime?> lastCleanupTime = const Value.absent(),
+                Value<int> totalCleanedRows = const Value.absent(),
+                Value<int> lastCleanedCount = const Value.absent(),
+              }) => UserSettingsTableCompanion.insert(
+                id: id,
+                retentionDays: retentionDays,
+                maxNotificationRows: maxNotificationRows,
+                maxStorageQuotaBytes: maxStorageQuotaBytes,
+                storageHighWaterMarkBytes: storageHighWaterMarkBytes,
+                autoCleanupEnabled: autoCleanupEnabled,
+                lastCleanupTime: lastCleanupTime,
+                totalCleanedRows: totalCleanedRows,
+                lastCleanedCount: lastCleanedCount,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$UserSettingsTableTable, UserSettingsEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $UserSettingsTableTable,
+                    UserSettingsEntry
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$UserSettingsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AttentionDatabase,
+      $UserSettingsTableTable,
+      UserSettingsEntry,
+      $$UserSettingsTableTableFilterComposer,
+      $$UserSettingsTableTableOrderingComposer,
+      $$UserSettingsTableTableAnnotationComposer,
+      $$UserSettingsTableTableCreateCompanionBuilder,
+      $$UserSettingsTableTableUpdateCompanionBuilder,
+      (
+        UserSettingsEntry,
+        BaseReferences<
+          _$AttentionDatabase,
+          $UserSettingsTableTable,
+          UserSettingsEntry
+        >,
+      ),
+      UserSettingsEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AttentionDatabaseManager {
   final _$AttentionDatabase _db;
@@ -4313,4 +5253,6 @@ class $AttentionDatabaseManager {
       $$FocusSessionsTableTableTableManager(_db, _db.focusSessionsTable);
   $$DailyBriefTableTableTableManager get dailyBriefTable =>
       $$DailyBriefTableTableTableManager(_db, _db.dailyBriefTable);
+  $$UserSettingsTableTableTableManager get userSettingsTable =>
+      $$UserSettingsTableTableTableManager(_db, _db.userSettingsTable);
 }
