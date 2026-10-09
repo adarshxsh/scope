@@ -126,10 +126,27 @@ class AppNotification {
   /// Creates an [AppNotification] from a Map (used by MethodChannel bridge).
   factory AppNotification.fromMap(Map<String, dynamic> map) {
     final rawId = map['id'] as String? ?? '';
-    final packageName = map['packageName'] as String? ?? '';
-    final title = map['title'] as String? ?? '';
-    final content = map['content'] as String? ?? '';
-    final timestamp = map['timestamp'] as int? ?? 0;
+    var packageName = map['packageName'] as String? ?? '';
+    var title = map['title'] as String? ?? '';
+    var content = map['content'] as String? ?? '';
+    var timestamp = map['timestamp'] as int? ?? 0;
+
+    // Strict sanitization boundaries
+    packageName = packageName.trim();
+
+    title = title.trim();
+    if (title.length > 300) {
+      title = title.substring(0, 300);
+    }
+
+    content = content.trim();
+    if (content.length > 2000) {
+      content = content.substring(0, 2000);
+    }
+
+    if (timestamp < 0) {
+      timestamp = DateTime.now().millisecondsSinceEpoch;
+    }
 
     final id = (rawId.isEmpty || rawId.startsWith('notif_'))
         ? (packageName.isEmpty && title.isEmpty && content.isEmpty && timestamp == 0)
