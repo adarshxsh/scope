@@ -5,26 +5,46 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/analysis_result.dart';
 import 'package:scope/core/analysis/notification_analyzer.dart';
 import 'package:scope/core/analysis/wordpiece_tokenizer.dart';
+import 'package:scope/core/analysis/asset_verifier.dart';
 
 /// Classifier using LiteRT (TensorFlow Lite) to classify text categories.
 class LiteRtClassifier implements NotificationAnalyzer {
   Interpreter? _interpreter;
   WordPieceTokenizer? _tokenizer;
   bool _isModelLoaded = false;
+  final AssetBundle? _assetBundle;
 
-  LiteRtClassifier() {
-    _initialize();
+  LiteRtClassifier({Interpreter? interpreter, AssetBundle? assetBundle})
+      : _interpreter = interpreter,
+        _assetBundle = assetBundle,
+        _isModelLoaded = interpreter != null {
+    if (interpreter == null) {
+      _initialize();
+    }
   }
 
   Future<void> _initialize() async {
     try {
-      // 1. Load Vocab
-      final vocabStr = await rootBundle.loadString('assets/vocab.txt');
+      final bundle = _assetBundle ?? rootBundle;
+
+      // 1. Verify SHA-256 digests prior to loading assets
+      await AssetVerifier.verifyAsset('assets/vocab.txt', bundle: bundle);
+      await AssetVerifier.verifyAsset('assets/model.tflite', bundle: bundle);
+      await AssetVerifier.verifyAsset('assets/rules.json', bundle: bundle);
+
+      // 2. Load Vocab
+      final vocabStr = await bundle.loadString('assets/vocab.txt');
       final lines = vocabStr.split('\n');
       _tokenizer = WordPieceTokenizer.fromLines(lines);
 
-      // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
-      _isModelLoaded = false;
+      // 3. Load Interpreter from assets
+      if (_assetBundle != null) {
+        final bytes = await AssetVerifier.verifyAndLoadBytes('assets/model.tflite', bundle: _assetBundle);
+        _interpreter = Interpreter.fromBuffer(bytes);
+      } else {
+        _interpreter = await Interpreter.fromAsset('assets/model.tflite');
+      }
+      _isModelLoaded = _interpreter != null;
     } catch (e) {
       // Graceful degradation: Log and set flags so analyze runs in fallback mode
       // ignore: avoid_print
@@ -34,7 +54,7 @@ class LiteRtClassifier implements NotificationAnalyzer {
       // Ensure tokenizer is loaded even if interpreter fails (so we can test tokenization in fallback)
       if (_tokenizer == null) {
         try {
-          final vocabStr = await rootBundle.loadString('assets/vocab.txt');
+          final vocabStr = await (_assetBundle ?? rootBundle).loadString('assets/vocab.txt');
           _tokenizer = WordPieceTokenizer.fromLines(vocabStr.split('\n'));
         } catch (_) {}
       }
@@ -50,7 +70,7 @@ class LiteRtClassifier implements NotificationAnalyzer {
     final combinedText = '${notification.title} ${notification.content}';
 
     // Ensure initialization finished
-    if (_tokenizer == null) {
+    if (_tokenizer == null && !_isModelLoaded) {
       await _initialize();
     }
 
@@ -73,17 +93,30 @@ class LiteRtClassifier implements NotificationAnalyzer {
     }
 
     try {
-      // Run model inference
-      // Assume input shape: [1, 64]
-      final input = [tokenIds];
-      
-      // Output logit tensor shape: [1, 5] (Promo, Social, System, Message, Finance)
-      final output = List<double>.filled(5, 0.0).reshape([1, 5]);
+      // Inspect model tensor shapes adaptively
+      final inputShape = _interpreter!.getInputTensor(0).shape;
+      final targetLen = (inputShape.isNotEmpty && inputShape.last > 0) ? inputShape.last : 64;
+      final adjustedTokens = tokenIds.length == targetLen
+          ? tokenIds
+          : (tokenIds.length > targetLen
+              ? tokenIds.sublist(0, targetLen)
+              : [...tokenIds, ...List<int>.filled(targetLen - tokenIds.length, 0)]);
+      final input = [adjustedTokens];
+
+      final outputShape = _interpreter!.getOutputTensor(0).shape;
+      final numClasses = (outputShape.isNotEmpty && outputShape.last > 0) ? outputShape.last : 5;
+      final output = List<double>.filled(numClasses, 0.0).reshape([1, numClasses]);
 
       _interpreter!.run(input, output);
 
-      final scores = List<double>.from(output[0] as List);
-      final softmaxScores = _softmax(scores);
+      List<double> rawScores = List<double>.from(output[0] as List);
+      if (rawScores.length < 5) {
+        rawScores = [...rawScores, ...List<double>.filled(5 - rawScores.length, 0.0)];
+      } else if (rawScores.length > 5) {
+        rawScores = rawScores.sublist(0, 5);
+      }
+
+      final softmaxScores = _softmax(rawScores);
 
       int bestIndex = 0;
       double maxScore = -1.0;
