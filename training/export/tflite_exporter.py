@@ -43,3 +43,21 @@ def _representative_dataset(
 
     return generate
 
+
+def export_int8_tflite(
+    saved_model_dir: Path,
+    output_path: Path,
+    representative_data: np.ndarray,
+    max_samples: int = 256,
+) -> Path:
+    """Exports an 8-bit integer post-training quantized TFLite model calibrated on representative data."""
+    ensure_dir(output_path.parent)
+    converter = tf.lite.TFLiteConverter.from_saved_model(str(saved_model_dir))
+    converter.optimizations = [tf.lite.Optimize.DEFAULT]
+    converter.representative_dataset = _representative_dataset(
+        representative_data, max_samples=max_samples
+    )
+    model_bytes = converter.convert()
+    output_path.write_bytes(model_bytes)
+    return output_path
+

@@ -31,6 +31,7 @@ from training.evaluation.metrics import (
 from training.evaluation.plots import plot_regression_results, plot_training_history
 from training.export.tflite_exporter import (
     export_float32_tflite,
+    export_int8_tflite,
     export_saved_model,
 )
 from training.models.mlp import build_baseline_mlp
@@ -127,10 +128,26 @@ def main() -> None:
     metrics = regression_metrics(splits.y_test, predictions)
 
     saved_model_dir = export_saved_model(model, export_dir / "saved_model")
-    tflite_path = export_float32_tflite(
+    float32_tflite_path = export_float32_tflite(
+        saved_model_dir,
+        export_dir / "ghost_ai_float32.tflite",
+    )
+    tflite_path = export_int8_tflite(
         saved_model_dir,
         export_dir / "ghost_ai.tflite",
+        splits.x_train,
     )
+
+    float32_size = float32_tflite_path.stat().st_size
+    quantized_size = tflite_path.stat().st_size
+    size_reduction_pct = (1.0 - (quantized_size / float32_size)) * 100.0 if float32_size > 0 else 0.0
+
+    # Sync exported quantized binary to Flutter assets if present
+    repo_root = Path(__file__).resolve().parent.parent
+    flutter_asset_path = repo_root / "scope" / "assets" / "model.tflite"
+    if flutter_asset_path.parent.exists():
+        import shutil
+        shutil.copy2(tflite_path, flutter_asset_path)
 
     write_history_csv(history, output_dir / "history.csv")
     plot_training_history(history, evaluation_dir)
@@ -176,8 +193,16 @@ def main() -> None:
         },
         "normalization": normalization_stats(splits.x_train),
         "metrics": metrics,
+        "quantization": {
+            "method": "post_training_int8_calibrated",
+            "calibration_samples": int(len(splits.x_train)),
+            "float32_bytes": float32_size,
+            "quantized_bytes": quantized_size,
+            "size_reduction_percent": round(size_reduction_pct, 2),
+        },
         "artifacts": {
             "saved_model": str(saved_model_dir),
+            "float32_tflite": str(float32_tflite_path),
             "quantized_tflite": str(tflite_path),
             "label_encoder": str(label_encoder_path),
             "history_csv": str(output_dir / "history.csv"),
@@ -194,8 +219,10 @@ def main() -> None:
     write_json(output_dir / "metadata.json", metadata)
 
     print(f"SavedModel: {saved_model_dir}")
-    print(f"TFLite: {tflite_path}")
+    print(f"Float32 TFLite: {float32_tflite_path}")
+    print(f"Quantized TFLite: {tflite_path} ({size_reduction_pct:.2f}% size reduction)")
     print(f"Metrics: {metrics}")
+
 
 
 if __name__ == "__main__":

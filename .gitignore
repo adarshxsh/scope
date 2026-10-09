@@ -124,6 +124,7 @@ attentionos-dataset/output/
 # Training
 training/.venv/
 training/runs/
+runs/
 training/models/
 *.pt
 *.pth
