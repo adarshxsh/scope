@@ -12,24 +12,34 @@ class LiteRtClassifier implements NotificationAnalyzer {
   WordPieceTokenizer? _tokenizer;
   bool _isModelLoaded = false;
 
-  LiteRtClassifier() {
+  LiteRtClassifier({Interpreter? interpreter, WordPieceTokenizer? tokenizer})
+      : _interpreter = interpreter,
+        _tokenizer = tokenizer,
+        _isModelLoaded = interpreter != null {
     _initialize();
   }
 
   Future<void> _initialize() async {
     try {
       // 1. Load Vocab
-      final vocabStr = await rootBundle.loadString('assets/vocab.txt');
-      final lines = vocabStr.split('\n');
-      _tokenizer = WordPieceTokenizer.fromLines(lines);
+      if (_tokenizer == null) {
+        final vocabStr = await rootBundle.loadString('assets/vocab.txt');
+        final lines = vocabStr.split('\n');
+        _tokenizer = WordPieceTokenizer.fromLines(lines);
+      }
 
-      // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
-      _isModelLoaded = false;
+      // 2. Load Interpreter
+      if (_interpreter == null) {
+        _interpreter = await Interpreter.fromAsset('assets/classifier.tflite');
+        _isModelLoaded = true;
+      }
     } catch (e) {
       // Graceful degradation: Log and set flags so analyze runs in fallback mode
       // ignore: avoid_print
       print('LiteRtClassifier failed to initialize: $e');
-      _isModelLoaded = false;
+      if (_interpreter == null) {
+        _isModelLoaded = false;
+      }
 
       // Ensure tokenizer is loaded even if interpreter fails (so we can test tokenization in fallback)
       if (_tokenizer == null) {
