@@ -320,13 +320,27 @@ class GhostAI {
     return false;
   }
 
-  /// Outputs structured AI execution reports in debug mode.
+  /// Helper to sanitize package names in diagnostic log output.
+  String _sanitizePackageForLog(String pkg) {
+    if (pkg.isEmpty) return 'unknown';
+    var hash = 5381;
+    for (var i = 0; i < pkg.length; i++) {
+      hash = ((hash << 5) + hash) + pkg.codeUnitAt(i);
+      hash &= 0xFFFFFFFF;
+    }
+    final hashHex = hash.toRadixString(16).padLeft(8, '0');
+    final parts = pkg.split('.');
+    final prefix = parts.isNotEmpty ? parts.first : 'pkg';
+    return '$prefix...#$hashHex';
+  }
+
+  /// Outputs structured AI execution reports in debug mode without exposing cleartext PII.
   void _logStructured(AppNotification notification, GhostAIResult result) {
     final redactedTitle = PiiRedactor.redactTitle(notification.title);
     final redactedContent = PiiRedactor.redactContent(notification.content);
     debugPrint('=== GHOST AI INFERENCE REPORT ===');
     debugPrint('Notification: "$redactedTitle" - "$redactedContent"');
-    debugPrint('Package: ${notification.packageName}');
+    debugPrint('Package: ${_sanitizePackageForLog(notification.packageName)}');
     debugPrint('Feature Vector (First 15): ${result.featureVector.take(15).toList()}...');
     debugPrint('Inference Time: ${result.inferenceTimeUs} us');
     debugPrint('Raw Predicted Score: ${(result.predictedScore * 100).toStringAsFixed(2)}');
