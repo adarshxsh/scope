@@ -319,6 +319,13 @@ void main() {
       expect(controller.notifications.length, equals(container.read(reviewQueueProvider).length));
     });
 
+    test('throws StateError when generateTestData is invoked in release mode', () async {
+      expect(
+        () => controller.generateTestData(isReleaseMode: true),
+        throwsA(isA<StateError>()),
+      );
+    });
+
     test('completing and archiving in controller updates review states inside Riverpod', () async {
       final notif = AppNotification(
         id: 'c1',

@@ -68,12 +68,14 @@ void main() {
     NotificationBridge? overrideBridge,
     InMemoryNotificationStorage? overrideStorage,
     GhostAnalysisEngine? overrideEngine,
+    bool? isDebugOrProfileMode,
   }) {
     return MaterialApp(
       home: NotificationFeedScreen(
         bridge: overrideBridge ?? bridge,
         storage: overrideStorage ?? storage,
         engine: overrideEngine ?? mockEngine,
+        isDebugOrProfileMode: isDebugOrProfileMode,
       ),
     );
   }
@@ -185,6 +187,25 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('No notifications captured yet'), findsOneWidget);
+    });
+
+    testWidgets('displays Diagnostics and TEST action buttons in debug/profile mode', (tester) async {
+      setupMock(isListenerEnabled: true, notifications: []);
+      await tester.pumpWidget(buildApp(isDebugOrProfileMode: true));
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.analytics), findsOneWidget);
+      expect(find.text('TEST'), findsOneWidget);
+    });
+
+    testWidgets('omits Diagnostics and TEST action buttons in release mode', (tester) async {
+      setupMock(isListenerEnabled: true, notifications: []);
+      await tester.pumpWidget(buildApp(isDebugOrProfileMode: false));
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.analytics), findsNothing);
+      expect(find.text('TEST'), findsNothing);
+      expect(find.byIcon(Icons.refresh), findsOneWidget);
     });
   });
 }

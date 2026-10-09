@@ -6,6 +6,7 @@
 library;
 
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
 import 'package:scope/core/models/notification_model.dart';
@@ -19,8 +20,15 @@ class NotificationFeedScreen extends StatefulWidget {
   final NotificationBridge? bridge;
   final NotificationStorage? storage;
   final GhostAnalysisEngine? engine;
+  final bool? isDebugOrProfileMode;
 
-  const NotificationFeedScreen({super.key, this.bridge, this.storage, this.engine});
+  const NotificationFeedScreen({
+    super.key,
+    this.bridge,
+    this.storage,
+    this.engine,
+    this.isDebugOrProfileMode,
+  });
 
   @override
   State<NotificationFeedScreen> createState() => _NotificationFeedScreenState();
@@ -107,53 +115,58 @@ class _NotificationFeedScreenState extends State<NotificationFeedScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final showDevTools =
+        widget.isDebugOrProfileMode ?? (kDebugMode || kProfileMode);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('AttentionOS'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.analytics),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => DiagnosticScreen(engine: _analysisEngine),
-                ),
-              );
-            },
-            tooltip: 'Diagnostics',
-          ),
-          TextButton.icon(
-            icon: const Icon(Icons.science, size: 18),
-            label: const Text('TEST'),
-            onPressed: () async {
-              // Generate mock notifications directly in Dart
-              final generator = TestNotificationGenerator();
-              final testNotifs = generator.generateAll();
-              
-              // Run through analysis engine
-              final analyzedNotifs = <AppNotification>[];
-              for (final raw in testNotifs) {
-                final analyzed = await _analysisEngine.analyze(raw);
-                analyzedNotifs.add(analyzed);
-              }
-              
-              // Save them to local storage
-              await _storage.saveAll(analyzedNotifs);
-              
-              // Refresh the UI
-              await _fetchNotifications();
-              
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('10 test notifications generated & analyzed locally!'),
-                    duration: Duration(seconds: 2),
+          if (showDevTools) ...[
+            IconButton(
+              icon: const Icon(Icons.analytics),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => DiagnosticScreen(engine: _analysisEngine),
                   ),
                 );
-              }
-            },
-          ),
+              },
+              tooltip: 'Diagnostics',
+            ),
+            TextButton.icon(
+              icon: const Icon(Icons.science, size: 18),
+              label: const Text('TEST'),
+              onPressed: () async {
+                // Generate mock notifications directly in Dart
+                final generator = TestNotificationGenerator();
+                final testNotifs = generator.generateAll();
+                
+                // Run through analysis engine
+                final analyzedNotifs = <AppNotification>[];
+                for (final raw in testNotifs) {
+                  final analyzed = await _analysisEngine.analyze(raw);
+                  analyzedNotifs.add(analyzed);
+                }
+                
+                // Save them to local storage
+                await _storage.saveAll(analyzedNotifs);
+                
+                // Refresh the UI
+                await _fetchNotifications();
+                
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('10 test notifications generated & analyzed locally!'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _checkPermissionAndFetch,

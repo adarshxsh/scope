@@ -425,7 +425,10 @@ class NotificationController extends ChangeNotifier {
     }
   }
 
-  Future<void> generateTestData() async {
+  Future<void> generateTestData({bool? isReleaseMode}) async {
+    if (isReleaseMode ?? kReleaseMode) {
+      throw StateError('generateTestData is disabled in release builds.');
+    }
     _initialLoadCompleted = true;
     _isLoading = false;
     final generator = TestNotificationGenerator();
