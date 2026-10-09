@@ -10,14 +10,35 @@ class NotificationCollectorServiceTest {
 
     @Before
     fun setUp() {
-        NotificationCollectorService.clearQueue()
+        NotificationCollectorService.reset()
+    }
+
+    @Test
+    fun testInitialState() {
+        assertEquals(0, NotificationCollectorService.queueSize())
+        assertEquals(0L, NotificationCollectorService.droppedCount())
+        assertTrue(NotificationCollectorService.drainQueue().isEmpty())
+    }
+
+    @Test
+    fun testDefaultCapacityIs500() {
+        assertEquals(500, NotificationCollectorService.DEFAULT_CAPACITY)
+    }
+
+    @Test
+    fun testDrainAndReset() {
+        assertEquals(0, NotificationCollectorService.queueSize())
+        val drained = NotificationCollectorService.drainQueue()
+        assertTrue(drained.isEmpty())
+        assertEquals(0, NotificationCollectorService.queueSize())
+        assertEquals(0L, NotificationCollectorService.droppedCount())
     }
 
     @Test
     fun testQueueCapacityLimit() {
         val now = 1_000_000_000L
 
-        // Add MAX_QUEUE_SIZE (100) notifications
+        // Add MAX_QUEUE_SIZE (500) notifications
         for (i in 1..NotificationCollectorService.MAX_QUEUE_SIZE) {
             val data = NotificationData(
                 id = "notif_$i",
@@ -33,19 +54,19 @@ class NotificationCollectorServiceTest {
 
         assertEquals(NotificationCollectorService.MAX_QUEUE_SIZE, NotificationCollectorService.queueSize())
 
-        // Add 101st notification
+        // Add 501st notification
         val extraData = NotificationData(
-            id = "notif_101",
-            packageName = "com.app.101",
-            title = "Title 101",
-            content = "Content 101",
+            id = "notif_501",
+            packageName = "com.app.501",
+            title = "Title 501",
+            content = "Content 501",
             timestamp = now,
             category = null,
             isOngoing = false
         )
         NotificationCollectorService.addNotification(extraData, now)
 
-        // Queue size should still be capped at MAX_QUEUE_SIZE (100)
+        // Queue size should still be capped at MAX_QUEUE_SIZE (500)
         assertEquals(NotificationCollectorService.MAX_QUEUE_SIZE, NotificationCollectorService.queueSize())
 
         // Drain queue and check contents
@@ -54,9 +75,9 @@ class NotificationCollectorServiceTest {
 
         // First item (com.app.1) should have been evicted (FIFO)
         assertFalse(drained.any { it.packageName == "com.app.1" })
-        // Second item (com.app.2) and last item (com.app.101) should be present
+        // Second item (com.app.2) and last item (com.app.501) should be present
         assertTrue(drained.any { it.packageName == "com.app.2" })
-        assertTrue(drained.any { it.packageName == "com.app.101" })
+        assertTrue(drained.any { it.packageName == "com.app.501" })
     }
 
     @Test
