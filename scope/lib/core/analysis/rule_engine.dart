@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/storage/backup_exclusion_helper.dart';
 
 /// Condition definition for a notification classification rule.
 class RuleCondition {
@@ -114,6 +115,7 @@ class RuleEngine {
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/rlhf_rules.json');
       if (await file.exists()) {
+        await BackupExclusionHelper.excludeFromBackup('rlhf_rules.json', filePath: file.path);
         final content = await file.readAsString();
         final list = json.decode(content) as List<dynamic>;
         final customRules = list.map((r) => NotificationRule.fromMap(Map<String, dynamic>.from(r))).toList();
@@ -136,6 +138,7 @@ class RuleEngine {
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/rlhf_rules.json');
       await file.writeAsString(json.encode(list));
+      await BackupExclusionHelper.excludeFromBackup('rlhf_rules.json', filePath: file.path);
     } catch (e) {
       // ignore: avoid_print
       print('Failed to save custom RLHF rules: $e');
