@@ -92,6 +92,12 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     if (_selectedNotification == null) return;
 
     if (isReward) {
+      widget.controller.recordFeedback(
+        notificationId: _selectedNotification!.id,
+        feedbackType: 'reward',
+        originalPriority: _selectedNotification!.priority,
+        originalCategory: _selectedNotification!.classifiedCategory ?? _selectedNotification!.category,
+      );
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Reward (+1) recorded! AI model confidence reinforced.'),
@@ -109,15 +115,16 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     if (_selectedNotification == null) return;
 
     final n = _selectedNotification!;
-    // Extract defining keywords (e.g. words > 3 chars)
-    final words = <String>[];
+    // Extract defining keywords
+    final titleWords = <String>[];
     for (final w in n.title.split(' ')) {
       final clean = w.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
-      if (clean.length > 3) words.add(clean);
+      if (clean.length > 3) titleWords.add(clean);
     }
+    final contentWords = <String>[];
     for (final w in n.content.split(' ')) {
       final clean = w.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
-      if (clean.length > 4 && words.length < 3) words.add(clean);
+      if (clean.length > 4 && contentWords.length < 3) contentWords.add(clean);
     }
 
     final newRule = NotificationRule(
@@ -125,12 +132,23 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
       category: _selectedCategory,
       priority: _selectedPriority,
       conditions: RuleCondition(
-        packages: [n.packageName],
-        titleKeywords: words.take(2).toList(),
+        packages: [n.packageName.toLowerCase()],
+        titleKeywords: titleWords.take(2).toList(),
+        keywords: contentWords.take(2).toList(),
       ),
     );
 
+    widget.controller.recordFeedback(
+      notificationId: n.id,
+      feedbackType: 'penalty',
+      originalPriority: n.priority,
+      correctedPriority: _selectedPriority,
+      originalCategory: n.classifiedCategory ?? n.category,
+      correctedCategory: _selectedCategory,
+    );
+
     widget.controller.engine.ruleEngine.addReinforcementRule(newRule);
+    widget.controller.rescoreActiveQueue();
 
     setState(() {
       _showCorrectionForm = false;
