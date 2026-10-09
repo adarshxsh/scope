@@ -105,24 +105,27 @@ class NotificationCollectorService : NotificationListenerService() {
     private fun addSbnToQueue(sbn: StatusBarNotification, now: Long = System.currentTimeMillis()) {
         try {
             val extras = sbn.notification.extras
-            val title = extras?.getCharSequence("android.title")?.toString() ?: ""
-            val text = extras?.getCharSequence("android.text")?.toString() ?: ""
+            val rawTitle = extras?.getCharSequence("android.title")?.toString() ?: ""
+            val rawText = extras?.getCharSequence("android.text")?.toString() ?: ""
             val isOngoing = sbn.isOngoing
             val packageName = sbn.packageName ?: "unknown"
             val timestamp = if (sbn.postTime > 0) sbn.postTime else now
+
+            val title = NotificationRedactor.redactTitle(rawTitle)
+            val content = NotificationRedactor.redactContent(rawText)
 
             val data = NotificationData(
                 id = "notif_${++idCounter}",
                 packageName = packageName,
                 title = title,
-                content = text,
+                content = content,
                 timestamp = timestamp,
                 category = sbn.notification.category,
                 isOngoing = isOngoing
             )
 
             addNotification(data, now)
-            Log.d(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
+            Log.d(TAG, "Notification captured")
         } catch (e: Exception) {
             Log.e(TAG, "Error capturing/adding notification", e)
         }
@@ -135,9 +138,7 @@ class NotificationCollectorService : NotificationListenerService() {
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         if (sbn == null) return
-        // Log for now; future phases may track dismissed notifications
-        val removedTitle = sbn.notification.extras?.getCharSequence("android.title")?.toString()
-        Log.d(TAG, "Removed: ${sbn.packageName} - ${NotificationRedactor.redactTitle(removedTitle)}")
+        Log.d(TAG, "Notification removed")
     }
 
     override fun onListenerConnected() {
