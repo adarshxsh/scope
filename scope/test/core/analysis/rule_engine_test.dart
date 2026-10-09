@@ -1,8 +1,21 @@
+import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUpAll(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      const MethodChannel('plugins.flutter.io/path_provider'),
+      (MethodCall methodCall) async {
+        return '.';
+      },
+    );
+  });
+
   group('RuleEngine', () {
     const String sampleJson = '''
     {
@@ -123,6 +136,100 @@ void main() {
       expect(result!.ruleId, equals('swiggy_promo'));
       expect(result.category, equals('promo'));
       expect(result.priority, equals('low'));
+    });
+
+    test('Tier 1 base system rules evaluate before Tier 2 custom rules', () {
+      // Add custom rule targeting HDFC debit notifications with priority 'medium'
+      engine.addReinforcementRule(
+        const NotificationRule(
+          id: 'rlhf-override-hdfc',
+          category: 'promo',
+          priority: 'medium',
+          conditions: RuleCondition(
+            titleKeywords: ['Alert'],
+            keywords: ['debited'],
+          ),
+        ),
+      );
+
+      final notif = AppNotification(
+        id: '1',
+        packageName: 'com.hdfc.mobilebanking',
+        title: 'HDFC Bank Alert',
+        content: 'Your account has been debited Rs. 15,000.',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      // Base rule (bank_debit in Tier 1) must evaluate first
+      final result = engine.match(notif);
+      expect(result, isNotNull);
+      expect(result!.ruleId, equals('bank_debit'));
+      expect(result.isCustom, isFalse);
+      expect(result.isSystemRule, isTrue);
+      expect(result.priority, equals('critical'));
+    });
+
+    test('addReinforcementRule clamps critical priority to high for custom rules', () {
+      engine.addReinforcementRule(
+        const NotificationRule(
+          id: 'rlhf-malicious-critical',
+          category: 'promo',
+          priority: 'critical',
+          conditions: RuleCondition(
+            keywords: ['special offer'],
+          ),
+        ),
+      );
+
+      expect(engine.customRules.length, equals(1));
+      expect(engine.customRules.first.priority, equals('high'));
+      expect(engine.customRules.first.isCustom, isTrue);
+    });
+
+    test('addReinforcementRule rejects custom rules with empty conditions', () {
+      engine.addReinforcementRule(
+        const NotificationRule(
+          id: 'rlhf-empty-conditions',
+          category: 'promo',
+          priority: 'high',
+          conditions: RuleCondition(
+            packages: [],
+            keywords: [],
+            titleKeywords: [],
+          ),
+        ),
+      );
+
+      expect(engine.customRules, isEmpty);
+    });
+
+    test('addReinforcementRule rejects custom rules using reserved system rule IDs', () {
+      engine.addReinforcementRule(
+        const NotificationRule(
+          id: 'otp_security',
+          category: 'promo',
+          priority: 'high',
+          conditions: RuleCondition(
+            keywords: ['one-time passcode'],
+          ),
+        ),
+      );
+
+      expect(engine.customRules, isEmpty);
+    });
+
+    test('loadCustomRules resets state when reading malformed JSON format', () async {
+      final file = File('./rlhf_rules.json');
+      await file.writeAsString('{ invalid_json_content }');
+
+      await engine.loadCustomRules();
+
+      expect(engine.customRules, isEmpty);
+      expect(await file.readAsString(), equals('[]'));
+
+      if (await file.exists()) {
+        await file.delete();
+      }
     });
   });
 }

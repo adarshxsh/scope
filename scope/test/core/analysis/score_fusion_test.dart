@@ -109,5 +109,34 @@ void main() {
       expect(fused.engineName, equals('litert_model (fallback)'));
       expect(fused.isFallback, isTrue);
     });
+
+    test('custom rule is prohibited from triggering maximum-confidence security bypass', () {
+      final customRule = MatchedRuleResult(
+        ruleId: 'rlhf-spoofed-otp',
+        category: 'sys',
+        priority: 'critical',
+        matchedSignal: 'Custom keyword match',
+        isCustom: true,
+      );
+
+      final modelResult = AnalysisResult(
+        category: 'promo',
+        score: 0.30,
+        engineName: 'litert_model',
+        matchedSignals: ['Softmax scores'],
+        latencyMs: 5,
+        isFallback: false,
+      );
+
+      final fused = ScoreFusion.fuse(
+        ruleResult: customRule,
+        modelResult: modelResult,
+      );
+
+      // Must NOT trigger 1.0 confidence bypass because it is a custom rule (isCustom: true)
+      expect(fused.score, isNot(equals(1.0)));
+      expect(fused.engineName, isNot(contains('rule bypass')));
+      expect(fused.engineName, equals('score_fusion (hybrid)'));
+    });
   });
 }
