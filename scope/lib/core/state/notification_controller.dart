@@ -339,6 +339,7 @@ class NotificationController extends ChangeNotifier {
     runBackgroundCleanup();
     
     // Set up daily cleanup timer
+    if (_isDisposed) return;
     _cleanupTimer?.cancel();
     _cleanupTimer = Timer.periodic(const Duration(hours: 24), (_) {
       runBackgroundCleanup();

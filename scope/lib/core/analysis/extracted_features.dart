@@ -2,6 +2,13 @@
 library;
 
 class ExtractedFeatures {
+  /// Standard static redaction tokens.
+  static const String redactedOtp = '[REDACTED_OTP]';
+  static const String redactedAmount = '[REDACTED_AMOUNT]';
+  static const String redactedUrl = '[REDACTED_URL]';
+  static const String redactedEmail = '[REDACTED_EMAIL]';
+  static const String redactedPhone = '[REDACTED_PHONE]';
+
   /// Extracted OTP security code (4 to 8 digits).
   final String? otp;
 
@@ -29,11 +36,19 @@ class ExtractedFeatures {
     this.phoneNumbers = const [],
   });
 
-  /// Creates features from a Map.
+  /// Creates features from a Map, safely handling both raw and redacted values.
   factory ExtractedFeatures.fromMap(Map<String, dynamic> map) {
+    double? parsedAmount;
+    final rawAmount = map['amount'];
+    if (rawAmount is num) {
+      parsedAmount = rawAmount.toDouble();
+    } else if (rawAmount is String) {
+      parsedAmount = double.tryParse(rawAmount);
+    }
+
     return ExtractedFeatures(
       otp: map['otp'] as String?,
-      amount: (map['amount'] as num?)?.toDouble(),
+      amount: parsedAmount,
       hasDeadline: map['hasDeadline'] as bool? ?? false,
       urls: List<String>.from(map['urls'] as Iterable? ?? const []),
       emails: List<String>.from(map['emails'] as Iterable? ?? const []),
@@ -51,6 +66,56 @@ class ExtractedFeatures {
       'emails': emails,
       'phoneNumbers': phoneNumbers,
     };
+  }
+
+  /// Converts features to a Map with static PII redaction tokens.
+  Map<String, dynamic> toRedactedMap() {
+    return {
+      'otp': otp != null && otp!.isNotEmpty ? redactedOtp : null,
+      'amount': amount != null ? redactedAmount : null,
+      'hasDeadline': hasDeadline,
+      'urls': urls.map((_) => redactedUrl).toList(),
+      'emails': emails.map((_) => redactedEmail).toList(),
+      'phoneNumbers': phoneNumbers.map((_) => redactedPhone).toList(),
+    };
+  }
+
+  /// Static helper to replace sensitive PII values in a features map with static tokens,
+  /// preserving existing JSON schema keys.
+  static Map<String, dynamic>? redactMap(Map<String, dynamic>? map) {
+    if (map == null) return null;
+    final result = Map<String, dynamic>.from(map);
+
+    if (result.containsKey('otp') && result['otp'] != null && result['otp'].toString().isNotEmpty) {
+      result['otp'] = redactedOtp;
+    }
+
+    if (result.containsKey('amount') && result['amount'] != null) {
+      result['amount'] = redactedAmount;
+    }
+
+    if (result.containsKey('urls') && result['urls'] is Iterable) {
+      final list = List.from(result['urls'] as Iterable);
+      if (list.isNotEmpty) {
+        result['urls'] = list.map((_) => redactedUrl).toList();
+      }
+    }
+
+    if (result.containsKey('emails') && result['emails'] is Iterable) {
+      final list = List.from(result['emails'] as Iterable);
+      if (list.isNotEmpty) {
+        result['emails'] = list.map((_) => redactedEmail).toList();
+      }
+    }
+
+    if (result.containsKey('phoneNumbers') && result['phoneNumbers'] is Iterable) {
+      final list = List.from(result['phoneNumbers'] as Iterable);
+      if (list.isNotEmpty) {
+        result['phoneNumbers'] = list.map((_) => redactedPhone).toList();
+      }
+    }
+
+    return result;
   }
 
   @override
