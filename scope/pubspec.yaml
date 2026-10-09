@@ -37,6 +37,7 @@ dependencies:
   tflite_flutter: ^0.12.1
   flutter_riverpod: ^2.3.6
   drift: ^2.10.0
+  sqlite3: ^3.5.2
   sqlite3_flutter_libs: ^0.5.15
   path_provider: ^2.0.15
   path: ^1.8.3
@@ -56,6 +57,12 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.13.1
+
+hooks:
+  user_defines:
+    sqlite3:
+      source: system
+      name: sqlcipher
 
 flutter_launcher_icons:
   android: "launcher_icon"
