@@ -146,12 +146,16 @@ def normalization_stats(features: np.ndarray) -> dict[str, list[float]]:
     }
 
 
-def _validate_features(value: Any, sample_id: str) -> list[float]:
+def _validate_features(
+    value: Any,
+    sample_id: str,
+    expected_size: int | None = None,
+) -> list[float]:
     if not isinstance(value, list):
         raise ValueError(f"{sample_id}.features must be a list.")
-    if len(value) != FEATURE_VECTOR_SIZE:
+    if expected_size is not None and len(value) != expected_size:
         raise ValueError(
-            f"{sample_id}.features must contain {FEATURE_VECTOR_SIZE} values; "
+            f"{sample_id}.features must contain {expected_size} values; "
             f"received {len(value)}."
         )
 

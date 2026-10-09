@@ -151,6 +151,28 @@ void main() {
       );
       expect(values[FeatureVector.featureNames.indexOf('person_present')], 1.0);
     });
+
+    test('supports variable length feature vectors and padOrTruncate', () {
+      final shortVec = FeatureVector(List.filled(10, 1.0));
+      expect(shortVec.values, hasLength(10));
+      final padded = shortVec.padOrTruncate(20);
+      expect(padded.values, hasLength(20));
+      expect(padded.values.sublist(0, 10), equals(List.filled(10, 1.0)));
+      expect(padded.values.sublist(10), equals(List.filled(10, 0.0)));
+
+      final longVec = FeatureVector(List.generate(30, (i) => i.toDouble()));
+      final truncated = longVec.padOrTruncate(15);
+      expect(truncated.values, hasLength(15));
+      expect(truncated.values, equals(List.generate(15, (i) => i.toDouble())));
+
+      final namedMap = padded.toNamedMap();
+      expect(namedMap['title_length'], equals(1.0));
+      expect(namedMap[FeatureVector.featureNames[15]], equals(0.0));
+
+      final hugeVec = FeatureVector(List.filled(70, 2.0));
+      final hugeMap = hugeVec.toNamedMap();
+      expect(hugeMap['feature_65'], equals(2.0));
+    });
   });
 
   group('MetadataAnalyzer', () {
