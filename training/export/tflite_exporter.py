@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
@@ -29,6 +32,52 @@ def export_float32_tflite(
     model_bytes = converter.convert()
     output_path.write_bytes(model_bytes)
     return output_path
+
+
+def create_model_bundle(
+    bundle_dir: Path,
+    version_tag: str,
+    tflite_files: dict[str, Path],
+    rules_path: Path | None = None,
+) -> Path:
+    """Package model binaries and rules into a versioned bundle with manifest.json and SHA-256 checksums."""
+    ensure_dir(bundle_dir)
+    files_manifest: dict[str, dict[str, object]] = {}
+
+    for target_name, src_path in tflite_files.items():
+        if src_path.exists():
+            data = src_path.read_bytes()
+            dst_path = bundle_dir / target_name
+            dst_path.write_bytes(data)
+
+            sha256_hash = hashlib.sha256(data).hexdigest()
+            files_manifest[target_name] = {
+                "sha256": sha256_hash,
+                "size": len(data),
+                "url": f"https://models.ghostai.local/{target_name}",
+            }
+
+    if rules_path and rules_path.exists():
+        data = rules_path.read_bytes()
+        dst_path = bundle_dir / "rules.json"
+        dst_path.write_bytes(data)
+
+        sha256_hash = hashlib.sha256(data).hexdigest()
+        files_manifest["rules.json"] = {
+            "sha256": sha256_hash,
+            "size": len(data),
+            "url": "https://models.ghostai.local/rules.json",
+        }
+
+    manifest = {
+        "version": version_tag,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "files": files_manifest,
+    }
+
+    manifest_path = bundle_dir / "manifest.json"
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    return bundle_dir
 
 
 def _representative_dataset(

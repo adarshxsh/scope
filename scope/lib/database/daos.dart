@@ -154,3 +154,30 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
     await delete(dailyBriefTable).go();
   }
 }
+
+@DriftAccessor(tables: [RlhfFeedbackEventsTable])
+class RlhfFeedbackDao extends DatabaseAccessor<AttentionDatabase> with _$RlhfFeedbackDaoMixin {
+  RlhfFeedbackDao(super.db);
+
+  Future<int> insertFeedback(RlhfFeedbackEventsTableCompanion entry) {
+    return into(rlhfFeedbackEventsTable).insert(entry);
+  }
+
+  Future<List<RlhfFeedbackEntry>> getUnsyncedFeedback() {
+    return (select(rlhfFeedbackEventsTable)..where((t) => t.isSynced.equals(false))).get();
+  }
+
+  Future<void> markAsSynced(List<int> ids) async {
+    if (ids.isEmpty) return;
+    await (update(rlhfFeedbackEventsTable)..where((t) => t.id.isIn(ids)))
+        .write(const RlhfFeedbackEventsTableCompanion(isSynced: Value(true)));
+  }
+
+  Future<List<RlhfFeedbackEntry>> getAllFeedback() {
+    return select(rlhfFeedbackEventsTable).get();
+  }
+
+  Future<void> clearAll() async {
+    await delete(rlhfFeedbackEventsTable).go();
+  }
+}

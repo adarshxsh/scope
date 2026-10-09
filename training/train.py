@@ -30,6 +30,7 @@ from training.evaluation.metrics import (
 )
 from training.evaluation.plots import plot_regression_results, plot_training_history
 from training.export.tflite_exporter import (
+    create_model_bundle,
     export_float32_tflite,
     export_saved_model,
 )
@@ -130,6 +131,16 @@ def main() -> None:
     tflite_path = export_float32_tflite(
         saved_model_dir,
         export_dir / "ghost_ai.tflite",
+    )
+
+    bundle_dir = create_model_bundle(
+        bundle_dir=export_dir / "bundle",
+        version_tag=f"2.0.0-ota-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}",
+        tflite_files={
+            "look_again.tflite": tflite_path,
+            "ghost_ai.tflite": tflite_path,
+        },
+        rules_path=Path("scope/assets/rules.json"),
     )
 
     write_history_csv(history, output_dir / "history.csv")
