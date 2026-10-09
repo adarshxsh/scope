@@ -1,12 +1,13 @@
 import 'package:flutter/services.dart';
+import 'package:scope/core/analysis/explanation_generator.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
+import 'package:scope/core/analysis/ghost_ai.dart';
 import 'package:scope/core/analysis/litert_classifier.dart';
 import 'package:scope/core/analysis/policy_engine.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/analysis/score_fusion.dart';
-import 'package:scope/core/analysis/explanation_generator.dart';
 import 'package:scope/core/models/notification_model.dart';
-import 'package:scope/core/analysis/ghost_ai.dart';
+import 'package:scope/core/privacy/pii_redactor.dart';
 
 /// The central hub of Ghost AI coordinating all classification stages.
 class GhostAnalysisEngine {
@@ -93,7 +94,7 @@ class GhostAnalysisEngine {
 
     stopwatch.stop();
 
-    return notification.copyWith(
+    final analyzed = notification.copyWith(
       priority: priority,
       priorityScore: ghostResult.reviewScore,
       classifiedCategory: fusedResult.category,
@@ -104,6 +105,8 @@ class GhostAnalysisEngine {
       engineVersion: fusedResult.isFallback ? '2.0.0-hybrid (fallback)' : '2.0.0-hybrid',
       extractedFeatures: features.toMap(),
     );
+
+    return PiiRedactor.redactNotification(analyzed, source: 'GHOST_ENGINE');
   }
 
   bool _isStatusOrProgressNotification(AppNotification notification) {

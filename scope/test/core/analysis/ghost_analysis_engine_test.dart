@@ -60,7 +60,7 @@ void main() {
       final analyzed = await engine.analyze(notif);
 
       expect(analyzed.priority, equals('critical'));
-      expect(analyzed.extractedFeatures!['otp'], equals('882715'));
+      expect(analyzed.extractedFeatures!['otp'], equals('[REDACTED CODE]'));
     });
 
     test('categorizes low priority promo keywords as low', () async {
