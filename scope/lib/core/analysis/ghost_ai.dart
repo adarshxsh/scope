@@ -79,12 +79,22 @@ class GhostAI {
   }
 
   /// Public API: resolves look-again priority score for a notification.
-  static Future<GhostAIResult> predict(AppNotification notification) async {
-    return instance._predict(notification);
+  static Future<GhostAIResult> predict(
+    AppNotification notification, {
+    int? referenceTimestamp,
+  }) async {
+    return instance._predict(notification, referenceTimestamp: referenceTimestamp);
   }
 
-  Future<GhostAIResult> _predict(AppNotification notification) async {
+  Future<GhostAIResult> _predict(
+    AppNotification notification, {
+    int? referenceTimestamp,
+  }) async {
     final stopwatch = Stopwatch()..start();
+
+    final refTime = (referenceTimestamp != null && referenceTimestamp > 0)
+        ? referenceTimestamp
+        : DateTime.now().millisecondsSinceEpoch;
 
     // 1. Feature extraction using the existing FeatureExtractor
     final featureVector = FeatureExtractor.extractFromAppNotification(notification);
@@ -151,14 +161,18 @@ class GhostAI {
     final hasOtp = featureVector[11] == 1.0; // contains_otp
     final hasDeadline = featureVector[27] == 1.0; // contains_deadline
 
-    if (hasOtp && _isOtpExpired(notification)) {
-      finalScore = 0.0;
-    } else if (hasDeadline && _isReminderExpired(notification)) {
-      finalScore = 0.0;
-    } else if (_isDuplicate(notification)) {
-      finalScore = 0.0;
-    } else if (_isCompletedTask(notification)) {
-      finalScore = 0.0;
+    try {
+      if (hasOtp && _isOtpExpired(notification, referenceTimestamp: refTime)) {
+        finalScore = 0.0;
+      } else if (hasDeadline && _isReminderExpired(notification, referenceTimestamp: refTime)) {
+        finalScore = 0.0;
+      } else if (_isDuplicate(notification, referenceTimestamp: refTime)) {
+        finalScore = 0.0;
+      } else if (_isCompletedTask(notification)) {
+        finalScore = 0.0;
+      }
+    } catch (e) {
+      debugPrint('GhostAI: Override evaluation error: $e');
     }
 
     stopwatch.stop();
@@ -193,7 +207,10 @@ class GhostAI {
   }
 
   /// Parses Validity period of OTP and returns whether it is expired.
-  bool _isOtpExpired(AppNotification notification) {
+  bool _isOtpExpired(AppNotification notification, {int? referenceTimestamp}) {
+    final refTime = (referenceTimestamp != null && referenceTimestamp > 0)
+        ? referenceTimestamp
+        : DateTime.now().millisecondsSinceEpoch;
     final lower = notification.content.toLowerCase();
     final regex = RegExp(
       r'(?:valid|expires|active)\s+(?:for|in)?\s*(\d+)\s*(minute|minutes|min|mins|second|seconds|sec|secs)',
@@ -214,12 +231,16 @@ class GhostAI {
       }
     }
 
-    final elapsedMs = DateTime.now().millisecondsSinceEpoch - notification.timestamp;
+    final notifTime = notification.timestamp > 0 ? notification.timestamp : refTime;
+    final elapsedMs = refTime - notifTime;
     return elapsedMs > durationMs;
   }
 
   /// Parses Relative deadline from text and returns whether it has expired.
-  bool _isReminderExpired(AppNotification notification) {
+  bool _isReminderExpired(AppNotification notification, {int? referenceTimestamp}) {
+    final refTime = (referenceTimestamp != null && referenceTimestamp > 0)
+        ? referenceTimestamp
+        : DateTime.now().millisecondsSinceEpoch;
     final lower = notification.content.toLowerCase();
     final relativeRegex = RegExp(
       r'\bin\s+(\d{1,4})\s*(minute|minutes|min|mins|hour|hours|hr|hrs|day|days)\b',
@@ -239,18 +260,20 @@ class GhostAI {
         } else {
           durationMs = amount * 24 * 60 * 60 * 1000;
         }
-        final elapsedMs = DateTime.now().millisecondsSinceEpoch - notification.timestamp;
+        final notifTime = notification.timestamp > 0 ? notification.timestamp : refTime;
+        final elapsedMs = refTime - notifTime;
         return elapsedMs > durationMs;
       }
     }
 
     // Expiry check for calendar days (today/tonight/tomorrow in past)
     if (lower.contains('today') || lower.contains('tonight')) {
-      final notifDate = DateTime.fromMillisecondsSinceEpoch(notification.timestamp);
-      final nowDate = DateTime.now();
-      if (notifDate.year < nowDate.year ||
-          (notifDate.year == nowDate.year && notifDate.month < nowDate.month) ||
-          (notifDate.year == nowDate.year && notifDate.month == nowDate.month && notifDate.day < nowDate.day)) {
+      final notifTime = notification.timestamp > 0 ? notification.timestamp : refTime;
+      final notifDate = DateTime.fromMillisecondsSinceEpoch(notifTime);
+      final refDate = DateTime.fromMillisecondsSinceEpoch(refTime);
+      if (notifDate.year < refDate.year ||
+          (notifDate.year == refDate.year && notifDate.month < refDate.month) ||
+          (notifDate.year == refDate.year && notifDate.month == refDate.month && notifDate.day < refDate.day)) {
         return true;
       }
     }
@@ -259,18 +282,24 @@ class GhostAI {
   }
 
   /// Returns whether this notification is a duplicate within the sliding window.
-  bool _isDuplicate(AppNotification notification) {
-    final now = DateTime.now().millisecondsSinceEpoch;
+  bool _isDuplicate(AppNotification notification, {int? referenceTimestamp}) {
+    final refTime = (referenceTimestamp != null && referenceTimestamp > 0)
+        ? referenceTimestamp
+        : DateTime.now().millisecondsSinceEpoch;
 
-    // Prune stale duplicates older than 5 minutes
-    _processedNotifications.removeWhere((n) => now - n.timestamp > _duplicateWindowMs);
+    // Prune stale duplicates outside the 5 minute window relative to refTime
+    _processedNotifications.removeWhere((n) =>
+        (refTime - n.timestamp) > _duplicateWindowMs || n.timestamp > refTime);
 
     for (final oldNotif in _processedNotifications) {
       if (oldNotif.packageName == notification.packageName &&
           oldNotif.title == notification.title &&
           oldNotif.content == notification.content &&
           oldNotif.id != notification.id) {
-        return true;
+        final diff = (refTime - oldNotif.timestamp).abs();
+        if (diff <= _duplicateWindowMs) {
+          return true;
+        }
       }
     }
     return false;
@@ -320,13 +349,13 @@ class GhostAI {
     return false;
   }
 
-  /// Outputs structured AI execution reports in debug mode.
+  /// Outputs structured AI execution reports in debug mode without cleartext PII.
   void _logStructured(AppNotification notification, GhostAIResult result) {
     final redactedTitle = PiiRedactor.redactTitle(notification.title);
     final redactedContent = PiiRedactor.redactContent(notification.content);
     debugPrint('=== GHOST AI INFERENCE REPORT ===');
+    debugPrint('Notification ID: ${notification.id} (Package: ${notification.packageName})');
     debugPrint('Notification: "$redactedTitle" - "$redactedContent"');
-    debugPrint('Package: ${notification.packageName}');
     debugPrint('Feature Vector (First 15): ${result.featureVector.take(15).toList()}...');
     debugPrint('Inference Time: ${result.inferenceTimeUs} us');
     debugPrint('Raw Predicted Score: ${(result.predictedScore * 100).toStringAsFixed(2)}');

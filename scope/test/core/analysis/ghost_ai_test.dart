@@ -233,5 +233,58 @@ void main() {
         expect(result.reviewScore, isPositive); // Not overridden
       });
     });
+
+    group('Historical Rescoring with Reference Timestamp', () {
+      test('does not override historical OTP when referenceTimestamp matches notification timestamp', () async {
+        final historicalTimestamp = DateTime(2026, 1, 1).millisecondsSinceEpoch;
+        final historicalOtp = AppNotification(
+          id: 'otp-historical',
+          packageName: 'com.whatsapp',
+          title: 'WhatsApp Code',
+          content: 'Your verification code is 882715. Expires in 5 minutes.',
+          timestamp: historicalTimestamp,
+        );
+
+        // Evaluate at the time the notification occurred
+        final result = await GhostAI.predict(
+          historicalOtp,
+          referenceTimestamp: historicalTimestamp,
+        );
+
+        expect(result.reviewScore, equals(1.0)); // Should NOT be 0.0
+      });
+
+      test('does not override historical reminder when referenceTimestamp matches notification timestamp', () async {
+        final historicalTimestamp = DateTime(2026, 1, 1).millisecondsSinceEpoch;
+        final historicalReminder = AppNotification(
+          id: 'rem-historical',
+          packageName: 'com.google.android.calendar',
+          title: 'Upcoming meeting reminder',
+          content: 'Standup starts in 10 minutes',
+          timestamp: historicalTimestamp,
+        );
+
+        final result = await GhostAI.predict(
+          historicalReminder,
+          referenceTimestamp: historicalTimestamp,
+        );
+
+        expect(result.reviewScore, equals(0.80)); // Should NOT be 0.0
+      });
+
+      test('handles invalid/corrupted timestamps gracefully without throwing exceptions', () async {
+        final invalidNotif = AppNotification(
+          id: 'invalid-ts',
+          packageName: 'com.whatsapp',
+          title: 'Code',
+          content: 'Verification code 1234. Valid for 5 minutes.',
+          timestamp: -1, // Corrupted timestamp
+        );
+
+        final result = await GhostAI.predict(invalidNotif, referenceTimestamp: -1000);
+        expect(result, isNotNull);
+        expect(result.reviewScore, isPositive);
+      });
+    });
   });
 }
