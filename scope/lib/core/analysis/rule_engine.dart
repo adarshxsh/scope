@@ -1,7 +1,23 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:scope/core/analysis/crypto_verifier.dart';
+import 'package:scope/core/analysis/embedded_keys.dart';
 import 'package:scope/core/models/notification_model.dart';
+
+/// Exception thrown when cryptographic signature verification or envelope validation fails.
+class SignatureVerificationException implements Exception {
+  final String message;
+  final String? keyId;
+  final String? algorithm;
+
+  SignatureVerificationException(this.message, {this.keyId, this.algorithm});
+
+  @override
+  String toString() =>
+      'SignatureVerificationException: $message (keyId: $keyId, algorithm: $algorithm)';
+}
 
 /// Condition definition for a notification classification rule.
 class RuleCondition {
@@ -94,12 +110,132 @@ class RuleEngine {
   /// Compiles a raw JSON rules database into compiled memory structures.
   void compile(String jsonStr) {
     final parsed = json.decode(jsonStr) as Map<String, dynamic>;
+    _compileParsedMap(parsed);
+  }
+
+  /// Extracts envelope, computes SHA-256 payload digest, verifies signature using bundled public key, and compiles rules.
+  void compileSigned(String signedJsonStr) {
+    final stopwatch = Stopwatch()..start();
+
+    Map<String, dynamic> envelope;
+    try {
+      envelope = json.decode(signedJsonStr) as Map<String, dynamic>;
+    } catch (e) {
+      throw SignatureVerificationException('Malformed envelope JSON: $e');
+    }
+
+    final signerId =
+        envelope['signer_id'] as String? ?? envelope['key_id'] as String?;
+    final algorithm = envelope['algorithm'] as String?;
+    final signatureBase64 = envelope['signature'] as String?;
+    final rawPayload = envelope['payload'];
+
+    if (signerId == null || signerId.isEmpty) {
+      throw SignatureVerificationException('Missing signer_id in rule envelope');
+    }
+    if (algorithm == null || algorithm.isEmpty) {
+      throw SignatureVerificationException('Missing algorithm in rule envelope', keyId: signerId);
+    }
+    if (signatureBase64 == null || signatureBase64.isEmpty) {
+      throw SignatureVerificationException('Missing signature in rule envelope', keyId: signerId, algorithm: algorithm);
+    }
+    if (rawPayload == null) {
+      throw SignatureVerificationException('Missing payload in rule envelope', keyId: signerId, algorithm: algorithm);
+    }
+
+    final keyMeta = EmbeddedKeys.getKey(signerId);
+    if (keyMeta == null) {
+      throw SignatureVerificationException(
+        'Public verification key "$signerId" not found, inactive, or revoked',
+        keyId: signerId,
+        algorithm: algorithm,
+      );
+    }
+
+    if (keyMeta.algorithm.toUpperCase() != algorithm.toUpperCase()) {
+      throw SignatureVerificationException(
+        'Key algorithm mismatch: expected ${keyMeta.algorithm}, got $algorithm',
+        keyId: signerId,
+        algorithm: algorithm,
+      );
+    }
+
+    final List<int> payloadBytes = utf8.encode(
+      rawPayload is String ? rawPayload : json.encode(rawPayload),
+    );
+    final payloadDigest = CryptoVerifier.computeSha256Digest(payloadBytes);
+
+    final isValid = CryptoVerifier.verifySignature(
+      algorithm: algorithm,
+      publicKey: keyMeta.publicKey,
+      signatureBase64: signatureBase64,
+      payloadBytes: payloadBytes,
+    );
+
+    stopwatch.stop();
+
+    if (!isValid) {
+      throw SignatureVerificationException(
+        'Cryptographic signature verification failed (SHA-256 digest: ${payloadDigest.toString().substring(0, 16)}...)',
+        keyId: signerId,
+        algorithm: algorithm,
+      );
+    }
+
+    if (stopwatch.elapsedMilliseconds > 5) {
+      debugPrint('RuleEngine WARNING: Signature verification took ${stopwatch.elapsedMilliseconds} ms (> 5 ms limit)');
+    }
+
+    if (rawPayload is String) {
+      compile(rawPayload);
+    } else if (rawPayload is Map) {
+      _compileParsedMap(Map<String, dynamic>.from(rawPayload));
+    } else {
+      throw SignatureVerificationException('Invalid payload format in envelope', keyId: signerId, algorithm: algorithm);
+    }
+
+    debugPrint('RuleEngine: Verified and compiled signed rules (version: $version, time: ${stopwatch.elapsedMicroseconds} us).');
+  }
+
+  void _compileParsedMap(Map<String, dynamic> parsed) {
     version = parsed['version'] as String? ?? '0.0.0';
     final rawRules = parsed['rules'] as List<dynamic>? ?? const [];
-    
     _rules = rawRules
         .map((r) => NotificationRule.fromMap(Map<String, dynamic>.from(r as Map)))
         .toList();
+  }
+
+  /// Populates RuleEngine with hardcoded core fallback rules when asset signature verification fails.
+  void loadDefaultFallbackRules() {
+    version = '1.0.0-fallback';
+    _rules = [
+      const NotificationRule(
+        id: 'fallback_otp',
+        category: 'sys',
+        priority: 'critical',
+        conditions: RuleCondition(
+          keywords: ['otp', 'verification code', 'one-time password', 'security code'],
+        ),
+      ),
+      const NotificationRule(
+        id: 'fallback_finance',
+        category: 'finance',
+        priority: 'critical',
+        conditions: RuleCondition(
+          titleKeywords: ['bank', 'alert', 'card'],
+          keywords: ['debited', 'withdrawn', 'spent', 'sent inr', 'deducted'],
+        ),
+      ),
+      const NotificationRule(
+        id: 'fallback_promo',
+        category: 'promo',
+        priority: 'low',
+        conditions: RuleCondition(
+          keywords: ['sale', 'discount', '50% off', 'promo', 'coupon'],
+        ),
+      ),
+    ];
+    debugPrint('RuleEngine: Loaded core fallback rules (version: $version).');
   }
 
   /// Prepends a user-defined reinforcement learning rule to the top of the evaluation chain.
@@ -108,37 +244,87 @@ class RuleEngine {
     _saveCustomRules();
   }
 
-  /// Loads custom rules from local storage and prepends them.
+  /// Loads custom rules from local storage, verifying local HMAC signature guardrail.
   Future<void> loadCustomRules() async {
     try {
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/rlhf_rules.json');
       if (await file.exists()) {
         final content = await file.readAsString();
-        final list = json.decode(content) as List<dynamic>;
-        final customRules = list.map((r) => NotificationRule.fromMap(Map<String, dynamic>.from(r))).toList();
-        // Insert custom rules at the top
+        final envelope = json.decode(content) as Map<String, dynamic>;
+
+        final signerId = envelope['signer_id'] as String? ?? 'scope-rlhf-local-key';
+        final algorithm = envelope['algorithm'] as String? ?? 'HMAC-SHA256';
+        final signatureBase64 = envelope['signature'] as String? ?? '';
+        final rawPayload = envelope['payload'];
+
+        final keyMeta = EmbeddedKeys.getKey(signerId);
+        if (keyMeta == null) {
+          debugPrint('RuleEngine: Local RLHF key "$signerId" not found or revoked.');
+          return;
+        }
+
+        final payloadBytes = utf8.encode(
+          rawPayload is String ? rawPayload : json.encode(rawPayload),
+        );
+
+        final isValid = CryptoVerifier.verifySignature(
+          algorithm: algorithm,
+          publicKey: keyMeta.publicKey,
+          signatureBase64: signatureBase64,
+          payloadBytes: payloadBytes,
+        );
+
+        if (!isValid) {
+          debugPrint('SECURITY WARNING: Custom RLHF rules signature verification failed. Rejecting untrusted custom rules.');
+          return;
+        }
+
+        List<dynamic> list;
+        if (rawPayload is List) {
+          list = rawPayload;
+        } else if (rawPayload is String) {
+          list = json.decode(rawPayload) as List<dynamic>;
+        } else {
+          return;
+        }
+
+        final customRules = list
+            .map((r) => NotificationRule.fromMap(Map<String, dynamic>.from(r as Map)))
+            .toList();
+
         _rules.insertAll(0, customRules);
       }
     } catch (e) {
-      // ignore: avoid_print
-      print('Failed to load custom RLHF rules: $e');
+      debugPrint('Failed to load custom RLHF rules: $e');
     }
   }
 
-  /// Saves all custom RLHF rules to local storage.
+  /// Saves custom RLHF rules to local storage wrapped in an HMAC guardrail envelope.
   Future<void> _saveCustomRules() async {
     try {
-      // Filter out base rules (assuming base rules don't have 'rlhf-' prefix in id)
       final customRules = _rules.where((r) => r.id.startsWith('rlhf-')).toList();
       final list = customRules.map((r) => r.toMap()).toList();
-      
+
+      const signerId = 'scope-rlhf-local-key';
+      final keyMeta = EmbeddedKeys.getKey(signerId);
+      if (keyMeta == null) return;
+
+      final payloadBytes = utf8.encode(json.encode(list));
+      final sigBase64 = CryptoVerifier.signHmacSha256(keyMeta.publicKey, payloadBytes);
+
+      final envelope = {
+        'signer_id': signerId,
+        'algorithm': 'HMAC-SHA256',
+        'signature': sigBase64,
+        'payload': list,
+      };
+
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/rlhf_rules.json');
-      await file.writeAsString(json.encode(list));
+      await file.writeAsString(json.encode(envelope));
     } catch (e) {
-      // ignore: avoid_print
-      print('Failed to save custom RLHF rules: $e');
+      debugPrint('Failed to save custom RLHF rules: $e');
     }
   }
 
@@ -150,13 +336,11 @@ class RuleEngine {
     final package = notification.packageName.toLowerCase();
 
     for (final rule in _rules) {
-      // 1. Package match constraint
       final packageConditionMatches =
           rule.conditions.packages.isEmpty || rule.conditions.packages.contains(package);
 
       if (!packageConditionMatches) continue;
 
-      // 2. Title keywords check
       bool titleMatch = false;
       String? matchedTitleWord;
       if (rule.conditions.titleKeywords.isNotEmpty) {
@@ -169,7 +353,6 @@ class RuleEngine {
         }
       }
 
-      // 3. Content keywords check
       bool contentMatch = false;
       String? matchedContentWord;
       if (rule.conditions.keywords.isNotEmpty) {
@@ -182,17 +365,12 @@ class RuleEngine {
         }
       }
 
-      // Evaluation criteria:
-      // If a rule lists title keywords, the title must match.
-      // If a rule lists content keywords, the content must match.
-      // If both are present, both must match (AND relationship).
       final hasTitleCondition = rule.conditions.titleKeywords.isNotEmpty;
       final hasContentCondition = rule.conditions.keywords.isNotEmpty;
 
       final titleMatches = !hasTitleCondition || titleMatch;
       final contentMatches = !hasContentCondition || contentMatch;
 
-      // Check if at least one condition was configured
       final hasAnyCondition =
           rule.conditions.packages.isNotEmpty || hasTitleCondition || hasContentCondition;
 
