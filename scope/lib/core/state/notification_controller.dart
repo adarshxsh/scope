@@ -9,6 +9,7 @@ import 'package:scope/core/storage/notification_storage.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/core/utils/focus_area_mapper.dart';
 import 'package:scope/core/utils/smart_actions.dart';
+import 'package:scope/core/utils/storage_logger.dart';
 import 'package:scope/core/state/providers.dart';
 import 'package:drift/drift.dart';
 import 'package:scope/database/attention_database.dart';
@@ -345,7 +346,7 @@ class NotificationController extends ChangeNotifier {
     });
   }
 
-  /// Cleans up old notifications (older than 7 days) and orphaned review queue items.
+  /// Cleans up old notifications (older than 7 days), enforces storage quota, and removes orphaned review queue items.
   Future<void> runBackgroundCleanup() async {
     if (_isCleaningUp) return;
 
@@ -361,11 +362,11 @@ class NotificationController extends ChangeNotifier {
       final cutoff = DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch;
       final db = _container.read(databaseProvider);
       
-      // Execute the single-step atomic transaction
+      // Execute atomic transaction for age cleanup and quota enforcement
       await db.runSetBasedCleanup(cutoff);
 
-    } catch (_) {
-      // Silently handle errors to not interrupt UI
+    } catch (e, st) {
+      StorageLogger.logStorageError('runBackgroundCleanup', e, st);
     } finally {
       _isCleaningUp = false;
     }
@@ -387,7 +388,8 @@ class NotificationController extends ChangeNotifier {
         await _loadInitialNotifications();
       }
 
-      for (final raw in newNotifications) {
+      for (final rawNotif in newNotifications) {
+        final raw = rawNotif.validateAndSanitize();
         // Ignore ongoing background/system notifications (e.g. charging, media playback)
         if (raw.isOngoing) continue;
 
@@ -419,7 +421,8 @@ class NotificationController extends ChangeNotifier {
 
       _isLoading = false;
       notifyListeners();
-    } catch (_) {
+    } catch (e, st) {
+      StorageLogger.logStorageError('fetchNotifications', e, st);
       _isLoading = false;
       notifyListeners();
     }

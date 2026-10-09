@@ -207,5 +207,41 @@ void main() {
         expect(str, contains('priority:'));
       });
     });
+
+    group('validateAndSanitize', () {
+      test('truncates oversized title, content, and package name', () {
+        final hugeTitle = 'T' * 300;
+        final hugeContent = 'C' * 1200;
+        final hugePkg = 'P' * 200;
+
+        final raw = AppNotification(
+          id: 'huge_1',
+          packageName: hugePkg,
+          title: hugeTitle,
+          content: hugeContent,
+          timestamp: 1000,
+        );
+
+        final sanitized = raw.validateAndSanitize();
+        expect(sanitized.title.length, equals(250));
+        expect(sanitized.content.length, equals(1000));
+        expect(sanitized.packageName.length, equals(150));
+      });
+
+      test('strips null characters and unprintable control chars', () {
+        final corrupt = AppNotification(
+          id: 'corrupt_1',
+          packageName: 'com.app\x00',
+          title: 'Hello\x00\x01\x07World',
+          content: 'Safe\nContent\x1FWith\rTabs\t',
+          timestamp: 1000,
+        );
+
+        final sanitized = corrupt.validateAndSanitize();
+        expect(sanitized.packageName, equals('com.app'));
+        expect(sanitized.title, equals('HelloWorld'));
+        expect(sanitized.content, equals('Safe\nContentWith\rTabs'));
+      });
+    });
   });
 }

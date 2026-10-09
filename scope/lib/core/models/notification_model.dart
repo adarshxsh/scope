@@ -142,7 +142,7 @@ class AppNotification {
               )
         : rawId;
 
-    return AppNotification(
+    final notification = AppNotification(
       id: id,
       packageName: packageName,
       title: title,
@@ -169,6 +169,7 @@ class AppNotification {
           ? DateTime.fromMillisecondsSinceEpoch(map['lastUpdated'] as int)
           : null,
     );
+    return notification.validateAndSanitize();
   }
 
   /// Converts this notification to a Map for serialization.
@@ -312,6 +313,43 @@ class AppNotification {
       snoozedUntil: snoozedUntil ?? this.snoozedUntil,
       lastUpdated: lastUpdated ?? this.lastUpdated,
     );
+  }
+
+  /// Returns a validated and sanitized copy of this notification, enforcing
+  /// input size boundaries and stripping invalid control characters.
+  AppNotification validateAndSanitize({
+    int maxTitleLength = 250,
+    int maxContentLength = 1000,
+    int maxPackageLength = 150,
+    int maxExplanationLength = 1000,
+  }) {
+    final cleanPkg = _sanitizeText(packageName, maxLength: maxPackageLength);
+    final cleanTitle = _sanitizeText(title, maxLength: maxTitleLength);
+    final cleanContent = _sanitizeText(content, maxLength: maxContentLength);
+    final cleanCat = category != null ? _sanitizeText(category!, maxLength: 100) : null;
+    final cleanExp = explanation != null ? _sanitizeText(explanation!, maxLength: maxExplanationLength) : null;
+
+    final validTimestamp = timestamp < 0 ? 0 : timestamp;
+    final validId = id.trim().isEmpty ? '' : _sanitizeText(id, maxLength: 250);
+
+    return copyWith(
+      id: validId,
+      packageName: cleanPkg,
+      title: cleanTitle,
+      content: cleanContent,
+      timestamp: validTimestamp,
+      category: cleanCat,
+      explanation: cleanExp,
+    );
+  }
+
+  static String _sanitizeText(String text, {required int maxLength}) {
+    // Strip null bytes and non-printable control characters except standard whitespace
+    var cleaned = text.replaceAll(RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]'), '').trim();
+    if (cleaned.length > maxLength) {
+      cleaned = cleaned.substring(0, maxLength);
+    }
+    return cleaned;
   }
 }
 

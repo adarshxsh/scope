@@ -41,18 +41,29 @@ abstract class NotificationStorage {
 /// Will be replaced by a persistent backend in a later phase.
 class InMemoryNotificationStorage implements NotificationStorage {
   final List<AppNotification> _store = [];
+  static const int maxCapacity = 500;
 
   @override
   Future<void> save(AppNotification notification) async {
+    final clean = notification.validateAndSanitize();
     // Remove existing entry with the same ID (upsert behavior)
-    _store.removeWhere((n) => n.id == notification.id);
-    _store.add(notification);
+    _store.removeWhere((n) => n.id == clean.id);
+    _store.add(clean);
+    _enforceCapacityLimit();
   }
 
   @override
   Future<void> saveAll(List<AppNotification> notifications) async {
     for (final notification in notifications) {
       await save(notification);
+    }
+  }
+
+  void _enforceCapacityLimit() {
+    if (_store.length > maxCapacity) {
+      _store.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+      final excess = _store.length - maxCapacity;
+      _store.removeRange(0, excess);
     }
   }
 
