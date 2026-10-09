@@ -33,7 +33,9 @@ class ExtractedFeatures {
   factory ExtractedFeatures.fromMap(Map<String, dynamic> map) {
     return ExtractedFeatures(
       otp: map['otp'] as String?,
-      amount: (map['amount'] as num?)?.toDouble(),
+      amount: map['amount'] is num
+          ? (map['amount'] as num).toDouble()
+          : double.tryParse(map['amount']?.toString() ?? ''),
       hasDeadline: map['hasDeadline'] as bool? ?? false,
       urls: List<String>.from(map['urls'] as Iterable? ?? const []),
       emails: List<String>.from(map['emails'] as Iterable? ?? const []),
@@ -50,6 +52,18 @@ class ExtractedFeatures {
       'urls': urls,
       'emails': emails,
       'phoneNumbers': phoneNumbers,
+    };
+  }
+
+  /// Converts features to a sanitized Map with redacted sensitive fields.
+  Map<String, dynamic> toRedactedMap() {
+    return {
+      'otp': otp != null ? '[REDACTED_OTP]' : null,
+      'amount': amount != null ? '[REDACTED_AMOUNT]' : null,
+      'hasDeadline': hasDeadline,
+      'urls': urls.map((_) => '[REDACTED_URL]').toList(),
+      'emails': emails.map((_) => '[REDACTED_EMAIL]').toList(),
+      'phoneNumbers': phoneNumbers.map((_) => '[REDACTED_PHONE]').toList(),
     };
   }
 

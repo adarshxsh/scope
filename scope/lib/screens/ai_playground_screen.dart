@@ -3,6 +3,7 @@ import 'package:scope/core/analysis/extracted_features.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/state/notification_controller.dart';
+import 'package:scope/core/utils/pii_redactor.dart';
 import 'package:scope/theme/app_colors.dart';
 import 'package:scope/theme/app_spacing.dart';
 import 'package:scope/widgets/primitives/scope_surface.dart';
@@ -272,10 +273,10 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(n.title.isEmpty ? '(No title)' : n.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12), maxLines: 1),
+                  Text(PiiRedactor.redactTitle(n.title).isEmpty ? '(No title)' : PiiRedactor.redactTitle(n.title), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12), maxLines: 1),
                   const SizedBox(height: 2),
                   Expanded(
-                    child: Text(n.content, style: const TextStyle(fontSize: 11, color: Colors.white70), maxLines: 3, overflow: TextOverflow.ellipsis),
+                    child: Text(PiiRedactor.redactContent(n.content), style: const TextStyle(fontSize: 11, color: Colors.white70), maxLines: 3, overflow: TextOverflow.ellipsis),
                   ),
                 ],
               ),
@@ -297,8 +298,8 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     if (n.title.toLowerCase().contains('credited') || n.content.toLowerCase().contains('credited')) definingWords.add('credited');
     if (n.title.toLowerCase().contains('offer') || n.content.toLowerCase().contains('offer')) definingWords.add('offer');
     if (n.title.toLowerCase().contains('sale') || n.content.toLowerCase().contains('sale')) definingWords.add('sale');
-    if (features.otp != null) definingWords.add('OTP:${features.otp}');
-    if (features.amount != null) definingWords.add('Amount:Rs.${features.amount}');
+    if (features.otp != null) definingWords.add('OTP:${PiiRedactor.redact(features.otp)}');
+    if (features.amount != null) definingWords.add(PiiRedactor.redact('Amount:Rs.${features.amount}'));
 
     return ScopeSurface(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -314,7 +315,7 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
           ),
           const Divider(height: 24),
           Text('Input Target:', style: theme.textTheme.labelLarge?.copyWith(color: Colors.white54)),
-          Text('${n.title} - ${n.content}', style: const TextStyle(fontSize: 14)),
+          Text('${PiiRedactor.redactTitle(n.title)} - ${PiiRedactor.redactContent(n.content)}', style: const TextStyle(fontSize: 14)),
           const SizedBox(height: AppSpacing.md),
           
           Text('Most Defining Features / Tags:', style: theme.textTheme.labelLarge?.copyWith(color: Colors.white54)),
@@ -324,7 +325,7 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
             children: definingWords.isEmpty
                 ? [const Chip(label: Text('General heuristic'), visualDensity: VisualDensity.compact)]
                 : definingWords.map((w) => Chip(
-                      label: Text(w, style: const TextStyle(fontSize: 11, color: Colors.white)),
+                      label: Text(PiiRedactor.redact(w), style: const TextStyle(fontSize: 11, color: Colors.white)),
                       backgroundColor: AppColors.seed.withValues(alpha: 0.3),
                       visualDensity: VisualDensity.compact,
                     )).toList(),

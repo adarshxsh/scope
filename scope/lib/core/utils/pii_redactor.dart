@@ -84,8 +84,20 @@ class PiiRedactor {
   }
 
   /// Convenience wrapper for redacting notification titles.
-  static String redactTitle(String? title) => redact(title);
+  static String redactTitle(String? title) {
+    try {
+      return redact(title);
+    } catch (_) {
+      return '[REDACTED_ERROR]';
+    }
+  }
 
   /// Convenience wrapper for redacting notification content.
-  static String redactContent(String? content) => redact(content);
+  static String redactContent(String? content) {
+    try {
+      return redact(content);
+    } catch (_) {
+      return '[REDACTED_ERROR]';
+    }
+  }
 }

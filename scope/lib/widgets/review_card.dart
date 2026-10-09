@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/extracted_features.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/utils/pii_redactor.dart';
 import 'package:scope/core/utils/smart_actions.dart';
 import 'package:scope/theme/app_colors.dart';
 import 'package:scope/theme/app_spacing.dart';
@@ -42,7 +43,7 @@ class ReviewCard extends StatelessWidget {
     final features = notification.extractedFeatures;
     if (features?['hasDeadline'] == true) return 'Application closes soon.';
     if (notification.content.isNotEmpty) {
-      final content = notification.content;
+      final content = PiiRedactor.redactContent(notification.content);
       return content.length > 120 ? '${content.substring(0, 117)}...' : content;
     }
     return 'Review and choose your next action.';
@@ -115,7 +116,7 @@ class ReviewCard extends StatelessWidget {
             ),
           ),
         Text(
-          notification.title.isNotEmpty ? notification.title : 'Notification',
+          notification.title.isNotEmpty ? PiiRedactor.redactTitle(notification.title) : 'Notification',
           style: titleStyle,
         ),
         SizedBox(height: isLow ? AppSpacing.sm : AppSpacing.md),
@@ -197,11 +198,11 @@ class DetectedInfoPanel extends StatelessWidget {
         if (features.hasDeadline)
           _DetectedLine(icon: Icons.event, text: 'Deadline detected', color: rowColor),
         if (features.amount != null)
-          _DetectedLine(icon: Icons.currency_rupee, text: '₹${features.amount}', color: rowColor),
+          _DetectedLine(icon: Icons.currency_rupee, text: PiiRedactor.redact('₹${features.amount}'), color: rowColor),
         if (features.urls.isNotEmpty)
-          _DetectedLine(icon: Icons.link, text: features.urls.first, color: rowColor),
+          _DetectedLine(icon: Icons.link, text: PiiRedactor.redact(features.urls.first), color: rowColor),
         if (features.phoneNumbers.isNotEmpty)
-          _DetectedLine(icon: Icons.phone, text: features.phoneNumbers.first, color: rowColor),
+          _DetectedLine(icon: Icons.phone, text: PiiRedactor.redact(features.phoneNumbers.first), color: rowColor),
       ],
     );
   }
