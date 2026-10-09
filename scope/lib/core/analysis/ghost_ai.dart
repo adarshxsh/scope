@@ -1,10 +1,10 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/utils/pii_redactor.dart';
+import 'package:scope/core/analysis/dynamic_model_loader.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -57,25 +57,54 @@ class GhostAI {
   /// Returns whether the model is loaded.
   bool get isModelLoaded => _interpreter != null;
 
-  /// Initializes the TFLite interpreter and rules database once on startup.
-  Future<void> initialize() async {
-    if (_interpreter != null) return;
-    try {
-      // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
-    } catch (e) {
-      debugPrint('GhostAI: Failed to load TFLite model: $e');
+  /// Exposes active TFLite model source.
+  ModelSourceType get modelSource =>
+      DynamicModelLoader.instance.getLoadedSource(ModelAssetType.tflite);
+
+  /// Exposes active model version string.
+  String get modelVersion => DynamicModelLoader.instance.currentVersion;
+
+  /// Initializes the TFLite interpreter and rules database once on startup using DynamicModelLoader.
+  Future<void> initialize({bool forceReload = false}) async {
+    if (_interpreter != null && !forceReload) return;
+
+    if (forceReload && _interpreter != null) {
+      try {
+        _interpreter!.close();
+      } catch (_) {}
+      _interpreter = null;
     }
 
     try {
-      // 2. Load and compile rules database
-      final jsonStr = await rootBundle.loadString('assets/rules.json');
-      _ruleEngine.compile(jsonStr);
-      debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
+      // 1. Load interpreter via DynamicModelLoader (supports dynamic local files + static bundle fallback)
+      final tfliteBytes = await DynamicModelLoader.instance.loadTfliteBuffer();
+      if (tfliteBytes != null) {
+        _interpreter = Interpreter.fromBuffer(tfliteBytes);
+        debugPrint('GhostAI: TFLite interpreter loaded successfully (${modelSource.name}).');
+      } else {
+        debugPrint('GhostAI: TFLite model buffer null; running in heuristic fallback mode.');
+      }
+    } catch (e) {
+      debugPrint('GhostAI: Failed to load TFLite model interpreter: $e');
+      _interpreter = null;
+    }
+
+    try {
+      // 2. Load and compile rules database via DynamicModelLoader
+      final jsonStr = await DynamicModelLoader.instance.loadRulesJson();
+      if (jsonStr != null) {
+        _ruleEngine.compile(jsonStr);
+        await _ruleEngine.loadCustomRules();
+        debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
+      }
     } catch (e) {
       debugPrint('GhostAI: Failed to initialize rules database: $e');
     }
+  }
+
+  /// Reloads active model assets dynamically.
+  Future<void> reload() async {
+    await initialize(forceReload: true);
   }
 
   /// Public API: resolves look-again priority score for a notification.

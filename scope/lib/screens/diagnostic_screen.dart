@@ -3,6 +3,7 @@ import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/widgets/scope_card.dart';
+import 'package:scope/core/analysis/dynamic_model_loader.dart';
 
 class DiagnosticScreen extends StatefulWidget {
   final GhostAnalysisEngine? engine;
@@ -142,8 +143,10 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
             const SizedBox(height: 20),
             if (_analyzedNotification != null) ...[
               _buildResultsDashboard(),
-              const SizedBox(height: 30),
+              const SizedBox(height: 20),
             ],
+            _buildAuditLogsCard(),
+            const SizedBox(height: 30),
           ],
         ),
       ),
@@ -447,6 +450,63 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
         const SizedBox(height: 2),
         Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
       ],
+    );
+  }
+
+  Widget _buildAuditLogsCard() {
+    final logs = DynamicModelLoader.instance.getAuditLogs().reversed.take(5).toList();
+    final theme = Theme.of(context);
+
+    return ScopeCard(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.history_edu, color: theme.colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                'ML Model Audit Trail',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const Divider(height: 20),
+          if (logs.isEmpty)
+            const Text(
+              'No model update audit events logged yet.',
+              style: TextStyle(color: Colors.grey, fontSize: 13),
+            )
+          else
+            ...logs.map((log) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4.0),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        log.status == 'success'
+                            ? Icons.check_circle_outline
+                            : (log.status == 'warning' ? Icons.warning_amber : Icons.error_outline),
+                        color: log.status == 'success'
+                            ? Colors.green
+                            : (log.status == 'warning' ? Colors.amber : Colors.red),
+                        size: 16,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '${log.eventType} (${log.assetType}) v${log.version}: ${log.details}',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
+        ],
+      ),
     );
   }
 }
