@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/privacy/privacy_budget_manager.dart';
 import 'package:scope/core/storage/notification_storage.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/core/utils/focus_area_mapper.dart';
@@ -14,6 +15,7 @@ import 'package:drift/drift.dart';
 import 'package:scope/database/attention_database.dart';
 import 'package:scope/database/database_provider.dart';
 import 'package:scope/database/drift_notification_storage.dart';
+
 
 /// Session stats collected during a Focus review.
 class ReviewSessionStats {
@@ -43,10 +45,12 @@ class NotificationController extends ChangeNotifier {
     NotificationStorage? storage,
     GhostAnalysisEngine? engine,
     ProviderContainer? container,
+    PrivacyBudgetManager? privacyBudgetManager,
   })  : _bridge = bridge ?? NotificationBridge(),
         _container = container ?? providerContainer,
         _storage = storage ?? DriftNotificationStorage(container?.read(databaseProvider) ?? providerContainer.read(databaseProvider)),
-        _engine = engine ?? GhostAnalysisEngine() {
+        _engine = engine ?? GhostAnalysisEngine(),
+        _privacyBudgetManager = privacyBudgetManager {
     _engine.initialize();
 
     // Listen to changes in Riverpod's reviewQueueProvider to keep legacy notifier list in sync
@@ -63,6 +67,13 @@ class NotificationController extends ChangeNotifier {
   final NotificationStorage _storage;
   final GhostAnalysisEngine _engine;
   final ProviderContainer _container;
+  PrivacyBudgetManager? _privacyBudgetManager;
+
+  PrivacyBudgetManager get privacyBudgetManager =>
+      _privacyBudgetManager ??= PrivacyBudgetManager(
+        db: _container.read(databaseProvider),
+      );
+
 
   List<AppNotification> _notifications = [];
   bool _isListenerEnabled = false;
@@ -567,4 +578,174 @@ class NotificationController extends ChangeNotifier {
           (n.classifiedCategory?.toLowerCase().contains(q) ?? false);
     }).toList();
   }
+
+  // Differential Privacy Telemetry & Analytical Queries with isolated exception handling
+  Future<PrivacyBudgetStatus> getPrivacyBudgetStatus() async {
+    try {
+      return await privacyBudgetManager.getStatus();
+    } catch (_) {
+      return const PrivacyBudgetStatus(
+        dailyCap: 1.0,
+        monthlyCap: 10.0,
+        spentToday: 0.0,
+        spentThisMonth: 0.0,
+        remainingDaily: 1.0,
+        remainingMonthly: 10.0,
+        isDailyExhausted: false,
+        isMonthlyExhausted: false,
+      );
+    }
+  }
+
+  Future<Map<String, NoisedQueryResult<int>>> getNoisedPriorityDistribution({
+    double? epsilon,
+  }) async {
+    final priorities = ['critical', 'high', 'medium', 'low'];
+    final map = <String, NoisedQueryResult<int>>{};
+    final qEps = (epsilon ?? privacyBudgetManager.defaultEpsilonPerQuery) / priorities.length;
+
+    for (final p in priorities) {
+      try {
+        map[p] = await privacyBudgetManager.executeNoisedQuery<int>(
+          sensitivity: 1.0,
+          epsilon: qEps,
+          exactQuery: () async => _countableActive.where((n) => (n.priority ?? 'medium') == p).length,
+        );
+      } catch (_) {
+        final exact = _countableActive.where((n) => (n.priority ?? 'medium') == p).length;
+        map[p] = NoisedQueryResult<int>(
+          exactValue: exact,
+          noisedValue: exact.toDouble(),
+          epsilonDeducted: 0.0,
+          isBudgetExhausted: true,
+          coarsenedBounds: '[$exact - ${exact + 10}]',
+        );
+      }
+    }
+    return map;
+  }
+
+  Future<List<NoisedQueryResult<num>>> getNoisedHourlyVolume({
+    double? epsilon,
+  }) async {
+    try {
+      return await privacyBudgetManager.executeVectorQuery(
+        sensitivityPerElement: 1.0,
+        totalEpsilon: epsilon,
+        exactQuery: () async {
+          final hourlyVolume = List<num>.filled(24, 0);
+          for (final n in _notifications) {
+            final hour = DateTime.fromMillisecondsSinceEpoch(n.timestamp).hour;
+            hourlyVolume[hour]++;
+          }
+          return hourlyVolume;
+        },
+      );
+    } catch (_) {
+      final hourlyVolume = List<num>.filled(24, 0);
+      for (final n in _notifications) {
+        final hour = DateTime.fromMillisecondsSinceEpoch(n.timestamp).hour;
+        hourlyVolume[hour]++;
+      }
+      return hourlyVolume.map((exact) => NoisedQueryResult<num>(
+        exactValue: exact,
+        noisedValue: exact.toDouble(),
+        epsilonDeducted: 0.0,
+        isBudgetExhausted: true,
+        coarsenedBounds: '[$exact - ${exact + 10}]',
+      )).toList();
+    }
+  }
+
+  Future<NoisedQueryResult<int>> getNoisedTotalCapturedCount({
+    double? epsilon,
+  }) async {
+    try {
+      return await privacyBudgetManager.executeNoisedQuery<int>(
+        sensitivity: 1.0,
+        epsilon: epsilon,
+        exactQuery: () async => _notifications.length,
+      );
+    } catch (_) {
+      return NoisedQueryResult<int>(
+        exactValue: _notifications.length,
+        noisedValue: _notifications.length.toDouble(),
+        epsilonDeducted: 0.0,
+        isBudgetExhausted: true,
+        coarsenedBounds: '[${_notifications.length} - ${_notifications.length + 10}]',
+      );
+    }
+  }
+
+  Future<Map<FocusArea, NoisedQueryResult<int>>> getNoisedFocusAreaCounts({
+    double? epsilon,
+  }) async {
+    final areas = FocusArea.values;
+    final map = <FocusArea, NoisedQueryResult<int>>{};
+    final qEps = (epsilon ?? privacyBudgetManager.defaultEpsilonPerQuery) / areas.length;
+
+    for (final area in areas) {
+      try {
+        map[area] = await privacyBudgetManager.executeNoisedQuery<int>(
+          sensitivity: 1.0,
+          epsilon: qEps,
+          exactQuery: () async {
+            final counts = FocusAreaMapper.countsFor(_countableActive);
+            return counts[area] ?? 0;
+          },
+        );
+      } catch (_) {
+        final count = FocusAreaMapper.countsFor(_countableActive)[area] ?? 0;
+        map[area] = NoisedQueryResult<int>(
+          exactValue: count,
+          noisedValue: count.toDouble(),
+          epsilonDeducted: 0.0,
+          isBudgetExhausted: true,
+          coarsenedBounds: '[$count - ${count + 10}]',
+        );
+      }
+    }
+    return map;
+  }
+
+  Future<NoisedQueryResult<int>> getNoisedTotalFocusDuration({
+    double? epsilon,
+  }) async {
+    try {
+      final db = _container.read(databaseProvider);
+      return await db.focusSessionDao.getNoisedTotalFocusDuration(
+        privacyBudgetManager,
+        epsilon: epsilon,
+      );
+    } catch (_) {
+      return const NoisedQueryResult<int>(
+        exactValue: 0,
+        noisedValue: 0.0,
+        epsilonDeducted: 0.0,
+        isBudgetExhausted: true,
+        coarsenedBounds: '[0 - 10]',
+      );
+    }
+  }
+
+  Future<NoisedQueryResult<int>> getNoisedFocusInterruptions({
+    double? epsilon,
+  }) async {
+    try {
+      final db = _container.read(databaseProvider);
+      return await db.focusSessionDao.getNoisedFocusInterruptions(
+        privacyBudgetManager,
+        epsilon: epsilon,
+      );
+    } catch (_) {
+      return const NoisedQueryResult<int>(
+        exactValue: 0,
+        noisedValue: 0.0,
+        epsilonDeducted: 0.0,
+        isBudgetExhausted: true,
+        coarsenedBounds: '[0 - 10]',
+      );
+    }
+  }
 }
+
