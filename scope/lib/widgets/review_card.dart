@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/extracted_features.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/services/pii_redaction_service.dart';
 import 'package:scope/core/utils/smart_actions.dart';
+
 import 'package:scope/theme/app_colors.dart';
 import 'package:scope/theme/app_spacing.dart';
 import 'package:scope/widgets/ai_reason_widget.dart';
@@ -197,11 +199,11 @@ class DetectedInfoPanel extends StatelessWidget {
         if (features.hasDeadline)
           _DetectedLine(icon: Icons.event, text: 'Deadline detected', color: rowColor),
         if (features.amount != null)
-          _DetectedLine(icon: Icons.currency_rupee, text: '₹${features.amount}', color: rowColor),
+          _DetectedLine(icon: Icons.currency_rupee, text: PiiRedactionService.maskAmount(features.amount), color: rowColor),
         if (features.urls.isNotEmpty)
-          _DetectedLine(icon: Icons.link, text: features.urls.first, color: rowColor),
+          _DetectedLine(icon: Icons.link, text: PiiRedactionService.maskUrl(features.urls.first), color: rowColor),
         if (features.phoneNumbers.isNotEmpty)
-          _DetectedLine(icon: Icons.phone, text: features.phoneNumbers.first, color: rowColor),
+          _DetectedLine(icon: Icons.phone, text: PiiRedactionService.maskPhoneNumber(features.phoneNumbers.first), color: rowColor),
       ],
     );
   }

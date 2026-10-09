@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/extracted_features.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/services/pii_redaction_service.dart';
 import 'package:scope/core/state/notification_controller.dart';
 import 'package:scope/core/utils/smart_actions.dart';
 import 'package:scope/theme/app_colors.dart';
@@ -144,13 +145,13 @@ class NotificationDetailScreen extends StatelessWidget {
                               if (features.hasDeadline)
                                 const ScopeInfoRow(label: 'Deadline', value: 'Detected'),
                               if (features.amount != null)
-                                ScopeInfoRow(label: 'Amount', value: '₹${features.amount}'),
+                                ScopeInfoRow(label: 'Amount', value: PiiRedactionService.maskAmount(features.amount)),
                               if (features.urls.isNotEmpty)
-                                ScopeInfoRow(label: 'Website', value: features.urls.first),
+                                ScopeInfoRow(label: 'Website', value: PiiRedactionService.maskUrl(features.urls.first)),
                               if (features.phoneNumbers.isNotEmpty)
-                                ScopeInfoRow(label: 'Phone', value: features.phoneNumbers.first),
+                                ScopeInfoRow(label: 'Phone', value: PiiRedactionService.maskPhoneNumber(features.phoneNumbers.first)),
                               if (features.emails.isNotEmpty)
-                                ScopeInfoRow(label: 'Email', value: features.emails.first),
+                                ScopeInfoRow(label: 'Email', value: PiiRedactionService.maskEmail(features.emails.first)),
                               ScopeInfoRow(label: 'Organization', value: notification.packageName),
                               if (!features.hasDeadline &&
                                   features.amount == null &&
