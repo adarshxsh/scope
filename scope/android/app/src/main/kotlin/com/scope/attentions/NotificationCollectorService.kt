@@ -12,7 +12,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
  * grant "Notification access" in system Settings.
  *
  * Captured notifications are placed in a static [queue] which is drained
- * by [MainActivity] when Flutter requests them via MethodChannel.
+ * or inspected by [MainActivity] when Flutter requests them via MethodChannel.
  *
  * Design decisions:
  *   - Uses a static ConcurrentLinkedQueue (thread-safe, lock-free) because
@@ -28,8 +28,14 @@ class NotificationCollectorService : NotificationListenerService() {
         /** Maximum allowed queue size to prevent unbounded memory growth. */
         const val MAX_QUEUE_SIZE = 100
 
+        /** Default maximum number of notifications allowed in the native queue. */
+        const val DEFAULT_MAX_QUEUE_CAPACITY = MAX_QUEUE_SIZE
+
         /** Maximum time-to-live for queued notifications (15 minutes in milliseconds). */
         const val MAX_AGE_MS = 15 * 60 * 1000L
+
+        /** Configurable maximum capacity for the in-memory queue. */
+        var maxQueueCapacity: Int = MAX_QUEUE_SIZE
 
         /** Thread-safe queue of captured notifications. */
         private val queue = ConcurrentLinkedQueue<NotificationData>()
@@ -64,12 +70,40 @@ class NotificationCollectorService : NotificationListenerService() {
                 return
             }
 
-            // Evict oldest notification if queue reaches MAX_QUEUE_SIZE before adding new items
-            while (queue.size >= MAX_QUEUE_SIZE) {
+            // Evict oldest notification if queue reaches maxQueueCapacity before adding new items
+            while (queue.size >= maxQueueCapacity && queue.size > 0) {
                 queue.poll()
             }
 
             queue.add(data)
+        }
+
+        /**
+         * Non-destructively inspects pending notifications in the queue without removing them.
+         * Prunes expired notifications before returning.
+         */
+        fun peekQueue(now: Long = System.currentTimeMillis()): List<NotificationData> {
+            pruneExpired(now)
+            return queue.toList()
+        }
+
+        /**
+         * Explicitly acknowledges and removes notifications matching the specified [ids].
+         * Returns the number of items removed.
+         */
+        fun acknowledge(ids: List<String>): Int {
+            if (ids.isEmpty()) return 0
+            val idSet = ids.toSet()
+            var removedCount = 0
+            val iterator = queue.iterator()
+            while (iterator.hasNext()) {
+                val item = iterator.next()
+                if (idSet.contains(item.id)) {
+                    iterator.remove()
+                    removedCount++
+                }
+            }
+            return removedCount
         }
 
         /**
@@ -94,12 +128,20 @@ class NotificationCollectorService : NotificationListenerService() {
         fun clearQueue() {
             queue.clear()
             idCounter = 0L
+            maxQueueCapacity = MAX_QUEUE_SIZE
         }
 
         /**
          * Returns the current queue size (for diagnostics).
          */
         fun queueSize(): Int = queue.size
+
+        /**
+         * Helper for unit testing queue behavior.
+         */
+        fun addNotificationForTest(data: NotificationData, now: Long = data.timestamp) {
+            addNotification(data, now)
+        }
     }
 
     private fun addSbnToQueue(sbn: StatusBarNotification, now: Long = System.currentTimeMillis()) {

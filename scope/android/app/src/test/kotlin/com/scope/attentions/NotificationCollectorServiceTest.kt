@@ -185,4 +185,79 @@ class NotificationCollectorServiceTest {
         assertEquals(1, drained.size)
         assertEquals("3", drained[0].id)
     }
+
+    @Test
+    fun testPeekQueueIsNonDestructive() {
+        val now = System.currentTimeMillis()
+        val notif1 = NotificationData("n1", "com.test", "Title 1", "Body 1", now)
+        val notif2 = NotificationData("n2", "com.test", "Title 2", "Body 2", now + 1000L)
+
+        NotificationCollectorService.addNotificationForTest(notif1, now)
+        NotificationCollectorService.addNotificationForTest(notif2, now + 1000L)
+
+        assertEquals(2, NotificationCollectorService.queueSize())
+
+        val peeked = NotificationCollectorService.peekQueue(now + 1000L)
+        assertEquals(2, peeked.size)
+        assertEquals("n1", peeked[0].id)
+        assertEquals("n2", peeked[1].id)
+
+        // Queue size remains 2 after peeking
+        assertEquals(2, NotificationCollectorService.queueSize())
+    }
+
+    @Test
+    fun testAcknowledgeRemovesOnlySpecifiedIds() {
+        val now = System.currentTimeMillis()
+        val notif1 = NotificationData("n1", "com.test", "Title 1", "Body 1", now)
+        val notif2 = NotificationData("n2", "com.test", "Title 2", "Body 2", now + 1000L)
+        val notif3 = NotificationData("n3", "com.test", "Title 3", "Body 3", now + 2000L)
+
+        NotificationCollectorService.addNotificationForTest(notif1, now)
+        NotificationCollectorService.addNotificationForTest(notif2, now + 1000L)
+        NotificationCollectorService.addNotificationForTest(notif3, now + 2000L)
+
+        assertEquals(3, NotificationCollectorService.queueSize())
+
+        val ackedCount = NotificationCollectorService.acknowledge(listOf("n1", "n3"))
+        assertEquals(2, ackedCount)
+
+        assertEquals(1, NotificationCollectorService.queueSize())
+        val remaining = NotificationCollectorService.peekQueue(now + 2000L)
+        assertEquals("n2", remaining[0].id)
+    }
+
+    @Test
+    fun testMaxQueueCapacityEnforcement() {
+        val now = System.currentTimeMillis()
+        NotificationCollectorService.maxQueueCapacity = 3
+
+        val notif1 = NotificationData("n1", "com.test", "Title 1", "Body 1", now)
+        val notif2 = NotificationData("n2", "com.test", "Title 2", "Body 2", now + 1000L)
+        val notif3 = NotificationData("n3", "com.test", "Title 3", "Body 3", now + 2000L)
+        val notif4 = NotificationData("n4", "com.test", "Title 4", "Body 4", now + 3000L)
+
+        NotificationCollectorService.addNotificationForTest(notif1, now)
+        NotificationCollectorService.addNotificationForTest(notif2, now + 1000L)
+        NotificationCollectorService.addNotificationForTest(notif3, now + 2000L)
+        assertEquals(3, NotificationCollectorService.queueSize())
+
+        // Adding 4th item when max capacity is 3 should evict the oldest item (n1)
+        NotificationCollectorService.addNotificationForTest(notif4, now + 3000L)
+        assertEquals(3, NotificationCollectorService.queueSize())
+
+        val remaining = NotificationCollectorService.peekQueue(now + 3000L)
+        assertEquals(listOf("n2", "n3", "n4"), remaining.map { it.id })
+    }
+
+    @Test
+    fun testAcknowledgeWithEmptyListDoesNothing() {
+        val now = System.currentTimeMillis()
+        val notif1 = NotificationData("n1", "com.test", "Title 1", "Body 1", now)
+        NotificationCollectorService.addNotificationForTest(notif1, now)
+
+        val ackedCount = NotificationCollectorService.acknowledge(emptyList())
+        assertEquals(0, ackedCount)
+        assertEquals(1, NotificationCollectorService.queueSize())
+    }
 }

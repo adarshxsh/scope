@@ -1,8 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:scope/core/bridge/notification_bridge.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/state/providers.dart';
 import 'package:scope/core/state/notification_controller.dart';
+import 'package:scope/core/storage/notification_storage.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -300,13 +303,19 @@ void main() {
   group('NotificationController Integration Tests', () {
     late ProviderContainer container;
     late NotificationController controller;
+    late InMemoryNotificationStorage storage;
 
     setUp(() {
       container = ProviderContainer();
-      controller = NotificationController(container: container);
+      storage = InMemoryNotificationStorage();
+      controller = NotificationController(
+        container: container,
+        storage: storage,
+      );
     });
 
-    tearDown(() {
+    tearDown(() async {
+      await Future.delayed(const Duration(milliseconds: 50));
       container.dispose();
       controller.dispose();
     });
@@ -339,6 +348,52 @@ void main() {
       controller.complete('c1');
       expect(controller.isCompleted('c1'), isTrue);
       expect(container.read(reviewQueueProvider).first.state, equals(ReviewState.REVIEWED));
+    });
+
+    test('fetchNotifications executes two-phase peek and acknowledge flow', () async {
+      final methodCalls = <MethodCall>[];
+      final channel = const MethodChannel('com.scope.notifications.fetch_test');
+      
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+        methodCalls.add(call);
+        if (call.method == 'peekNotifications') {
+          return [
+            {
+              'id': 'n1',
+              'packageName': 'com.test.app',
+              'title': 'Test Title',
+              'content': 'Test Content',
+              'timestamp': 1700000000000,
+              'category': 'msg',
+              'isOngoing': false,
+            }
+          ];
+        } else if (call.method == 'getSessionToken') {
+          return 'test-session-token';
+        } else if (call.method == 'acknowledgeNotifications') {
+          final args = call.arguments as Map;
+          expect(args['token'], equals('test-session-token'));
+          expect(args['ids'], equals(['n1']));
+          return true;
+        }
+        return null;
+      });
+
+      final testBridge = NotificationBridge(channel: channel);
+      final testController = NotificationController(
+        bridge: testBridge,
+        container: container,
+        storage: storage,
+      );
+
+      await testController.fetchNotifications();
+
+      expect(methodCalls.map((c) => c.method).toList(), equals(['peekNotifications', 'getSessionToken', 'acknowledgeNotifications']));
+
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null);
+      testController.dispose();
     });
   });
 }
