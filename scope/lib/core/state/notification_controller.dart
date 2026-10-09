@@ -12,7 +12,9 @@ import 'package:scope/core/utils/smart_actions.dart';
 import 'package:scope/core/state/providers.dart';
 import 'package:drift/drift.dart';
 import 'package:scope/database/attention_database.dart';
+import 'package:scope/database/daos.dart';
 import 'package:scope/database/database_provider.dart';
+
 import 'package:scope/database/drift_notification_storage.dart';
 
 /// Session stats collected during a Focus review.
@@ -46,8 +48,14 @@ class NotificationController extends ChangeNotifier {
   })  : _bridge = bridge ?? NotificationBridge(),
         _container = container ?? providerContainer,
         _storage = storage ?? DriftNotificationStorage(container?.read(databaseProvider) ?? providerContainer.read(databaseProvider)),
-        _engine = engine ?? GhostAnalysisEngine() {
+        _engine = engine ??
+            GhostAnalysisEngine(
+              auditDao: InferenceAuditDao(
+                container?.read(databaseProvider) ?? providerContainer.read(databaseProvider),
+              ),
+            ) {
     _engine.initialize();
+
 
     // Listen to changes in Riverpod's reviewQueueProvider to keep legacy notifier list in sync
     _container.listen<List<AppNotification>>(reviewQueueProvider, (previous, next) {

@@ -65,3 +65,21 @@ class DailyBriefTable extends Table {
   IntColumn get remindersCreated => integer().withDefault(const Constant(0))();
   IntColumn get archivedCount => integer().withDefault(const Constant(0))();
 }
+
+@DataClassName('InferenceAuditLogEntry')
+class InferenceAuditLogsTable extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get notificationId => text()();
+  IntColumn get timestamp => integer()();
+  TextColumn get packageName => text()();
+  TextColumn get classifiedCategory => text().nullable()();
+  RealColumn get rawMlScore => real().nullable()();
+  RealColumn get fusedScore => real().nullable()();
+  TextColumn get finalPriority => text()();
+  TextColumn get overrideTrigger => text()();
+  IntColumn get latencyMs => integer()();
+  TextColumn get featureAttributionsJson => text().nullable()();
+  TextColumn get scoreEvolutionJson => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
