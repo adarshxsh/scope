@@ -1,22 +1,100 @@
 /// WordPiece tokenizer implementation in pure Dart for BERT models.
 library;
 
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
+
+/// Exception thrown when vocabulary fails SHA-256 digest verification,
+/// size bounds, or special token contract requirements.
+class VocabularyContractException implements Exception {
+  final String message;
+  const VocabularyContractException(this.message);
+
+  @override
+  String toString() => 'VocabularyContractException: $message';
+}
+
+/// Expected SHA-256 checksum for the standard assets/vocab.txt file.
+const String kExpectedVocabSha256 =
+    '6229da7b5527533c901e57b32dafc3c6fd701114a407d1fe4f5da60af3b062c5';
+
 class WordPieceTokenizer {
   final Map<String, int> vocab;
   final int maxSeqLength;
 
-  WordPieceTokenizer(this.vocab, {this.maxSeqLength = 64});
+  /// Dynamic verified special token IDs
+  final int clsId;
+  final int sepId;
+  final int padId;
+  final int unkId;
+
+  WordPieceTokenizer(
+    this.vocab, {
+    this.maxSeqLength = 64,
+    int minVocabSize = 10,
+    int maxVocabSize = 30522,
+  })  : clsId = vocab['[CLS]'] ?? -1,
+        sepId = vocab['[SEP]'] ?? -1,
+        padId = vocab['[PAD]'] ?? -1,
+        unkId = vocab['[UNK]'] ?? -1 {
+    _validateContract(minVocabSize: minVocabSize, maxVocabSize: maxVocabSize);
+  }
+
+  void _validateContract({required int minVocabSize, required int maxVocabSize}) {
+    if (vocab.length < minVocabSize || vocab.length > maxVocabSize) {
+      throw VocabularyContractException(
+        'Vocabulary size (${vocab.length}) out of bounds [$minVocabSize, $maxVocabSize]',
+      );
+    }
+
+    final missingTokens = <String>[];
+    if (clsId == -1) missingTokens.add('[CLS]');
+    if (sepId == -1) missingTokens.add('[SEP]');
+    if (padId == -1) missingTokens.add('[PAD]');
+    if (unkId == -1) missingTokens.add('[UNK]');
+
+    if (missingTokens.isNotEmpty) {
+      throw VocabularyContractException(
+        'Missing mandatory special token(s): ${missingTokens.join(', ')}',
+      );
+    }
+  }
 
   /// Loads vocabulary from a list of lines (e.g. from vocab.txt).
-  factory WordPieceTokenizer.fromLines(List<String> lines, {int maxSeqLength = 64}) {
+  ///
+  /// Optionally verifies the SHA-256 digest against [expectedDigest]
+  /// and validates vocabulary size bounds and required special tokens.
+  factory WordPieceTokenizer.fromLines(
+    List<String> lines, {
+    int maxSeqLength = 64,
+    String? expectedDigest,
+    int minVocabSize = 10,
+    int maxVocabSize = 30522,
+  }) {
+    if (expectedDigest != null) {
+      final content = lines.join('\n');
+      final actualDigest = sha256.convert(utf8.encode(content)).toString();
+      if (actualDigest.toLowerCase() != expectedDigest.toLowerCase()) {
+        throw VocabularyContractException(
+          'Vocabulary SHA-256 digest mismatch. Expected: $expectedDigest, Actual: $actualDigest',
+        );
+      }
+    }
+
     final vocabMap = <String, int>{};
     for (int i = 0; i < lines.length; i++) {
       final line = lines[i].trim();
       if (line.isNotEmpty) {
-        vocabMap[line] = i;
+        vocabMap.putIfAbsent(line, () => i);
       }
     }
-    return WordPieceTokenizer(vocabMap, maxSeqLength: maxSeqLength);
+
+    return WordPieceTokenizer(
+      vocabMap,
+      maxSeqLength: maxSeqLength,
+      minVocabSize: minVocabSize,
+      maxVocabSize: maxVocabSize,
+    );
   }
 
   /// Tokenizes the input [text] into a list of vocabulary token IDs.
@@ -24,11 +102,6 @@ class WordPieceTokenizer {
   List<int> tokenize(String text) {
     final tokens = _basicTokenize(text);
     final List<int> ids = [];
-
-    final clsId = vocab['[CLS]'] ?? 101;
-    final sepId = vocab['[SEP]'] ?? 102;
-    final padId = vocab['[PAD]'] ?? 0;
-    final unkId = vocab['[UNK]'] ?? 100;
 
     ids.add(clsId);
 
