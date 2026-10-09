@@ -129,5 +129,34 @@ void main() {
         await bridge.openNotificationSettings();
       });
     });
+
+    group('getTelemetry', () {
+      test('returns map from channel', () async {
+        mockHandler((call) async {
+          return {
+            'totalCapturedCount': 10,
+            'duplicateDroppedCount': 2,
+            'overflowEvictedCount': 1,
+            'currentQueueSize': 7,
+            'maxQueueCapacity': 500,
+            'lastDrainedTimestamp': 1700000000000,
+          };
+        });
+
+        final telemetry = await bridge.getTelemetry();
+        expect(telemetry['totalCapturedCount'], 10);
+        expect(telemetry['duplicateDroppedCount'], 2);
+        expect(telemetry['overflowEvictedCount'], 1);
+        expect(telemetry['currentQueueSize'], 7);
+        expect(log.single.method, 'getTelemetry');
+      });
+
+      test('returns empty map on error or null', () async {
+        mockHandler((call) async => null);
+        final telemetry = await bridge.getTelemetry();
+        expect(telemetry, isEmpty);
+      });
+    });
   });
 }
+
