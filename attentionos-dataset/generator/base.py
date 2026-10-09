@@ -1,17 +1,74 @@
 from __future__ import annotations
 
 import json
+import logging
 import random
 import re
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any, Callable, Iterable
 from urllib import request
 from urllib.error import URLError
 
 from faker import Faker
 from jinja2 import Template
+
+logger = logging.getLogger(__name__)
+
+
+def sanitize_prompt_input(value: Any) -> Any:
+    """
+    Sanitizes prompt inputs to prevent prompt injection attacks, neutralize LLM control tokens,
+    strip unescaped newlines, and neutralize instruction override directives.
+    Recursively processes nested dicts, lists, tuples, and primitive types.
+    """
+    if isinstance(value, str):
+        original = value
+        # 1. Neutralize control tokens
+        control_tokens = [
+            "<|im_start|>", "<|im_end|>", "<|endoftext|>",
+            "<|system|>", "<|user|>", "<|assistant|>",
+            "[INST]", "[/INST]", "<<SYS>>", "<</SYS>>",
+            "<start_of_turn>", "<end_of_turn>", "<bos>", "<eos>",
+            "<|extra_0|>", "<|extra_1|>", "<|extra_2|>",
+        ]
+        for token in control_tokens:
+            value = value.replace(token, "")
+
+        # Strip remaining control token pattern <|...|>
+        value = re.sub(r"<\|[a-zA-Z0-9_\-]+\|>", "", value)
+
+        # 2. Strip unescaped newlines and carriage returns
+        value = re.sub(r"[\r\n]+", " ", value)
+
+        # 3. Neutralize instruction override markers / prompt injection directives
+        override_patterns = [
+            r"(?i)\bignore\s+(all\s+)?(previous|prior|above)\s+instructions?\b",
+            r"(?i)\bdisregard\s+(all\s+)?(previous|prior|above)\s+instructions?\b",
+            r"(?i)\bsystem\s*:\s*",
+            r"(?i)\buser\s*:\s*",
+            r"(?i)\bassistant\s*:\s*",
+            r"(?i)\bhuman\s*:\s*",
+            r"(?i)\bai\s*:\s*",
+            r"(?i)\bnew\s+instruction\b",
+            r"(?i)\boverride\s+instructions?\b",
+        ]
+        for pattern in override_patterns:
+            value = re.sub(pattern, "[sanitized]", value)
+
+        cleaned = value.strip()
+        if cleaned != original:
+            logger.info("Sanitized prompt input: neutralized control tokens or instruction overrides.")
+        return cleaned
+    elif isinstance(value, dict):
+        return {sanitize_prompt_input(k): sanitize_prompt_input(v) for k, v in value.items()}
+    elif isinstance(value, list):
+        return [sanitize_prompt_input(v) for v in value]
+    elif isinstance(value, tuple):
+        return tuple(sanitize_prompt_input(v) for v in value)
+    return value
 
 from policy.scoring import score_notification
 from validator.duplicate import text_fingerprint
@@ -170,6 +227,10 @@ class NotificationDatasetGenerator:
         self._weighted_scenarios = [scenario for scenario in SCENARIOS for _ in range(scenario.weight)]
         self._seen_text: set[str] = set()
 
+        template_path = Path(__file__).resolve().parent.parent / "templates" / "ollama_prompt.txt"
+        with open(template_path, "r", encoding="utf-8") as f:
+            self.ollama_template = Template(f.read())
+
     def generate(self, count: int) -> Iterable[dict[str, Any]]:
         produced = 0
         attempts = 0
@@ -278,32 +339,76 @@ class NotificationDatasetGenerator:
         return self._clip(title, 50), self._clip(body, 140)
 
     def _ollama_notification(self, scenario: Scenario, ctx: dict[str, Any]) -> tuple[str, str] | None:
-        prompt = (
-            "Return only JSON with exactly title and body. "
-            "Make a realistic Android notification. "
-            f"App: {ctx['app_context']}. Type: {scenario.notification_type}. "
-            f"Intent: {scenario.intent}. Keep title <= 50 chars and body <= 140 chars. "
-            "No real personal data."
+        entities = self._entities(ctx, scenario)
+
+        sanitized_ctx = sanitize_prompt_input(ctx)
+        sanitized_entities = sanitize_prompt_input(entities)
+        sanitized_app_context = sanitized_ctx.get("app_context", "")
+        sanitized_notification_type = sanitize_prompt_input(scenario.notification_type)
+        sanitized_category = sanitize_prompt_input(scenario.category)
+        sanitized_subcategory = sanitize_prompt_input(scenario.subcategory)
+        sanitized_intent = sanitize_prompt_input(scenario.intent)
+
+        prompt = self.ollama_template.render(
+            app_context=sanitized_app_context,
+            notification_type=sanitized_notification_type,
+            category=sanitized_category,
+            subcategory=sanitized_subcategory,
+            intent=sanitized_intent,
+            language="en",
+            entities=sanitized_entities,
+            ctx=sanitized_ctx,
         )
+
         payload = json.dumps({"model": self.ollama_model, "prompt": prompt, "stream": False}).encode("utf-8")
         try:
             req = request.Request("http://localhost:11434/api/generate", data=payload, headers={"Content-Type": "application/json"})
             with request.urlopen(req, timeout=20) as response:
-                raw = json.loads(response.read().decode("utf-8")).get("response", "{}")
-        except (URLError, TimeoutError, json.JSONDecodeError):
+                raw_resp = response.read().decode("utf-8")
+                raw = json.loads(raw_resp).get("response", "{}")
+        except Exception as err:
+            logger.warning("Ollama API request failed, falling back to deterministic template generation: %s", err)
             return None
+
         try:
             parsed = json.loads(raw)
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, TypeError):
+            if not isinstance(raw, str):
+                logger.warning("Ollama response format invalid, returning None fallback.")
+                return None
             match = re.search(r"\{.*\}", raw, flags=re.S)
             if not match:
+                logger.warning("No JSON structure found in Ollama response.")
                 return None
-            parsed = json.loads(match.group(0))
-        title = str(parsed.get("title", "")).strip()
-        body = str(parsed.get("body", "")).strip()
-        if not title or not body:
+            try:
+                parsed = json.loads(match.group(0))
+            except Exception:
+                logger.warning("Failed to parse extracted JSON from Ollama response.")
+                return None
+
+        if not isinstance(parsed, dict):
+            logger.warning("Ollama JSON output is not a dict.")
             return None
-        return self._clip(title, 50), self._clip(body, 140)
+
+        title = parsed.get("title")
+        body = parsed.get("body")
+
+        if not isinstance(title, str) or not isinstance(body, str):
+            logger.warning("Ollama output title or body is missing/non-string.")
+            return None
+
+        title = title.strip()
+        body = body.strip()
+
+        if not title or not body:
+            logger.warning("Ollama output title or body is empty after stripping.")
+            return None
+
+        if len(title) > 50 or len(body) > 140:
+            logger.warning("Ollama generated notification exceeded maximum length bounds (title len=%d, body len=%d).", len(title), len(body))
+            return None
+
+        return title, body
 
     def _context(self, app: AppProfile, scenario: Scenario, timestamp: datetime) -> dict[str, Any]:
         city = self.random.choice(("Bengaluru", "Mumbai", "Delhi", "Pune", "Hyderabad", "Chennai", "Kolkata", "Ahmedabad", "Jaipur", "Kochi"))
@@ -356,22 +461,22 @@ class NotificationDatasetGenerator:
 
     def _entities(self, ctx: dict[str, Any], scenario: Scenario) -> dict[str, Any]:
         entities: dict[str, Any] = {
-            "app": ctx["app_context"],
-            "reference_id": ctx["ref"],
+            "app": ctx.get("app_context", ""),
+            "reference_id": ctx.get("ref", ""),
         }
         if scenario.contains_money:
-            entities["amount"] = ctx["amount"]
+            entities["amount"] = ctx.get("amount", "")
             entities["currency"] = "INR"
-            entities["merchant"] = ctx["merchant"]
+            entities["merchant"] = ctx.get("merchant", "")
         if scenario.contains_otp:
-            entities["otp_length"] = len(ctx["otp"])
+            entities["otp_length"] = len(str(ctx.get("otp", "")))
         if scenario.contains_location:
-            entities["city"] = ctx["city"]
-            entities["place"] = ctx["place"]
+            entities["city"] = ctx.get("city", "")
+            entities["place"] = ctx.get("place", "")
         if scenario.contains_date:
-            entities["date_text"] = ctx["date"]
+            entities["date_text"] = ctx.get("date", "")
         if scenario.contains_time:
-            entities["time_text"] = ctx["time"]
+            entities["time_text"] = ctx.get("time", "")
         if scenario.contains_email:
             entities["email_domain"] = "example.com"
         return entities
