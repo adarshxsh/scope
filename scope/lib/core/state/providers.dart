@@ -12,12 +12,14 @@ enum QueueSortOrder {
 }
 
 class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
+  static const int maxQueueCapacity = 500;
   final AttentionDatabase? _db;
   ReviewQueueNotifier([this._db]) : super([]);
 
   /// Load a list of notifications directly (used on startup recovery).
   void load(List<AppNotification> list) {
     state = list;
+    _enforceCapacityLimit();
   }
 
   /// Add a notification to the review queue.
@@ -52,10 +54,44 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
       state = [...state, newItem];
     }
 
+    _enforceCapacityLimit();
+
     // Persist to DB
     if (_db != null) {
       DriftNotificationStorage(_db).save(newItem);
       _saveQueueEntry(newItem);
+    }
+  }
+
+  /// Enforces maximum queue capacity limits by evicting oldest/inactive entries.
+  void _enforceCapacityLimit() {
+    if (state.length <= maxQueueCapacity) return;
+
+    final toRemoveCount = state.length - maxQueueCapacity;
+    final idsToRemove = <String>{};
+
+    // First attempt to evict non-active notifications (ARCHIVED, EXPIRED, REVIEWED)
+    for (int i = 0; i < state.length && idsToRemove.length < toRemoveCount; i++) {
+      final n = state[i];
+      if (n.state != ReviewState.ACTIVE && n.state != ReviewState.SNOOZED) {
+        idsToRemove.add(n.id);
+      }
+    }
+
+    // If still over capacity, evict oldest items overall (FIFO)
+    if (idsToRemove.length < toRemoveCount) {
+      for (int i = 0; i < state.length && idsToRemove.length < toRemoveCount; i++) {
+        idsToRemove.add(state[i].id);
+      }
+    }
+
+    if (idsToRemove.isNotEmpty) {
+      state = state.where((n) => !idsToRemove.contains(n.id)).toList();
+      if (_db != null) {
+        for (final id in idsToRemove) {
+          _db.reviewQueueDao.deleteItem(id);
+        }
+      }
     }
   }
 

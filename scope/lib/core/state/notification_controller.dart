@@ -404,7 +404,13 @@ class NotificationController extends ChangeNotifier {
               n.title == raw.title &&
               n.content == raw.content);
           if (!inBatch) {
-            analyzed.add(await _engine.analyze(raw));
+            try {
+              analyzed.add(await _engine.analyze(raw));
+            } catch (e, st) {
+              if (kDebugMode) {
+                print('Error analyzing notification from ${raw.packageName}: $e\n$st');
+              }
+            }
           }
         }
       }
@@ -446,7 +452,13 @@ class NotificationController extends ChangeNotifier {
             n.title == raw.title &&
             n.content == raw.content);
         if (!inBatch) {
-          analyzed.add(await _engine.analyze(raw));
+          try {
+            analyzed.add(await _engine.analyze(raw));
+          } catch (e, st) {
+            if (kDebugMode) {
+              print('Error analyzing test notification from ${raw.packageName}: $e\n$st');
+            }
+          }
         }
       }
     }
