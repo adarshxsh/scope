@@ -2709,6 +2709,705 @@ class DailyBriefTableCompanion extends UpdateCompanion<DailyBriefEntry> {
   }
 }
 
+class $InferenceTelemetryTableTable extends InferenceTelemetryTable
+    with TableInfo<$InferenceTelemetryTableTable, InferenceTelemetryEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $InferenceTelemetryTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _timestampMeta = const VerificationMeta(
+    'timestamp',
+  );
+  @override
+  late final GeneratedColumn<int> timestamp = GeneratedColumn<int>(
+    'timestamp',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _inferenceTimeUsMeta = const VerificationMeta(
+    'inferenceTimeUs',
+  );
+  @override
+  late final GeneratedColumn<int> inferenceTimeUs = GeneratedColumn<int>(
+    'inference_time_us',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _engineLatencyMsMeta = const VerificationMeta(
+    'engineLatencyMs',
+  );
+  @override
+  late final GeneratedColumn<int> engineLatencyMs = GeneratedColumn<int>(
+    'engine_latency_ms',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _modelVersionMeta = const VerificationMeta(
+    'modelVersion',
+  );
+  @override
+  late final GeneratedColumn<String> modelVersion = GeneratedColumn<String>(
+    'model_version',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _engineVersionMeta = const VerificationMeta(
+    'engineVersion',
+  );
+  @override
+  late final GeneratedColumn<String> engineVersion = GeneratedColumn<String>(
+    'engine_version',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isFallbackMeta = const VerificationMeta(
+    'isFallback',
+  );
+  @override
+  late final GeneratedColumn<bool> isFallback = GeneratedColumn<bool>(
+    'is_fallback',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_fallback" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isErrorMeta = const VerificationMeta(
+    'isError',
+  );
+  @override
+  late final GeneratedColumn<bool> isError = GeneratedColumn<bool>(
+    'is_error',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_error" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _errorMessageMeta = const VerificationMeta(
+    'errorMessage',
+  );
+  @override
+  late final GeneratedColumn<String> errorMessage = GeneratedColumn<String>(
+    'error_message',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _notificationIdMeta = const VerificationMeta(
+    'notificationId',
+  );
+  @override
+  late final GeneratedColumn<String> notificationId = GeneratedColumn<String>(
+    'notification_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _categoryMeta = const VerificationMeta(
+    'category',
+  );
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+    'category',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    timestamp,
+    inferenceTimeUs,
+    engineLatencyMs,
+    modelVersion,
+    engineVersion,
+    isFallback,
+    isError,
+    errorMessage,
+    notificationId,
+    category,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'inference_telemetry_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<InferenceTelemetryEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('timestamp')) {
+      context.handle(
+        _timestampMeta,
+        timestamp.isAcceptableOrUnknown(data['timestamp']!, _timestampMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_timestampMeta);
+    }
+    if (data.containsKey('inference_time_us')) {
+      context.handle(
+        _inferenceTimeUsMeta,
+        inferenceTimeUs.isAcceptableOrUnknown(
+          data['inference_time_us']!,
+          _inferenceTimeUsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_inferenceTimeUsMeta);
+    }
+    if (data.containsKey('engine_latency_ms')) {
+      context.handle(
+        _engineLatencyMsMeta,
+        engineLatencyMs.isAcceptableOrUnknown(
+          data['engine_latency_ms']!,
+          _engineLatencyMsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('model_version')) {
+      context.handle(
+        _modelVersionMeta,
+        modelVersion.isAcceptableOrUnknown(
+          data['model_version']!,
+          _modelVersionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('engine_version')) {
+      context.handle(
+        _engineVersionMeta,
+        engineVersion.isAcceptableOrUnknown(
+          data['engine_version']!,
+          _engineVersionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_fallback')) {
+      context.handle(
+        _isFallbackMeta,
+        isFallback.isAcceptableOrUnknown(data['is_fallback']!, _isFallbackMeta),
+      );
+    }
+    if (data.containsKey('is_error')) {
+      context.handle(
+        _isErrorMeta,
+        isError.isAcceptableOrUnknown(data['is_error']!, _isErrorMeta),
+      );
+    }
+    if (data.containsKey('error_message')) {
+      context.handle(
+        _errorMessageMeta,
+        errorMessage.isAcceptableOrUnknown(
+          data['error_message']!,
+          _errorMessageMeta,
+        ),
+      );
+    }
+    if (data.containsKey('notification_id')) {
+      context.handle(
+        _notificationIdMeta,
+        notificationId.isAcceptableOrUnknown(
+          data['notification_id']!,
+          _notificationIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('category')) {
+      context.handle(
+        _categoryMeta,
+        category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  InferenceTelemetryEntry map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return InferenceTelemetryEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      timestamp: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}timestamp'],
+      )!,
+      inferenceTimeUs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}inference_time_us'],
+      )!,
+      engineLatencyMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}engine_latency_ms'],
+      ),
+      modelVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}model_version'],
+      ),
+      engineVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}engine_version'],
+      ),
+      isFallback: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_fallback'],
+      )!,
+      isError: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_error'],
+      )!,
+      errorMessage: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}error_message'],
+      ),
+      notificationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notification_id'],
+      ),
+      category: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category'],
+      ),
+    );
+  }
+
+  @override
+  $InferenceTelemetryTableTable createAlias(String alias) {
+    return $InferenceTelemetryTableTable(attachedDatabase, alias);
+  }
+}
+
+class InferenceTelemetryEntry extends DataClass
+    implements Insertable<InferenceTelemetryEntry> {
+  final int id;
+  final int timestamp;
+  final int inferenceTimeUs;
+  final int? engineLatencyMs;
+  final String? modelVersion;
+  final String? engineVersion;
+  final bool isFallback;
+  final bool isError;
+  final String? errorMessage;
+  final String? notificationId;
+  final String? category;
+  const InferenceTelemetryEntry({
+    required this.id,
+    required this.timestamp,
+    required this.inferenceTimeUs,
+    this.engineLatencyMs,
+    this.modelVersion,
+    this.engineVersion,
+    required this.isFallback,
+    required this.isError,
+    this.errorMessage,
+    this.notificationId,
+    this.category,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['timestamp'] = Variable<int>(timestamp);
+    map['inference_time_us'] = Variable<int>(inferenceTimeUs);
+    if (!nullToAbsent || engineLatencyMs != null) {
+      map['engine_latency_ms'] = Variable<int>(engineLatencyMs);
+    }
+    if (!nullToAbsent || modelVersion != null) {
+      map['model_version'] = Variable<String>(modelVersion);
+    }
+    if (!nullToAbsent || engineVersion != null) {
+      map['engine_version'] = Variable<String>(engineVersion);
+    }
+    map['is_fallback'] = Variable<bool>(isFallback);
+    map['is_error'] = Variable<bool>(isError);
+    if (!nullToAbsent || errorMessage != null) {
+      map['error_message'] = Variable<String>(errorMessage);
+    }
+    if (!nullToAbsent || notificationId != null) {
+      map['notification_id'] = Variable<String>(notificationId);
+    }
+    if (!nullToAbsent || category != null) {
+      map['category'] = Variable<String>(category);
+    }
+    return map;
+  }
+
+  InferenceTelemetryTableCompanion toCompanion(bool nullToAbsent) {
+    return InferenceTelemetryTableCompanion(
+      id: Value(id),
+      timestamp: Value(timestamp),
+      inferenceTimeUs: Value(inferenceTimeUs),
+      engineLatencyMs: engineLatencyMs == null && nullToAbsent
+          ? const Value.absent()
+          : Value(engineLatencyMs),
+      modelVersion: modelVersion == null && nullToAbsent
+          ? const Value.absent()
+          : Value(modelVersion),
+      engineVersion: engineVersion == null && nullToAbsent
+          ? const Value.absent()
+          : Value(engineVersion),
+      isFallback: Value(isFallback),
+      isError: Value(isError),
+      errorMessage: errorMessage == null && nullToAbsent
+          ? const Value.absent()
+          : Value(errorMessage),
+      notificationId: notificationId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notificationId),
+      category: category == null && nullToAbsent
+          ? const Value.absent()
+          : Value(category),
+    );
+  }
+
+  factory InferenceTelemetryEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return InferenceTelemetryEntry(
+      id: serializer.fromJson<int>(json['id']),
+      timestamp: serializer.fromJson<int>(json['timestamp']),
+      inferenceTimeUs: serializer.fromJson<int>(json['inferenceTimeUs']),
+      engineLatencyMs: serializer.fromJson<int?>(json['engineLatencyMs']),
+      modelVersion: serializer.fromJson<String?>(json['modelVersion']),
+      engineVersion: serializer.fromJson<String?>(json['engineVersion']),
+      isFallback: serializer.fromJson<bool>(json['isFallback']),
+      isError: serializer.fromJson<bool>(json['isError']),
+      errorMessage: serializer.fromJson<String?>(json['errorMessage']),
+      notificationId: serializer.fromJson<String?>(json['notificationId']),
+      category: serializer.fromJson<String?>(json['category']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'timestamp': serializer.toJson<int>(timestamp),
+      'inferenceTimeUs': serializer.toJson<int>(inferenceTimeUs),
+      'engineLatencyMs': serializer.toJson<int?>(engineLatencyMs),
+      'modelVersion': serializer.toJson<String?>(modelVersion),
+      'engineVersion': serializer.toJson<String?>(engineVersion),
+      'isFallback': serializer.toJson<bool>(isFallback),
+      'isError': serializer.toJson<bool>(isError),
+      'errorMessage': serializer.toJson<String?>(errorMessage),
+      'notificationId': serializer.toJson<String?>(notificationId),
+      'category': serializer.toJson<String?>(category),
+    };
+  }
+
+  InferenceTelemetryEntry copyWith({
+    int? id,
+    int? timestamp,
+    int? inferenceTimeUs,
+    Value<int?> engineLatencyMs = const Value.absent(),
+    Value<String?> modelVersion = const Value.absent(),
+    Value<String?> engineVersion = const Value.absent(),
+    bool? isFallback,
+    bool? isError,
+    Value<String?> errorMessage = const Value.absent(),
+    Value<String?> notificationId = const Value.absent(),
+    Value<String?> category = const Value.absent(),
+  }) => InferenceTelemetryEntry(
+    id: id ?? this.id,
+    timestamp: timestamp ?? this.timestamp,
+    inferenceTimeUs: inferenceTimeUs ?? this.inferenceTimeUs,
+    engineLatencyMs: engineLatencyMs.present
+        ? engineLatencyMs.value
+        : this.engineLatencyMs,
+    modelVersion: modelVersion.present ? modelVersion.value : this.modelVersion,
+    engineVersion: engineVersion.present
+        ? engineVersion.value
+        : this.engineVersion,
+    isFallback: isFallback ?? this.isFallback,
+    isError: isError ?? this.isError,
+    errorMessage: errorMessage.present ? errorMessage.value : this.errorMessage,
+    notificationId: notificationId.present
+        ? notificationId.value
+        : this.notificationId,
+    category: category.present ? category.value : this.category,
+  );
+  InferenceTelemetryEntry copyWithCompanion(
+    InferenceTelemetryTableCompanion data,
+  ) {
+    return InferenceTelemetryEntry(
+      id: data.id.present ? data.id.value : this.id,
+      timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
+      inferenceTimeUs: data.inferenceTimeUs.present
+          ? data.inferenceTimeUs.value
+          : this.inferenceTimeUs,
+      engineLatencyMs: data.engineLatencyMs.present
+          ? data.engineLatencyMs.value
+          : this.engineLatencyMs,
+      modelVersion: data.modelVersion.present
+          ? data.modelVersion.value
+          : this.modelVersion,
+      engineVersion: data.engineVersion.present
+          ? data.engineVersion.value
+          : this.engineVersion,
+      isFallback: data.isFallback.present
+          ? data.isFallback.value
+          : this.isFallback,
+      isError: data.isError.present ? data.isError.value : this.isError,
+      errorMessage: data.errorMessage.present
+          ? data.errorMessage.value
+          : this.errorMessage,
+      notificationId: data.notificationId.present
+          ? data.notificationId.value
+          : this.notificationId,
+      category: data.category.present ? data.category.value : this.category,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InferenceTelemetryEntry(')
+          ..write('id: $id, ')
+          ..write('timestamp: $timestamp, ')
+          ..write('inferenceTimeUs: $inferenceTimeUs, ')
+          ..write('engineLatencyMs: $engineLatencyMs, ')
+          ..write('modelVersion: $modelVersion, ')
+          ..write('engineVersion: $engineVersion, ')
+          ..write('isFallback: $isFallback, ')
+          ..write('isError: $isError, ')
+          ..write('errorMessage: $errorMessage, ')
+          ..write('notificationId: $notificationId, ')
+          ..write('category: $category')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    timestamp,
+    inferenceTimeUs,
+    engineLatencyMs,
+    modelVersion,
+    engineVersion,
+    isFallback,
+    isError,
+    errorMessage,
+    notificationId,
+    category,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is InferenceTelemetryEntry &&
+          other.id == this.id &&
+          other.timestamp == this.timestamp &&
+          other.inferenceTimeUs == this.inferenceTimeUs &&
+          other.engineLatencyMs == this.engineLatencyMs &&
+          other.modelVersion == this.modelVersion &&
+          other.engineVersion == this.engineVersion &&
+          other.isFallback == this.isFallback &&
+          other.isError == this.isError &&
+          other.errorMessage == this.errorMessage &&
+          other.notificationId == this.notificationId &&
+          other.category == this.category);
+}
+
+class InferenceTelemetryTableCompanion
+    extends UpdateCompanion<InferenceTelemetryEntry> {
+  final Value<int> id;
+  final Value<int> timestamp;
+  final Value<int> inferenceTimeUs;
+  final Value<int?> engineLatencyMs;
+  final Value<String?> modelVersion;
+  final Value<String?> engineVersion;
+  final Value<bool> isFallback;
+  final Value<bool> isError;
+  final Value<String?> errorMessage;
+  final Value<String?> notificationId;
+  final Value<String?> category;
+  const InferenceTelemetryTableCompanion({
+    this.id = const Value.absent(),
+    this.timestamp = const Value.absent(),
+    this.inferenceTimeUs = const Value.absent(),
+    this.engineLatencyMs = const Value.absent(),
+    this.modelVersion = const Value.absent(),
+    this.engineVersion = const Value.absent(),
+    this.isFallback = const Value.absent(),
+    this.isError = const Value.absent(),
+    this.errorMessage = const Value.absent(),
+    this.notificationId = const Value.absent(),
+    this.category = const Value.absent(),
+  });
+  InferenceTelemetryTableCompanion.insert({
+    this.id = const Value.absent(),
+    required int timestamp,
+    required int inferenceTimeUs,
+    this.engineLatencyMs = const Value.absent(),
+    this.modelVersion = const Value.absent(),
+    this.engineVersion = const Value.absent(),
+    this.isFallback = const Value.absent(),
+    this.isError = const Value.absent(),
+    this.errorMessage = const Value.absent(),
+    this.notificationId = const Value.absent(),
+    this.category = const Value.absent(),
+  }) : timestamp = Value(timestamp),
+       inferenceTimeUs = Value(inferenceTimeUs);
+  static Insertable<InferenceTelemetryEntry> custom({
+    Expression<int>? id,
+    Expression<int>? timestamp,
+    Expression<int>? inferenceTimeUs,
+    Expression<int>? engineLatencyMs,
+    Expression<String>? modelVersion,
+    Expression<String>? engineVersion,
+    Expression<bool>? isFallback,
+    Expression<bool>? isError,
+    Expression<String>? errorMessage,
+    Expression<String>? notificationId,
+    Expression<String>? category,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (timestamp != null) 'timestamp': timestamp,
+      if (inferenceTimeUs != null) 'inference_time_us': inferenceTimeUs,
+      if (engineLatencyMs != null) 'engine_latency_ms': engineLatencyMs,
+      if (modelVersion != null) 'model_version': modelVersion,
+      if (engineVersion != null) 'engine_version': engineVersion,
+      if (isFallback != null) 'is_fallback': isFallback,
+      if (isError != null) 'is_error': isError,
+      if (errorMessage != null) 'error_message': errorMessage,
+      if (notificationId != null) 'notification_id': notificationId,
+      if (category != null) 'category': category,
+    });
+  }
+
+  InferenceTelemetryTableCompanion copyWith({
+    Value<int>? id,
+    Value<int>? timestamp,
+    Value<int>? inferenceTimeUs,
+    Value<int?>? engineLatencyMs,
+    Value<String?>? modelVersion,
+    Value<String?>? engineVersion,
+    Value<bool>? isFallback,
+    Value<bool>? isError,
+    Value<String?>? errorMessage,
+    Value<String?>? notificationId,
+    Value<String?>? category,
+  }) {
+    return InferenceTelemetryTableCompanion(
+      id: id ?? this.id,
+      timestamp: timestamp ?? this.timestamp,
+      inferenceTimeUs: inferenceTimeUs ?? this.inferenceTimeUs,
+      engineLatencyMs: engineLatencyMs ?? this.engineLatencyMs,
+      modelVersion: modelVersion ?? this.modelVersion,
+      engineVersion: engineVersion ?? this.engineVersion,
+      isFallback: isFallback ?? this.isFallback,
+      isError: isError ?? this.isError,
+      errorMessage: errorMessage ?? this.errorMessage,
+      notificationId: notificationId ?? this.notificationId,
+      category: category ?? this.category,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (timestamp.present) {
+      map['timestamp'] = Variable<int>(timestamp.value);
+    }
+    if (inferenceTimeUs.present) {
+      map['inference_time_us'] = Variable<int>(inferenceTimeUs.value);
+    }
+    if (engineLatencyMs.present) {
+      map['engine_latency_ms'] = Variable<int>(engineLatencyMs.value);
+    }
+    if (modelVersion.present) {
+      map['model_version'] = Variable<String>(modelVersion.value);
+    }
+    if (engineVersion.present) {
+      map['engine_version'] = Variable<String>(engineVersion.value);
+    }
+    if (isFallback.present) {
+      map['is_fallback'] = Variable<bool>(isFallback.value);
+    }
+    if (isError.present) {
+      map['is_error'] = Variable<bool>(isError.value);
+    }
+    if (errorMessage.present) {
+      map['error_message'] = Variable<String>(errorMessage.value);
+    }
+    if (notificationId.present) {
+      map['notification_id'] = Variable<String>(notificationId.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InferenceTelemetryTableCompanion(')
+          ..write('id: $id, ')
+          ..write('timestamp: $timestamp, ')
+          ..write('inferenceTimeUs: $inferenceTimeUs, ')
+          ..write('engineLatencyMs: $engineLatencyMs, ')
+          ..write('modelVersion: $modelVersion, ')
+          ..write('engineVersion: $engineVersion, ')
+          ..write('isFallback: $isFallback, ')
+          ..write('isError: $isError, ')
+          ..write('errorMessage: $errorMessage, ')
+          ..write('notificationId: $notificationId, ')
+          ..write('category: $category')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AttentionDatabase extends GeneratedDatabase {
   _$AttentionDatabase(QueryExecutor e) : super(e);
   $AttentionDatabaseManager get managers => $AttentionDatabaseManager(this);
@@ -2722,6 +3421,8 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final $DailyBriefTableTable dailyBriefTable = $DailyBriefTableTable(
     this,
   );
+  late final $InferenceTelemetryTableTable inferenceTelemetryTable =
+      $InferenceTelemetryTableTable(this);
   late final NotificationDao notificationDao = NotificationDao(
     this as AttentionDatabase,
   );
@@ -2734,6 +3435,8 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final DailyBriefDao dailyBriefDao = DailyBriefDao(
     this as AttentionDatabase,
   );
+  late final InferenceTelemetryDao inferenceTelemetryDao =
+      InferenceTelemetryDao(this as AttentionDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2743,6 +3446,7 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
     reviewQueueTable,
     focusSessionsTable,
     dailyBriefTable,
+    inferenceTelemetryTable,
   ];
 }
 
@@ -3406,7 +4110,9 @@ class $$NotificationsTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$NotificationsTableTable, NotificationEntry>(
+                    table,
+                  ),
                   $$NotificationsTableTableReferences(db, table, e),
                 ),
               )
@@ -3749,7 +4455,7 @@ class $$ReviewQueueTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$ReviewQueueTableTable, ReviewQueueEntry>(table),
                   $$ReviewQueueTableTableReferences(db, table, e),
                 ),
               )
@@ -4021,7 +4727,18 @@ class $$FocusSessionsTableTableTableManager
                 duration: duration,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$FocusSessionsTableTable, FocusSessionEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $FocusSessionsTableTable,
+                    FocusSessionEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4273,7 +4990,16 @@ class $$DailyBriefTableTableTableManager
                 archivedCount: archivedCount,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$DailyBriefTableTable, DailyBriefEntry>(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $DailyBriefTableTable,
+                    DailyBriefEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4301,6 +5027,359 @@ typedef $$DailyBriefTableTableProcessedTableManager =
       DailyBriefEntry,
       PrefetchHooks Function()
     >;
+typedef $$InferenceTelemetryTableTableCreateCompanionBuilder =
+    InferenceTelemetryTableCompanion Function({
+      Value<int> id,
+      required int timestamp,
+      required int inferenceTimeUs,
+      Value<int?> engineLatencyMs,
+      Value<String?> modelVersion,
+      Value<String?> engineVersion,
+      Value<bool> isFallback,
+      Value<bool> isError,
+      Value<String?> errorMessage,
+      Value<String?> notificationId,
+      Value<String?> category,
+    });
+typedef $$InferenceTelemetryTableTableUpdateCompanionBuilder =
+    InferenceTelemetryTableCompanion Function({
+      Value<int> id,
+      Value<int> timestamp,
+      Value<int> inferenceTimeUs,
+      Value<int?> engineLatencyMs,
+      Value<String?> modelVersion,
+      Value<String?> engineVersion,
+      Value<bool> isFallback,
+      Value<bool> isError,
+      Value<String?> errorMessage,
+      Value<String?> notificationId,
+      Value<String?> category,
+    });
+
+class $$InferenceTelemetryTableTableFilterComposer
+    extends Composer<_$AttentionDatabase, $InferenceTelemetryTableTable> {
+  $$InferenceTelemetryTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get inferenceTimeUs => $composableBuilder(
+    column: $table.inferenceTimeUs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get engineLatencyMs => $composableBuilder(
+    column: $table.engineLatencyMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get modelVersion => $composableBuilder(
+    column: $table.modelVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get engineVersion => $composableBuilder(
+    column: $table.engineVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isFallback => $composableBuilder(
+    column: $table.isFallback,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isError => $composableBuilder(
+    column: $table.isError,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get errorMessage => $composableBuilder(
+    column: $table.errorMessage,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$InferenceTelemetryTableTableOrderingComposer
+    extends Composer<_$AttentionDatabase, $InferenceTelemetryTableTable> {
+  $$InferenceTelemetryTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get inferenceTimeUs => $composableBuilder(
+    column: $table.inferenceTimeUs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get engineLatencyMs => $composableBuilder(
+    column: $table.engineLatencyMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get modelVersion => $composableBuilder(
+    column: $table.modelVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get engineVersion => $composableBuilder(
+    column: $table.engineVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isFallback => $composableBuilder(
+    column: $table.isFallback,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isError => $composableBuilder(
+    column: $table.isError,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get errorMessage => $composableBuilder(
+    column: $table.errorMessage,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$InferenceTelemetryTableTableAnnotationComposer
+    extends Composer<_$AttentionDatabase, $InferenceTelemetryTableTable> {
+  $$InferenceTelemetryTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get timestamp =>
+      $composableBuilder(column: $table.timestamp, builder: (column) => column);
+
+  GeneratedColumn<int> get inferenceTimeUs => $composableBuilder(
+    column: $table.inferenceTimeUs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get engineLatencyMs => $composableBuilder(
+    column: $table.engineLatencyMs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get modelVersion => $composableBuilder(
+    column: $table.modelVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get engineVersion => $composableBuilder(
+    column: $table.engineVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isFallback => $composableBuilder(
+    column: $table.isFallback,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isError =>
+      $composableBuilder(column: $table.isError, builder: (column) => column);
+
+  GeneratedColumn<String> get errorMessage => $composableBuilder(
+    column: $table.errorMessage,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+}
+
+class $$InferenceTelemetryTableTableTableManager
+    extends
+        RootTableManager<
+          _$AttentionDatabase,
+          $InferenceTelemetryTableTable,
+          InferenceTelemetryEntry,
+          $$InferenceTelemetryTableTableFilterComposer,
+          $$InferenceTelemetryTableTableOrderingComposer,
+          $$InferenceTelemetryTableTableAnnotationComposer,
+          $$InferenceTelemetryTableTableCreateCompanionBuilder,
+          $$InferenceTelemetryTableTableUpdateCompanionBuilder,
+          (
+            InferenceTelemetryEntry,
+            BaseReferences<
+              _$AttentionDatabase,
+              $InferenceTelemetryTableTable,
+              InferenceTelemetryEntry
+            >,
+          ),
+          InferenceTelemetryEntry,
+          PrefetchHooks Function()
+        > {
+  $$InferenceTelemetryTableTableTableManager(
+    _$AttentionDatabase db,
+    $InferenceTelemetryTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$InferenceTelemetryTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$InferenceTelemetryTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$InferenceTelemetryTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> timestamp = const Value.absent(),
+                Value<int> inferenceTimeUs = const Value.absent(),
+                Value<int?> engineLatencyMs = const Value.absent(),
+                Value<String?> modelVersion = const Value.absent(),
+                Value<String?> engineVersion = const Value.absent(),
+                Value<bool> isFallback = const Value.absent(),
+                Value<bool> isError = const Value.absent(),
+                Value<String?> errorMessage = const Value.absent(),
+                Value<String?> notificationId = const Value.absent(),
+                Value<String?> category = const Value.absent(),
+              }) => InferenceTelemetryTableCompanion(
+                id: id,
+                timestamp: timestamp,
+                inferenceTimeUs: inferenceTimeUs,
+                engineLatencyMs: engineLatencyMs,
+                modelVersion: modelVersion,
+                engineVersion: engineVersion,
+                isFallback: isFallback,
+                isError: isError,
+                errorMessage: errorMessage,
+                notificationId: notificationId,
+                category: category,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int timestamp,
+                required int inferenceTimeUs,
+                Value<int?> engineLatencyMs = const Value.absent(),
+                Value<String?> modelVersion = const Value.absent(),
+                Value<String?> engineVersion = const Value.absent(),
+                Value<bool> isFallback = const Value.absent(),
+                Value<bool> isError = const Value.absent(),
+                Value<String?> errorMessage = const Value.absent(),
+                Value<String?> notificationId = const Value.absent(),
+                Value<String?> category = const Value.absent(),
+              }) => InferenceTelemetryTableCompanion.insert(
+                id: id,
+                timestamp: timestamp,
+                inferenceTimeUs: inferenceTimeUs,
+                engineLatencyMs: engineLatencyMs,
+                modelVersion: modelVersion,
+                engineVersion: engineVersion,
+                isFallback: isFallback,
+                isError: isError,
+                errorMessage: errorMessage,
+                notificationId: notificationId,
+                category: category,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $InferenceTelemetryTableTable,
+                    InferenceTelemetryEntry
+                  >(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $InferenceTelemetryTableTable,
+                    InferenceTelemetryEntry
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$InferenceTelemetryTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AttentionDatabase,
+      $InferenceTelemetryTableTable,
+      InferenceTelemetryEntry,
+      $$InferenceTelemetryTableTableFilterComposer,
+      $$InferenceTelemetryTableTableOrderingComposer,
+      $$InferenceTelemetryTableTableAnnotationComposer,
+      $$InferenceTelemetryTableTableCreateCompanionBuilder,
+      $$InferenceTelemetryTableTableUpdateCompanionBuilder,
+      (
+        InferenceTelemetryEntry,
+        BaseReferences<
+          _$AttentionDatabase,
+          $InferenceTelemetryTableTable,
+          InferenceTelemetryEntry
+        >,
+      ),
+      InferenceTelemetryEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AttentionDatabaseManager {
   final _$AttentionDatabase _db;
@@ -4313,4 +5392,9 @@ class $AttentionDatabaseManager {
       $$FocusSessionsTableTableTableManager(_db, _db.focusSessionsTable);
   $$DailyBriefTableTableTableManager get dailyBriefTable =>
       $$DailyBriefTableTableTableManager(_db, _db.dailyBriefTable);
+  $$InferenceTelemetryTableTableTableManager get inferenceTelemetryTable =>
+      $$InferenceTelemetryTableTableTableManager(
+        _db,
+        _db.inferenceTelemetryTable,
+      );
 }
