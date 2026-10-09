@@ -7,6 +7,8 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/database/tables.dart';
 import 'package:scope/database/daos.dart';
 import 'package:scope/database/converters.dart';
+import 'package:scope/database/database_key_service.dart';
+import 'package:scope/database/database_migrator.dart';
 
 part 'attention_database.g.dart';
 
@@ -52,10 +54,21 @@ class AttentionDatabase extends _$AttentionDatabase {
   }
 }
 
-QueryExecutor _openConnection() {
+QueryExecutor _openConnection({DatabaseKeyService? keyService}) {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'attention_os.db'));
-    return NativeDatabase(file);
+
+    final service = keyService ?? DatabaseKeyService();
+    final encryptionKey = await service.getOrCreateKey();
+
+    await DatabaseMigrator.migrateIfUnencrypted(file, encryptionKey);
+
+    return NativeDatabase(
+      file,
+      setup: (rawDb) {
+        rawDb.execute("PRAGMA key = '$encryptionKey';");
+      },
+    );
   });
 }
