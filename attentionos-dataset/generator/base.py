@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
 import random
 import re
+import urllib.parse
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -159,16 +161,63 @@ SCENARIOS: tuple[Scenario, ...] = (
 
 
 class NotificationDatasetGenerator:
-    def __init__(self, seed: int = 42, use_ollama: bool = False, ollama_model: str = "gemma3:9b") -> None:
+    def __init__(
+        self,
+        seed: int = 42,
+        use_ollama: bool = False,
+        ollama_model: str = "gemma3:9b",
+        ollama_endpoint: str | None = None,
+        allow_http: bool = False,
+        *,
+        ollama_url: str | None = None,
+        ollama_base_url: str | None = None,
+    ) -> None:
         self.seed = seed
         self.random = random.Random(seed)
         self.fake = Faker("en_IN")
         Faker.seed(seed)
         self.use_ollama = use_ollama
         self.ollama_model = ollama_model
+        self.allow_http = allow_http or os.getenv("ALLOW_HTTP", "").lower() in ("true", "1", "yes")
+
+        raw_endpoint = (
+            ollama_endpoint
+            or ollama_url
+            or ollama_base_url
+            or os.getenv("OLLAMA_BASE_URL")
+            or os.getenv("OLLAMA_HOST")
+            or os.getenv("OLLAMA_ENDPOINT")
+            or "https://localhost:11434/api/generate"
+        )
+        self.ollama_endpoint = self._validate_and_format_endpoint(raw_endpoint, self.allow_http)
         self.base_time = datetime(2026, 6, 26, 9, 0, 0, tzinfo=timezone.utc)
         self._weighted_scenarios = [scenario for scenario in SCENARIOS for _ in range(scenario.weight)]
         self._seen_text: set[str] = set()
+
+    @staticmethod
+    def _validate_and_format_endpoint(endpoint: str, allow_http: bool) -> str:
+        if not endpoint:
+            endpoint = "https://localhost:11434/api/generate"
+
+        parsed = urllib.parse.urlparse(endpoint)
+        if not parsed.scheme:
+            endpoint = f"https://{endpoint}"
+            parsed = urllib.parse.urlparse(endpoint)
+
+        scheme = parsed.scheme.lower()
+        if scheme not in ("http", "https"):
+            raise ValueError(f"Unsupported scheme '{scheme}' in model endpoint URL: {endpoint}")
+
+        if scheme == "http" and not allow_http:
+            raise ValueError(
+                f"Unencrypted HTTP model endpoint '{endpoint}' is rejected by default. "
+                "Enforce HTTPS or pass allow_http=True to explicitly permit cleartext transport."
+            )
+
+        if not parsed.path or parsed.path == "/":
+            endpoint = endpoint.rstrip("/") + "/api/generate"
+
+        return endpoint
 
     def generate(self, count: int) -> Iterable[dict[str, Any]]:
         produced = 0
@@ -287,7 +336,7 @@ class NotificationDatasetGenerator:
         )
         payload = json.dumps({"model": self.ollama_model, "prompt": prompt, "stream": False}).encode("utf-8")
         try:
-            req = request.Request("http://localhost:11434/api/generate", data=payload, headers={"Content-Type": "application/json"})
+            req = request.Request(self.ollama_endpoint, data=payload, headers={"Content-Type": "application/json"})
             with request.urlopen(req, timeout=20) as response:
                 raw = json.loads(response.read().decode("utf-8")).get("response", "{}")
         except (URLError, TimeoutError, json.JSONDecodeError):
