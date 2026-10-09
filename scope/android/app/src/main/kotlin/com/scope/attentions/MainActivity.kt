@@ -44,6 +44,17 @@ class MainActivity : FlutterActivity() {
                         result.success(true)
                     }
 
+                    "updateIngestionGuardrails" -> {
+                        val configMap = call.arguments as? Map<String, Any?>
+                        NotificationCollectorService.updateGuardrails(configMap)
+                        result.success(true)
+                    }
+
+                    "getIngestionTelemetry" -> {
+                        val telemetryMap = NotificationCollectorService.getTelemetryMap()
+                        result.success(telemetryMap)
+                    }
+
                     else -> result.notImplemented()
                 }
             }
