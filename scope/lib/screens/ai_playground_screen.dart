@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/extracted_features.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
@@ -146,6 +147,15 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!kDebugMode) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('AI Playground (RLHF)')),
+        body: const Center(
+          child: Text('AI Playground is disabled in release builds.'),
+        ),
+      );
+    }
+
     final theme = Theme.of(context);
     final notifications = widget.controller.notifications.take(15).toList();
 
