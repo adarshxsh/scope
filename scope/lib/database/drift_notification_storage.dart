@@ -1,5 +1,6 @@
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/storage/notification_storage.dart';
+import 'package:scope/core/utils/pii_sanitizer.dart';
 import 'package:scope/database/attention_database.dart';
 
 class DriftNotificationStorage implements NotificationStorage {
@@ -62,7 +63,7 @@ class DriftNotificationStorage implements NotificationStorage {
       ruleVersion: n.ruleVersion,
       modelVersion: n.modelVersion,
       engineVersion: n.engineVersion,
-      extractedFeatures: n.extractedFeatures,
+      extractedFeatures: PiiSanitizer.sanitizeFeatureMap(n.extractedFeatures),
       state: n.state,
       snoozedUntil: n.snoozedUntil,
       lastUpdated: n.lastUpdated,

@@ -1,12 +1,17 @@
 /// Structured features extracted from raw notification text.
 library;
 
+import 'package:scope/core/utils/pii_sanitizer.dart';
+
 class ExtractedFeatures {
   /// Extracted OTP security code (4 to 8 digits).
   final String? otp;
 
   /// Extracted currency transaction amount.
   final double? amount;
+
+  /// Display string for amount (can be formatted amount or static redaction mask).
+  final String? amountDisplay;
 
   /// Whether the notification contains indicators of a deadline.
   final bool hasDeadline;
@@ -23,17 +28,33 @@ class ExtractedFeatures {
   const ExtractedFeatures({
     this.otp,
     this.amount,
+    this.amountDisplay,
     this.hasDeadline = false,
     this.urls = const [],
     this.emails = const [],
     this.phoneNumbers = const [],
   });
 
+  /// Whether a transaction amount was detected (numeric or redacted).
+  bool get hasAmount => amount != null || (amountDisplay != null && amountDisplay!.isNotEmpty);
+
   /// Creates features from a Map.
   factory ExtractedFeatures.fromMap(Map<String, dynamic> map) {
+    final rawAmount = map['amount'];
+    double? parsedAmount;
+    String? parsedAmountDisplay;
+
+    if (rawAmount is num) {
+      parsedAmount = rawAmount.toDouble();
+    } else if (rawAmount != null) {
+      parsedAmountDisplay = rawAmount.toString();
+      parsedAmount = double.tryParse(parsedAmountDisplay);
+    }
+
     return ExtractedFeatures(
       otp: map['otp'] as String?,
-      amount: (map['amount'] as num?)?.toDouble(),
+      amount: parsedAmount,
+      amountDisplay: parsedAmountDisplay,
       hasDeadline: map['hasDeadline'] as bool? ?? false,
       urls: List<String>.from(map['urls'] as Iterable? ?? const []),
       emails: List<String>.from(map['emails'] as Iterable? ?? const []),
@@ -45,12 +66,17 @@ class ExtractedFeatures {
   Map<String, dynamic> toMap() {
     return {
       'otp': otp,
-      'amount': amount,
+      'amount': amountDisplay ?? amount,
       'hasDeadline': hasDeadline,
       'urls': urls,
       'emails': emails,
       'phoneNumbers': phoneNumbers,
     };
+  }
+
+  /// Converts features to a sanitized Map with static redaction masks.
+  Map<String, dynamic> toSanitizedMap() {
+    return PiiSanitizer.sanitizeFeatureMap(toMap());
   }
 
   @override
