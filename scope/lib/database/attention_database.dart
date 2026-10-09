@@ -38,8 +38,10 @@ class AttentionDatabase extends _$AttentionDatabase {
   /// and any orphaned review queue entries, avoiding main-thread loops.
   Future<void> runSetBasedCleanup(int cutoffTimestamp) async {
     await transaction(() async {
-      // 1. Delete expired notifications based on cutoff timestamp
-      await (delete(notificationsTable)..where((t) => t.timestamp.isSmallerThanValue(cutoffTimestamp))).go();
+      // 1. Delete expired notifications based on cutoff timestamp, excluding those with user feedback
+      await (delete(notificationsTable)
+            ..where((t) => t.timestamp.isSmallerThanValue(cutoffTimestamp) & t.userRating.isNull() & t.targetLabel.isNull()))
+          .go();
 
       // 2. Delete orphaned review queue entries in a set-based query
       final orphanedQuery = delete(reviewQueueTable)..where((t) {

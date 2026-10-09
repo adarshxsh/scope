@@ -79,6 +79,12 @@ class AppNotification {
   /// Time when the notification was last updated in the queue.
   final DateTime? lastUpdated;
 
+  /// User feedback rating (+1 for reward, -1 for penalty, null if unrated).
+  final int? userRating;
+
+  /// Corrected or updated target label/priority (e.g. 'critical', 'high', 'medium', 'low').
+  final String? targetLabel;
+
   const AppNotification({
     required this.id,
     required this.packageName,
@@ -99,6 +105,8 @@ class AppNotification {
     this.state = ReviewState.ACTIVE,
     this.snoozedUntil,
     this.lastUpdated,
+    this.userRating,
+    this.targetLabel,
   });
 
   /// Generates a stable unique ID based on notification properties.
@@ -168,6 +176,8 @@ class AppNotification {
       lastUpdated: map['lastUpdated'] != null
           ? DateTime.fromMillisecondsSinceEpoch(map['lastUpdated'] as int)
           : null,
+      userRating: map['userRating'] as int? ?? map['user_rating'] as int?,
+      targetLabel: map['targetLabel'] as String? ?? map['target_label'] as String?,
     );
   }
 
@@ -193,6 +203,8 @@ class AppNotification {
       'state': state.name,
       'snoozedUntil': snoozedUntil?.millisecondsSinceEpoch,
       'lastUpdated': lastUpdated?.millisecondsSinceEpoch,
+      'userRating': userRating,
+      'targetLabel': targetLabel,
     };
   }
 
@@ -218,6 +230,8 @@ class AppNotification {
         other.state == state &&
         other.snoozedUntil == snoozedUntil &&
         other.lastUpdated == lastUpdated &&
+        other.userRating == userRating &&
+        other.targetLabel == targetLabel &&
         _mapsEqual(other.extractedFeatures, extractedFeatures);
   }
 
@@ -233,7 +247,7 @@ class AppNotification {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
         id,
         packageName,
         title,
@@ -252,8 +266,10 @@ class AppNotification {
         state,
         snoozedUntil,
         lastUpdated,
+        userRating,
+        targetLabel,
         extractedFeatures?.length,
-      );
+      ]);
 
   @override
   String toString() {
@@ -266,6 +282,7 @@ class AppNotification {
         'ruleVersion: $ruleVersion, modelVersion: $modelVersion, '
         'engineVersion: $engineVersion, state: $state, '
         'snoozedUntil: $snoozedUntil, lastUpdated: $lastUpdated, '
+        'userRating: $userRating, targetLabel: $targetLabel, '
         'extractedFeatures: $extractedFeatures)';
   }
 
@@ -290,6 +307,8 @@ class AppNotification {
     ReviewState? state,
     DateTime? snoozedUntil,
     DateTime? lastUpdated,
+    int? userRating,
+    String? targetLabel,
   }) {
     return AppNotification(
       id: id ?? this.id,
@@ -311,6 +330,8 @@ class AppNotification {
       state: state ?? this.state,
       snoozedUntil: snoozedUntil ?? this.snoozedUntil,
       lastUpdated: lastUpdated ?? this.lastUpdated,
+      userRating: userRating ?? this.userRating,
+      targetLabel: targetLabel ?? this.targetLabel,
     );
   }
 }
