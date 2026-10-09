@@ -154,3 +154,48 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
     await delete(dailyBriefTable).go();
   }
 }
+
+@DriftAccessor(tables: [MlFeedbackTable])
+class MlFeedbackDao extends DatabaseAccessor<AttentionDatabase> with _$MlFeedbackDaoMixin {
+  MlFeedbackDao(super.db);
+
+  static const int maxFeedbackRecords = 10000;
+
+  Future<void> insertFeedback(MlFeedbackTableCompanion entry) async {
+    await into(mlFeedbackTable).insert(entry);
+    await _pruneIfNeeded();
+  }
+
+  Future<void> _pruneIfNeeded() async {
+    final count = await getCount();
+    if (count > maxFeedbackRecords) {
+      final excess = count - maxFeedbackRecords;
+      final oldestRows = await (select(mlFeedbackTable)
+            ..orderBy([(t) => OrderingTerm(expression: t.id, mode: OrderingMode.asc)])
+            ..limit(excess))
+          .get();
+      final idsToRemove = oldestRows.map((r) => r.id).toList();
+      if (idsToRemove.isNotEmpty) {
+        await (delete(mlFeedbackTable)..where((t) => t.id.isIn(idsToRemove))).go();
+      }
+    }
+  }
+
+  Future<List<MlFeedbackEntry>> getAll() {
+    return (select(mlFeedbackTable)
+          ..orderBy([(t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc)]))
+        .get();
+  }
+
+  Future<int> getCount() async {
+    final countExpr = mlFeedbackTable.id.count();
+    final query = selectOnly(mlFeedbackTable)..addColumns([countExpr]);
+    final row = await query.getSingle();
+    return row.read(countExpr) ?? 0;
+  }
+
+  Future<void> clearAll() async {
+    await delete(mlFeedbackTable).go();
+  }
+}
+
