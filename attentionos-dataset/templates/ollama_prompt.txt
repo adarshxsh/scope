@@ -162,3 +162,22 @@ Output:
   ]
 }
 ```
+
+---
+
+## Current Request
+
+<context>
+Application Name: {{ app_context }}
+Notification Type: {{ notification_type }}
+Category: {{ category }}
+Subcategory: {{ subcategory }}
+Intent: {{ intent }}
+Language: {{ language }}
+{% if entities %}
+Entities:
+{% for key, value in entities.items() %}
+  - {{ key }}: {{ value }}
+{% endfor %}
+{% endif %}
+</context>
