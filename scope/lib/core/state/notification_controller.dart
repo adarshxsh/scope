@@ -426,6 +426,9 @@ class NotificationController extends ChangeNotifier {
   }
 
   Future<void> generateTestData() async {
+    if (kReleaseMode) {
+      throw UnsupportedError('generateTestData is disabled in release mode.');
+    }
     _initialLoadCompleted = true;
     _isLoading = false;
     final generator = TestNotificationGenerator();
