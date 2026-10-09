@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/storage/storage_migration.dart';
 
 /// Condition definition for a notification classification rule.
 class RuleCondition {
@@ -111,8 +113,15 @@ class RuleEngine {
   /// Loads custom rules from local storage and prepends them.
   Future<void> loadCustomRules() async {
     try {
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/rlhf_rules.json');
+      final supportDir = await getApplicationSupportDirectory();
+      final docsDir = await getApplicationDocumentsDirectory();
+
+      await StorageMigration.migrateLegacyFiles(
+        docsDir: docsDir,
+        supportDir: supportDir,
+      );
+
+      final file = File(p.join(supportDir.path, 'rlhf_rules.json'));
       if (await file.exists()) {
         final content = await file.readAsString();
         final list = json.decode(content) as List<dynamic>;
@@ -133,9 +142,15 @@ class RuleEngine {
       final customRules = _rules.where((r) => r.id.startsWith('rlhf-')).toList();
       final list = customRules.map((r) => r.toMap()).toList();
       
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/rlhf_rules.json');
+      final supportDir = await getApplicationSupportDirectory();
+      if (!await supportDir.exists()) {
+        await supportDir.create(recursive: true);
+      }
+      final file = File(p.join(supportDir.path, 'rlhf_rules.json'));
       await file.writeAsString(json.encode(list));
+      if (Platform.isIOS) {
+        await StorageMigration.excludeFromBackup(file.path);
+      }
     } catch (e) {
       // ignore: avoid_print
       print('Failed to save custom RLHF rules: $e');
