@@ -5,17 +5,66 @@ import 'package:scope/database/tables.dart';
 
 part 'daos.g.dart';
 
-@DriftAccessor(tables: [NotificationsTable])
+@DriftAccessor(tables: [NotificationsTable, ReviewQueueTable])
 class NotificationDao extends DatabaseAccessor<AttentionDatabase> with _$NotificationDaoMixin {
-  NotificationDao(super.db);
+  final int maxRows;
+
+  NotificationDao(super.db, {this.maxRows = 1000});
 
   Future<void> insertNotification(NotificationEntry entry) async {
     await into(notificationsTable).insert(entry, mode: InsertMode.insertOrReplace);
+    await _enforceMaxRows();
   }
 
   Future<void> insertAll(List<NotificationEntry> entries) async {
+    if (entries.isEmpty) return;
     await batch((b) {
       b.insertAll(notificationsTable, entries, mode: InsertMode.insertOrReplace);
+    });
+    await _enforceMaxRows();
+  }
+
+  Future<void> _enforceMaxRows() async {
+    final currentCount = await getCount();
+    if (currentCount <= maxRows) return;
+
+    await db.transaction(() async {
+      final excess = currentCount - maxRows;
+
+      // 1. Try to prune archived / expired / reviewed entries first
+      final archivedToPrune = await (select(notificationsTable)
+            ..where((t) =>
+                t.state.isInValues([ReviewState.ARCHIVED, ReviewState.EXPIRED, ReviewState.REVIEWED]) |
+                t.dismissed.equals(true))
+            ..orderBy([(t) => OrderingTerm(expression: t.timestamp, mode: OrderingMode.asc)])
+            ..limit(excess))
+          .get();
+
+      final archivedIds = archivedToPrune.map((e) => e.id).toList();
+      if (archivedIds.isNotEmpty) {
+        await (delete(notificationsTable)..where((t) => t.id.isIn(archivedIds))).go();
+      }
+
+      final remainingExcess = excess - archivedIds.length;
+      if (remainingExcess > 0) {
+        // 2. Prune remaining oldest entries
+        final remainingToPrune = await (select(notificationsTable)
+              ..orderBy([(t) => OrderingTerm(expression: t.timestamp, mode: OrderingMode.asc)])
+              ..limit(remainingExcess))
+            .get();
+
+        final remainingIds = remainingToPrune.map((e) => e.id).toList();
+        if (remainingIds.isNotEmpty) {
+          await (delete(notificationsTable)..where((t) => t.id.isIn(remainingIds))).go();
+        }
+      }
+
+      // 3. Clean up orphaned review queue items
+      final orphanedQuery = delete(reviewQueueTable)..where((t) {
+        final hasNotification = selectOnly(notificationsTable)..addColumns([notificationsTable.id]);
+        return t.notificationId.isNotInQuery(hasNotification);
+      });
+      await orphanedQuery.go();
     });
   }
 
@@ -99,6 +148,10 @@ class FocusSessionDao extends DatabaseAccessor<AttentionDatabase> with _$FocusSe
     return select(focusSessionsTable).get();
   }
 
+  Future<int> deleteOlderThan(DateTime cutoff) {
+    return (delete(focusSessionsTable)..where((t) => t.sessionStart.isSmallerThanValue(cutoff))).go();
+  }
+
   Future<void> clearAll() async {
     await delete(focusSessionsTable).go();
   }
@@ -114,6 +167,10 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
 
   Future<DailyBriefEntry?> getBriefForDate(String date) {
     return (select(dailyBriefTable)..where((t) => t.date.equals(date))).getSingleOrNull();
+  }
+
+  Future<int> deleteOlderThanDate(String cutoffDate) {
+    return (delete(dailyBriefTable)..where((t) => t.date.isSmallerThanValue(cutoffDate))).go();
   }
 
   Future<void> incrementStats(

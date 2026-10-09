@@ -345,22 +345,17 @@ class NotificationController extends ChangeNotifier {
     });
   }
 
-  /// Cleans up old notifications (older than 7 days) and orphaned review queue items.
+  /// Cleans up old notifications (older than 7 days), historical metrics (older than 30 days),
+  /// and orphaned review queue items in a non-blocking set-based operation.
   Future<void> runBackgroundCleanup() async {
     if (_isCleaningUp) return;
 
     try {
       _isCleaningUp = true;
-      
-      // Defer execution if user is engaged in active focus session interactions
-      while (_inFocusSession) {
-        await Future.delayed(const Duration(minutes: 5));
-        if (_isDisposed) return;
-      }
 
       final cutoff = DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch;
       final db = _container.read(databaseProvider);
-      
+
       // Execute the single-step atomic transaction
       await db.runSetBasedCleanup(cutoff);
 
