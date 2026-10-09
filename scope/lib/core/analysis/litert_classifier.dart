@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
@@ -23,8 +24,33 @@ class LiteRtClassifier implements NotificationAnalyzer {
       final lines = vocabStr.split('\n');
       _tokenizer = WordPieceTokenizer.fromLines(lines);
 
-      // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
-      _isModelLoaded = false;
+      // 2. Load Interpreter and validate input tensor shape [1, 64]
+      Interpreter? interpreter;
+      try {
+        interpreter = await Interpreter.fromAsset('assets/category_model.tflite');
+      } catch (_) {
+        try {
+          interpreter = await Interpreter.fromAsset('assets/text_classifier.tflite');
+        } catch (_) {
+          interpreter = null;
+        }
+      }
+
+      if (interpreter != null) {
+        final inputShape = interpreter.getInputTensor(0).shape;
+        if (!listEquals(inputShape, const [1, 64])) {
+          // ignore: avoid_print
+          print('LiteRtClassifier: Invalid input tensor shape $inputShape. Expected [1, 64].');
+          interpreter.close();
+          _interpreter = null;
+          _isModelLoaded = false;
+        } else {
+          _interpreter = interpreter;
+          _isModelLoaded = true;
+        }
+      } else {
+        _isModelLoaded = false;
+      }
     } catch (e) {
       // Graceful degradation: Log and set flags so analyze runs in fallback mode
       // ignore: avoid_print
@@ -74,7 +100,20 @@ class LiteRtClassifier implements NotificationAnalyzer {
 
     try {
       // Run model inference
-      // Assume input shape: [1, 64]
+      final inputShape = _interpreter!.getInputTensor(0).shape;
+      if (!listEquals(inputShape, const [1, 64])) {
+        // ignore: avoid_print
+        print('LiteRtClassifier pre-flight check failed: shape $inputShape != [1, 64].');
+        final category = _runFallbackHeuristic(combinedText);
+        return AnalysisResult(
+          category: category,
+          score: 0.50,
+          engineName: 'litert_model (fallback on shape mismatch)',
+          matchedSignals: ['Shape mismatch: $inputShape'],
+          latencyMs: stopwatch.elapsedMilliseconds,
+        );
+      }
+
       final input = [tokenIds];
       
       // Output logit tensor shape: [1, 5] (Promo, Social, System, Message, Finance)
