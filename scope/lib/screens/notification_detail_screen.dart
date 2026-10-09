@@ -6,6 +6,8 @@ import 'package:scope/core/utils/smart_actions.dart';
 import 'package:scope/theme/app_colors.dart';
 import 'package:scope/theme/app_spacing.dart';
 import 'package:scope/widgets/ai_reason_widget.dart';
+import 'package:scope/widgets/feature_attribution_widget.dart';
+import 'package:scope/widgets/score_evolution_widget.dart';
 import 'package:scope/widgets/primitives/scope_row.dart';
 import 'package:scope/widgets/primitives/scope_surface.dart';
 import 'package:scope/widgets/scope_screen_body.dart';
@@ -108,6 +110,10 @@ class NotificationDetailScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppSpacing.xl),
+            FeatureAttributionWidget(notification: notification),
+            const SizedBox(height: AppSpacing.xl),
+            ScoreEvolutionWidget(notification: notification),
+            const SizedBox(height: AppSpacing.xl),
             Text('Suggested Actions', style: theme.textTheme.titleMedium),
             const SizedBox(height: AppSpacing.md),
             Wrap(
@@ -158,6 +164,36 @@ class NotificationDetailScreen extends StatelessWidget {
                                   features.phoneNumbers.isEmpty &&
                                   features.emails.isEmpty)
                                 Text('No structured data extracted.', style: theme.textTheme.bodyMedium),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        _DetailSection(
+                          title: 'Inference Audit Log',
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ScopeInfoRow(
+                                label: 'Engine Version',
+                                value: notification.engineVersion ?? '2.0.0-hybrid',
+                              ),
+                              ScopeInfoRow(
+                                label: 'Model Version',
+                                value: notification.modelVersion ?? '1.0.0-tflite',
+                              ),
+                              if (notification.ruleVersion != null)
+                                ScopeInfoRow(
+                                  label: 'Rule Version',
+                                  value: notification.ruleVersion!,
+                                ),
+                              ScopeInfoRow(
+                                label: 'Inference Latency',
+                                value: '${notification.latencyMs ?? 0} ms',
+                              ),
+                              ScopeInfoRow(
+                                label: 'Priority Score',
+                                value: '${((notification.priorityScore ?? 0.0) * 100).toStringAsFixed(1)}%',
+                              ),
                             ],
                           ),
                         ),
