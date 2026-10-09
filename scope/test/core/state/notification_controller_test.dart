@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/services.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/storage/notification_storage.dart';
@@ -43,7 +42,6 @@ class MockNotificationStorage implements NotificationStorage {
     items.clear();
   }
 
-  @override
   Future<void> delete(String id) async {
     items.removeWhere((n) => n.id == id);
   }
@@ -57,7 +55,6 @@ class MockNotificationStorage implements NotificationStorage {
     }
   }
 
-  @override
   Future<void> update(AppNotification notification) async {
     final index = items.indexWhere((n) => n.id == notification.id);
     if (index >= 0) {
