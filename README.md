@@ -46,7 +46,7 @@ To build and run this project, you will need:
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/scope.git
+   git clone https://github.com/adarshxsh/scope.git
    cd scope
    ```
 
@@ -69,12 +69,19 @@ To build and run this project, you will need:
 
 ## 🧠 Machine Learning Pipeline
 
-SCOPE uses a local TensorFlow Lite model. The training pipeline is located in the `ml/` directory (if applicable).
+SCOPE uses a local TensorFlow Lite model. The training pipeline is located in the `ml/` directory.
 To retrain or update the model:
 1. Navigate to the ML folder: `cd ml/`
 2. Install requirements: `pip install -r requirements.txt`
 3. Run the training script: `python train.py`
-4. The output `model.tflite` will be automatically copied to the Flutter assets folder.
+4.  **Deploy the Trained Model**:
+   Once training completes, manually copy the generated `model.tflite` into the Flutter project's `assets/` directory:
+
+   ```bash
+   # From the ml/ or root directory:
+   cp path/to/model.tflite assets/
+```
+
 
 ## 📁 Project Structure
 
@@ -94,7 +101,7 @@ scope/
 ## 🤝 Contributing
 
 Contributions, issues, and feature requests are welcome!
-Feel free to check the [issues page](https://github.com/yourusername/scope/issues).
+Feel free to check the [issues page](https://github.com/adarshxsh/scope/issues).
 
 ## 📝 License
 
