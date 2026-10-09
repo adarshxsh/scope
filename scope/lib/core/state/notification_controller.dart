@@ -417,6 +417,12 @@ class NotificationController extends ChangeNotifier {
         await notifier.rescore();
       }
 
+      if (newNotifications.isNotEmpty) {
+        await _bridge.acknowledgeNotifications(
+          newNotifications.map((n) => n.id).toList(),
+        );
+      }
+
       _isLoading = false;
       notifyListeners();
     } catch (_) {
