@@ -19,6 +19,10 @@ tf.config.set_visible_devices([], 'GPU')
 
 from training.utils.preprocessing import build_dataset
 from training.utils.io import read_jsonl, write_json
+try:
+    from training.manifest_manager import ManifestManager
+except ImportError:
+    from manifest_manager import ManifestManager  # type: ignore
 
 
 def parse_args() -> argparse.Namespace:
@@ -51,6 +55,9 @@ def main() -> None:
         raise FileNotFoundError(f"Model not found at {args.model}")
     if not args.data.exists():
         raise FileNotFoundError(f"Dataset not found at {args.data}")
+
+    print(f"Verifying manifest for model: {args.model}")
+    ManifestManager.validate_manifest(args.model, strict=True)
 
     print(f"Loading dataset: {args.data}")
     records = read_jsonl(args.data)

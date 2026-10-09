@@ -9,9 +9,13 @@ from typing import Any
 import numpy as np
 
 from training.config import FEATURE_VECTOR_SIZE
+try:
+    from training.manifest_manager import ManifestManager, ManifestValidationError
+except ImportError:
+    from manifest_manager import ManifestManager, ManifestValidationError  # type: ignore
 
 
-def load_jsonl_dataset(path: Path) -> list[dict[str, Any]]:
+def load_jsonl_dataset(path: Path, strict: bool = False) -> list[dict[str, Any]]:
     if not path.exists():
         raise FileNotFoundError(f"Dataset not found: {path}")
 
@@ -31,6 +35,14 @@ def load_jsonl_dataset(path: Path) -> list[dict[str, Any]]:
 
     if not records:
         raise ValueError(f"Dataset is empty: {path}")
+
+    # Validate dataset manifest against file and record count
+    ManifestManager.validate_manifest(
+        artifact_path=path,
+        expected_record_count=len(records),
+        strict=strict,
+    )
+
     return records
 
 

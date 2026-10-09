@@ -1,0 +1,12 @@
+{
+  "artifact_path": "ghost_ai.tflite",
+  "artifact_type": "model",
+  "created_at": "2026-09-22T21:54:29.785078+00:00",
+  "file_size_bytes": 77184,
+  "generator_config": {
+    "seed": 42
+  },
+  "record_count": 100000,
+  "schema_hash": "832dffc8ab8af0e66f47752d7684dd98fbf91d80b50f76ab18f6b9b3d94de3a6",
+  "sha256": "63b815ce62f895e48347b9f775c7f529ca56a86733bb3d2601e50889b73d87c6"
+}

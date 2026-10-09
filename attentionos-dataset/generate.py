@@ -10,6 +10,12 @@ from export.jsonl import write_jsonl
 from generator import NotificationDatasetGenerator
 from validator.statistics import summarize
 
+try:
+    from manifest_manager import ManifestManager
+except ImportError:
+    from attentionos_dataset.manifest_manager import ManifestManager  # type: ignore
+
+
 
 SUPPORTED_SIZES = {10_000, 50_000, 100_000, 250_000, 500_000, 1_000_000}
 
@@ -56,7 +62,26 @@ def main() -> None:
     else:
         written = write_csv(output, records)
 
-    print(f"Wrote {written} notifications to {output}")
+    manifest_path = ManifestManager.create_manifest(
+        artifact_path=output,
+        artifact_type="dataset",
+        record_count=written,
+        seed=args.seed,
+        generator_config={
+            "seed": args.seed,
+            "ollama": args.ollama,
+            "ollama_model": args.ollama_model,
+            "format": args.format,
+        },
+    )
+    ManifestManager.validate_manifest(
+        artifact_path=output,
+        expected_record_count=written,
+        strict=True,
+        manifest_path=manifest_path,
+    )
+
+    print(f"Wrote {written} notifications to {output} (manifest: {manifest_path})")
 
 
 if __name__ == "__main__":
