@@ -7,17 +7,21 @@ import 'package:scope/core/analysis/score_fusion.dart';
 import 'package:scope/core/analysis/explanation_generator.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
+import 'package:scope/core/state/resource_state_controller.dart';
 
 /// The central hub of Ghost AI coordinating all classification stages.
 class GhostAnalysisEngine {
   final RuleEngine ruleEngine;
   final LiteRtClassifier mlClassifier;
+  final ResourceStateController resourceController;
 
   GhostAnalysisEngine({
     RuleEngine? ruleEngine,
     LiteRtClassifier? mlClassifier,
+    ResourceStateController? resourceController,
   })  : ruleEngine = ruleEngine ?? RuleEngine(),
-        mlClassifier = mlClassifier ?? LiteRtClassifier();
+        mlClassifier = mlClassifier ?? LiteRtClassifier(),
+        resourceController = resourceController ?? ResourceStateController.instance;
 
   /// Compiles rules loaded from assets on engine startup.
   Future<void> initialize() async {
@@ -42,6 +46,9 @@ class GhostAnalysisEngine {
   Future<AppNotification> analyze(AppNotification notification) async {
     final stopwatch = Stopwatch()..start();
 
+    // Check device thermal/battery status
+    final bool isThermalFallback = resourceController.shouldBypassTFLite;
+
     // 0. Filter out progress/download/sync status notifications to prevent unnecessary analysis
     if (_isStatusOrProgressNotification(notification)) {
       stopwatch.stop();
@@ -51,7 +58,7 @@ class GhostAnalysisEngine {
         classifiedCategory: 'system_status',
         explanation: 'Status or progress notification ignored by AI.',
         latencyMs: stopwatch.elapsedMilliseconds,
-        engineVersion: '2.0.0-hybrid',
+        engineVersion: isThermalFallback ? '2.0.0-hybrid (thermal-fallback)' : '2.0.0-hybrid',
       );
     }
 
@@ -64,8 +71,11 @@ class GhostAnalysisEngine {
     // 2. Rule Engine matching
     final ruleMatch = ruleEngine.match(notification);
 
-    // 3. LiteRT Classification Category Inference
-    final mlResult = await mlClassifier.analyze(notification);
+    // 3. LiteRT Classification Category Inference (bypassed under resource pressure)
+    final mlResult = await mlClassifier.analyze(
+      notification,
+      bypassTFLite: isThermalFallback,
+    );
 
     // 4. Score Fusion (hybrid conflict resolution or critical bypass triggers)
     final fusedResult = ScoreFusion.fuse(
@@ -73,8 +83,11 @@ class GhostAnalysisEngine {
       modelResult: mlResult,
     );
 
-    // Run unified look-again MLP model prediction
-    final ghostResult = await GhostAI.predict(notification);
+    // Run unified look-again MLP model prediction (bypassed under resource pressure)
+    final ghostResult = await GhostAI.predict(
+      notification,
+      bypassTFLite: isThermalFallback,
+    );
 
     // 5. Policy Engine (category + feature to priority levels resolution)
     final priority = PolicyEngine.resolvePriority(
@@ -85,13 +98,24 @@ class GhostAnalysisEngine {
     );
 
     // 6. Natural language explainability trace
-    final explanation = ExplanationGenerator.generate(
+    final rawExplanation = ExplanationGenerator.generate(
       fusedResult: fusedResult,
       features: features,
       priority: priority,
     );
+    final explanation = isThermalFallback
+        ? 'Thermal/Battery guardrail active. Fast-path heuristic fallback triggered. $rawExplanation'
+        : rawExplanation;
 
     stopwatch.stop();
+
+    final String engineVersion = isThermalFallback
+        ? '2.0.0-hybrid (thermal-fallback)'
+        : (fusedResult.isFallback ? '2.0.0-hybrid (fallback)' : '2.0.0-hybrid');
+
+    final String modelVersion = isThermalFallback
+        ? 'thermal-save-heuristic-fallback'
+        : (GhostAI.instance.isModelLoaded ? '1.0.0-tflite' : 'fallback-heuristics');
 
     return notification.copyWith(
       priority: priority,
@@ -100,8 +124,8 @@ class GhostAnalysisEngine {
       explanation: explanation,
       latencyMs: stopwatch.elapsedMilliseconds,
       ruleVersion: ruleEngine.version,
-      modelVersion: GhostAI.instance.isModelLoaded ? '1.0.0-tflite' : 'fallback-heuristics',
-      engineVersion: fusedResult.isFallback ? '2.0.0-hybrid (fallback)' : '2.0.0-hybrid',
+      modelVersion: modelVersion,
+      engineVersion: engineVersion,
       extractedFeatures: features.toMap(),
     );
   }
