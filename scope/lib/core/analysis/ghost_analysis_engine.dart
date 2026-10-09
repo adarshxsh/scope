@@ -12,12 +12,14 @@ import 'package:scope/core/analysis/ghost_ai.dart';
 class GhostAnalysisEngine {
   final RuleEngine ruleEngine;
   final LiteRtClassifier mlClassifier;
+  bool telemetryEnabled;
 
   GhostAnalysisEngine({
     RuleEngine? ruleEngine,
     LiteRtClassifier? mlClassifier,
-  })  : ruleEngine = ruleEngine ?? RuleEngine(),
-        mlClassifier = mlClassifier ?? LiteRtClassifier();
+    this.telemetryEnabled = true,
+  }) : ruleEngine = ruleEngine ?? RuleEngine(),
+       mlClassifier = mlClassifier ?? LiteRtClassifier();
 
   /// Compiles rules loaded from assets on engine startup.
   Future<void> initialize() async {
@@ -85,11 +87,13 @@ class GhostAnalysisEngine {
     );
 
     // 6. Natural language explainability trace
-    final explanation = ExplanationGenerator.generate(
-      fusedResult: fusedResult,
-      features: features,
-      priority: priority,
-    );
+    final explanation = telemetryEnabled
+        ? ExplanationGenerator.generate(
+            fusedResult: fusedResult,
+            features: features,
+            priority: priority,
+          )
+        : '[Telemetry logging disabled]';
 
     stopwatch.stop();
 
@@ -98,16 +102,21 @@ class GhostAnalysisEngine {
       priorityScore: ghostResult.reviewScore,
       classifiedCategory: fusedResult.category,
       explanation: explanation,
-      latencyMs: stopwatch.elapsedMilliseconds,
+      latencyMs: telemetryEnabled ? stopwatch.elapsedMilliseconds : null,
       ruleVersion: ruleEngine.version,
-      modelVersion: GhostAI.instance.isModelLoaded ? '1.0.0-tflite' : 'fallback-heuristics',
-      engineVersion: fusedResult.isFallback ? '2.0.0-hybrid (fallback)' : '2.0.0-hybrid',
+      modelVersion: GhostAI.instance.isModelLoaded
+          ? '1.0.0-tflite'
+          : 'fallback-heuristics',
+      engineVersion: fusedResult.isFallback
+          ? '2.0.0-hybrid (fallback)'
+          : '2.0.0-hybrid',
       extractedFeatures: features.toMap(),
     );
   }
 
   bool _isStatusOrProgressNotification(AppNotification notification) {
-    if (notification.category == 'progress' || notification.category == 'status') {
+    if (notification.category == 'progress' ||
+        notification.category == 'status') {
       return true;
     }
 

@@ -36,68 +36,82 @@ void main() {
       mockEngine = FakeGhostAnalysisEngine();
     });
 
-    testWidgets('DiagnosticScreen renders successfully and can select template',
-        (WidgetTester tester) async {
+    testWidgets(
+      'DiagnosticScreen renders successfully and can select template',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(body: DiagnosticScreen(engine: mockEngine)),
+          ),
+        );
+
+        // Verify basic titles load
+        expect(find.text('Ghost AI Diagnostics'), findsOneWidget);
+        expect(find.text('Input Notification Spec'), findsOneWidget);
+        expect(find.text('ANALYZE NOTIFICATION'), findsOneWidget);
+
+        // Apply template selection
+        await tester.tap(find.byType(DropdownButtonFormField<String>));
+        await tester.pumpAndSettle();
+
+        // Find the dropdown option for HDFC Debit
+        final option = find.text('HDFC Bank Debit Alert').last;
+        await tester.tap(option);
+        await tester.pumpAndSettle();
+
+        // Verify that fields have been populated by the template
+        final packageField = find.byWidgetPredicate(
+          (widget) =>
+              widget is TextField &&
+              widget.decoration?.labelText == 'Package Name',
+        );
+        expect(
+          tester.widget<TextField>(packageField).controller?.text,
+          equals('com.nextbillion.groww'),
+        );
+
+        final contentField = find.byWidgetPredicate(
+          (widget) =>
+              widget is TextField &&
+              widget.decoration?.labelText == 'Content Body',
+        );
+        expect(
+          tester.widget<TextField>(contentField).controller?.text,
+          anyOf(contains('debit'), contains('SIP')),
+        );
+      },
+    );
+
+    testWidgets('triggers analysis and shows results cards', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: DiagnosticScreen(engine: mockEngine),
-          ),
-        ),
-      );
-
-      // Verify basic titles load
-      expect(find.text('Ghost AI Diagnostics'), findsOneWidget);
-      expect(find.text('Input Notification Spec'), findsOneWidget);
-      expect(find.text('ANALYZE NOTIFICATION'), findsOneWidget);
-
-      // Apply template selection
-      await tester.tap(find.byType(DropdownButtonFormField<String>));
-      await tester.pumpAndSettle();
-
-      // Find the dropdown option for HDFC Debit
-      final option = find.text('HDFC Bank Debit Alert').last;
-      await tester.tap(option);
-      await tester.pumpAndSettle();
-
-      // Verify that fields have been populated by the template
-      final packageField = find.byWidgetPredicate(
-        (widget) => widget is TextField && widget.decoration?.labelText == 'Package Name',
-      );
-      expect(tester.widget<TextField>(packageField).controller?.text,
-          equals('com.nextbillion.groww'));
-
-      final contentField = find.byWidgetPredicate(
-        (widget) => widget is TextField && widget.decoration?.labelText == 'Content Body',
-      );
-      expect(
-        tester.widget<TextField>(contentField).controller?.text,
-        anyOf(contains('debit'), contains('SIP')),
-      );
-    });
-
-    testWidgets('triggers analysis and shows results cards', (WidgetTester tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: DiagnosticScreen(engine: mockEngine),
-          ),
+          home: Scaffold(body: DiagnosticScreen(engine: mockEngine)),
         ),
       );
 
       // Set input fields directly
       final contentFieldFinder = find.byWidgetPredicate(
-        (widget) => widget is TextField && widget.decoration?.labelText == 'Content Body',
+        (widget) =>
+            widget is TextField &&
+            widget.decoration?.labelText == 'Content Body',
       );
-      await tester.enterText(contentFieldFinder, 'Your verification OTP is 987652');
-      
+      await tester.enterText(
+        contentFieldFinder,
+        'Your verification OTP is 987652',
+      );
+
       final titleFieldFinder = find.byWidgetPredicate(
-        (widget) => widget is TextField && widget.decoration?.labelText == 'Title',
+        (widget) =>
+            widget is TextField && widget.decoration?.labelText == 'Title',
       );
       await tester.enterText(titleFieldFinder, 'Verification');
 
       final packageFieldFinder = find.byWidgetPredicate(
-        (widget) => widget is TextField && widget.decoration?.labelText == 'Package Name',
+        (widget) =>
+            widget is TextField &&
+            widget.decoration?.labelText == 'Package Name',
       );
       await tester.enterText(packageFieldFinder, 'com.whatsapp');
 

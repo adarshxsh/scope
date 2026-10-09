@@ -12,7 +12,9 @@ class ExplanationGenerator {
   }) {
     final buffer = StringBuffer();
     buffer.writeln('Priority resolved: **${priority.toUpperCase()}**');
-    buffer.writeln('• Category: Inferred semantic category is **${fusedResult.category}**.');
+    buffer.writeln(
+      '• Category: Inferred semantic category is **${fusedResult.category}**.',
+    );
     buffer.writeln('• Source: Handled by **${fusedResult.engineName}**.');
     if (fusedResult.isFallback) {
       buffer.writeln('• Status: **Fallback Heuristic (ML Inference Bypassed/Failed)**.');
@@ -22,17 +24,23 @@ class ExplanationGenerator {
     }
 
     if (features.otp != null) {
-      buffer.writeln('• OTP Code: Found verification code **${features.otp}**.');
+      buffer.writeln(
+        '• OTP Code: Found verification code **${features.otp}**.',
+      );
     }
     if (features.amount != null) {
-      buffer.writeln('• Amount: Found transaction amount **Rs. ${features.amount}**.');
+      buffer.writeln(
+        '• Amount: Found transaction amount **Rs. ${features.amount}**.',
+      );
     }
     if (features.hasDeadline) {
       buffer.writeln('• Deadline: Found urgent timing keywords.');
     }
 
     if (fusedResult.matchedSignals.isNotEmpty) {
-      buffer.writeln('• matchedSignals: ${fusedResult.matchedSignals.join("; ")}.');
+      buffer.writeln(
+        '• matchedSignals: ${fusedResult.matchedSignals.join("; ")}.',
+      );
     }
 
     return buffer.toString().trim();

@@ -53,7 +53,10 @@ class _FocusScreenState extends State<FocusScreen> {
     setState(() => _selectedAction = null);
   }
 
-  Future<void> _handleAction(SmartAction action, AppNotification notification) async {
+  Future<void> _handleAction(
+    SmartAction action,
+    AppNotification notification,
+  ) async {
     if (_isTransitioning) return;
 
     setState(() => _selectedAction = action.type);
@@ -125,7 +128,10 @@ class _FocusScreenState extends State<FocusScreen> {
     }
   }
 
-  void _handleDismissAction(AppNotification notification, SmartActionType type) {
+  void _handleDismissAction(
+    AppNotification notification,
+    SmartActionType type,
+  ) {
     widget.controller.recordReviewed();
     if (type == SmartActionType.complete) {
       widget.controller.complete(notification.id);
@@ -184,7 +190,8 @@ class _FocusScreenState extends State<FocusScreen> {
     }
 
     // Total progress is what we've reviewed + our index in the remaining queue
-    final progress = widget.controller.focusSessionProgressCount + _currentIndex + 1;
+    final progress =
+        widget.controller.focusSessionProgressCount + _currentIndex + 1;
 
     final List<Widget> cardStack = [];
 
@@ -198,32 +205,38 @@ class _FocusScreenState extends State<FocusScreen> {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
             child: Transform.translate(
-              offset: const Offset(0, -20), // Shift the bottom card UP so it peeks over the top card
+              offset: const Offset(
+                0,
+                -20,
+              ), // Shift the bottom card UP so it peeks over the top card
               child: Transform.scale(
                 scale: 0.92,
                 alignment: Alignment.topCenter,
                 child: ScopeSurface(
-                variant: ScopeSurfaceVariant.glassDark,
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                borderColor: AppColors.urgency(nextNotification.priority).withValues(alpha: 0.35),
-                glow: nextNotification.priority == 'critical',
-                child: SingleChildScrollView(
-                  physics: const NeverScrollableScrollPhysics(),
-                  child: ReviewCard(
-                    inverted: true,
-                    notification: nextNotification,
-                    actions: nextActions,
-                    selectedAction: null,
-                    currentIndex: progress, // visually shows next progress
-                    totalCount: total,
-                    onAction: (_) {},
+                  variant: ScopeSurfaceVariant.glassDark,
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  borderColor: AppColors.urgency(
+                    nextNotification.priority,
+                  ).withValues(alpha: 0.35),
+                  glow: nextNotification.priority == 'critical',
+                  child: SingleChildScrollView(
+                    physics: const NeverScrollableScrollPhysics(),
+                    child: ReviewCard(
+                      inverted: true,
+                      notification: nextNotification,
+                      actions: nextActions,
+                      selectedAction: null,
+                      currentIndex: progress, // visually shows next progress
+                      totalCount: total,
+                      onAction: (_) {},
+                    ),
                   ),
                 ),
               ),
             ),
           ),
         ),
-      ));
+      );
     }
 
     // Current card (rendered on top)
@@ -236,8 +249,10 @@ class _FocusScreenState extends State<FocusScreen> {
         key: ValueKey(notification.id),
         child: PhysicsSwipeCard(
           enabled: !_isTransitioning,
-          onComplete: () => _handleDismissAction(notification, SmartActionType.complete),
-          onArchive: () => _handleDismissAction(notification, SmartActionType.archive),
+          onComplete: () =>
+              _handleDismissAction(notification, SmartActionType.complete),
+          onArchive: () =>
+              _handleDismissAction(notification, SmartActionType.archive),
           onNext: _advance, // Swipe left
           onPrevious: _previous, // Swipe right
           child: Padding(
@@ -245,7 +260,9 @@ class _FocusScreenState extends State<FocusScreen> {
             child: ScopeSurface(
               variant: ScopeSurfaceVariant.glassDark,
               padding: const EdgeInsets.all(AppSpacing.lg),
-              borderColor: AppColors.urgency(notification.priority).withValues(alpha: 0.35),
+              borderColor: AppColors.urgency(
+                notification.priority,
+              ).withValues(alpha: 0.35),
               glow: notification.priority == 'critical',
               child: SingleChildScrollView(
                 physics: const NeverScrollableScrollPhysics(),
@@ -285,18 +302,15 @@ class _FocusScreenState extends State<FocusScreen> {
               ),
             ),
             Expanded(
-              child: Stack(
-                alignment: Alignment.center,
-                children: cardStack,
-              ),
+              child: Stack(alignment: Alignment.center, children: cardStack),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
               child: Text(
                 'Swipe up complete · down archive · sides to skip',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.white30,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: Colors.white30),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -371,7 +385,10 @@ class _FocusScreenState extends State<FocusScreen> {
             Expanded(
               child: queue.isEmpty
                   ? const EmptyState.caughtUp()
-                  : const ScopeLoading(message: 'Starting review…', compact: true),
+                  : const ScopeLoading(
+                      message: 'Starting review…',
+                      compact: true,
+                    ),
             ),
           ],
         ),

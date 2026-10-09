@@ -19,11 +19,12 @@ class NotificationsTable extends Table {
   TextColumn get ruleVersion => text().nullable()();
   TextColumn get modelVersion => text().nullable()();
   TextColumn get engineVersion => text().nullable()();
-  TextColumn get extractedFeatures => text().map(const JsonConverter()).nullable()();
+  TextColumn get extractedFeatures =>
+      text().map(const JsonConverter()).nullable()();
   TextColumn get state => textEnum<ReviewState>()();
   DateTimeColumn get snoozedUntil => dateTime().nullable()();
   DateTimeColumn get lastUpdated => dateTime().nullable()();
-  
+
   // Extra persistence fields requested
   RealColumn get policyScore => real().nullable()();
   RealColumn get finalScore => real().nullable()();
@@ -59,9 +60,20 @@ class FocusSessionsTable extends Table {
 class DailyBriefTable extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get date => text().unique()(); // YYYY-MM-DD
-  IntColumn get notificationsReviewed => integer().withDefault(const Constant(0))();
+  IntColumn get notificationsReviewed =>
+      integer().withDefault(const Constant(0))();
   IntColumn get actionsCompleted => integer().withDefault(const Constant(0))();
-  IntColumn get calendarEventsCreated => integer().withDefault(const Constant(0))();
+  IntColumn get calendarEventsCreated =>
+      integer().withDefault(const Constant(0))();
   IntColumn get remindersCreated => integer().withDefault(const Constant(0))();
   IntColumn get archivedCount => integer().withDefault(const Constant(0))();
+}
+
+@DataClassName('AppSettingsEntry')
+class AppSettingsTable extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get retentionDays => integer().withDefault(const Constant(7))();
+  IntColumn get storageQuota => integer().withDefault(const Constant(-1))();
+  BoolColumn get telemetryEnabled =>
+      boolean().withDefault(const Constant(true))();
 }

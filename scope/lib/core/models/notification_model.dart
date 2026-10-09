@@ -132,14 +132,17 @@ class AppNotification {
     final timestamp = map['timestamp'] as int? ?? 0;
 
     final id = (rawId.isEmpty || rawId.startsWith('notif_'))
-        ? (packageName.isEmpty && title.isEmpty && content.isEmpty && timestamp == 0)
-            ? ''
-            : AppNotification.generateStableId(
-                packageName: packageName,
-                timestamp: timestamp,
-                title: title,
-                content: content,
-              )
+        ? (packageName.isEmpty &&
+                  title.isEmpty &&
+                  content.isEmpty &&
+                  timestamp == 0)
+              ? ''
+              : AppNotification.generateStableId(
+                  packageName: packageName,
+                  timestamp: timestamp,
+                  title: title,
+                  content: content,
+                )
         : rawId;
 
     return AppNotification(
@@ -234,26 +237,26 @@ class AppNotification {
 
   @override
   int get hashCode => Object.hash(
-        id,
-        packageName,
-        title,
-        content,
-        timestamp,
-        category,
-        isOngoing,
-        priority,
-        priorityScore,
-        classifiedCategory,
-        explanation,
-        latencyMs,
-        ruleVersion,
-        modelVersion,
-        engineVersion,
-        state,
-        snoozedUntil,
-        lastUpdated,
-        extractedFeatures?.length,
-      );
+    id,
+    packageName,
+    title,
+    content,
+    timestamp,
+    category,
+    isOngoing,
+    priority,
+    priorityScore,
+    classifiedCategory,
+    explanation,
+    latencyMs,
+    ruleVersion,
+    modelVersion,
+    engineVersion,
+    state,
+    snoozedUntil,
+    lastUpdated,
+    extractedFeatures?.length,
+  );
 
   @override
   String toString() {
