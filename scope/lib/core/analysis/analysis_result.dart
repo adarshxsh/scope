@@ -18,6 +18,8 @@ class AnalysisResult {
   /// Whether this result was produced by a fallback heuristic due to model initialization bypass or error.
   final bool isFallback;
 
+  /// The confidence score of the classification (0.0 if fallback active).
+  double get confidence => isFallback ? 0.0 : score;
   const AnalysisResult({
     required this.category,
     required this.score,
