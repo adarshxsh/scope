@@ -42,6 +42,53 @@ class ReviewQueueDaoManager {
       );
 }
 
+mixin _$RlhfRulesDaoMixin on DatabaseAccessor<AttentionDatabase> {
+  $RlhfRulesTableTable get rlhfRulesTable => attachedDatabase.rlhfRulesTable;
+  RlhfRulesDaoManager get managers => RlhfRulesDaoManager(this);
+}
+
+class RlhfRulesDaoManager {
+  final _$RlhfRulesDaoMixin _db;
+  RlhfRulesDaoManager(this._db);
+  $$RlhfRulesTableTableTableManager get rlhfRulesTable =>
+      $$RlhfRulesTableTableTableManager(
+        _db.attachedDatabase,
+        _db.rlhfRulesTable,
+      );
+}
+
+mixin _$OfflineSyncQueueDaoMixin on DatabaseAccessor<AttentionDatabase> {
+  $OfflineSyncQueueTableTable get offlineSyncQueueTable =>
+      attachedDatabase.offlineSyncQueueTable;
+  OfflineSyncQueueDaoManager get managers => OfflineSyncQueueDaoManager(this);
+}
+
+class OfflineSyncQueueDaoManager {
+  final _$OfflineSyncQueueDaoMixin _db;
+  OfflineSyncQueueDaoManager(this._db);
+  $$OfflineSyncQueueTableTableTableManager get offlineSyncQueueTable =>
+      $$OfflineSyncQueueTableTableTableManager(
+        _db.attachedDatabase,
+        _db.offlineSyncQueueTable,
+      );
+}
+
+mixin _$PrivacyLedgerDaoMixin on DatabaseAccessor<AttentionDatabase> {
+  $PrivacyLedgerTableTable get privacyLedgerTable =>
+      attachedDatabase.privacyLedgerTable;
+  PrivacyLedgerDaoManager get managers => PrivacyLedgerDaoManager(this);
+}
+
+class PrivacyLedgerDaoManager {
+  final _$PrivacyLedgerDaoMixin _db;
+  PrivacyLedgerDaoManager(this._db);
+  $$PrivacyLedgerTableTableTableManager get privacyLedgerTable =>
+      $$PrivacyLedgerTableTableTableManager(
+        _db.attachedDatabase,
+        _db.privacyLedgerTable,
+      );
+}
+
 mixin _$FocusSessionDaoMixin on DatabaseAccessor<AttentionDatabase> {
   $FocusSessionsTableTable get focusSessionsTable =>
       attachedDatabase.focusSessionsTable;

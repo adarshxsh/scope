@@ -31,6 +31,11 @@ class NotificationsTable extends Table {
   BoolColumn get dismissed => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 
+  // CRDT Sync Fields
+  TextColumn get vectorClock => text().nullable()();
+  TextColumn get originDeviceId => text().nullable()();
+  DateTimeColumn get syncTimestamp => dateTime().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -43,6 +48,37 @@ class ReviewQueueTable extends Table {
   DateTimeColumn get enqueueTime => dateTime()();
   DateTimeColumn get expiryTime => dateTime().nullable()();
   TextColumn get status => textEnum<ReviewState>()();
+  
+  // CRDT Sync Fields
+  TextColumn get vectorClock => text().nullable()();
+  TextColumn get originDeviceId => text().nullable()();
+  DateTimeColumn get syncTimestamp => dateTime().nullable()();
+}
+
+@DataClassName('RlhfRuleEntry')
+class RlhfRulesTable extends Table {
+  TextColumn get id => text()();
+  TextColumn get category => text()();
+  TextColumn get priority => text()();
+  TextColumn get conditionsJson => text()();
+  BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
+  TextColumn get originDeviceId => text().nullable()();
+  TextColumn get vectorClock => text().nullable()();
+  DateTimeColumn get syncTimestamp => dateTime().nullable()();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DataClassName('OfflineSyncQueueEntry')
+class OfflineSyncQueueTable extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get payloadType => text()();
+  TextColumn get entityId => text()();
+  TextColumn get encryptedPayloadJson => text()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
 }
 
 @DataClassName('FocusSessionEntry')
@@ -64,4 +100,14 @@ class DailyBriefTable extends Table {
   IntColumn get calendarEventsCreated => integer().withDefault(const Constant(0))();
   IntColumn get remindersCreated => integer().withDefault(const Constant(0))();
   IntColumn get archivedCount => integer().withDefault(const Constant(0))();
+}
+
+@DataClassName('PrivacyLedgerEntry')
+class PrivacyLedgerTable extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get date => text()(); // YYYY-MM-DD
+  RealColumn get epsilonSpent => real().withDefault(const Constant(0.0))();
+  RealColumn get deltaSpent => real().withDefault(const Constant(0.0))();
+  IntColumn get queryCount => integer().withDefault(const Constant(0))();
+  DateTimeColumn get lastUpdated => dateTime().withDefault(currentDateAndTime)();
 }
