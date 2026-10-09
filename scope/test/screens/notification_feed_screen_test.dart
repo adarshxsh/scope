@@ -54,8 +54,13 @@ void main() {
       switch (call.method) {
         case 'isListenerEnabled':
           return isListenerEnabled;
+        case 'peekNotifications':
         case 'getNotifications':
           return notifications;
+        case 'getSessionToken':
+          return 'mock-session-token';
+        case 'acknowledgeNotifications':
+          return true;
         case 'openNotificationSettings':
           return true;
         default:
