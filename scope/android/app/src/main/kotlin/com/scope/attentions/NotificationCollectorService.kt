@@ -26,13 +26,19 @@ private data class DedupKey(
  *   - Uses a synchronized bounded queue (capped at [MAX_QUEUE_SIZE]) with drop-oldest FIFO eviction.
  *   - Uses an O(1) [HashSet] lookup for duplicate notification checking.
  *   - Uses an [AtomicLong] for thread-safe notification ID generation.
+ *   - Enforces maximum time-to-live [MAX_AGE_MS] for queued notifications (15 minutes).
  *   - Skips ongoing/persistent notifications by default (configurable).
  */
 class NotificationCollectorService : NotificationListenerService() {
 
     companion object {
         private const val TAG = "NotifCollector"
+
+        /** Maximum allowed queue size to prevent unbounded memory growth. */
         const val MAX_QUEUE_SIZE = 250
+
+        /** Maximum time-to-live for queued notifications (15 minutes in milliseconds). */
+        const val MAX_AGE_MS = 15 * 60 * 1000L
 
         private val lock = Any()
 
@@ -46,7 +52,23 @@ class NotificationCollectorService : NotificationListenerService() {
         private val idCounter = AtomicLong(0L)
 
         /**
-         * Enqueues a notification if it is not a duplicate.
+         * Removes entries older than [MAX_AGE_MS] from the queue and deduplication set.
+         */
+        fun pruneExpired(now: Long = System.currentTimeMillis()) {
+            synchronized(lock) {
+                val iterator = queue.iterator()
+                while (iterator.hasNext()) {
+                    val item = iterator.next()
+                    if (now - item.timestamp > MAX_AGE_MS) {
+                        iterator.remove()
+                        dedupSet.remove(DedupKey(item.packageName, item.title, item.content))
+                    }
+                }
+            }
+        }
+
+        /**
+         * Enqueues a notification if it is not expired and not a duplicate.
          * Enforces maximum queue size [MAX_QUEUE_SIZE] using drop-oldest FIFO eviction.
          */
         fun enqueueNotification(
@@ -55,15 +77,22 @@ class NotificationCollectorService : NotificationListenerService() {
             content: String,
             timestamp: Long,
             category: String?,
-            isOngoing: Boolean
+            isOngoing: Boolean,
+            now: Long = System.currentTimeMillis()
         ): Boolean {
             val key = DedupKey(packageName, title, content)
             synchronized(lock) {
+                pruneExpired(now)
+
+                if (now - timestamp > MAX_AGE_MS) {
+                    return false
+                }
+
                 if (dedupSet.contains(key)) {
                     return false
                 }
 
-                if (queue.size >= MAX_QUEUE_SIZE) {
+                while (queue.size >= MAX_QUEUE_SIZE) {
                     val evicted = queue.removeFirst()
                     val evictedKey = DedupKey(evicted.packageName, evicted.title, evicted.content)
                     dedupSet.remove(evictedKey)
@@ -86,16 +115,44 @@ class NotificationCollectorService : NotificationListenerService() {
         }
 
         /**
-         * Drains all notifications from the queue and resets deduplication state.
+         * Adds a [NotificationData] item to the queue after pruning expired items
+         * and enforcing maximum queue capacity.
+         */
+        fun addNotification(data: NotificationData, now: Long = System.currentTimeMillis()) {
+            enqueueNotification(
+                packageName = data.packageName,
+                title = data.title,
+                content = data.content,
+                timestamp = data.timestamp,
+                category = data.category,
+                isOngoing = data.isOngoing,
+                now = now
+            )
+        }
+
+        /**
+         * Drains all non-expired notifications from the queue and resets deduplication state.
          * Called by [MainActivity] when Flutter requests notifications.
          * After this call, the queue and deduplication set are empty.
          */
-        fun drainQueue(): List<NotificationData> {
+        fun drainQueue(now: Long = System.currentTimeMillis()): List<NotificationData> {
             synchronized(lock) {
+                pruneExpired(now)
                 val result = ArrayList(queue)
                 queue.clear()
                 dedupSet.clear()
                 return result
+            }
+        }
+
+        /**
+         * Clears the queue and resets internal state (for testing).
+         */
+        fun clearQueue() {
+            synchronized(lock) {
+                queue.clear()
+                dedupSet.clear()
+                idCounter.set(0L)
             }
         }
 
@@ -112,29 +169,27 @@ class NotificationCollectorService : NotificationListenerService() {
          * Resets queue, deduplication set, and ID counter (for testing).
          */
         fun resetForTesting() {
-            synchronized(lock) {
-                queue.clear()
-                dedupSet.clear()
-                idCounter.set(0L)
-            }
+            clearQueue()
         }
     }
 
-    private fun addSbnToQueue(sbn: StatusBarNotification) {
+    private fun addSbnToQueue(sbn: StatusBarNotification, now: Long = System.currentTimeMillis()) {
         try {
             val extras = sbn.notification.extras
             val title = extras?.getCharSequence("android.title")?.toString() ?: ""
             val text = extras?.getCharSequence("android.text")?.toString() ?: ""
             val isOngoing = sbn.isOngoing
             val packageName = sbn.packageName ?: "unknown"
+            val timestamp = if (sbn.postTime > 0) sbn.postTime else now
 
             val added = enqueueNotification(
                 packageName = packageName,
                 title = title,
                 content = text,
-                timestamp = sbn.postTime,
+                timestamp = timestamp,
                 category = sbn.notification.category,
-                isOngoing = isOngoing
+                isOngoing = isOngoing,
+                now = now
             )
 
             if (added) {
@@ -178,4 +233,3 @@ class NotificationCollectorService : NotificationListenerService() {
         Log.w(TAG, "NotificationCollectorService disconnected")
     }
 }
-
