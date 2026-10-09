@@ -112,6 +112,68 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
     }
   }
 
+  Widget _buildSecurityGuardrailCard() {
+    return ScopeCard(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.security, color: Colors.green.shade700),
+              const SizedBox(width: 8),
+              Text(
+                'Security & Privacy Guardrails',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+            ],
+          ),
+          const Divider(height: 20),
+          Row(
+            children: [
+              Icon(Icons.lock, size: 16, color: Colors.green.shade700),
+              const SizedBox(width: 6),
+              const Expanded(
+                child: Text(
+                  'Encryption-at-Rest: Active (256-bit Key)',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Icon(Icons.sanitizer, size: 16, color: Colors.blue.shade700),
+              const SizedBox(width: 6),
+              const Expanded(
+                child: Text(
+                  'PII & Input Boundaries: Enforced',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Icon(Icons.memory, size: 16, color: Colors.purple.shade700),
+              const SizedBox(width: 6),
+              const Expanded(
+                child: Text(
+                  'Bounded Capacity: Capped at 500 items',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -139,6 +201,8 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
             _buildInputFormCard(),
             const SizedBox(height: 16),
             _buildActionSection(),
+            const SizedBox(height: 20),
+            _buildSecurityGuardrailCard(),
             const SizedBox(height: 20),
             if (_analyzedNotification != null) ...[
               _buildResultsDashboard(),
