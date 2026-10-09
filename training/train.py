@@ -31,6 +31,7 @@ from training.evaluation.metrics import (
 from training.evaluation.plots import plot_regression_results, plot_training_history
 from training.export.tflite_exporter import (
     export_float32_tflite,
+    export_quantized_tflite,
     export_saved_model,
 )
 from training.models.mlp import build_baseline_mlp
@@ -126,10 +127,25 @@ def main() -> None:
     predictions = model.predict(splits.x_test, batch_size=config.batch_size)
     metrics = regression_metrics(splits.y_test, predictions)
 
-    saved_model_dir = export_saved_model(model, export_dir / "saved_model")
-    tflite_path = export_float32_tflite(
+    saved_model_dir = export_saved_model(
+        model, export_dir / "saved_model", input_shape=(1, FEATURE_VECTOR_SIZE)
+    )
+    float32_tflite_path = export_float32_tflite(
+        saved_model_dir,
+        export_dir / "ghost_ai_float32.tflite",
+        expected_input_shape=(1, FEATURE_VECTOR_SIZE),
+    )
+    tflite_path = export_quantized_tflite(
         saved_model_dir,
         export_dir / "ghost_ai.tflite",
+        representative_data=splits.x_train,
+        expected_input_shape=(1, FEATURE_VECTOR_SIZE),
+    )
+    quantized_named_path = export_quantized_tflite(
+        saved_model_dir,
+        export_dir / "attentionos_look_again_score_quantized.tflite",
+        representative_data=splits.x_train,
+        expected_input_shape=(1, FEATURE_VECTOR_SIZE),
     )
 
     write_history_csv(history, output_dir / "history.csv")
@@ -178,7 +194,9 @@ def main() -> None:
         "metrics": metrics,
         "artifacts": {
             "saved_model": str(saved_model_dir),
+            "float32_tflite": str(float32_tflite_path),
             "quantized_tflite": str(tflite_path),
+            "quantized_named_tflite": str(quantized_named_path),
             "label_encoder": str(label_encoder_path),
             "history_csv": str(output_dir / "history.csv"),
             "evaluation_dir": str(evaluation_dir),
