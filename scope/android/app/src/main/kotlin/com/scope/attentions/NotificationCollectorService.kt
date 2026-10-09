@@ -3,7 +3,7 @@ package com.scope.attentions
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
-import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.ArrayDeque
 
 /**
  * Android service that captures all incoming notifications.
@@ -11,14 +11,14 @@ import java.util.concurrent.ConcurrentLinkedQueue
  * Extends [NotificationListenerService] which requires the user to manually
  * grant "Notification access" in system Settings.
  *
- * Captured notifications are placed in a static [queue] which is drained
+ * Captured notifications are placed in a static bounded queue which is drained
  * by [MainActivity] when Flutter requests them via MethodChannel.
  *
  * Design decisions:
- *   - Uses a static ConcurrentLinkedQueue (thread-safe, lock-free) because
- *     the service runs in a separate context from MainActivity.
+ *   - Uses a synchronized bounded buffer (capacity limit 100 entries, TTL limit 15 minutes)
+ *     to prevent unbounded heap growth and evict stale notification payloads automatically.
+ *   - Service runs in a separate context from MainActivity.
  *   - No heavy processing here — just capture and queue.
- *   - Skips ongoing/persistent notifications by default (configurable).
  */
 class NotificationCollectorService : NotificationListenerService() {
 
@@ -28,78 +28,108 @@ class NotificationCollectorService : NotificationListenerService() {
         /** Maximum allowed queue size to prevent unbounded memory growth. */
         const val MAX_QUEUE_SIZE = 100
 
+        /** Maximum capacity limit for the notification queue. */
+        const val MAX_CAPACITY = 100
+
         /** Maximum time-to-live for queued notifications (15 minutes in milliseconds). */
         const val MAX_AGE_MS = 15 * 60 * 1000L
 
-        /** Thread-safe queue of captured notifications. */
-        private val queue = ConcurrentLinkedQueue<NotificationData>()
+        /** Time-to-live limit in milliseconds (15 minutes). */
+        const val TTL_MILLIS = 15 * 60 * 1000L
+
+        private val lock = Any()
+
+        /** Thread-safe bounded queue of captured notifications. */
+        private val queue = ArrayDeque<NotificationData>()
 
         /** Counter for generating simple unique IDs within a session. */
         private var idCounter = 0L
 
         /**
-         * Removes entries older than [MAX_AGE_MS] from the queue.
+         * Evicts expired notifications older than [TTL_MILLIS].
+         */
+        fun evictExpired(now: Long = System.currentTimeMillis()) {
+            synchronized(lock) {
+                val iterator = queue.iterator()
+                while (iterator.hasNext()) {
+                    val item = iterator.next()
+                    if (now - item.timestamp > TTL_MILLIS) {
+                        iterator.remove()
+                    }
+                }
+            }
+        }
+
+        /**
+         * Alias for [evictExpired] to preserve backward compatibility.
          */
         fun pruneExpired(now: Long = System.currentTimeMillis()) {
-            queue.removeIf { now - it.timestamp > MAX_AGE_MS }
+            evictExpired(now)
         }
 
         /**
-         * Adds a [NotificationData] item to the queue after pruning expired items
-         * and enforcing maximum queue capacity.
+         * Adds a [NotificationData] item to the bounded queue.
+         * Runs eviction first, ignores duplicates, and evicts the head item if capacity is reached.
+         * Returns true if added, false if ignored.
          */
-        fun addNotification(data: NotificationData, now: Long = System.currentTimeMillis()) {
-            pruneExpired(now)
+        fun addNotification(data: NotificationData, now: Long = System.currentTimeMillis()): Boolean {
+            synchronized(lock) {
+                evictExpired(now)
 
-            // Do not add item if it is already expired relative to current time
-            if (now - data.timestamp > MAX_AGE_MS) {
-                return
-            }
+                // Do not add item if it is already expired relative to current time
+                if (now - data.timestamp > TTL_MILLIS) {
+                    return false
+                }
 
-            // Ignore if same package, title, and content already exist in queue
-            val isDuplicate = queue.any {
-                it.packageName == data.packageName && it.title == data.title && it.content == data.content
-            }
-            if (isDuplicate) {
-                return
-            }
+                val isDuplicate = queue.any {
+                    it.packageName == data.packageName && it.title == data.title && it.content == data.content
+                }
+                if (isDuplicate) {
+                    return false
+                }
 
-            // Evict oldest notification if queue reaches MAX_QUEUE_SIZE before adding new items
-            while (queue.size >= MAX_QUEUE_SIZE) {
-                queue.poll()
-            }
+                if (queue.size >= MAX_CAPACITY) {
+                    queue.removeFirst()
+                }
 
-            queue.add(data)
+                queue.addLast(data)
+                return true
+            }
         }
 
         /**
-         * Drains all non-expired notifications from the queue and returns them.
+         * Drains all valid notifications from the queue and returns them.
          * Called by [MainActivity] when Flutter requests notifications.
          * After this call, the queue is empty.
          */
         fun drainQueue(now: Long = System.currentTimeMillis()): List<NotificationData> {
-            val result = mutableListOf<NotificationData>()
-            while (true) {
-                val item = queue.poll() ?: break
-                if (now - item.timestamp <= MAX_AGE_MS) {
-                    result.add(item)
-                }
+            synchronized(lock) {
+                evictExpired(now)
+                val result = queue.toList()
+                queue.clear()
+                return result
             }
-            return result
         }
 
         /**
-         * Clears the queue and resets internal state (for testing).
+         * Returns the current queue size after evicting expired notifications.
+         */
+        fun queueSize(now: Long = System.currentTimeMillis()): Int {
+            synchronized(lock) {
+                evictExpired(now)
+                return queue.size
+            }
+        }
+
+        /**
+         * Clears the queue and resets state (primarily for testing).
          */
         fun clearQueue() {
-            queue.clear()
-            idCounter = 0L
+            synchronized(lock) {
+                queue.clear()
+                idCounter = 0L
+            }
         }
-
-        /**
-         * Returns the current queue size (for diagnostics).
-         */
-        fun queueSize(): Int = queue.size
     }
 
     private fun addSbnToQueue(sbn: StatusBarNotification, now: Long = System.currentTimeMillis()) {
@@ -111,8 +141,9 @@ class NotificationCollectorService : NotificationListenerService() {
             val packageName = sbn.packageName ?: "unknown"
             val timestamp = if (sbn.postTime > 0) sbn.postTime else now
 
+            val nextId = synchronized(lock) { ++idCounter }
             val data = NotificationData(
-                id = "notif_${++idCounter}",
+                id = "notif_$nextId",
                 packageName = packageName,
                 title = title,
                 content = text,
@@ -121,8 +152,10 @@ class NotificationCollectorService : NotificationListenerService() {
                 isOngoing = isOngoing
             )
 
-            addNotification(data, now)
-            Log.d(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
+            val added = addNotification(data, now)
+            if (added) {
+                Log.d(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error capturing/adding notification", e)
         }
@@ -135,7 +168,6 @@ class NotificationCollectorService : NotificationListenerService() {
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         if (sbn == null) return
-        // Log for now; future phases may track dismissed notifications
         val removedTitle = sbn.notification.extras?.getCharSequence("android.title")?.toString()
         Log.d(TAG, "Removed: ${sbn.packageName} - ${NotificationRedactor.redactTitle(removedTitle)}")
     }
