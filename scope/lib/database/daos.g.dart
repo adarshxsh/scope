@@ -72,3 +72,19 @@ class DailyBriefDaoManager {
         _db.dailyBriefTable,
       );
 }
+
+mixin _$UserSettingsDaoMixin on DatabaseAccessor<AttentionDatabase> {
+  $UserSettingsTableTable get userSettingsTable =>
+      attachedDatabase.userSettingsTable;
+  UserSettingsDaoManager get managers => UserSettingsDaoManager(this);
+}
+
+class UserSettingsDaoManager {
+  final _$UserSettingsDaoMixin _db;
+  UserSettingsDaoManager(this._db);
+  $$UserSettingsTableTableTableManager get userSettingsTable =>
+      $$UserSettingsTableTableTableManager(
+        _db.attachedDatabase,
+        _db.userSettingsTable,
+      );
+}
