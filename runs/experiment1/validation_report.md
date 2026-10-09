@@ -1,33 +1,33 @@
 # Ghost AI Model Validation Report
 
-**Model Path:** `runs/experiment1/export/ghost_ai.tflite`
-**Dataset Path:** `attentionos-dataset/output/notifications_100000_seed42.jsonl`
-**Total Samples:** 100,000
+**Model Path:** `/app/scope/runs/experiment1/export/ghost_ai_quantized.tflite`
+**Dataset Path:** `/app/scope/attentionos-dataset/output/notifications_100000_seed42.jsonl`
+**Total Samples:** 10,000
 
 ## Core Metrics
 
 | Metric | Result | Description |
 | :--- | :--- | :--- |
-| **MAE** | `2.18` | Mean Absolute Error |
-| **RMSE** | `3.14` | Root Mean Squared Error |
-| **R²** | `0.99` | Coefficient of Determination |
-| **Avg Inference Time** | `0.002 ms` | Average time per single inference |
-| **95th percentile Latency** | `0.002 ms` | 95% of inferences are faster than this |
-| **Wrong predictions (>30 pts)** | `92 (0.09%)` | Count & % of predictions with error > 30 |
+| **MAE** | `18338.92` | Mean Absolute Error |
+| **RMSE** | `18338.95` | Root Mean Squared Error |
+| **R²** | `-363110.41` | Coefficient of Determination |
+| **Avg Inference Time** | `0.007 ms` | Average time per single inference |
+| **95th percentile Latency** | `0.006 ms` | 95% of inferences are faster than this |
+| **Wrong predictions (>30 pts)** | `10,000 (100.00%)` | Count & % of predictions with error > 30 |
 
 ## Worst 100 Predictions (Top 10)
 
 | Rank | App Name | Title | Body | Expected | Predicted | Absolute Error |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| 1 | YouTube | Continue watching | New episode of The Final Over is availab... | 0.0 | 47.5 | 47.5 |
-| 2 | YouTube | New for you | New episode of The Final Over is availab... | 0.0 | 47.2 | 47.2 |
-| 3 | YouTube | New for you | New episode of Startup Stories is availa... | 0.0 | 43.9 | 43.9 |
-| 4 | Jira | Reset code sent | Password change started from Kochi. Secu... | 100.0 | 56.1 | 43.9 |
-| 5 | Gmail | Invoice approval | Invoice approval — can you confirm this ... | 35.0 | 78.4 | 43.4 |
-| 6 | Spotify | New for you | New episode of City Lights is available ... | 0.0 | 42.6 | 42.6 |
-| 7 | Outlook | Interview feedback | Interview feedback — please check the la... | 35.0 | 77.2 | 42.2 |
-| 8 | Netflix | New for you | New episode of Weekend Kitchen is availa... | 0.0 | 42.2 | 42.2 |
-| 9 | Gmail | Interview feedback | Interview feedback — sharing the revised... | 40.0 | 81.7 | 41.7 |
-| 10 | Outlook | Interview feedback | Riya sent an email with a spreadsheet. | 35.0 | 75.9 | 40.9 |
+| 1 | Zomato | Coupon unlocked | Save ₹199 on FreshMart orders today. Cod... | 0.0 | 18406.8 | 18406.8 |
+| 2 | Myntra | Offer for you | SAVE67 gives extra 10% off until 9:24 PM... | 0.0 | 18406.8 | 18406.8 |
+| 3 | Myntra | Offer for you | Save ₹149 on UrbanCart orders today. Cod... | 0.0 | 18406.8 | 18406.8 |
+| 4 | Swiggy | Coupon unlocked | Save ₹99 on Green Basket orders today. C... | 0.0 | 18406.8 | 18406.8 |
+| 5 | Zomato | Coupon unlocked | SAVE52 gives extra 20% off until 6:11 PM... | 0.0 | 18406.8 | 18406.8 |
+| 6 | Myntra | Offer for you | SAVE73 gives extra 15% off until 1:59 AM... | 0.0 | 18406.8 | 18406.8 |
+| 7 | Myntra | Coupon unlocked | Save ₹199 on UrbanCart orders today. Cod... | 0.0 | 18406.8 | 18406.8 |
+| 8 | Netflix | Continue watching | City Lights is now streaming. Pick up fr... | 0.0 | 18406.8 | 18406.8 |
+| 9 | Myntra | Offer for you | Save ₹99 on NovaPay orders today. Code S... | 0.0 | 18406.8 | 18406.8 |
+| 10 | Zomato | Offer for you | SAVE43 gives extra 40% off until 5:37 AM... | 0.0 | 18406.8 | 18406.8 |
 
-Detailed worst 100 predictions written to: [`worst_100_predictions.json`](file://runs/experiment1/worst_100_predictions.json)
+Detailed worst 100 predictions written to: [`worst_100_predictions.json`](file:///app/scope/runs/experiment1/worst_100_predictions.json)

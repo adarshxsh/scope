@@ -31,6 +31,7 @@ from training.evaluation.metrics import (
 from training.evaluation.plots import plot_regression_results, plot_training_history
 from training.export.tflite_exporter import (
     export_float32_tflite,
+    export_quantized_tflite,
     export_saved_model,
 )
 from training.models.mlp import build_baseline_mlp
@@ -127,10 +128,24 @@ def main() -> None:
     metrics = regression_metrics(splits.y_test, predictions)
 
     saved_model_dir = export_saved_model(model, export_dir / "saved_model")
-    tflite_path = export_float32_tflite(
+    float32_tflite_path = export_float32_tflite(
         saved_model_dir,
-        export_dir / "ghost_ai.tflite",
+        export_dir / "ghost_ai_float32.tflite",
     )
+    quantized_tflite_path = export_quantized_tflite(
+        saved_model_dir,
+        export_dir / "ghost_ai_quantized.tflite",
+        representative_data=splits.x_train,
+    )
+
+    # Keep ghost_ai.tflite for default compatibility
+    default_tflite_path = export_dir / "ghost_ai.tflite"
+    default_tflite_path.write_bytes(quantized_tflite_path.read_bytes())
+
+    # Update app asset if directory exists
+    app_asset_path = Path("scope/assets/model.tflite")
+    if app_asset_path.parent.exists():
+        app_asset_path.write_bytes(quantized_tflite_path.read_bytes())
 
     write_history_csv(history, output_dir / "history.csv")
     plot_training_history(history, evaluation_dir)
@@ -178,7 +193,8 @@ def main() -> None:
         "metrics": metrics,
         "artifacts": {
             "saved_model": str(saved_model_dir),
-            "quantized_tflite": str(tflite_path),
+            "quantized_tflite": str(quantized_tflite_path),
+            "float32_tflite": str(float32_tflite_path),
             "label_encoder": str(label_encoder_path),
             "history_csv": str(output_dir / "history.csv"),
             "evaluation_dir": str(evaluation_dir),
@@ -194,7 +210,8 @@ def main() -> None:
     write_json(output_dir / "metadata.json", metadata)
 
     print(f"SavedModel: {saved_model_dir}")
-    print(f"TFLite: {tflite_path}")
+    print(f"Float32 TFLite: {float32_tflite_path}")
+    print(f"Quantized TFLite: {quantized_tflite_path}")
     print(f"Metrics: {metrics}")
 
 

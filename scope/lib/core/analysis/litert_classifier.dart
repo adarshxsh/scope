@@ -23,8 +23,12 @@ class LiteRtClassifier implements NotificationAnalyzer {
       final lines = vocabStr.split('\n');
       _tokenizer = WordPieceTokenizer.fromLines(lines);
 
-      // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
-      _isModelLoaded = false;
+      // 2. Validate Interpreter contract if loaded
+      if (_interpreter != null) {
+        _isModelLoaded = _validateInterpreterContract(_interpreter!);
+      } else {
+        _isModelLoaded = false;
+      }
     } catch (e) {
       // Graceful degradation: Log and set flags so analyze runs in fallback mode
       // ignore: avoid_print
@@ -38,6 +42,34 @@ class LiteRtClassifier implements NotificationAnalyzer {
           _tokenizer = WordPieceTokenizer.fromLines(vocabStr.split('\n'));
         } catch (_) {}
       }
+    }
+  }
+
+  /// Validates interpreter input tensor shape ([1, 64]) and data type (int32/float32/int8).
+  bool _validateInterpreterContract(Interpreter interpreter) {
+    try {
+      final inputTensors = interpreter.getInputTensors();
+      if (inputTensors.isEmpty) return false;
+
+      final inputTensor = inputTensors.first;
+      final shape = inputTensor.shape;
+      final type = inputTensor.type;
+
+      if (shape.length != 2 || shape[0] != 1 || shape[1] != 64) {
+        return false;
+      }
+
+      final typeStr = type.toString().toLowerCase();
+      final isValidType = type == TfLiteType.kTfLiteInt32 ||
+          type == TfLiteType.kTfLiteFloat32 ||
+          type == TfLiteType.kTfLiteInt8 ||
+          typeStr.contains('int32') ||
+          typeStr.contains('float32') ||
+          typeStr.contains('int8');
+
+      return isValidType;
+    } catch (_) {
+      return false;
     }
   }
 
