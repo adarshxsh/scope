@@ -16,15 +16,18 @@ part 'attention_database.g.dart';
     ReviewQueueTable,
     FocusSessionsTable,
     DailyBriefTable,
+    TrainingSamplesTable,
   ],
   daos: [
     NotificationDao,
     ReviewQueueDao,
     FocusSessionDao,
     DailyBriefDao,
+    TrainingSampleDao,
   ],
 )
 class AttentionDatabase extends _$AttentionDatabase {
+
   AttentionDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   factory AttentionDatabase.inMemory() {

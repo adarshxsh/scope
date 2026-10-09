@@ -1,19 +1,24 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/models/training_sample.dart';
 import 'package:scope/core/storage/notification_storage.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/core/utils/focus_area_mapper.dart';
+import 'package:scope/core/utils/privacy_sanitizer.dart';
 import 'package:scope/core/utils/smart_actions.dart';
 import 'package:scope/core/state/providers.dart';
 import 'package:drift/drift.dart';
 import 'package:scope/database/attention_database.dart';
 import 'package:scope/database/database_provider.dart';
 import 'package:scope/database/drift_notification_storage.dart';
+
 
 /// Session stats collected during a Focus review.
 class ReviewSessionStats {
@@ -567,4 +572,97 @@ class NotificationController extends ChangeNotifier {
           (n.classifiedCategory?.toLowerCase().contains(q) ?? false);
     }).toList();
   }
+
+  final List<TrainingSample> _inMemorySamples = [];
+
+  List<TrainingSample> get inMemorySamples => List.unmodifiable(_inMemorySamples);
+
+  /// Record RLHF user feedback (+1 reward or -1 penalty) and log a PII-sanitized training sample.
+  Future<void> recordFeedback({
+    required AppNotification notification,
+    required double rewardSignal,
+    String? correctedCategory,
+    String? correctedPriority,
+  }) async {
+    final sanitized = PrivacySanitizer.sanitizeNotification(notification);
+    final features = FeatureExtractor.extractFromAppNotification(notification);
+
+    final sample = TrainingSample(
+      id: 'sample_${DateTime.now().microsecondsSinceEpoch}',
+      notificationId: notification.id,
+      packageName: notification.packageName,
+      sanitizedTitle: sanitized.title,
+      sanitizedContent: sanitized.content,
+      featureVector: features,
+      predictedCategory: notification.classifiedCategory ?? notification.category ?? 'unknown',
+      predictedScore: notification.priorityScore ?? 0.5,
+      rewardSignal: rewardSignal,
+      correctedCategory: correctedCategory,
+      correctedPriority: correctedPriority,
+      timestamp: DateTime.now().millisecondsSinceEpoch,
+      modelVersion: notification.modelVersion ?? '1.0.0-tflite',
+      engineVersion: notification.engineVersion ?? '2.0.0-hybrid',
+    );
+
+    _inMemorySamples.add(sample);
+
+    try {
+      final db = _container.read(databaseProvider);
+      await db.trainingSampleDao.insertSample(TrainingSampleEntry(
+        id: sample.id,
+        notificationId: sample.notificationId,
+        packageName: sample.packageName,
+        sanitizedTitle: sample.sanitizedTitle,
+        sanitizedContent: sample.sanitizedContent,
+        featureVector: sample.featureVector,
+        predictedCategory: sample.predictedCategory,
+        predictedScore: sample.predictedScore,
+        rewardSignal: sample.rewardSignal,
+        correctedCategory: sample.correctedCategory,
+        correctedPriority: sample.correctedPriority,
+        timestamp: sample.timestamp,
+        modelVersion: sample.modelVersion,
+        engineVersion: sample.engineVersion,
+      ));
+    } catch (_) {
+      // In-memory fallback if database not bound in test environment
+    }
+
+    notifyListeners();
+  }
+
+  /// Get all logged training samples.
+  Future<List<TrainingSample>> getTrainingSamples() async {
+    try {
+      final db = _container.read(databaseProvider);
+      final entries = await db.trainingSampleDao.getAll();
+      if (entries.isNotEmpty) {
+        return entries.map((e) => TrainingSample(
+          id: e.id,
+          notificationId: e.notificationId,
+          packageName: e.packageName,
+          sanitizedTitle: e.sanitizedTitle,
+          sanitizedContent: e.sanitizedContent,
+          featureVector: (e.featureVector as List).map((x) => (x as num).toDouble()).toList(),
+          predictedCategory: e.predictedCategory,
+          predictedScore: e.predictedScore,
+          rewardSignal: e.rewardSignal,
+          correctedCategory: e.correctedCategory,
+          correctedPriority: e.correctedPriority,
+          timestamp: e.timestamp,
+          modelVersion: e.modelVersion,
+          engineVersion: e.engineVersion,
+        )).toList();
+      }
+    } catch (_) {}
+    return List.unmodifiable(_inMemorySamples);
+  }
+
+  /// Exports training samples as JSONL matching Python offline training schema.
+  Future<String> exportTrainingSamplesJsonl() async {
+    final samples = await getTrainingSamples();
+    final lines = samples.map((s) => jsonEncode(s.toJsonlMap())).toList();
+    return lines.join('\n');
+  }
 }
+

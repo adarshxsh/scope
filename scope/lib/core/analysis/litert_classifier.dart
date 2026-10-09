@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
@@ -11,27 +12,43 @@ class LiteRtClassifier implements NotificationAnalyzer {
   Interpreter? _interpreter;
   WordPieceTokenizer? _tokenizer;
   bool _isModelLoaded = false;
+  String _modelVersion = 'fallback-heuristics';
 
-  LiteRtClassifier() {
-    _initialize();
+  LiteRtClassifier({String? customModelPath}) {
+    _initialize(customModelPath);
   }
 
-  Future<void> _initialize() async {
+  Future<void> _initialize([String? customModelPath]) async {
     try {
       // 1. Load Vocab
       final vocabStr = await rootBundle.loadString('assets/vocab.txt');
       final lines = vocabStr.split('\n');
       _tokenizer = WordPieceTokenizer.fromLines(lines);
 
-      // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
-      _isModelLoaded = false;
+      // 2. Load Interpreter
+      if (customModelPath != null) {
+        _interpreter = Interpreter.fromFile(File(customModelPath));
+        _isModelLoaded = true;
+        _modelVersion = '2.1.0-litert-custom';
+      } else {
+        try {
+          _interpreter = await Interpreter.fromAsset('assets/classifier.tflite');
+          _isModelLoaded = true;
+          _modelVersion = '2.1.0-litert';
+        } catch (_) {
+          // If assets/classifier.tflite is missing, run in fallback mode
+          _isModelLoaded = false;
+          _modelVersion = 'fallback-heuristics';
+        }
+      }
     } catch (e) {
       // Graceful degradation: Log and set flags so analyze runs in fallback mode
       // ignore: avoid_print
       print('LiteRtClassifier failed to initialize: $e');
       _isModelLoaded = false;
+      _modelVersion = 'fallback-heuristics';
 
-      // Ensure tokenizer is loaded even if interpreter fails (so we can test tokenization in fallback)
+      // Ensure tokenizer is loaded even if interpreter fails
       if (_tokenizer == null) {
         try {
           final vocabStr = await rootBundle.loadString('assets/vocab.txt');
@@ -43,6 +60,27 @@ class LiteRtClassifier implements NotificationAnalyzer {
 
   /// Expose model loading status for diagnostics screen.
   bool get isModelLoaded => _isModelLoaded;
+
+  /// Expose current model version string.
+  String get modelVersion => _modelVersion;
+
+  /// Updates or reloads model dynamically from local file path.
+  Future<bool> updateModelFromFile(String filePath) async {
+    try {
+      final newInterpreter = Interpreter.fromFile(File(filePath));
+      _interpreter?.close();
+      _interpreter = newInterpreter;
+      _isModelLoaded = true;
+      _modelVersion = '2.1.0-litert-updated';
+      return true;
+    } catch (e) {
+
+      // ignore: avoid_print
+      print('LiteRtClassifier failed to update model from $filePath: $e');
+      return false;
+    }
+  }
+
 
   @override
   Future<AnalysisResult> analyze(AppNotification notification) async {

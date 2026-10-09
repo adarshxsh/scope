@@ -65,3 +65,26 @@ class DailyBriefTable extends Table {
   IntColumn get remindersCreated => integer().withDefault(const Constant(0))();
   IntColumn get archivedCount => integer().withDefault(const Constant(0))();
 }
+
+@DataClassName('TrainingSampleEntry')
+class TrainingSamplesTable extends Table {
+  TextColumn get id => text()();
+  TextColumn get notificationId => text()();
+  TextColumn get packageName => text()();
+  TextColumn get sanitizedTitle => text()();
+  TextColumn get sanitizedContent => text()();
+  TextColumn get featureVector => text().map(const JsonListConverter())();
+  TextColumn get predictedCategory => text()();
+
+  RealColumn get predictedScore => real()();
+  RealColumn get rewardSignal => real()();
+  TextColumn get correctedCategory => text().nullable()();
+  TextColumn get correctedPriority => text().nullable()();
+  IntColumn get timestamp => integer()();
+  TextColumn get modelVersion => text()();
+  TextColumn get engineVersion => text()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+

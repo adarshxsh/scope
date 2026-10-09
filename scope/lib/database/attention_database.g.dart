@@ -2709,6 +2709,884 @@ class DailyBriefTableCompanion extends UpdateCompanion<DailyBriefEntry> {
   }
 }
 
+class $TrainingSamplesTableTable extends TrainingSamplesTable
+    with TableInfo<$TrainingSamplesTableTable, TrainingSampleEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TrainingSamplesTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _notificationIdMeta = const VerificationMeta(
+    'notificationId',
+  );
+  @override
+  late final GeneratedColumn<String> notificationId = GeneratedColumn<String>(
+    'notification_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _packageNameMeta = const VerificationMeta(
+    'packageName',
+  );
+  @override
+  late final GeneratedColumn<String> packageName = GeneratedColumn<String>(
+    'package_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sanitizedTitleMeta = const VerificationMeta(
+    'sanitizedTitle',
+  );
+  @override
+  late final GeneratedColumn<String> sanitizedTitle = GeneratedColumn<String>(
+    'sanitized_title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sanitizedContentMeta = const VerificationMeta(
+    'sanitizedContent',
+  );
+  @override
+  late final GeneratedColumn<String> sanitizedContent = GeneratedColumn<String>(
+    'sanitized_content',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<List<double>, String>
+  featureVector =
+      GeneratedColumn<String>(
+        'feature_vector',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<List<double>>(
+        $TrainingSamplesTableTable.$converterfeatureVector,
+      );
+  static const VerificationMeta _predictedCategoryMeta = const VerificationMeta(
+    'predictedCategory',
+  );
+  @override
+  late final GeneratedColumn<String> predictedCategory =
+      GeneratedColumn<String>(
+        'predicted_category',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _predictedScoreMeta = const VerificationMeta(
+    'predictedScore',
+  );
+  @override
+  late final GeneratedColumn<double> predictedScore = GeneratedColumn<double>(
+    'predicted_score',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _rewardSignalMeta = const VerificationMeta(
+    'rewardSignal',
+  );
+  @override
+  late final GeneratedColumn<double> rewardSignal = GeneratedColumn<double>(
+    'reward_signal',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _correctedCategoryMeta = const VerificationMeta(
+    'correctedCategory',
+  );
+  @override
+  late final GeneratedColumn<String> correctedCategory =
+      GeneratedColumn<String>(
+        'corrected_category',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _correctedPriorityMeta = const VerificationMeta(
+    'correctedPriority',
+  );
+  @override
+  late final GeneratedColumn<String> correctedPriority =
+      GeneratedColumn<String>(
+        'corrected_priority',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _timestampMeta = const VerificationMeta(
+    'timestamp',
+  );
+  @override
+  late final GeneratedColumn<int> timestamp = GeneratedColumn<int>(
+    'timestamp',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _modelVersionMeta = const VerificationMeta(
+    'modelVersion',
+  );
+  @override
+  late final GeneratedColumn<String> modelVersion = GeneratedColumn<String>(
+    'model_version',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _engineVersionMeta = const VerificationMeta(
+    'engineVersion',
+  );
+  @override
+  late final GeneratedColumn<String> engineVersion = GeneratedColumn<String>(
+    'engine_version',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    notificationId,
+    packageName,
+    sanitizedTitle,
+    sanitizedContent,
+    featureVector,
+    predictedCategory,
+    predictedScore,
+    rewardSignal,
+    correctedCategory,
+    correctedPriority,
+    timestamp,
+    modelVersion,
+    engineVersion,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'training_samples_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TrainingSampleEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('notification_id')) {
+      context.handle(
+        _notificationIdMeta,
+        notificationId.isAcceptableOrUnknown(
+          data['notification_id']!,
+          _notificationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_notificationIdMeta);
+    }
+    if (data.containsKey('package_name')) {
+      context.handle(
+        _packageNameMeta,
+        packageName.isAcceptableOrUnknown(
+          data['package_name']!,
+          _packageNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_packageNameMeta);
+    }
+    if (data.containsKey('sanitized_title')) {
+      context.handle(
+        _sanitizedTitleMeta,
+        sanitizedTitle.isAcceptableOrUnknown(
+          data['sanitized_title']!,
+          _sanitizedTitleMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_sanitizedTitleMeta);
+    }
+    if (data.containsKey('sanitized_content')) {
+      context.handle(
+        _sanitizedContentMeta,
+        sanitizedContent.isAcceptableOrUnknown(
+          data['sanitized_content']!,
+          _sanitizedContentMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_sanitizedContentMeta);
+    }
+    if (data.containsKey('predicted_category')) {
+      context.handle(
+        _predictedCategoryMeta,
+        predictedCategory.isAcceptableOrUnknown(
+          data['predicted_category']!,
+          _predictedCategoryMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_predictedCategoryMeta);
+    }
+    if (data.containsKey('predicted_score')) {
+      context.handle(
+        _predictedScoreMeta,
+        predictedScore.isAcceptableOrUnknown(
+          data['predicted_score']!,
+          _predictedScoreMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_predictedScoreMeta);
+    }
+    if (data.containsKey('reward_signal')) {
+      context.handle(
+        _rewardSignalMeta,
+        rewardSignal.isAcceptableOrUnknown(
+          data['reward_signal']!,
+          _rewardSignalMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_rewardSignalMeta);
+    }
+    if (data.containsKey('corrected_category')) {
+      context.handle(
+        _correctedCategoryMeta,
+        correctedCategory.isAcceptableOrUnknown(
+          data['corrected_category']!,
+          _correctedCategoryMeta,
+        ),
+      );
+    }
+    if (data.containsKey('corrected_priority')) {
+      context.handle(
+        _correctedPriorityMeta,
+        correctedPriority.isAcceptableOrUnknown(
+          data['corrected_priority']!,
+          _correctedPriorityMeta,
+        ),
+      );
+    }
+    if (data.containsKey('timestamp')) {
+      context.handle(
+        _timestampMeta,
+        timestamp.isAcceptableOrUnknown(data['timestamp']!, _timestampMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_timestampMeta);
+    }
+    if (data.containsKey('model_version')) {
+      context.handle(
+        _modelVersionMeta,
+        modelVersion.isAcceptableOrUnknown(
+          data['model_version']!,
+          _modelVersionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_modelVersionMeta);
+    }
+    if (data.containsKey('engine_version')) {
+      context.handle(
+        _engineVersionMeta,
+        engineVersion.isAcceptableOrUnknown(
+          data['engine_version']!,
+          _engineVersionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_engineVersionMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  TrainingSampleEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TrainingSampleEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      notificationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notification_id'],
+      )!,
+      packageName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}package_name'],
+      )!,
+      sanitizedTitle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sanitized_title'],
+      )!,
+      sanitizedContent: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sanitized_content'],
+      )!,
+      featureVector: $TrainingSamplesTableTable.$converterfeatureVector.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}feature_vector'],
+        )!,
+      ),
+      predictedCategory: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}predicted_category'],
+      )!,
+      predictedScore: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}predicted_score'],
+      )!,
+      rewardSignal: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}reward_signal'],
+      )!,
+      correctedCategory: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}corrected_category'],
+      ),
+      correctedPriority: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}corrected_priority'],
+      ),
+      timestamp: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}timestamp'],
+      )!,
+      modelVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}model_version'],
+      )!,
+      engineVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}engine_version'],
+      )!,
+    );
+  }
+
+  @override
+  $TrainingSamplesTableTable createAlias(String alias) {
+    return $TrainingSamplesTableTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<List<double>, String> $converterfeatureVector =
+      const JsonListConverter();
+}
+
+class TrainingSampleEntry extends DataClass
+    implements Insertable<TrainingSampleEntry> {
+  final String id;
+  final String notificationId;
+  final String packageName;
+  final String sanitizedTitle;
+  final String sanitizedContent;
+  final List<double> featureVector;
+  final String predictedCategory;
+  final double predictedScore;
+  final double rewardSignal;
+  final String? correctedCategory;
+  final String? correctedPriority;
+  final int timestamp;
+  final String modelVersion;
+  final String engineVersion;
+  const TrainingSampleEntry({
+    required this.id,
+    required this.notificationId,
+    required this.packageName,
+    required this.sanitizedTitle,
+    required this.sanitizedContent,
+    required this.featureVector,
+    required this.predictedCategory,
+    required this.predictedScore,
+    required this.rewardSignal,
+    this.correctedCategory,
+    this.correctedPriority,
+    required this.timestamp,
+    required this.modelVersion,
+    required this.engineVersion,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['notification_id'] = Variable<String>(notificationId);
+    map['package_name'] = Variable<String>(packageName);
+    map['sanitized_title'] = Variable<String>(sanitizedTitle);
+    map['sanitized_content'] = Variable<String>(sanitizedContent);
+    {
+      map['feature_vector'] = Variable<String>(
+        $TrainingSamplesTableTable.$converterfeatureVector.toSql(featureVector),
+      );
+    }
+    map['predicted_category'] = Variable<String>(predictedCategory);
+    map['predicted_score'] = Variable<double>(predictedScore);
+    map['reward_signal'] = Variable<double>(rewardSignal);
+    if (!nullToAbsent || correctedCategory != null) {
+      map['corrected_category'] = Variable<String>(correctedCategory);
+    }
+    if (!nullToAbsent || correctedPriority != null) {
+      map['corrected_priority'] = Variable<String>(correctedPriority);
+    }
+    map['timestamp'] = Variable<int>(timestamp);
+    map['model_version'] = Variable<String>(modelVersion);
+    map['engine_version'] = Variable<String>(engineVersion);
+    return map;
+  }
+
+  TrainingSamplesTableCompanion toCompanion(bool nullToAbsent) {
+    return TrainingSamplesTableCompanion(
+      id: Value(id),
+      notificationId: Value(notificationId),
+      packageName: Value(packageName),
+      sanitizedTitle: Value(sanitizedTitle),
+      sanitizedContent: Value(sanitizedContent),
+      featureVector: Value(featureVector),
+      predictedCategory: Value(predictedCategory),
+      predictedScore: Value(predictedScore),
+      rewardSignal: Value(rewardSignal),
+      correctedCategory: correctedCategory == null && nullToAbsent
+          ? const Value.absent()
+          : Value(correctedCategory),
+      correctedPriority: correctedPriority == null && nullToAbsent
+          ? const Value.absent()
+          : Value(correctedPriority),
+      timestamp: Value(timestamp),
+      modelVersion: Value(modelVersion),
+      engineVersion: Value(engineVersion),
+    );
+  }
+
+  factory TrainingSampleEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TrainingSampleEntry(
+      id: serializer.fromJson<String>(json['id']),
+      notificationId: serializer.fromJson<String>(json['notificationId']),
+      packageName: serializer.fromJson<String>(json['packageName']),
+      sanitizedTitle: serializer.fromJson<String>(json['sanitizedTitle']),
+      sanitizedContent: serializer.fromJson<String>(json['sanitizedContent']),
+      featureVector: serializer.fromJson<List<double>>(json['featureVector']),
+      predictedCategory: serializer.fromJson<String>(json['predictedCategory']),
+      predictedScore: serializer.fromJson<double>(json['predictedScore']),
+      rewardSignal: serializer.fromJson<double>(json['rewardSignal']),
+      correctedCategory: serializer.fromJson<String?>(
+        json['correctedCategory'],
+      ),
+      correctedPriority: serializer.fromJson<String?>(
+        json['correctedPriority'],
+      ),
+      timestamp: serializer.fromJson<int>(json['timestamp']),
+      modelVersion: serializer.fromJson<String>(json['modelVersion']),
+      engineVersion: serializer.fromJson<String>(json['engineVersion']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'notificationId': serializer.toJson<String>(notificationId),
+      'packageName': serializer.toJson<String>(packageName),
+      'sanitizedTitle': serializer.toJson<String>(sanitizedTitle),
+      'sanitizedContent': serializer.toJson<String>(sanitizedContent),
+      'featureVector': serializer.toJson<List<double>>(featureVector),
+      'predictedCategory': serializer.toJson<String>(predictedCategory),
+      'predictedScore': serializer.toJson<double>(predictedScore),
+      'rewardSignal': serializer.toJson<double>(rewardSignal),
+      'correctedCategory': serializer.toJson<String?>(correctedCategory),
+      'correctedPriority': serializer.toJson<String?>(correctedPriority),
+      'timestamp': serializer.toJson<int>(timestamp),
+      'modelVersion': serializer.toJson<String>(modelVersion),
+      'engineVersion': serializer.toJson<String>(engineVersion),
+    };
+  }
+
+  TrainingSampleEntry copyWith({
+    String? id,
+    String? notificationId,
+    String? packageName,
+    String? sanitizedTitle,
+    String? sanitizedContent,
+    List<double>? featureVector,
+    String? predictedCategory,
+    double? predictedScore,
+    double? rewardSignal,
+    Value<String?> correctedCategory = const Value.absent(),
+    Value<String?> correctedPriority = const Value.absent(),
+    int? timestamp,
+    String? modelVersion,
+    String? engineVersion,
+  }) => TrainingSampleEntry(
+    id: id ?? this.id,
+    notificationId: notificationId ?? this.notificationId,
+    packageName: packageName ?? this.packageName,
+    sanitizedTitle: sanitizedTitle ?? this.sanitizedTitle,
+    sanitizedContent: sanitizedContent ?? this.sanitizedContent,
+    featureVector: featureVector ?? this.featureVector,
+    predictedCategory: predictedCategory ?? this.predictedCategory,
+    predictedScore: predictedScore ?? this.predictedScore,
+    rewardSignal: rewardSignal ?? this.rewardSignal,
+    correctedCategory: correctedCategory.present
+        ? correctedCategory.value
+        : this.correctedCategory,
+    correctedPriority: correctedPriority.present
+        ? correctedPriority.value
+        : this.correctedPriority,
+    timestamp: timestamp ?? this.timestamp,
+    modelVersion: modelVersion ?? this.modelVersion,
+    engineVersion: engineVersion ?? this.engineVersion,
+  );
+  TrainingSampleEntry copyWithCompanion(TrainingSamplesTableCompanion data) {
+    return TrainingSampleEntry(
+      id: data.id.present ? data.id.value : this.id,
+      notificationId: data.notificationId.present
+          ? data.notificationId.value
+          : this.notificationId,
+      packageName: data.packageName.present
+          ? data.packageName.value
+          : this.packageName,
+      sanitizedTitle: data.sanitizedTitle.present
+          ? data.sanitizedTitle.value
+          : this.sanitizedTitle,
+      sanitizedContent: data.sanitizedContent.present
+          ? data.sanitizedContent.value
+          : this.sanitizedContent,
+      featureVector: data.featureVector.present
+          ? data.featureVector.value
+          : this.featureVector,
+      predictedCategory: data.predictedCategory.present
+          ? data.predictedCategory.value
+          : this.predictedCategory,
+      predictedScore: data.predictedScore.present
+          ? data.predictedScore.value
+          : this.predictedScore,
+      rewardSignal: data.rewardSignal.present
+          ? data.rewardSignal.value
+          : this.rewardSignal,
+      correctedCategory: data.correctedCategory.present
+          ? data.correctedCategory.value
+          : this.correctedCategory,
+      correctedPriority: data.correctedPriority.present
+          ? data.correctedPriority.value
+          : this.correctedPriority,
+      timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
+      modelVersion: data.modelVersion.present
+          ? data.modelVersion.value
+          : this.modelVersion,
+      engineVersion: data.engineVersion.present
+          ? data.engineVersion.value
+          : this.engineVersion,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TrainingSampleEntry(')
+          ..write('id: $id, ')
+          ..write('notificationId: $notificationId, ')
+          ..write('packageName: $packageName, ')
+          ..write('sanitizedTitle: $sanitizedTitle, ')
+          ..write('sanitizedContent: $sanitizedContent, ')
+          ..write('featureVector: $featureVector, ')
+          ..write('predictedCategory: $predictedCategory, ')
+          ..write('predictedScore: $predictedScore, ')
+          ..write('rewardSignal: $rewardSignal, ')
+          ..write('correctedCategory: $correctedCategory, ')
+          ..write('correctedPriority: $correctedPriority, ')
+          ..write('timestamp: $timestamp, ')
+          ..write('modelVersion: $modelVersion, ')
+          ..write('engineVersion: $engineVersion')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    notificationId,
+    packageName,
+    sanitizedTitle,
+    sanitizedContent,
+    featureVector,
+    predictedCategory,
+    predictedScore,
+    rewardSignal,
+    correctedCategory,
+    correctedPriority,
+    timestamp,
+    modelVersion,
+    engineVersion,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TrainingSampleEntry &&
+          other.id == this.id &&
+          other.notificationId == this.notificationId &&
+          other.packageName == this.packageName &&
+          other.sanitizedTitle == this.sanitizedTitle &&
+          other.sanitizedContent == this.sanitizedContent &&
+          other.featureVector == this.featureVector &&
+          other.predictedCategory == this.predictedCategory &&
+          other.predictedScore == this.predictedScore &&
+          other.rewardSignal == this.rewardSignal &&
+          other.correctedCategory == this.correctedCategory &&
+          other.correctedPriority == this.correctedPriority &&
+          other.timestamp == this.timestamp &&
+          other.modelVersion == this.modelVersion &&
+          other.engineVersion == this.engineVersion);
+}
+
+class TrainingSamplesTableCompanion
+    extends UpdateCompanion<TrainingSampleEntry> {
+  final Value<String> id;
+  final Value<String> notificationId;
+  final Value<String> packageName;
+  final Value<String> sanitizedTitle;
+  final Value<String> sanitizedContent;
+  final Value<List<double>> featureVector;
+  final Value<String> predictedCategory;
+  final Value<double> predictedScore;
+  final Value<double> rewardSignal;
+  final Value<String?> correctedCategory;
+  final Value<String?> correctedPriority;
+  final Value<int> timestamp;
+  final Value<String> modelVersion;
+  final Value<String> engineVersion;
+  final Value<int> rowid;
+  const TrainingSamplesTableCompanion({
+    this.id = const Value.absent(),
+    this.notificationId = const Value.absent(),
+    this.packageName = const Value.absent(),
+    this.sanitizedTitle = const Value.absent(),
+    this.sanitizedContent = const Value.absent(),
+    this.featureVector = const Value.absent(),
+    this.predictedCategory = const Value.absent(),
+    this.predictedScore = const Value.absent(),
+    this.rewardSignal = const Value.absent(),
+    this.correctedCategory = const Value.absent(),
+    this.correctedPriority = const Value.absent(),
+    this.timestamp = const Value.absent(),
+    this.modelVersion = const Value.absent(),
+    this.engineVersion = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TrainingSamplesTableCompanion.insert({
+    required String id,
+    required String notificationId,
+    required String packageName,
+    required String sanitizedTitle,
+    required String sanitizedContent,
+    required List<double> featureVector,
+    required String predictedCategory,
+    required double predictedScore,
+    required double rewardSignal,
+    this.correctedCategory = const Value.absent(),
+    this.correctedPriority = const Value.absent(),
+    required int timestamp,
+    required String modelVersion,
+    required String engineVersion,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       notificationId = Value(notificationId),
+       packageName = Value(packageName),
+       sanitizedTitle = Value(sanitizedTitle),
+       sanitizedContent = Value(sanitizedContent),
+       featureVector = Value(featureVector),
+       predictedCategory = Value(predictedCategory),
+       predictedScore = Value(predictedScore),
+       rewardSignal = Value(rewardSignal),
+       timestamp = Value(timestamp),
+       modelVersion = Value(modelVersion),
+       engineVersion = Value(engineVersion);
+  static Insertable<TrainingSampleEntry> custom({
+    Expression<String>? id,
+    Expression<String>? notificationId,
+    Expression<String>? packageName,
+    Expression<String>? sanitizedTitle,
+    Expression<String>? sanitizedContent,
+    Expression<String>? featureVector,
+    Expression<String>? predictedCategory,
+    Expression<double>? predictedScore,
+    Expression<double>? rewardSignal,
+    Expression<String>? correctedCategory,
+    Expression<String>? correctedPriority,
+    Expression<int>? timestamp,
+    Expression<String>? modelVersion,
+    Expression<String>? engineVersion,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (notificationId != null) 'notification_id': notificationId,
+      if (packageName != null) 'package_name': packageName,
+      if (sanitizedTitle != null) 'sanitized_title': sanitizedTitle,
+      if (sanitizedContent != null) 'sanitized_content': sanitizedContent,
+      if (featureVector != null) 'feature_vector': featureVector,
+      if (predictedCategory != null) 'predicted_category': predictedCategory,
+      if (predictedScore != null) 'predicted_score': predictedScore,
+      if (rewardSignal != null) 'reward_signal': rewardSignal,
+      if (correctedCategory != null) 'corrected_category': correctedCategory,
+      if (correctedPriority != null) 'corrected_priority': correctedPriority,
+      if (timestamp != null) 'timestamp': timestamp,
+      if (modelVersion != null) 'model_version': modelVersion,
+      if (engineVersion != null) 'engine_version': engineVersion,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TrainingSamplesTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? notificationId,
+    Value<String>? packageName,
+    Value<String>? sanitizedTitle,
+    Value<String>? sanitizedContent,
+    Value<List<double>>? featureVector,
+    Value<String>? predictedCategory,
+    Value<double>? predictedScore,
+    Value<double>? rewardSignal,
+    Value<String?>? correctedCategory,
+    Value<String?>? correctedPriority,
+    Value<int>? timestamp,
+    Value<String>? modelVersion,
+    Value<String>? engineVersion,
+    Value<int>? rowid,
+  }) {
+    return TrainingSamplesTableCompanion(
+      id: id ?? this.id,
+      notificationId: notificationId ?? this.notificationId,
+      packageName: packageName ?? this.packageName,
+      sanitizedTitle: sanitizedTitle ?? this.sanitizedTitle,
+      sanitizedContent: sanitizedContent ?? this.sanitizedContent,
+      featureVector: featureVector ?? this.featureVector,
+      predictedCategory: predictedCategory ?? this.predictedCategory,
+      predictedScore: predictedScore ?? this.predictedScore,
+      rewardSignal: rewardSignal ?? this.rewardSignal,
+      correctedCategory: correctedCategory ?? this.correctedCategory,
+      correctedPriority: correctedPriority ?? this.correctedPriority,
+      timestamp: timestamp ?? this.timestamp,
+      modelVersion: modelVersion ?? this.modelVersion,
+      engineVersion: engineVersion ?? this.engineVersion,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (notificationId.present) {
+      map['notification_id'] = Variable<String>(notificationId.value);
+    }
+    if (packageName.present) {
+      map['package_name'] = Variable<String>(packageName.value);
+    }
+    if (sanitizedTitle.present) {
+      map['sanitized_title'] = Variable<String>(sanitizedTitle.value);
+    }
+    if (sanitizedContent.present) {
+      map['sanitized_content'] = Variable<String>(sanitizedContent.value);
+    }
+    if (featureVector.present) {
+      map['feature_vector'] = Variable<String>(
+        $TrainingSamplesTableTable.$converterfeatureVector.toSql(
+          featureVector.value,
+        ),
+      );
+    }
+    if (predictedCategory.present) {
+      map['predicted_category'] = Variable<String>(predictedCategory.value);
+    }
+    if (predictedScore.present) {
+      map['predicted_score'] = Variable<double>(predictedScore.value);
+    }
+    if (rewardSignal.present) {
+      map['reward_signal'] = Variable<double>(rewardSignal.value);
+    }
+    if (correctedCategory.present) {
+      map['corrected_category'] = Variable<String>(correctedCategory.value);
+    }
+    if (correctedPriority.present) {
+      map['corrected_priority'] = Variable<String>(correctedPriority.value);
+    }
+    if (timestamp.present) {
+      map['timestamp'] = Variable<int>(timestamp.value);
+    }
+    if (modelVersion.present) {
+      map['model_version'] = Variable<String>(modelVersion.value);
+    }
+    if (engineVersion.present) {
+      map['engine_version'] = Variable<String>(engineVersion.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TrainingSamplesTableCompanion(')
+          ..write('id: $id, ')
+          ..write('notificationId: $notificationId, ')
+          ..write('packageName: $packageName, ')
+          ..write('sanitizedTitle: $sanitizedTitle, ')
+          ..write('sanitizedContent: $sanitizedContent, ')
+          ..write('featureVector: $featureVector, ')
+          ..write('predictedCategory: $predictedCategory, ')
+          ..write('predictedScore: $predictedScore, ')
+          ..write('rewardSignal: $rewardSignal, ')
+          ..write('correctedCategory: $correctedCategory, ')
+          ..write('correctedPriority: $correctedPriority, ')
+          ..write('timestamp: $timestamp, ')
+          ..write('modelVersion: $modelVersion, ')
+          ..write('engineVersion: $engineVersion, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AttentionDatabase extends GeneratedDatabase {
   _$AttentionDatabase(QueryExecutor e) : super(e);
   $AttentionDatabaseManager get managers => $AttentionDatabaseManager(this);
@@ -2722,6 +3600,8 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final $DailyBriefTableTable dailyBriefTable = $DailyBriefTableTable(
     this,
   );
+  late final $TrainingSamplesTableTable trainingSamplesTable =
+      $TrainingSamplesTableTable(this);
   late final NotificationDao notificationDao = NotificationDao(
     this as AttentionDatabase,
   );
@@ -2734,6 +3614,9 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final DailyBriefDao dailyBriefDao = DailyBriefDao(
     this as AttentionDatabase,
   );
+  late final TrainingSampleDao trainingSampleDao = TrainingSampleDao(
+    this as AttentionDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2743,6 +3626,7 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
     reviewQueueTable,
     focusSessionsTable,
     dailyBriefTable,
+    trainingSamplesTable,
   ];
 }
 
@@ -3406,7 +4290,9 @@ class $$NotificationsTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$NotificationsTableTable, NotificationEntry>(
+                    table,
+                  ),
                   $$NotificationsTableTableReferences(db, table, e),
                 ),
               )
@@ -3749,7 +4635,7 @@ class $$ReviewQueueTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$ReviewQueueTableTable, ReviewQueueEntry>(table),
                   $$ReviewQueueTableTableReferences(db, table, e),
                 ),
               )
@@ -4021,7 +4907,18 @@ class $$FocusSessionsTableTableTableManager
                 duration: duration,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$FocusSessionsTableTable, FocusSessionEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $FocusSessionsTableTable,
+                    FocusSessionEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4273,7 +5170,16 @@ class $$DailyBriefTableTableTableManager
                 archivedCount: archivedCount,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$DailyBriefTableTable, DailyBriefEntry>(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $DailyBriefTableTable,
+                    DailyBriefEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4301,6 +5207,430 @@ typedef $$DailyBriefTableTableProcessedTableManager =
       DailyBriefEntry,
       PrefetchHooks Function()
     >;
+typedef $$TrainingSamplesTableTableCreateCompanionBuilder =
+    TrainingSamplesTableCompanion Function({
+      required String id,
+      required String notificationId,
+      required String packageName,
+      required String sanitizedTitle,
+      required String sanitizedContent,
+      required List<double> featureVector,
+      required String predictedCategory,
+      required double predictedScore,
+      required double rewardSignal,
+      Value<String?> correctedCategory,
+      Value<String?> correctedPriority,
+      required int timestamp,
+      required String modelVersion,
+      required String engineVersion,
+      Value<int> rowid,
+    });
+typedef $$TrainingSamplesTableTableUpdateCompanionBuilder =
+    TrainingSamplesTableCompanion Function({
+      Value<String> id,
+      Value<String> notificationId,
+      Value<String> packageName,
+      Value<String> sanitizedTitle,
+      Value<String> sanitizedContent,
+      Value<List<double>> featureVector,
+      Value<String> predictedCategory,
+      Value<double> predictedScore,
+      Value<double> rewardSignal,
+      Value<String?> correctedCategory,
+      Value<String?> correctedPriority,
+      Value<int> timestamp,
+      Value<String> modelVersion,
+      Value<String> engineVersion,
+      Value<int> rowid,
+    });
+
+class $$TrainingSamplesTableTableFilterComposer
+    extends Composer<_$AttentionDatabase, $TrainingSamplesTableTable> {
+  $$TrainingSamplesTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get packageName => $composableBuilder(
+    column: $table.packageName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sanitizedTitle => $composableBuilder(
+    column: $table.sanitizedTitle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sanitizedContent => $composableBuilder(
+    column: $table.sanitizedContent,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<List<double>, List<double>, String>
+  get featureVector => $composableBuilder(
+    column: $table.featureVector,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<String> get predictedCategory => $composableBuilder(
+    column: $table.predictedCategory,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get predictedScore => $composableBuilder(
+    column: $table.predictedScore,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get rewardSignal => $composableBuilder(
+    column: $table.rewardSignal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get correctedCategory => $composableBuilder(
+    column: $table.correctedCategory,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get correctedPriority => $composableBuilder(
+    column: $table.correctedPriority,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get modelVersion => $composableBuilder(
+    column: $table.modelVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get engineVersion => $composableBuilder(
+    column: $table.engineVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$TrainingSamplesTableTableOrderingComposer
+    extends Composer<_$AttentionDatabase, $TrainingSamplesTableTable> {
+  $$TrainingSamplesTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get packageName => $composableBuilder(
+    column: $table.packageName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sanitizedTitle => $composableBuilder(
+    column: $table.sanitizedTitle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sanitizedContent => $composableBuilder(
+    column: $table.sanitizedContent,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get featureVector => $composableBuilder(
+    column: $table.featureVector,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get predictedCategory => $composableBuilder(
+    column: $table.predictedCategory,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get predictedScore => $composableBuilder(
+    column: $table.predictedScore,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get rewardSignal => $composableBuilder(
+    column: $table.rewardSignal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get correctedCategory => $composableBuilder(
+    column: $table.correctedCategory,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get correctedPriority => $composableBuilder(
+    column: $table.correctedPriority,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get modelVersion => $composableBuilder(
+    column: $table.modelVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get engineVersion => $composableBuilder(
+    column: $table.engineVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$TrainingSamplesTableTableAnnotationComposer
+    extends Composer<_$AttentionDatabase, $TrainingSamplesTableTable> {
+  $$TrainingSamplesTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get packageName => $composableBuilder(
+    column: $table.packageName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sanitizedTitle => $composableBuilder(
+    column: $table.sanitizedTitle,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sanitizedContent => $composableBuilder(
+    column: $table.sanitizedContent,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<List<double>, String> get featureVector =>
+      $composableBuilder(
+        column: $table.featureVector,
+        builder: (column) => column,
+      );
+
+  GeneratedColumn<String> get predictedCategory => $composableBuilder(
+    column: $table.predictedCategory,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get predictedScore => $composableBuilder(
+    column: $table.predictedScore,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get rewardSignal => $composableBuilder(
+    column: $table.rewardSignal,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get correctedCategory => $composableBuilder(
+    column: $table.correctedCategory,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get correctedPriority => $composableBuilder(
+    column: $table.correctedPriority,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get timestamp =>
+      $composableBuilder(column: $table.timestamp, builder: (column) => column);
+
+  GeneratedColumn<String> get modelVersion => $composableBuilder(
+    column: $table.modelVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get engineVersion => $composableBuilder(
+    column: $table.engineVersion,
+    builder: (column) => column,
+  );
+}
+
+class $$TrainingSamplesTableTableTableManager
+    extends
+        RootTableManager<
+          _$AttentionDatabase,
+          $TrainingSamplesTableTable,
+          TrainingSampleEntry,
+          $$TrainingSamplesTableTableFilterComposer,
+          $$TrainingSamplesTableTableOrderingComposer,
+          $$TrainingSamplesTableTableAnnotationComposer,
+          $$TrainingSamplesTableTableCreateCompanionBuilder,
+          $$TrainingSamplesTableTableUpdateCompanionBuilder,
+          (
+            TrainingSampleEntry,
+            BaseReferences<
+              _$AttentionDatabase,
+              $TrainingSamplesTableTable,
+              TrainingSampleEntry
+            >,
+          ),
+          TrainingSampleEntry,
+          PrefetchHooks Function()
+        > {
+  $$TrainingSamplesTableTableTableManager(
+    _$AttentionDatabase db,
+    $TrainingSamplesTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TrainingSamplesTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TrainingSamplesTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$TrainingSamplesTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> notificationId = const Value.absent(),
+                Value<String> packageName = const Value.absent(),
+                Value<String> sanitizedTitle = const Value.absent(),
+                Value<String> sanitizedContent = const Value.absent(),
+                Value<List<double>> featureVector = const Value.absent(),
+                Value<String> predictedCategory = const Value.absent(),
+                Value<double> predictedScore = const Value.absent(),
+                Value<double> rewardSignal = const Value.absent(),
+                Value<String?> correctedCategory = const Value.absent(),
+                Value<String?> correctedPriority = const Value.absent(),
+                Value<int> timestamp = const Value.absent(),
+                Value<String> modelVersion = const Value.absent(),
+                Value<String> engineVersion = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TrainingSamplesTableCompanion(
+                id: id,
+                notificationId: notificationId,
+                packageName: packageName,
+                sanitizedTitle: sanitizedTitle,
+                sanitizedContent: sanitizedContent,
+                featureVector: featureVector,
+                predictedCategory: predictedCategory,
+                predictedScore: predictedScore,
+                rewardSignal: rewardSignal,
+                correctedCategory: correctedCategory,
+                correctedPriority: correctedPriority,
+                timestamp: timestamp,
+                modelVersion: modelVersion,
+                engineVersion: engineVersion,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String notificationId,
+                required String packageName,
+                required String sanitizedTitle,
+                required String sanitizedContent,
+                required List<double> featureVector,
+                required String predictedCategory,
+                required double predictedScore,
+                required double rewardSignal,
+                Value<String?> correctedCategory = const Value.absent(),
+                Value<String?> correctedPriority = const Value.absent(),
+                required int timestamp,
+                required String modelVersion,
+                required String engineVersion,
+                Value<int> rowid = const Value.absent(),
+              }) => TrainingSamplesTableCompanion.insert(
+                id: id,
+                notificationId: notificationId,
+                packageName: packageName,
+                sanitizedTitle: sanitizedTitle,
+                sanitizedContent: sanitizedContent,
+                featureVector: featureVector,
+                predictedCategory: predictedCategory,
+                predictedScore: predictedScore,
+                rewardSignal: rewardSignal,
+                correctedCategory: correctedCategory,
+                correctedPriority: correctedPriority,
+                timestamp: timestamp,
+                modelVersion: modelVersion,
+                engineVersion: engineVersion,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$TrainingSamplesTableTable, TrainingSampleEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $TrainingSamplesTableTable,
+                    TrainingSampleEntry
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$TrainingSamplesTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AttentionDatabase,
+      $TrainingSamplesTableTable,
+      TrainingSampleEntry,
+      $$TrainingSamplesTableTableFilterComposer,
+      $$TrainingSamplesTableTableOrderingComposer,
+      $$TrainingSamplesTableTableAnnotationComposer,
+      $$TrainingSamplesTableTableCreateCompanionBuilder,
+      $$TrainingSamplesTableTableUpdateCompanionBuilder,
+      (
+        TrainingSampleEntry,
+        BaseReferences<
+          _$AttentionDatabase,
+          $TrainingSamplesTableTable,
+          TrainingSampleEntry
+        >,
+      ),
+      TrainingSampleEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AttentionDatabaseManager {
   final _$AttentionDatabase _db;
@@ -4313,4 +5643,6 @@ class $AttentionDatabaseManager {
       $$FocusSessionsTableTableTableManager(_db, _db.focusSessionsTable);
   $$DailyBriefTableTableTableManager get dailyBriefTable =>
       $$DailyBriefTableTableTableManager(_db, _db.dailyBriefTable);
+  $$TrainingSamplesTableTableTableManager get trainingSamplesTable =>
+      $$TrainingSamplesTableTableTableManager(_db, _db.trainingSamplesTable);
 }
