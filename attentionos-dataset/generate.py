@@ -23,6 +23,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--ollama", action="store_true", help="Optionally call local Ollama for a small share of text variants.")
     parser.add_argument("--ollama-model", default="gemma3:9b", help="Local Ollama model name.")
     parser.add_argument("--stats", action="store_true", help="Write summary statistics next to the dataset.")
+    parser.add_argument("--no-pii-redaction", action="store_true", help="Disable PII scrubbing filter during export.")
+    parser.add_argument("--epsilon", type=float, default=1.0, help="Differential privacy epsilon parameter for score perturbation (default: 1.0).")
     return parser.parse_args()
 
 
@@ -51,10 +53,11 @@ def main() -> None:
         stats_path.parent.mkdir(parents=True, exist_ok=True)
         stats_path.write_text(json.dumps(stats, indent=2, ensure_ascii=False), encoding="utf-8")
 
+    redact_pii = not args.no_pii_redaction
     if args.format == "jsonl":
-        written = write_jsonl(output, records)
+        written = write_jsonl(output, records, redact_pii=redact_pii, epsilon=args.epsilon)
     else:
-        written = write_csv(output, records)
+        written = write_csv(output, records, redact_pii=redact_pii, epsilon=args.epsilon)
 
     print(f"Wrote {written} notifications to {output}")
 
