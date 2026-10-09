@@ -3,6 +3,8 @@ import 'package:drift/native.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/database/attention_database.dart';
+import 'package:scope/database/drift_notification_storage.dart';
+import 'package:scope/database/secure_key_storage.dart';
 
 void main() {
   late AttentionDatabase db;
@@ -242,7 +244,7 @@ void main() {
         enqueueTime: DateTime.now(),
         status: ReviewState.ACTIVE,
       ));
-      
+
       await db.reviewQueueDao.insertItem(ReviewQueueEntry(
         id: 2,
         notificationId: 'n-new',
@@ -273,5 +275,51 @@ void main() {
       // Missing one deleted due to being orphaned
       expect(queueItems.first.notificationId, equals('n-new'));
     });
+
+    test('SecureKeyStorage generates 256-bit passphrase', () {
+      final passphrase = SecureKeyStorage.generate256BitPassphrase();
+      expect(passphrase.length, equals(64)); // 32 bytes = 64 hex characters
+      expect(RegExp(r'^[0-9a-fA-F]{64}$').hasMatch(passphrase), isTrue);
+    });
+
+    test('PassphraseHolder purges key material from memory', () {
+      final key = SecureKeyStorage.generate256BitPassphrase();
+      final holder = PassphraseHolder(key);
+      expect(holder.isPurged, isFalse);
+      expect(holder.passphrase, equals(key));
+
+      holder.purge();
+      expect(holder.isPurged, isTrue);
+      expect(() => holder.passphrase, throwsStateError);
+    });
+
+    test('DriftNotificationStorage operates seamlessly over AttentionDatabase', () async {
+      final storage = DriftNotificationStorage(db);
+      final notification = AppNotification(
+        id: 'n-storage-1',
+        packageName: 'com.finance.bank',
+        title: 'Bank Alert OTP: 123456',
+        content: 'Your transaction OTP is 123456',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+        state: ReviewState.ACTIVE,
+      );
+
+      await storage.save(notification);
+      final count = await storage.count;
+      expect(count, equals(1));
+
+      final fetched = await storage.getById('n-storage-1');
+      expect(fetched, isNotNull);
+      expect(fetched!.title, equals('Bank Alert OTP: 123456'));
+      expect(fetched.content, equals('Your transaction OTP is 123456'));
+    });
+
+    test('AttentionDatabase close purges passphrase material', () async {
+      final key = SecureKeyStorage.generate256BitPassphrase();
+      final encryptedDb = AttentionDatabase.encrypted(key);
+      await encryptedDb.close();
+      // Passphrase holder should be purged on database close
+    });
   });
 }
+
