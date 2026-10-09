@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
 import 'package:scope/core/models/notification_model.dart';
@@ -566,5 +568,31 @@ class NotificationController extends ChangeNotifier {
           n.packageName.toLowerCase().contains(q) ||
           (n.classifiedCategory?.toLowerCase().contains(q) ?? false);
     }).toList();
+  }
+
+  /// Logs an RLHF feedback event (reward or penalty/correction) into the persistent Drift database.
+  Future<int> logRlhfFeedback({
+    required AppNotification notification,
+    required double rewardScore,
+    String? updatedCategory,
+    String? updatedPriority,
+  }) async {
+    final db = _container.read(databaseProvider);
+    final featureVector = FeatureExtractor.extractFromAppNotification(notification);
+    final jsonVector = jsonEncode(featureVector);
+
+    final id = await db.rlhfFeedbackDao.insertFeedback(
+      RlhfFeedbackTableCompanion.insert(
+        notificationId: notification.id,
+        featureVector: jsonVector,
+        predictedScore: Value(notification.priorityScore),
+        rewardScore: rewardScore,
+        updatedCategory: Value(updatedCategory),
+        updatedPriority: Value(updatedPriority),
+        timestamp: Value(DateTime.now()),
+      ),
+    );
+    notifyListeners();
+    return id;
   }
 }
