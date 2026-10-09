@@ -7,15 +7,30 @@ part 'daos.g.dart';
 
 @DriftAccessor(tables: [NotificationsTable])
 class NotificationDao extends DatabaseAccessor<AttentionDatabase> with _$NotificationDaoMixin {
+  static const int defaultMaxCapacity = 1000;
+
   NotificationDao(super.db);
 
-  Future<void> insertNotification(NotificationEntry entry) async {
-    await into(notificationsTable).insert(entry, mode: InsertMode.insertOrReplace);
+  Future<void> insertNotification(
+    NotificationEntry entry, {
+    int maxCapacity = defaultMaxCapacity,
+  }) async {
+    await db.transaction(() async {
+      await into(notificationsTable).insert(entry, mode: InsertMode.insertOrReplace);
+      await _enforceMaxCapacity(maxCapacity);
+    });
   }
 
-  Future<void> insertAll(List<NotificationEntry> entries) async {
-    await batch((b) {
-      b.insertAll(notificationsTable, entries, mode: InsertMode.insertOrReplace);
+  Future<void> insertAll(
+    List<NotificationEntry> entries, {
+    int maxCapacity = defaultMaxCapacity,
+  }) async {
+    if (entries.isEmpty) return;
+    await db.transaction(() async {
+      await batch((b) {
+        b.insertAll(notificationsTable, entries, mode: InsertMode.insertOrReplace);
+      });
+      await _enforceMaxCapacity(maxCapacity);
     });
   }
 
@@ -35,14 +50,21 @@ class NotificationDao extends DatabaseAccessor<AttentionDatabase> with _$Notific
         .watch();
   }
 
-  Future<int> deleteOlderThan(int cutoffTimestamp) {
-    return (delete(notificationsTable)
-          ..where((t) => t.timestamp.isSmallerThanValue(cutoffTimestamp)))
-        .go();
+  Future<int> deleteOlderThan(int cutoffTimestamp) async {
+    return await db.transaction(() async {
+      final deleted = await (delete(notificationsTable)
+            ..where((t) => t.timestamp.isSmallerThanValue(cutoffTimestamp)))
+          .go();
+      await db.cleanupOrphanedReviewQueue();
+      return deleted;
+    });
   }
 
   Future<void> clearAll() async {
-    await delete(notificationsTable).go();
+    await db.transaction(() async {
+      await delete(notificationsTable).go();
+      await db.cleanupOrphanedReviewQueue();
+    });
   }
 
   Future<int> getCount() async {
@@ -50,6 +72,31 @@ class NotificationDao extends DatabaseAccessor<AttentionDatabase> with _$Notific
     final query = selectOnly(notificationsTable)..addColumns([countExpr]);
     final row = await query.getSingle();
     return row.read(countExpr) ?? 0;
+  }
+
+  Future<void> _enforceMaxCapacity(int maxCapacity) async {
+    if (maxCapacity <= 0) return;
+    final totalCount = await getCount();
+    if (totalCount <= maxCapacity) return;
+
+    final excess = totalCount - maxCapacity;
+
+    await customUpdate(
+      '''
+      DELETE FROM notifications_table
+      WHERE id IN (
+        SELECT id FROM notifications_table
+        ORDER BY 
+          CASE WHEN (state = 'ACTIVE' AND (reviewed = 0 OR reviewed IS NULL) AND (priority = 'critical' OR priority = 'high')) THEN 1 ELSE 0 END ASC,
+          timestamp ASC
+        LIMIT ?
+      )
+      ''',
+      variables: [Variable.withInt(excess)],
+      updates: {notificationsTable},
+    );
+
+    await db.cleanupOrphanedReviewQueue();
   }
 }
 
