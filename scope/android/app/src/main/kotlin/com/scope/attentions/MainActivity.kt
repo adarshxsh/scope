@@ -4,7 +4,12 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.os.BatteryManager
+import android.os.Build
+import android.os.PowerManager
 import android.provider.Settings
 
 /**
@@ -15,6 +20,7 @@ import android.provider.Settings
  *   - Pull captured notifications from [NotificationCollectorService]
  *   - Check if the notification listener permission is granted
  *   - Open the system notification listener settings
+ *   - Query power state (power save mode, battery level, low-power status)
  */
 class MainActivity : FlutterActivity() {
 
@@ -44,9 +50,43 @@ class MainActivity : FlutterActivity() {
                         result.success(true)
                     }
 
+                    "getPowerState" -> {
+                        val powerState = getPowerStateMap()
+                        result.success(powerState)
+                    }
+
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    /**
+     * Queries Android system APIs for power save mode, battery level, and low-power status.
+     */
+    private fun getPowerStateMap(): Map<String, Any> {
+        val powerManager = getSystemService(Context.POWER_SERVICE) as? PowerManager
+        val isPowerSaveMode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            powerManager?.isPowerSaveMode == true
+        } else {
+            false
+        }
+
+        val batteryIntent = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val level = batteryIntent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+        val scale = batteryIntent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
+        val batteryLevel = if (level >= 0 && scale > 0) (level * 100 / scale) else 100
+
+        val status = batteryIntent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+        val isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+
+        val isLowPowerMode = (isPowerSaveMode || batteryLevel < 15) && !isCharging
+
+        return mapOf(
+            "isPowerSaveMode" to isPowerSaveMode,
+            "batteryLevel" to batteryLevel,
+            "isCharging" to isCharging,
+            "isLowPowerMode" to isLowPowerMode
+        )
     }
 
     /**

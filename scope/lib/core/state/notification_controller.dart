@@ -67,6 +67,8 @@ class NotificationController extends ChangeNotifier {
   List<AppNotification> _notifications = [];
   bool _isListenerEnabled = false;
   bool _isLoading = true;
+  bool _isLowPowerMode = false;
+  bool? _lastPowerSaveMode;
   Timer? _pollTimer;
   Timer? _cleanupTimer;
   bool _isCleaningUp = false;
@@ -92,6 +94,7 @@ class NotificationController extends ChangeNotifier {
   FocusArea? get focusAreaFilter => _focusAreaFilter;
   bool get isListenerEnabled => _isListenerEnabled;
   bool get isLoading => _isLoading;
+  bool get isLowPowerMode => _isLowPowerMode;
   GhostAnalysisEngine get engine => _engine;
 
   bool get inFocusSession => _inFocusSession;
@@ -380,6 +383,20 @@ class NotificationController extends ChangeNotifier {
 
   Future<void> fetchNotifications() async {
     try {
+      final powerState = await _bridge.getPowerState();
+      final newLowPowerMode = powerState['isLowPowerMode'] as bool? ?? false;
+      final batteryLevel = powerState['batteryLevel'] as int? ?? 100;
+      final powerSaveMode = powerState['isPowerSaveMode'] as bool? ?? false;
+
+      if (_lastPowerSaveMode != null && _lastPowerSaveMode != newLowPowerMode) {
+        debugPrint(
+          'Low-power policy transition: lowPowerChanged from $_lastPowerSaveMode to $newLowPowerMode '
+          '(battery: $batteryLevel%, powerSaveMode: $powerSaveMode)',
+        );
+      }
+      _lastPowerSaveMode = newLowPowerMode;
+      _isLowPowerMode = newLowPowerMode;
+
       final newNotifications = await _bridge.getNotifications();
       final analyzed = <AppNotification>[];
 
@@ -404,7 +421,10 @@ class NotificationController extends ChangeNotifier {
               n.title == raw.title &&
               n.content == raw.content);
           if (!inBatch) {
-            analyzed.add(await _engine.analyze(raw));
+            analyzed.add(await _engine.analyze(
+              raw,
+              isLowPowerMode: _isLowPowerMode || raw.isLowPowerMode,
+            ));
           }
         }
       }

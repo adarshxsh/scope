@@ -129,5 +129,30 @@ void main() {
         await bridge.openNotificationSettings();
       });
     });
+
+    group('getPowerState', () {
+      test('returns power state map from channel', () async {
+        mockHandler((call) async => {
+          'isPowerSaveMode': true,
+          'batteryLevel': 12,
+          'isCharging': false,
+          'isLowPowerMode': true,
+        });
+        final state = await bridge.getPowerState();
+        expect(state['isPowerSaveMode'], true);
+        expect(state['batteryLevel'], 12);
+        expect(state['isLowPowerMode'], true);
+        expect(log.single.method, 'getPowerState');
+      });
+
+      test('returns fallback power state map on PlatformException', () async {
+        mockHandler((call) async {
+          throw PlatformException(code: 'ERROR');
+        });
+        final state = await bridge.getPowerState();
+        expect(state['isLowPowerMode'], false);
+        expect(state['batteryLevel'], 100);
+      });
+    });
   });
 }

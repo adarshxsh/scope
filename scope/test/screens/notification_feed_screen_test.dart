@@ -12,7 +12,10 @@ class FakeGhostAnalysisEngine extends GhostAnalysisEngine {
   Future<void> initialize() async {} // No-op, do not load assets in test
 
   @override
-  Future<AppNotification> analyze(AppNotification notification) async {
+  Future<AppNotification> analyze(
+    AppNotification notification, {
+    bool? isLowPowerMode,
+  }) async {
     // Return mock prioritized notification immediately
     return notification.copyWith(
       priority: 'medium',
