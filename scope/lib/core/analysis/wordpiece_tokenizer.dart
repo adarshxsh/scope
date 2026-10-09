@@ -1,11 +1,19 @@
 /// WordPiece tokenizer implementation in pure Dart for BERT models.
 library;
 
+import 'dart:io';
+
 class WordPieceTokenizer {
   final Map<String, int> vocab;
   final int maxSeqLength;
 
   WordPieceTokenizer(this.vocab, {this.maxSeqLength = 64});
+
+  /// Loads vocabulary from a File (e.g. local vocab.txt).
+  static Future<WordPieceTokenizer> fromFile(File file, {int maxSeqLength = 64}) async {
+    final lines = await file.readAsLines();
+    return WordPieceTokenizer.fromLines(lines, maxSeqLength: maxSeqLength);
+  }
 
   /// Loads vocabulary from a list of lines (e.g. from vocab.txt).
   factory WordPieceTokenizer.fromLines(List<String> lines, {int maxSeqLength = 64}) {

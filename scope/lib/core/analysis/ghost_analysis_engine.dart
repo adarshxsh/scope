@@ -7,22 +7,40 @@ import 'package:scope/core/analysis/score_fusion.dart';
 import 'package:scope/core/analysis/explanation_generator.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
+import 'package:scope/core/analysis/ml_model_resolver.dart';
 
 /// The central hub of Ghost AI coordinating all classification stages.
 class GhostAnalysisEngine {
   final RuleEngine ruleEngine;
   final LiteRtClassifier mlClassifier;
+  final MLModelResolver _modelResolver;
 
   GhostAnalysisEngine({
     RuleEngine? ruleEngine,
     LiteRtClassifier? mlClassifier,
+    MLModelResolver? modelResolver,
   })  : ruleEngine = ruleEngine ?? RuleEngine(),
-        mlClassifier = mlClassifier ?? LiteRtClassifier();
+        _modelResolver = modelResolver ?? MLModelResolver(),
+        mlClassifier = mlClassifier ?? LiteRtClassifier(resolver: modelResolver);
 
-  /// Compiles rules loaded from assets on engine startup.
+  /// Compiles rules loaded from local storage or assets on engine startup.
   Future<void> initialize() async {
     try {
-      final jsonStr = await rootBundle.loadString('assets/rules.json');
+      String? jsonStr;
+      final localRulesFile = await _modelResolver.resolveModelFile('rules.json');
+      if (localRulesFile != null) {
+        try {
+          jsonStr = await localRulesFile.readAsString();
+        } catch (e) {
+          // ignore: avoid_print
+          print('GhostAnalysisEngine failed to read local rules.json: $e');
+        }
+      }
+
+      if (jsonStr == null || jsonStr.isEmpty) {
+        jsonStr = await rootBundle.loadString('assets/rules.json');
+      }
+
       ruleEngine.compile(jsonStr);
       await ruleEngine.loadCustomRules();
     } catch (e) {
@@ -30,7 +48,7 @@ class GhostAnalysisEngine {
       print('GhostAnalysisEngine failed to load rules asset: $e');
     }
     try {
-      await GhostAI.instance.initialize();
+      await GhostAI.instance.initialize(resolver: _modelResolver);
     } catch (e) {
       // ignore: avoid_print
       print('GhostAnalysisEngine failed to initialize GhostAI: $e');
