@@ -47,6 +47,7 @@ def main() -> None:
     if args.stats:
         records, stats_records = tee(records)
         stats = summarize(stats_records)
+        stats["telemetry"] = generator.get_telemetry()
         stats_path = output.with_suffix(output.suffix + ".stats.json")
         stats_path.parent.mkdir(parents=True, exist_ok=True)
         stats_path.write_text(json.dumps(stats, indent=2, ensure_ascii=False), encoding="utf-8")

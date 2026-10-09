@@ -16,6 +16,12 @@ from jinja2 import Template
 from policy.scoring import score_notification
 from validator.duplicate import text_fingerprint
 from validator.schema import validate_record
+from generator.prompt_guard import (
+    TelemetryTracker,
+    build_structured_prompt,
+    escape_context,
+    validate_ollama_output,
+)
 
 
 @dataclass(frozen=True)
@@ -167,8 +173,12 @@ class NotificationDatasetGenerator:
         self.use_ollama = use_ollama
         self.ollama_model = ollama_model
         self.base_time = datetime(2026, 6, 26, 9, 0, 0, tzinfo=timezone.utc)
+        self.telemetry = TelemetryTracker()
         self._weighted_scenarios = [scenario for scenario in SCENARIOS for _ in range(scenario.weight)]
         self._seen_text: set[str] = set()
+
+    def get_telemetry(self) -> dict[str, Any]:
+        return self.telemetry.to_dict()
 
     def generate(self, count: int) -> Iterable[dict[str, Any]]:
         produced = 0
@@ -269,41 +279,50 @@ class NotificationDatasetGenerator:
         return self.random.choice(category_matches or subcategory_matches or list(POPULAR_APPS))
 
     def _render_notification(self, scenario: Scenario, ctx: dict[str, Any]) -> tuple[str, str]:
+        sanitized_ctx, sanitized_count = escape_context(ctx)
+        if sanitized_count > 0:
+            self.telemetry.sanitized_inputs += sanitized_count
+
         if self.use_ollama and self.random.random() < 0.2:
-            generated = self._ollama_notification(scenario, ctx)
+            generated = self._ollama_notification(scenario, sanitized_ctx)
             if generated:
                 return generated
-        title = Template(self.random.choice(scenario.title_templates)).render(**ctx)
-        body = Template(self.random.choice(scenario.body_templates)).render(**ctx)
+
+        try:
+            title = Template(self.random.choice(scenario.title_templates)).render(**sanitized_ctx)
+            body = Template(self.random.choice(scenario.body_templates)).render(**sanitized_ctx)
+        except Exception:
+            title = scenario.title_templates[0]
+            body = scenario.body_templates[0]
+
         return self._clip(title, 50), self._clip(body, 140)
 
     def _ollama_notification(self, scenario: Scenario, ctx: dict[str, Any]) -> tuple[str, str] | None:
-        prompt = (
-            "Return only JSON with exactly title and body. "
-            "Make a realistic Android notification. "
-            f"App: {ctx['app_context']}. Type: {scenario.notification_type}. "
-            f"Intent: {scenario.intent}. Keep title <= 50 chars and body <= 140 chars. "
-            "No real personal data."
-        )
+        self.telemetry.ollama_attempts += 1
+        entities = self._entities(ctx, scenario)
+        prompt = build_structured_prompt(scenario.notification_type, scenario.intent, ctx, entities)
         payload = json.dumps({"model": self.ollama_model, "prompt": prompt, "stream": False}).encode("utf-8")
+        raw = ""
         try:
             req = request.Request("http://localhost:11434/api/generate", data=payload, headers={"Content-Type": "application/json"})
             with request.urlopen(req, timeout=20) as response:
                 raw = json.loads(response.read().decode("utf-8")).get("response", "{}")
-        except (URLError, TimeoutError, json.JSONDecodeError):
+        except (URLError, TimeoutError, json.JSONDecodeError, OSError):
+            self.telemetry.rejected_outputs += 1
+            self.telemetry.fallback_events += 1
+            self.telemetry.record_validation_error("connection_or_timeout_error")
             return None
-        try:
-            parsed = json.loads(raw)
-        except json.JSONDecodeError:
-            match = re.search(r"\{.*\}", raw, flags=re.S)
-            if not match:
-                return None
-            parsed = json.loads(match.group(0))
-        title = str(parsed.get("title", "")).strip()
-        body = str(parsed.get("body", "")).strip()
-        if not title or not body:
+
+        parsed, err_msg = validate_ollama_output(raw)
+        if not parsed:
+            self.telemetry.rejected_outputs += 1
+            self.telemetry.fallback_events += 1
+            if err_msg:
+                self.telemetry.record_validation_error(err_msg)
             return None
-        return self._clip(title, 50), self._clip(body, 140)
+
+        self.telemetry.ollama_successes += 1
+        return self._clip(parsed["title"], 50), self._clip(parsed["body"], 140)
 
     def _context(self, app: AppProfile, scenario: Scenario, timestamp: datetime) -> dict[str, Any]:
         city = self.random.choice(("Bengaluru", "Mumbai", "Delhi", "Pune", "Hyderabad", "Chennai", "Kolkata", "Ahmedabad", "Jaipur", "Kochi"))
