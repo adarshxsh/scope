@@ -26,6 +26,12 @@ class GhostAIResult {
   /// Rule match score (0.0 to 1.0) output by the rule engine.
   final double? ruleScore;
 
+  /// Whether heuristic fallback was used instead of TFLite inference.
+  final bool isFallback;
+
+  /// Whether model execution succeeded without errors.
+  final bool isSuccess;
+
   const GhostAIResult({
     required this.reviewScore,
     this.confidence,
@@ -33,6 +39,8 @@ class GhostAIResult {
     required this.featureVector,
     required this.predictedScore,
     this.ruleScore,
+    this.isFallback = false,
+    this.isSuccess = true,
   });
 }
 
@@ -92,18 +100,26 @@ class GhostAI {
     // 2. Model inference
     double predictedScore = 0.0;
     int inferenceTimeUs = 0;
+    bool isFallback = _interpreter == null;
+    bool isSuccess = true;
 
     if (_interpreter != null) {
-      final input = [featureVector];
-      final output = List<double>.filled(1, 0.0).reshape([1, 1]);
+      try {
+        final input = [featureVector];
+        final output = List<double>.filled(1, 0.0).reshape([1, 1]);
 
-      final inferStopwatch = Stopwatch()..start();
-      _interpreter!.run(input, output);
-      inferStopwatch.stop();
+        final inferStopwatch = Stopwatch()..start();
+        _interpreter!.run(input, output);
+        inferStopwatch.stop();
 
-      inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
-      // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
-      predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+        inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
+        // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
+        predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+      } catch (e) {
+        isFallback = true;
+        isSuccess = false;
+        predictedScore = _heuristicLookAgainScore(featureVector);
+      }
     } else {
       // Heuristic fallback if model not loaded
       predictedScore = _heuristicLookAgainScore(featureVector);
@@ -173,6 +189,8 @@ class GhostAI {
       featureVector: featureVector,
       predictedScore: predictedScore,
       ruleScore: ruleScore,
+      isFallback: isFallback,
+      isSuccess: isSuccess,
     );
 
     // Structured logging in debug mode
@@ -329,6 +347,7 @@ class GhostAI {
     debugPrint('Package: ${notification.packageName}');
     debugPrint('Feature Vector (First 15): ${result.featureVector.take(15).toList()}...');
     debugPrint('Inference Time: ${result.inferenceTimeUs} us');
+    debugPrint('Fallback Mode: ${result.isFallback}');
     debugPrint('Raw Predicted Score: ${(result.predictedScore * 100).toStringAsFixed(2)}');
     debugPrint('Rule Score: ${result.ruleScore != null ? (result.ruleScore! * 100).toStringAsFixed(2) : "N/A"}');
     debugPrint('Final Fused Score: ${(result.reviewScore * 100).toStringAsFixed(2)}');
