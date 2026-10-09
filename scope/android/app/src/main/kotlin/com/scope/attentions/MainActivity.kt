@@ -30,7 +30,11 @@ class MainActivity : FlutterActivity() {
                 when (call.method) {
                     "getNotifications" -> {
                         val notifications = NotificationCollectorService.drainQueue()
-                        val mapList = notifications.map { it.toMap() }
+                        val mapList = notifications.map { notification ->
+                            val map = notification.toMap()
+                            notification.scrubEncryptedBuffers()
+                            map
+                        }
                         result.success(mapList)
                     }
 
