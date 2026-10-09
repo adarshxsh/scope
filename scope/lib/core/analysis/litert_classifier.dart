@@ -5,6 +5,7 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/analysis_result.dart';
 import 'package:scope/core/analysis/notification_analyzer.dart';
 import 'package:scope/core/analysis/wordpiece_tokenizer.dart';
+import 'package:scope/core/utils/hashed_logger.dart';
 
 /// Classifier using LiteRT (TensorFlow Lite) to classify text categories.
 class LiteRtClassifier implements NotificationAnalyzer {
@@ -27,8 +28,7 @@ class LiteRtClassifier implements NotificationAnalyzer {
       _isModelLoaded = false;
     } catch (e) {
       // Graceful degradation: Log and set flags so analyze runs in fallback mode
-      // ignore: avoid_print
-      print('LiteRtClassifier failed to initialize: $e');
+      HashedLogger.logError('LiteRtClassifier', 'Failed to initialize', e);
       _isModelLoaded = false;
 
       // Ensure tokenizer is loaded even if interpreter fails (so we can test tokenization in fallback)

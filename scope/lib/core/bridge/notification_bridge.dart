@@ -7,6 +7,7 @@ library;
 
 import 'package:flutter/services.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/utils/hashed_logger.dart';
 
 /// Bridge between Flutter and the Android NotificationCollectorService.
 ///
@@ -39,8 +40,7 @@ class NotificationBridge {
           .toList();
     } on PlatformException catch (e) {
       // Log but don't crash — the service might not be connected yet
-      // ignore: avoid_print
-      print('NotificationBridge.getNotifications failed: ${e.message}');
+      HashedLogger.logError('NotificationBridge', 'getNotifications failed', e);
       return [];
     } on MissingPluginException {
       // Happens when running on non-Android platforms or in tests without mock
@@ -69,8 +69,7 @@ class NotificationBridge {
     try {
       await _channel.invokeMethod<void>('openNotificationSettings');
     } on PlatformException catch (e) {
-      // ignore: avoid_print
-      print('NotificationBridge.openNotificationSettings failed: ${e.message}');
+      HashedLogger.logError('NotificationBridge', 'openNotificationSettings failed', e);
     } on MissingPluginException {
       // Not on Android — nothing to do
     }
