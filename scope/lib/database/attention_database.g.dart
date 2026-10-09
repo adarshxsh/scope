@@ -29,26 +29,24 @@ class $NotificationsTableTable extends NotificationsTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _titleMeta = const VerificationMeta('title');
   @override
-  late final GeneratedColumn<String> title = GeneratedColumn<String>(
-    'title',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _contentMeta = const VerificationMeta(
-    'content',
-  );
+  late final GeneratedColumnWithTypeConverter<String, String> title =
+      GeneratedColumn<String>(
+        'title',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<String>($NotificationsTableTable.$convertertitle);
   @override
-  late final GeneratedColumn<String> content = GeneratedColumn<String>(
-    'content',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
+  late final GeneratedColumnWithTypeConverter<String, String> content =
+      GeneratedColumn<String>(
+        'content',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<String>($NotificationsTableTable.$convertercontent);
   static const VerificationMeta _timestampMeta = const VerificationMeta(
     'timestamp',
   );
@@ -336,22 +334,6 @@ class $NotificationsTableTable extends NotificationsTable
     } else if (isInserting) {
       context.missing(_packageNameMeta);
     }
-    if (data.containsKey('title')) {
-      context.handle(
-        _titleMeta,
-        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_titleMeta);
-    }
-    if (data.containsKey('content')) {
-      context.handle(
-        _contentMeta,
-        content.isAcceptableOrUnknown(data['content']!, _contentMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_contentMeta);
-    }
     if (data.containsKey('timestamp')) {
       context.handle(
         _timestampMeta,
@@ -506,14 +488,18 @@ class $NotificationsTableTable extends NotificationsTable
         DriftSqlType.string,
         data['${effectivePrefix}package_name'],
       )!,
-      title: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}title'],
-      )!,
-      content: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}content'],
-      )!,
+      title: $NotificationsTableTable.$convertertitle.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}title'],
+        )!,
+      ),
+      content: $NotificationsTableTable.$convertercontent.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}content'],
+        )!,
+      ),
       timestamp: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}timestamp'],
@@ -607,8 +593,12 @@ class $NotificationsTableTable extends NotificationsTable
     return $NotificationsTableTable(attachedDatabase, alias);
   }
 
+  static TypeConverter<String, String> $convertertitle =
+      const EncryptedTextConverter();
+  static TypeConverter<String, String> $convertercontent =
+      const EncryptedTextConverter();
   static TypeConverter<Map<String, dynamic>, String>
-  $converterextractedFeatures = const JsonConverter();
+  $converterextractedFeatures = const EncryptedJsonConverter();
   static TypeConverter<Map<String, dynamic>?, String?>
   $converterextractedFeaturesn = NullAwareTypeConverter.wrap(
     $converterextractedFeatures,
@@ -674,8 +664,16 @@ class NotificationEntry extends DataClass
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['package_name'] = Variable<String>(packageName);
-    map['title'] = Variable<String>(title);
-    map['content'] = Variable<String>(content);
+    {
+      map['title'] = Variable<String>(
+        $NotificationsTableTable.$convertertitle.toSql(title),
+      );
+    }
+    {
+      map['content'] = Variable<String>(
+        $NotificationsTableTable.$convertercontent.toSql(content),
+      );
+    }
     map['timestamp'] = Variable<int>(timestamp);
     if (!nullToAbsent || category != null) {
       map['category'] = Variable<String>(category);
@@ -1272,10 +1270,14 @@ class NotificationsTableCompanion extends UpdateCompanion<NotificationEntry> {
       map['package_name'] = Variable<String>(packageName.value);
     }
     if (title.present) {
-      map['title'] = Variable<String>(title.value);
+      map['title'] = Variable<String>(
+        $NotificationsTableTable.$convertertitle.toSql(title.value),
+      );
     }
     if (content.present) {
-      map['content'] = Variable<String>(content.value);
+      map['content'] = Variable<String>(
+        $NotificationsTableTable.$convertercontent.toSql(content.value),
+      );
     }
     if (timestamp.present) {
       map['timestamp'] = Variable<int>(timestamp.value);
@@ -2858,15 +2860,17 @@ class $$NotificationsTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get title => $composableBuilder(
-    column: $table.title,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnWithTypeConverterFilters<String, String, String> get title =>
+      $composableBuilder(
+        column: $table.title,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
 
-  ColumnFilters<String> get content => $composableBuilder(
-    column: $table.content,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnWithTypeConverterFilters<String, String, String> get content =>
+      $composableBuilder(
+        column: $table.content,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
 
   ColumnFilters<int> get timestamp => $composableBuilder(
     column: $table.timestamp,
@@ -3147,10 +3151,10 @@ class $$NotificationsTableTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get title =>
+  GeneratedColumnWithTypeConverter<String, String> get title =>
       $composableBuilder(column: $table.title, builder: (column) => column);
 
-  GeneratedColumn<String> get content =>
+  GeneratedColumnWithTypeConverter<String, String> get content =>
       $composableBuilder(column: $table.content, builder: (column) => column);
 
   GeneratedColumn<int> get timestamp =>
@@ -3406,7 +3410,9 @@ class $$NotificationsTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$NotificationsTableTable, NotificationEntry>(
+                    table,
+                  ),
                   $$NotificationsTableTableReferences(db, table, e),
                 ),
               )
@@ -3749,7 +3755,7 @@ class $$ReviewQueueTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$ReviewQueueTableTable, ReviewQueueEntry>(table),
                   $$ReviewQueueTableTableReferences(db, table, e),
                 ),
               )
@@ -4021,7 +4027,18 @@ class $$FocusSessionsTableTableTableManager
                 duration: duration,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$FocusSessionsTableTable, FocusSessionEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $FocusSessionsTableTable,
+                    FocusSessionEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4273,7 +4290,16 @@ class $$DailyBriefTableTableTableManager
                 archivedCount: archivedCount,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$DailyBriefTableTable, DailyBriefEntry>(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $DailyBriefTableTable,
+                    DailyBriefEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
