@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/storage/storage_migrator.dart';
 
 /// Condition definition for a notification classification rule.
 class RuleCondition {
@@ -111,7 +112,8 @@ class RuleEngine {
   /// Loads custom rules from local storage and prepends them.
   Future<void> loadCustomRules() async {
     try {
-      final dir = await getApplicationDocumentsDirectory();
+      await StorageMigrator.migrate();
+      final dir = await getApplicationSupportDirectory();
       final file = File('${dir.path}/rlhf_rules.json');
       if (await file.exists()) {
         final content = await file.readAsString();
@@ -129,11 +131,12 @@ class RuleEngine {
   /// Saves all custom RLHF rules to local storage.
   Future<void> _saveCustomRules() async {
     try {
+      await StorageMigrator.migrate();
       // Filter out base rules (assuming base rules don't have 'rlhf-' prefix in id)
       final customRules = _rules.where((r) => r.id.startsWith('rlhf-')).toList();
       final list = customRules.map((r) => r.toMap()).toList();
       
-      final dir = await getApplicationDocumentsDirectory();
+      final dir = await getApplicationSupportDirectory();
       final file = File('${dir.path}/rlhf_rules.json');
       await file.writeAsString(json.encode(list));
     } catch (e) {
