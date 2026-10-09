@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/telemetry/telemetry_governance_service.dart';
 import 'package:scope/database/attention_database.dart';
 import 'package:scope/database/tables.dart';
 
@@ -81,10 +82,26 @@ class ReviewQueueDao extends DatabaseAccessor<AttentionDatabase> with _$ReviewQu
 
 @DriftAccessor(tables: [FocusSessionsTable])
 class FocusSessionDao extends DatabaseAccessor<AttentionDatabase> with _$FocusSessionDaoMixin {
-  FocusSessionDao(super.db);
+  final TelemetryGovernanceService governanceService;
+
+  FocusSessionDao(super.db, [TelemetryGovernanceService? governanceService])
+      : governanceService = governanceService ?? TelemetryGovernanceService();
 
   Future<void> insertSession(FocusSessionEntry entry) async {
-    await into(focusSessionsTable).insert(entry);
+    final sanitized = governanceService.sanitizeFocusSession(entry);
+    if (sanitized.id == 0) {
+      await into(focusSessionsTable).insert(
+        FocusSessionsTableCompanion.insert(
+          sessionStart: sanitized.sessionStart,
+          sessionEnd: Value(sanitized.sessionEnd),
+          interruptions: Value(sanitized.interruptions),
+          completion: Value(sanitized.completion),
+          duration: sanitized.duration,
+        ),
+      );
+    } else {
+      await into(focusSessionsTable).insert(sanitized);
+    }
   }
 
   Future<FocusSessionEntry?> getActiveSession() {
@@ -92,7 +109,8 @@ class FocusSessionDao extends DatabaseAccessor<AttentionDatabase> with _$FocusSe
   }
 
   Future<void> updateSession(FocusSessionEntry entry) async {
-    await update(focusSessionsTable).replace(entry);
+    final sanitized = governanceService.sanitizeFocusSession(entry);
+    await update(focusSessionsTable).replace(sanitized);
   }
 
   Future<List<FocusSessionEntry>> getAll() {
@@ -106,10 +124,28 @@ class FocusSessionDao extends DatabaseAccessor<AttentionDatabase> with _$FocusSe
 
 @DriftAccessor(tables: [DailyBriefTable])
 class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBriefDaoMixin {
-  DailyBriefDao(super.db);
+  final TelemetryGovernanceService governanceService;
+
+  DailyBriefDao(super.db, [TelemetryGovernanceService? governanceService])
+      : governanceService = governanceService ?? TelemetryGovernanceService();
 
   Future<void> insertOrUpdate(DailyBriefEntry entry) async {
-    await into(dailyBriefTable).insert(entry, mode: InsertMode.insertOrReplace);
+    final transformed = governanceService.transformDailyBrief(entry);
+    if (transformed.id == 0) {
+      await into(dailyBriefTable).insert(
+        DailyBriefTableCompanion.insert(
+          date: transformed.date,
+          notificationsReviewed: Value(transformed.notificationsReviewed),
+          actionsCompleted: Value(transformed.actionsCompleted),
+          calendarEventsCreated: Value(transformed.calendarEventsCreated),
+          remindersCreated: Value(transformed.remindersCreated),
+          archivedCount: Value(transformed.archivedCount),
+        ),
+        mode: InsertMode.insertOrReplace,
+      );
+    } else {
+      await into(dailyBriefTable).insert(transformed, mode: InsertMode.insertOrReplace);
+    }
   }
 
   Future<DailyBriefEntry?> getBriefForDate(String date) {
@@ -126,15 +162,17 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
   }) async {
     final existing = await getBriefForDate(date);
     if (existing != null) {
-      await update(dailyBriefTable).replace(existing.copyWith(
+      final updated = existing.copyWith(
         notificationsReviewed: existing.notificationsReviewed + reviewed,
         actionsCompleted: existing.actionsCompleted + completed,
         calendarEventsCreated: existing.calendarEventsCreated + calendar,
         remindersCreated: existing.remindersCreated + reminders,
         archivedCount: existing.archivedCount + archived,
-      ));
+      );
+      final transformed = governanceService.transformDailyBrief(updated);
+      await update(dailyBriefTable).replace(transformed);
     } else {
-      await into(dailyBriefTable).insert(DailyBriefEntry(
+      final newEntry = DailyBriefEntry(
         id: 0,
         date: date,
         notificationsReviewed: reviewed,
@@ -142,7 +180,19 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
         calendarEventsCreated: calendar,
         remindersCreated: reminders,
         archivedCount: archived,
-      ));
+      );
+      final transformed = governanceService.transformDailyBrief(newEntry);
+      await into(dailyBriefTable).insert(
+        DailyBriefTableCompanion.insert(
+          date: transformed.date,
+          notificationsReviewed: Value(transformed.notificationsReviewed),
+          actionsCompleted: Value(transformed.actionsCompleted),
+          calendarEventsCreated: Value(transformed.calendarEventsCreated),
+          remindersCreated: Value(transformed.remindersCreated),
+          archivedCount: Value(transformed.archivedCount),
+        ),
+        mode: InsertMode.insertOrReplace,
+      );
     }
   }
 
