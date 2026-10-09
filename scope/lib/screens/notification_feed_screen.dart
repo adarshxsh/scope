@@ -12,6 +12,7 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/storage/notification_storage.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
+import 'package:scope/core/utils/pii_redactor.dart';
 import 'package:scope/screens/diagnostic_screen.dart';
 
 class NotificationFeedScreen extends StatefulWidget {
@@ -91,10 +92,14 @@ class _NotificationFeedScreenState extends State<NotificationFeedScreen> {
 
       // Get all stored (sorted newest first)
       final all = await _storage.getAll();
+      final sanitized = all.map((n) => n.copyWith(
+        title: PiiRedactor.redactTitle(n.title),
+        content: PiiRedactor.redactContent(n.content),
+      )).toList();
 
       if (mounted) {
         setState(() {
-          _notifications = all;
+          _notifications = sanitized;
           _isLoading = false;
         });
       }
