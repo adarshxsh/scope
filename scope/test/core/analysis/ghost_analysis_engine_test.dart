@@ -8,25 +8,32 @@ void main() {
   group('GhostAnalysisEngine', () {
     const String sampleJson = '''
     {
-      "version": "1.0",
-      "rules": [
-        {
-          "id": "bank_debit",
-          "category": "finance",
-          "priority": "critical",
-          "conditions": {
-            "keywords": ["debited", "spent"]
+      "version": "1.0.0",
+      "timestamp": 1789263929995,
+      "key_id": "scope-prod-key-1",
+      "signature_algorithm": "Ed25519",
+      "signature": "JyAWBzH+JhYULrl+T2a459JWK2gJfJb+131cWhLRjrYphtJdKVwBKEjzKe1qENnPeN/6aRXKj8L/TLyQSiy+BA==",
+      "payload": {
+        "version": "1.0",
+        "rules": [
+          {
+            "id": "bank_debit",
+            "category": "finance",
+            "priority": "critical",
+            "conditions": {
+              "keywords": ["debited", "spent"]
+            }
           }
-        }
-      ]
+        ]
+      }
     }
     ''';
 
     late GhostAnalysisEngine engine;
 
-    setUp(() {
+    setUp(() async {
       engine = GhostAnalysisEngine();
-      engine.ruleEngine.compile(sampleJson);
+      await engine.ruleEngine.compile(sampleJson);
     });
 
     test('orchestrates pipeline and classifies bank debit notification as critical', () async {

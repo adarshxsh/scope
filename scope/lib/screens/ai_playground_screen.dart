@@ -105,7 +105,7 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     }
   }
 
-  void _applyReinforcementRule() {
+  Future<void> _applyReinforcementRule() async {
     if (_selectedNotification == null) return;
 
     final n = _selectedNotification!;
@@ -130,7 +130,7 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
       ),
     );
 
-    widget.controller.engine.ruleEngine.addReinforcementRule(newRule);
+    await widget.controller.engine.ruleEngine.addReinforcementRule(newRule);
 
     setState(() {
       _showCorrectionForm = false;
