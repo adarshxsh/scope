@@ -19,8 +19,34 @@ class NotificationBridge {
   /// The MethodChannel name must match the one registered in MainActivity.kt
   final MethodChannel _channel;
 
+  /// Cached active session token for authorized MethodChannel calls.
+  String? _sessionToken;
+
   NotificationBridge({MethodChannel? channel})
     : _channel = channel ?? const MethodChannel('com.scope.notifications');
+
+  /// Fetches a session authorization token from the native side.
+  Future<String?> getSessionToken({bool forceRefresh = false}) async {
+    if (_sessionToken != null && !forceRefresh) {
+      return _sessionToken;
+    }
+    try {
+      final token = await _channel.invokeMethod<dynamic>('getSessionToken');
+      if (token is String && token.isNotEmpty) {
+        _sessionToken = token;
+        return token;
+      }
+      return null;
+    } on PlatformException catch (e) {
+      // ignore: avoid_print
+      print('NotificationBridge.getSessionToken failed: ${e.message}');
+      return null;
+    } on MissingPluginException {
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
 
   /// Drains the notification queue from the Android side.
   ///
@@ -28,8 +54,10 @@ class NotificationBridge {
   /// Returns an empty list if the service isn't running or no new notifications.
   Future<List<AppNotification>> getNotifications() async {
     try {
+      final token = await getSessionToken();
       final result = await _channel.invokeMethod<List<dynamic>>(
         'getNotifications',
+        token != null ? {'token': token} : null,
       );
       if (result == null) return [];
 
@@ -38,6 +66,24 @@ class NotificationBridge {
           .map((map) => AppNotification.fromMap(Map<String, dynamic>.from(map)))
           .toList();
     } on PlatformException catch (e) {
+      if (e.code == 'UNAUTHORIZED') {
+        final newToken = await getSessionToken(forceRefresh: true);
+        if (newToken != null) {
+          try {
+            final retryResult = await _channel.invokeMethod<List<dynamic>>(
+              'getNotifications',
+              {'token': newToken},
+            );
+            if (retryResult == null) return [];
+            return retryResult
+                .whereType<Map>()
+                .map((map) => AppNotification.fromMap(Map<String, dynamic>.from(map)))
+                .toList();
+          } on PlatformException {
+            return [];
+          }
+        }
+      }
       // Log but don't crash — the service might not be connected yet
       // ignore: avoid_print
       print('NotificationBridge.getNotifications failed: ${e.message}');
@@ -45,6 +91,107 @@ class NotificationBridge {
     } on MissingPluginException {
       // Happens when running on non-Android platforms or in tests without mock
       return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Peeks current notifications from native queue memory without removing them.
+  Future<List<AppNotification>> peekNotifications() async {
+    try {
+      final token = await getSessionToken();
+      final result = await _channel.invokeMethod<List<dynamic>>(
+        'peekNotifications',
+        token != null ? {'token': token} : null,
+      );
+      if (result == null) return [];
+
+      return result
+          .whereType<Map>()
+          .map((map) => AppNotification.fromMap(Map<String, dynamic>.from(map)))
+          .toList();
+    } on PlatformException catch (e) {
+      if (e.code == 'UNAUTHORIZED') {
+        final newToken = await getSessionToken(forceRefresh: true);
+        if (newToken != null) {
+          try {
+            final retryResult = await _channel.invokeMethod<List<dynamic>>(
+              'peekNotifications',
+              {'token': newToken},
+            );
+            if (retryResult == null) return [];
+            return retryResult
+                .whereType<Map>()
+                .map((map) => AppNotification.fromMap(Map<String, dynamic>.from(map)))
+                .toList();
+          } on PlatformException {
+            return [];
+          }
+        }
+      }
+      // ignore: avoid_print
+      print('NotificationBridge.peekNotifications failed: ${e.message}');
+      return [];
+    } on MissingPluginException {
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Acknowledges and purges specific notification IDs from native queue memory.
+  Future<List<String>> acknowledgeNotifications(List<String> ids) async {
+    if (ids.isEmpty) return [];
+    try {
+      final token = await getSessionToken();
+      final result = await _channel.invokeMethod<List<dynamic>>(
+        'acknowledgeNotifications',
+        token != null ? {'token': token, 'ids': ids} : {'ids': ids},
+      );
+      if (result == null) return [];
+      return result.whereType<String>().toList();
+    } on PlatformException catch (e) {
+      if (e.code == 'UNAUTHORIZED') {
+        final newToken = await getSessionToken(forceRefresh: true);
+        if (newToken != null) {
+          try {
+            final retryResult = await _channel.invokeMethod<List<dynamic>>(
+              'acknowledgeNotifications',
+              {'token': newToken, 'ids': ids},
+            );
+            if (retryResult == null) return [];
+            return retryResult.whereType<String>().toList();
+          } on PlatformException {
+            return [];
+          }
+        }
+      }
+      // ignore: avoid_print
+      print('NotificationBridge.acknowledgeNotifications failed: ${e.message}');
+      return [];
+    } on MissingPluginException {
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Retrieves diagnostic audit metrics from native service.
+  Future<Map<String, dynamic>> getAuditMetrics() async {
+    try {
+      final result = await _channel.invokeMethod<Map<dynamic, dynamic>>(
+        'getAuditMetrics',
+      );
+      if (result == null) return {};
+      return Map<String, dynamic>.from(result);
+    } on PlatformException catch (e) {
+      // ignore: avoid_print
+      print('NotificationBridge.getAuditMetrics failed: ${e.message}');
+      return {};
+    } on MissingPluginException {
+      return {};
+    } catch (_) {
+      return {};
     }
   }
 
@@ -58,6 +205,8 @@ class NotificationBridge {
     } on PlatformException {
       return false;
     } on MissingPluginException {
+      return false;
+    } catch (_) {
       return false;
     }
   }
@@ -73,6 +222,6 @@ class NotificationBridge {
       print('NotificationBridge.openNotificationSettings failed: ${e.message}');
     } on MissingPluginException {
       // Not on Android — nothing to do
-    }
+    } catch (_) {}
   }
 }
