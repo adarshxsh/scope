@@ -1,9 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
+import 'package:scope/core/privacy/privacy_budget_manager.dart';
+import 'package:scope/core/privacy/dp_telemetry_service.dart';
 import 'package:scope/database/attention_database.dart';
 import 'package:scope/database/database_provider.dart';
 import 'package:scope/database/drift_notification_storage.dart';
+
 
 enum QueueSortOrder {
   reviewScore,
@@ -341,3 +344,16 @@ final sortedReviewQueueProvider = Provider<List<AppNotification>>((ref) {
 
   return activeItems;
 });
+
+final privacyBudgetManagerProvider = Provider<PrivacyBudgetManager>((ref) {
+  final db = ref.watch(databaseProvider);
+  final manager = PrivacyBudgetManager(dao: db.privacyBudgetDao);
+  manager.initialize();
+  return manager;
+});
+
+final dpTelemetryServiceProvider = Provider<DpTelemetryService>((ref) {
+  final manager = ref.watch(privacyBudgetManagerProvider);
+  return DpTelemetryService(privacyBudgetManager: manager);
+});
+
