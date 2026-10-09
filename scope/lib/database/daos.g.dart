@@ -6,6 +6,8 @@ part of 'daos.dart';
 mixin _$NotificationDaoMixin on DatabaseAccessor<AttentionDatabase> {
   $NotificationsTableTable get notificationsTable =>
       attachedDatabase.notificationsTable;
+  $ReviewQueueTableTable get reviewQueueTable =>
+      attachedDatabase.reviewQueueTable;
   NotificationDaoManager get managers => NotificationDaoManager(this);
 }
 
@@ -16,6 +18,11 @@ class NotificationDaoManager {
       $$NotificationsTableTableTableManager(
         _db.attachedDatabase,
         _db.notificationsTable,
+      );
+  $$ReviewQueueTableTableTableManager get reviewQueueTable =>
+      $$ReviewQueueTableTableTableManager(
+        _db.attachedDatabase,
+        _db.reviewQueueTable,
       );
 }
 
