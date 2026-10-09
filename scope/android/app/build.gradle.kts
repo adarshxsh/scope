@@ -1,9 +1,66 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+// Load key.properties if present
+val keyPropertiesFile = rootProject.file("key.properties")
+val keyProperties = Properties()
+if (keyPropertiesFile.exists()) {
+    keyPropertiesFile.inputStream().use { inputStream ->
+        keyProperties.load(inputStream)
+    }
+}
+
+fun getSigningProperty(propKey: String, vararg envKeys: String): String? {
+    val propVal = keyProperties.getProperty(propKey)
+    if (!propVal.isNullOrBlank()) {
+        return propVal
+    }
+    for (envKey in envKeys) {
+        val propEnvVal = keyProperties.getProperty(envKey)
+        if (!propEnvVal.isNullOrBlank()) {
+            return propEnvVal
+        }
+        val envVal = System.getenv(envKey)
+        if (!envVal.isNullOrBlank()) {
+            return envVal
+        }
+    }
+    val directEnv = System.getenv(propKey)
+    if (!directEnv.isNullOrBlank()) {
+        return directEnv
+    }
+    return null
+}
+
+val keystoreFilePath = getSigningProperty("storeFile", "ANDROID_KEYSTORE_PATH", "KEYSTORE_FILE")
+val keystorePassword = getSigningProperty("storePassword", "ANDROID_KEYSTORE_PASSWORD", "KEYSTORE_PASSWORD")
+val keyAlias = getSigningProperty("keyAlias", "ANDROID_KEY_ALIAS", "KEY_ALIAS")
+val keyPassword = getSigningProperty("keyPassword", "ANDROID_KEY_PASSWORD", "KEY_PASSWORD")
+
+val keystoreFile = if (!keystoreFilePath.isNullOrBlank()) {
+    val fApp = file(keystoreFilePath)
+    val fRoot = rootProject.file(keystoreFilePath)
+    when {
+        fApp.exists() -> fApp
+        fRoot.exists() -> fRoot
+        else -> fApp
+    }
+} else {
+    null
+}
+
+val hasReleaseSigningCredentials = keystoreFile != null &&
+    keystoreFile.exists() &&
+    !keystorePassword.isNullOrBlank() &&
+    !keyAlias.isNullOrBlank() &&
+    !keyPassword.isNullOrBlank()
 
 android {
     namespace = "com.scope.attentions"
@@ -30,11 +87,25 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (hasReleaseSigningCredentials) {
+            create("release") {
+                storeFile = keystoreFile
+                storePassword = keystorePassword
+                keyAlias = keyAlias
+                keyPassword = keyPassword
+            }
+        }
+    }
+
     buildTypes {
-        release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+        getByName("release") {
+            if (hasReleaseSigningCredentials) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                logger.warn("WARNING: Release signing credentials not found or incomplete. Falling back to debug signingConfig.")
+                signingConfig = signingConfigs.getByName("debug")
+            }
         }
     }
 }
