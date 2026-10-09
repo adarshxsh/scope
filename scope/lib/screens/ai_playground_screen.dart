@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/extracted_features.dart';
+import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
+import 'package:scope/core/federated/federated_learning_client.dart';
+import 'package:scope/core/federated/privacy_budget_tracker.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/state/notification_controller.dart';
 import 'package:scope/theme/app_colors.dart';
@@ -132,16 +135,59 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
 
     widget.controller.engine.ruleEngine.addReinforcementRule(newRule);
 
+    // Compute DP-SGD gradient delta
+    final featureVector = FeatureExtractor.extractFromAppNotification(n);
+    double targetScore;
+    switch (_selectedPriority.toLowerCase()) {
+      case 'critical':
+        targetScore = 1.0;
+        break;
+      case 'high':
+        targetScore = 0.85;
+        break;
+      case 'medium':
+        targetScore = 0.50;
+        break;
+      case 'low':
+      default:
+        targetScore = 0.15;
+        break;
+    }
+
+    double predictedScore = 0.50;
+    if (n.priorityScore != null) {
+      predictedScore = n.priorityScore!;
+    }
+
     setState(() {
       _showCorrectionForm = false;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Reinforcement Rule Learned! Similar messages will now be classified as $_selectedPriority ($_selectedCategory).'),
-        backgroundColor: AppColors.seed,
-      ),
-    );
+    try {
+      final update = FederatedLearningClient.instance.computeGradientUpdate(
+        featureVector: featureVector,
+        predictedScore: predictedScore,
+        targetScore: targetScore,
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'DP-SGD Delta Generated! L2 Norm: ${update.l2NormAfterClipping.toStringAsFixed(3)} | Noise added (ε=${update.epsilonUsed}). Buffered for Federated Sync.',
+          ),
+          backgroundColor: AppColors.seed,
+        ),
+      );
+    } on PrivacyBudgetExhaustedException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Privacy budget exhausted! Cannot record gradient update (${e.message}).',
+          ),
+          backgroundColor: Colors.orange.shade800,
+        ),
+      );
+    }
   }
 
   @override
