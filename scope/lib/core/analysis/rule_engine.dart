@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/analysis/score_fusion.dart';
 
 /// Condition definition for a notification classification rule.
 class RuleCondition {
@@ -96,6 +97,12 @@ class RuleEngine {
     final parsed = json.decode(jsonStr) as Map<String, dynamic>;
     version = parsed['version'] as String? ?? '0.0.0';
     final rawRules = parsed['rules'] as List<dynamic>? ?? const [];
+
+    if (parsed.containsKey('calibration') && parsed['calibration'] is Map) {
+      ScoreFusion.configureFromMap(Map<String, dynamic>.from(parsed['calibration'] as Map));
+    } else if (parsed.containsKey('category_precision') && parsed['category_precision'] is Map) {
+      ScoreFusion.configureFromMap(Map<String, dynamic>.from(parsed['category_precision'] as Map));
+    }
     
     _rules = rawRules
         .map((r) => NotificationRule.fromMap(Map<String, dynamic>.from(r as Map)))
