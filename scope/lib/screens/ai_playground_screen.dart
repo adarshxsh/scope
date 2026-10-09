@@ -130,18 +130,27 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
       ),
     );
 
-    widget.controller.engine.ruleEngine.addReinforcementRule(newRule);
+    final success = widget.controller.engine.ruleEngine.addReinforcementRule(newRule);
 
     setState(() {
       _showCorrectionForm = false;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Reinforcement Rule Learned! Similar messages will now be classified as $_selectedPriority ($_selectedCategory).'),
-        backgroundColor: AppColors.seed,
-      ),
-    );
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Reinforcement Rule Learned! Similar messages will now be classified as $_selectedPriority ($_selectedCategory).'),
+          backgroundColor: AppColors.seed,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to learn rule: Schema validation failed or capacity limit (50 rules) reached.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
