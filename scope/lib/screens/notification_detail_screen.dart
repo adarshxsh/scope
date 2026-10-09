@@ -3,6 +3,7 @@ import 'package:scope/core/analysis/extracted_features.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/state/notification_controller.dart';
 import 'package:scope/core/utils/smart_actions.dart';
+import 'package:scope/core/utils/url_launcher_utils.dart';
 import 'package:scope/theme/app_colors.dart';
 import 'package:scope/theme/app_spacing.dart';
 import 'package:scope/widgets/ai_reason_widget.dart';
@@ -173,7 +174,65 @@ class NotificationDetailScreen extends StatelessWidget {
     );
   }
 
-  void _handleAction(BuildContext context, SmartAction action) {
+  Future<void> _handleAction(BuildContext context, SmartAction action) async {
+    final features = notification.extractedFeatures != null
+        ? ExtractedFeatures.fromMap(notification.extractedFeatures!)
+        : const ExtractedFeatures();
+
+    final isUrlAction = action.type == SmartActionType.openUrl ||
+        action.type == SmartActionType.pay ||
+        action.type == SmartActionType.join ||
+        action.type == SmartActionType.download ||
+        action.type == SmartActionType.viewStatement ||
+        action.targetUrl != null;
+
+    if (isUrlAction) {
+      final candidateUrl = action.targetUrl ??
+          (features.urls.isNotEmpty ? features.urls.first : null);
+
+      if (candidateUrl == null || candidateUrl.trim().isEmpty) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No URL available to open.'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+        return;
+      }
+
+      final result = await UrlLauncherUtils.launchUrlSafely(candidateUrl);
+
+      if (!context.mounted) return;
+
+      if (result.success) {
+        controller.recordAction();
+        controller.complete(notification.id);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Opening ${action.label}...'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        if (Navigator.canPop(context)) {
+          Navigator.pop(context);
+        }
+      } else {
+        final message = result.isUnsafeScheme
+            ? 'Safety Warning: Blocked unsafe URL scheme in "$candidateUrl"'
+            : (result.errorMessage ?? 'Failed to launch URL.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            duration: const Duration(seconds: 3),
+            backgroundColor: result.isUnsafeScheme ? Colors.red.shade800 : null,
+          ),
+        );
+      }
+      return;
+    }
+
     bool shouldPop = false;
     switch (action.type) {
       case SmartActionType.archive:
@@ -205,22 +264,13 @@ class NotificationDetailScreen extends StatelessWidget {
         shouldPop = true;
         break;
     }
-    
-    if (context.mounted) {
-      final isGeneric = action.type == SmartActionType.archive || 
-                        action.type == SmartActionType.complete ||
-                        action.type == SmartActionType.addCalendar ||
-                        action.type == SmartActionType.remind ||
-                        action.type == SmartActionType.track;
-      
-      final msg = isGeneric 
-          ? '${action.label} recorded'
-          : 'Opening App for: ${action.label}...';
 
+    if (context.mounted) {
+      final msg = '${action.label} recorded';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(msg), duration: const Duration(seconds: 2)),
       );
-      
+
       if (shouldPop && Navigator.canPop(context)) {
         Navigator.pop(context);
       }
