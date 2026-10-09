@@ -238,6 +238,14 @@ class PolicyEngine {
     required AppNotification notification,
     double? lookAgainScore,
   }) {
+    // Custom user feedback rules take top precedence over default rules
+    for (final signal in fusedResult.matchedSignals) {
+      if (signal.startsWith('rlhf_rule:')) {
+        final parts = signal.split(':');
+        if (parts.length >= 2) return parts[1];
+      }
+    }
+
     // Step 1: Start from the score-based priority (tightened thresholds)
     String priority = _fromLookAgainScore(lookAgainScore);
 
