@@ -7,6 +7,7 @@ import 'package:scope/core/analysis/score_fusion.dart';
 import 'package:scope/core/analysis/explanation_generator.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
+import 'package:scope/core/utils/privacy_logger.dart';
 
 /// The central hub of Ghost AI coordinating all classification stages.
 class GhostAnalysisEngine {
@@ -26,14 +27,12 @@ class GhostAnalysisEngine {
       ruleEngine.compile(jsonStr);
       await ruleEngine.loadCustomRules();
     } catch (e) {
-      // ignore: avoid_print
-      print('GhostAnalysisEngine failed to load rules asset: $e');
+      PrivacyLogger.log('GhostAnalysisEngine failed to load rules asset: $e');
     }
     try {
       await GhostAI.instance.initialize();
     } catch (e) {
-      // ignore: avoid_print
-      print('GhostAnalysisEngine failed to initialize GhostAI: $e');
+      PrivacyLogger.log('GhostAnalysisEngine failed to initialize GhostAI: $e');
     }
   }
 

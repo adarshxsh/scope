@@ -2,7 +2,6 @@ package com.scope.attentions
 
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
-import android.util.Log
 import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
@@ -122,9 +121,9 @@ class NotificationCollectorService : NotificationListenerService() {
             )
 
             addNotification(data, now)
-            Log.d(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
+            PrivacyLogger.d(TAG, "Captured: ${data.packageName} - ${data.title}")
         } catch (e: Exception) {
-            Log.e(TAG, "Error capturing/adding notification", e)
+            PrivacyLogger.e(TAG, "Error capturing/adding notification", e)
         }
     }
 
@@ -136,28 +135,27 @@ class NotificationCollectorService : NotificationListenerService() {
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         if (sbn == null) return
         // Log for now; future phases may track dismissed notifications
-        val removedTitle = sbn.notification.extras?.getCharSequence("android.title")?.toString()
-        Log.d(TAG, "Removed: ${sbn.packageName} - ${NotificationRedactor.redactTitle(removedTitle)}")
+        PrivacyLogger.d(TAG, "Removed: ${sbn.packageName} - ${sbn.notification.extras?.getCharSequence("android.title")}")
     }
 
     override fun onListenerConnected() {
         super.onListenerConnected()
-        Log.i(TAG, "NotificationCollectorService connected")
+        PrivacyLogger.i(TAG, "NotificationCollectorService connected")
         try {
             val activeNotifs = activeNotifications
             if (activeNotifs != null) {
-                Log.d(TAG, "Syncing ${activeNotifs.size} existing notifications from panel")
+                PrivacyLogger.d(TAG, "Syncing ${activeNotifs.size} existing notifications from panel")
                 for (sbn in activeNotifs) {
                     addSbnToQueue(sbn)
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error fetching active notifications on connect", e)
+            PrivacyLogger.e(TAG, "Error fetching active notifications on connect", e)
         }
     }
 
     override fun onListenerDisconnected() {
         super.onListenerDisconnected()
-        Log.w(TAG, "NotificationCollectorService disconnected")
+        PrivacyLogger.w(TAG, "NotificationCollectorService disconnected")
     }
 }
