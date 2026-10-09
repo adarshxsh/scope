@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import tensorflow as tf
 
-from training.config import FEATURE_VECTOR_SIZE
+from training.config import CONTINUOUS_FEATURE_INDICES, FEATURE_VECTOR_SIZE
 
 
 @tf.keras.utils.register_keras_serializable(package="attentionos")
@@ -60,11 +60,27 @@ def build_baseline_mlp(
     learning_rate: float,
 ) -> tf.keras.Model:
     inputs = tf.keras.Input(shape=(FEATURE_VECTOR_SIZE,), name="features")
-    
+
+    def log1p_transform_fn(x):
+        cols = []
+        for i in range(FEATURE_VECTOR_SIZE):
+            col = x[:, i : i + 1]
+            if i in CONTINUOUS_FEATURE_INDICES:
+                col = tf.math.log1p(tf.maximum(0.0, col))
+            cols.append(col)
+        return tf.concat(cols, axis=-1)
+
+    x = tf.keras.layers.Lambda(log1p_transform_fn, name="log1p_transform")(inputs)
+
     # In-graph feature normalization using constants
     mean_const = tf.constant(mean, dtype=tf.float32, name="normalization_mean")
     stddev_const = tf.constant(stddev, dtype=tf.float32, name="normalization_stddev")
-    x = (inputs - mean_const) / stddev_const
+    x = tf.keras.layers.Lambda(
+        lambda t: (t - mean_const) / stddev_const, name="normalization"
+    )(x)
+    x = tf.keras.layers.Lambda(
+        lambda t: tf.clip_by_value(t, -5.0, 5.0), name="zscore_clipping"
+    )(x)
 
     x = tf.keras.layers.Dense(128, activation="relu", name="dense_128")(x)
     x = tf.keras.layers.Dropout(0.2, name="dropout_0_2")(x)

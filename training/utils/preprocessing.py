@@ -53,7 +53,7 @@ def build_dataset(records: list[dict[str, Any]]) -> EncodedDataset:
         # 1. Extract or get features
         features_val = record.get("features")
         if features_val is None or not isinstance(features_val, list):
-            features_val = extract_features(record)
+            features_val = extract_features(record, apply_log1p=False)
             
         vector = _validate_features(features_val, sample_id)
         

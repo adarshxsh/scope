@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import re
+import math
 from datetime import datetime, timezone
 from typing import Any
+import numpy as np
+
+from training.config import CONTINUOUS_FEATURE_INDICES
 
 # Regular Expressions
 _wordRegex = re.compile(r"[A-Za-z0-9]+(?:['-][A-Za-z0-9]+)?")
@@ -542,7 +546,25 @@ def as_bool(value: Any) -> bool:
     return normalized in ('true', '1', 'yes')
 
 
-def extract_features(record: dict[str, Any]) -> list[float]:
+def apply_log1p_transform(features: np.ndarray | list[float]) -> np.ndarray | list[float]:
+    """Applies log1p(maximum(0.0, x)) to continuous numerical features."""
+    if isinstance(features, np.ndarray):
+        result = np.copy(features)
+        if result.ndim == 1:
+            for idx in CONTINUOUS_FEATURE_INDICES:
+                result[idx] = float(np.log1p(np.maximum(0.0, result[idx])))
+        else:
+            for idx in CONTINUOUS_FEATURE_INDICES:
+                result[:, idx] = np.log1p(np.maximum(0.0, result[:, idx]))
+        return result
+    else:
+        result = list(features)
+        for idx in CONTINUOUS_FEATURE_INDICES:
+            result[idx] = float(math.log1p(max(0.0, result[idx])))
+        return result
+
+
+def extract_features(record: dict[str, Any], apply_log1p: bool = True) -> list[float]:
     # Extract fields from record
     title = record.get("title") or ""
     body = record.get("body") or ""
@@ -681,4 +703,6 @@ def extract_features(record: dict[str, Any]) -> list[float]:
         float(notification_type_id),
         float(category_id),
     ]
+    if apply_log1p:
+        return apply_log1p_transform(values)  # type: ignore[return-value]
     return values

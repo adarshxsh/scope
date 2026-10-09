@@ -8,6 +8,8 @@ from dataclasses import dataclass
 FEATURE_VECTOR_SIZE = 63
 RANDOM_SEED = 42
 
+CONTINUOUS_FEATURE_INDICES = (0, 1, 2, 5, 6, 49, 50)
+
 CATEGORICAL_LABELS = ("category", "intent", "urgency")
 BINARY_LABELS = (
     "requires_action",
