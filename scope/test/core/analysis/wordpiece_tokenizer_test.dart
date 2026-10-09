@@ -50,5 +50,82 @@ void main() {
       expect(ids[0], equals(2)); // [CLS]
       expect(ids[7], equals(3)); // [SEP]
     });
+
+    group('Validation & Contracts', () {
+      test('throws FormatException when fromLines is missing required special tokens', () {
+        expect(
+          () => WordPieceTokenizer.fromLines(['[PAD]', '[UNK]', '[CLS]']), // missing [SEP]
+          throwsA(isA<FormatException>()),
+        );
+        expect(
+          () => WordPieceTokenizer.fromLines(['[PAD]', '[UNK]', '[SEP]']), // missing [CLS]
+          throwsA(isA<FormatException>()),
+        );
+        expect(
+          () => WordPieceTokenizer.fromLines(['[PAD]', '[CLS]', '[SEP]']), // missing [UNK]
+          throwsA(isA<FormatException>()),
+        );
+        expect(
+          () => WordPieceTokenizer.fromLines(['[UNK]', '[CLS]', '[SEP]']), // missing [PAD]
+          throwsA(isA<FormatException>()),
+        );
+      });
+
+      test('throws FormatException when vocabulary lines are empty', () {
+        expect(
+          () => WordPieceTokenizer.fromLines([]),
+          throwsA(isA<FormatException>()),
+        );
+      });
+
+      test('uses verified vocabulary index for UNK rather than hardcoded index 100', () {
+        final customVocab = {
+          '[PAD]': 0,
+          '[CLS]': 1,
+          '[SEP]': 2,
+          '[UNK]': 5, // Custom index != 100
+        };
+        final customTokenizer = WordPieceTokenizer(customVocab, maxSeqLength: 4);
+        final ids = customTokenizer.tokenize('unknownword');
+        // Expected: [CLS] (1), [UNK] (5 clamped to vocab.length-1=3), [SEP] (2), [PAD] (0)
+        // Wait: customVocab.length is 4, maxIndex is 3, so index 5 gets clamped to 3.
+        // If customVocab has length 10:
+        final customVocab10 = {
+          '[PAD]': 0,
+          '[CLS]': 1,
+          '[SEP]': 2,
+          'a': 3,
+          'b': 4,
+          '[UNK]': 5, // Custom UNK index = 5
+          'c': 6,
+          'd': 7,
+          'e': 8,
+          'f': 9,
+        };
+        final customTokenizer10 = WordPieceTokenizer(customVocab10, maxSeqLength: 4);
+        final ids10 = customTokenizer10.tokenize('unknownword');
+        // Expected tokens: [CLS] (1), [UNK] (5), [SEP] (2), [PAD] (0)
+        expect(ids10[1], equals(5));
+        expect(ids10[1], isNot(equals(100)));
+      });
+
+      test('clamps generated token IDs to satisfy 0 <= id < vocab.length', () {
+        final Map<String, int> vocabWithOutOfBounds = {
+          '[PAD]': 0,
+          '[UNK]': 1,
+          '[CLS]': -5, // Negative out-of-bounds ID
+          '[SEP]': 99, // Upper out-of-bounds ID (length is 5)
+          'word': 2,
+        };
+        final customTokenizer = WordPieceTokenizer(vocabWithOutOfBounds, maxSeqLength: 4);
+        final ids = customTokenizer.tokenize('word');
+
+        // vocab length is 5. Valid IDs are 0..4.
+        for (final id in ids) {
+          expect(id, greaterThanOrEqualTo(0));
+          expect(id, lessThan(vocabWithOutOfBounds.length));
+        }
+      });
+    });
   });
 }

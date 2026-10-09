@@ -11,12 +11,14 @@ class LiteRtClassifier implements NotificationAnalyzer {
   Interpreter? _interpreter;
   WordPieceTokenizer? _tokenizer;
   bool _isModelLoaded = false;
+  bool _hasAttemptedInit = false;
 
   LiteRtClassifier() {
     _initialize();
   }
 
   Future<void> _initialize() async {
+    _hasAttemptedInit = true;
     try {
       // 1. Load Vocab
       final vocabStr = await rootBundle.loadString('assets/vocab.txt');
@@ -30,14 +32,7 @@ class LiteRtClassifier implements NotificationAnalyzer {
       // ignore: avoid_print
       print('LiteRtClassifier failed to initialize: $e');
       _isModelLoaded = false;
-
-      // Ensure tokenizer is loaded even if interpreter fails (so we can test tokenization in fallback)
-      if (_tokenizer == null) {
-        try {
-          final vocabStr = await rootBundle.loadString('assets/vocab.txt');
-          _tokenizer = WordPieceTokenizer.fromLines(vocabStr.split('\n'));
-        } catch (_) {}
-      }
+      _tokenizer = null;
     }
   }
 
@@ -50,7 +45,7 @@ class LiteRtClassifier implements NotificationAnalyzer {
     final combinedText = '${notification.title} ${notification.content}';
 
     // Ensure initialization finished
-    if (_tokenizer == null) {
+    if (_tokenizer == null && !_hasAttemptedInit) {
       await _initialize();
     }
 
