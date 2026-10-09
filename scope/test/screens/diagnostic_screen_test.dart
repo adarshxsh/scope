@@ -6,7 +6,7 @@ import 'package:scope/core/models/notification_model.dart';
 
 class FakeGhostAnalysisEngine extends GhostAnalysisEngine {
   @override
-  Future<void> initialize() async {} // No-op, do not load assets in test
+  Future<void> initialize({AssetBundle? bundle}) async {} // No-op, do not load assets in test
 
   @override
   Future<AppNotification> analyze(AppNotification notification) async {
@@ -102,7 +102,9 @@ void main() {
       await tester.enterText(packageFieldFinder, 'com.whatsapp');
 
       // Click analyze
-      await tester.tap(find.text('ANALYZE NOTIFICATION'));
+      final analyzeBtn = find.text('ANALYZE NOTIFICATION');
+      await tester.ensureVisible(analyzeBtn);
+      await tester.tap(analyzeBtn);
       await tester.pumpAndSettle();
 
       // Verify result dashboard cards appear

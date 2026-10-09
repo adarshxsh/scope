@@ -9,7 +9,7 @@ import 'package:scope/core/models/notification_model.dart';
 
 class FakeGhostAnalysisEngine extends GhostAnalysisEngine {
   @override
-  Future<void> initialize() async {} // No-op, do not load assets in test
+  Future<void> initialize({AssetBundle? bundle}) async {} // No-op, do not load assets in test
 
   @override
   Future<AppNotification> analyze(AppNotification notification) async {
