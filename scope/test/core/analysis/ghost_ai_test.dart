@@ -233,5 +233,49 @@ void main() {
         expect(result.reviewScore, isPositive); // Not overridden
       });
     });
+
+    group('Dynamic Tensor Adapter Tests', () {
+      tearDown(() {
+        GhostAI.instance.setInterpreter(null);
+      });
+
+      test('adaptVector zero-pads short feature vectors', () {
+        final shortVector = [1.0, 2.0, 3.0];
+        final adapted = GhostAI.adaptVector(shortVector, 6);
+        expect(adapted.length, equals(6));
+        expect(adapted, equals([1.0, 2.0, 3.0, 0.0, 0.0, 0.0]));
+      });
+
+      test('adaptVector truncates long feature vectors', () {
+        final longVector = [1.0, 2.0, 3.0, 4.0, 5.0];
+        final adapted = GhostAI.adaptVector(longVector, 3);
+        expect(adapted.length, equals(3));
+        expect(adapted, equals([1.0, 2.0, 3.0]));
+      });
+
+      test('GhostAI evaluates non-63 feature vectors without runtime exceptions', () async {
+        final notif = AppNotification(
+          id: 'test-non-63',
+          packageName: 'com.example.news',
+          title: 'Daily Digest',
+          content: 'Here are your top headlines for today.',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        // Standard predict (default 63 features)
+        final defaultResult = await GhostAI.predict(notif);
+        expect(defaultResult.featureVector.length, equals(63));
+
+        // Test adapting feature vector manually or via GhostAI.adaptVector for 80 features and 40 features
+        final paddedVector = GhostAI.adaptVector(defaultResult.featureVector, 80);
+        expect(paddedVector.length, equals(80));
+        expect(paddedVector.take(63).toList(), equals(defaultResult.featureVector));
+        expect(paddedVector.skip(63).every((v) => v == 0.0), isTrue);
+
+        final truncatedVector = GhostAI.adaptVector(defaultResult.featureVector, 40);
+        expect(truncatedVector.length, equals(40));
+        expect(truncatedVector, equals(defaultResult.featureVector.take(40).toList()));
+      });
+    });
   });
 }
