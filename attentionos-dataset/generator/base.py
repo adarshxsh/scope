@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+import ipaddress
 import json
+import os
 import random
 import re
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Iterable
-from urllib import request
+from urllib import parse, request
 from urllib.error import URLError
 
 from faker import Faker
@@ -16,6 +18,39 @@ from jinja2 import Template
 from policy.scoring import score_notification
 from validator.duplicate import text_fingerprint
 from validator.schema import validate_record
+
+
+def _is_loopback(hostname: str) -> bool:
+    if not hostname:
+        return False
+    hostname_lower = hostname.lower()
+    if hostname_lower == "localhost":
+        return True
+    try:
+        ip = ipaddress.ip_address(hostname_lower)
+        return ip.is_loopback
+    except ValueError:
+        return False
+
+
+def validate_ollama_endpoint(url: str) -> str:
+    if not url or not url.strip():
+        raise ValueError("Ollama endpoint URL cannot be empty")
+    url_str = url.strip()
+    if not url_str.startswith(("http://", "https://")):
+        url_str = f"http://{url_str}"
+    parsed = parse.urlparse(url_str)
+    scheme = (parsed.scheme or "").lower()
+    if scheme not in ("http", "https"):
+        raise ValueError(f"Invalid URL scheme '{scheme}'. Only HTTP and HTTPS are allowed.")
+    hostname = parsed.hostname
+    if not hostname:
+        raise ValueError(f"Invalid Ollama endpoint URL '{url}': unable to parse hostname.")
+    if scheme == "http" and not _is_loopback(hostname):
+        raise ValueError(
+            f"Cleartext HTTP endpoint '{url}' rejected. Cleartext HTTP is restricted to local loopback addresses (localhost/127.0.0.1)."
+        )
+    return url_str
 
 
 @dataclass(frozen=True)
@@ -159,13 +194,28 @@ SCENARIOS: tuple[Scenario, ...] = (
 
 
 class NotificationDatasetGenerator:
-    def __init__(self, seed: int = 42, use_ollama: bool = False, ollama_model: str = "gemma3:9b") -> None:
+    def __init__(
+        self,
+        seed: int = 42,
+        use_ollama: bool = False,
+        ollama_model: str = "gemma3:9b",
+        ollama_base_url: str | None = None,
+    ) -> None:
         self.seed = seed
         self.random = random.Random(seed)
         self.fake = Faker("en_IN")
         Faker.seed(seed)
         self.use_ollama = use_ollama
         self.ollama_model = ollama_model
+        raw_url = (
+            ollama_base_url
+            or os.environ.get("OLLAMA_BASE_URL")
+            or os.environ.get("OLLAMA_HOST")
+            or "http://localhost:11434"
+        )
+        self.ollama_base_url = raw_url
+        if self.use_ollama:
+            self.ollama_base_url = validate_ollama_endpoint(raw_url)
         self.base_time = datetime(2026, 6, 26, 9, 0, 0, tzinfo=timezone.utc)
         self._weighted_scenarios = [scenario for scenario in SCENARIOS for _ in range(scenario.weight)]
         self._seen_text: set[str] = set()
@@ -278,6 +328,7 @@ class NotificationDatasetGenerator:
         return self._clip(title, 50), self._clip(body, 140)
 
     def _ollama_notification(self, scenario: Scenario, ctx: dict[str, Any]) -> tuple[str, str] | None:
+        endpoint = validate_ollama_endpoint(self.ollama_base_url)
         prompt = (
             "Return only JSON with exactly title and body. "
             "Make a realistic Android notification. "
@@ -286,8 +337,12 @@ class NotificationDatasetGenerator:
             "No real personal data."
         )
         payload = json.dumps({"model": self.ollama_model, "prompt": prompt, "stream": False}).encode("utf-8")
+        if endpoint.endswith("/api/generate"):
+            generate_url = endpoint
+        else:
+            generate_url = endpoint.rstrip("/") + "/api/generate"
         try:
-            req = request.Request("http://localhost:11434/api/generate", data=payload, headers={"Content-Type": "application/json"})
+            req = request.Request(generate_url, data=payload, headers={"Content-Type": "application/json"})
             with request.urlopen(req, timeout=20) as response:
                 raw = json.loads(response.read().decode("utf-8")).get("response", "{}")
         except (URLError, TimeoutError, json.JSONDecodeError):
@@ -302,6 +357,8 @@ class NotificationDatasetGenerator:
         title = str(parsed.get("title", "")).strip()
         body = str(parsed.get("body", "")).strip()
         if not title or not body:
+            return None
+        if "[System]" in title or "[System]" in body or "Prompt override" in title or "Prompt override" in body:
             return None
         return self._clip(title, 50), self._clip(body, 140)
 
