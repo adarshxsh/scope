@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scope/core/state/notification_controller.dart';
 import 'package:scope/screens/main_shell.dart';
 import 'package:scope/theme/app_theme.dart';
+import 'package:scope/widgets/primitives/scope_error_boundary.dart';
 
 void main() {
   runApp(
@@ -41,7 +42,9 @@ class _AttentionOSAppState extends State<AttentionOSApp> {
       title: 'Scope',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
-      home: MainShell(controller: _controller),
+      home: ScopeErrorBoundary(
+        child: MainShell(controller: _controller),
+      ),
     );
   }
 }
