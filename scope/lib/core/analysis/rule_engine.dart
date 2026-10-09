@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:scope/core/analysis/custom_rule_validator.dart';
 import 'package:scope/core/models/notification_model.dart';
@@ -142,7 +143,7 @@ class RuleEngine {
           list = json.decode(content) as List<dynamic>;
         } on FormatException catch (e) {
           // Recover from corrupted JSON by resetting file to empty array
-          print('Corrupted rlhf_rules.json format, resetting state: $e');
+          debugPrint('Corrupted rlhf_rules.json format, resetting state: $e');
           await _resetCustomRulesFile(file);
           _customRules = [];
           return;
@@ -161,8 +162,7 @@ class RuleEngine {
         await _saveCustomRules();
       }
     } catch (e) {
-      // ignore: avoid_print
-      print('Failed to load custom RLHF rules: $e');
+      debugPrint('Failed to load custom RLHF rules: $e');
     }
   }
 
@@ -183,8 +183,7 @@ class RuleEngine {
       final file = File('${dir.path}/rlhf_rules.json');
       await file.writeAsString(json.encode(list));
     } catch (e) {
-      // ignore: avoid_print
-      print('Failed to save custom RLHF rules: $e');
+      debugPrint('Failed to save custom RLHF rules: $e');
     }
   }
 
