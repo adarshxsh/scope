@@ -1,8 +1,11 @@
 package com.scope.attentions
 
+import android.os.Handler
+import android.os.Looper
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
+import io.flutter.plugin.common.EventChannel
 import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
@@ -36,6 +39,27 @@ class NotificationCollectorService : NotificationListenerService() {
 
         /** Counter for generating simple unique IDs within a session. */
         private var idCounter = 0L
+
+        /** EventSink for broadcasting notification signals to Flutter over EventChannel. */
+        private var eventSink: EventChannel.EventSink? = null
+
+        /** Main thread handler for dispatching EventChannel callbacks safely. */
+        private val mainHandler = Handler(Looper.getMainLooper())
+
+        fun setEventSink(sink: EventChannel.EventSink?) {
+            eventSink = sink
+        }
+
+        private fun notifyEvent() {
+            val sink = eventSink ?: return
+            mainHandler.post {
+                try {
+                    sink.success(mapOf("event" to "notification_posted"))
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error emitting event over EventChannel", e)
+                }
+            }
+        }
 
         /**
          * Removes entries older than [MAX_AGE_MS] from the queue.
@@ -123,6 +147,7 @@ class NotificationCollectorService : NotificationListenerService() {
 
             addNotification(data, now)
             Log.d(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
+            notifyEvent()
         } catch (e: Exception) {
             Log.e(TAG, "Error capturing/adding notification", e)
         }

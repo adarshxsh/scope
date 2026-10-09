@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/services.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
@@ -127,6 +128,28 @@ void main() {
         });
         // Should complete without throwing
         await bridge.openNotificationSettings();
+      });
+    });
+
+    group('notificationStream', () {
+      test('emits stream events when custom notificationStream is provided', () async {
+        final controller = StreamController<dynamic>();
+        final customBridge = NotificationBridge(
+          channel: channel,
+          notificationStream: controller.stream,
+        );
+
+        expect(
+          customBridge.notificationStream,
+          emitsInOrder([
+            {'event': 'notification_posted'},
+            {'event': 'notification_posted'},
+          ]),
+        );
+
+        controller.add({'event': 'notification_posted'});
+        controller.add({'event': 'notification_posted'});
+        await controller.close();
       });
     });
   });

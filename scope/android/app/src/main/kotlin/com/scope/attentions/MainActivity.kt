@@ -2,6 +2,7 @@ package com.scope.attentions
 
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import android.content.ComponentName
 import android.content.Intent
@@ -15,11 +16,15 @@ import android.provider.Settings
  *   - Pull captured notifications from [NotificationCollectorService]
  *   - Check if the notification listener permission is granted
  *   - Open the system notification listener settings
+ *
+ * Also registers an EventChannel ("com.scope.notifications/stream") to stream
+ * notification event signals on demand.
  */
 class MainActivity : FlutterActivity() {
 
     companion object {
         private const val CHANNEL = "com.scope.notifications"
+        private const val EVENT_CHANNEL = "com.scope.notifications/stream"
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -47,6 +52,17 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+
+        EventChannel(flutterEngine.dartExecutor.binaryMessenger, EVENT_CHANNEL)
+            .setStreamHandler(object : EventChannel.StreamHandler {
+                override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+                    NotificationCollectorService.setEventSink(events)
+                }
+
+                override fun onCancel(arguments: Any?) {
+                    NotificationCollectorService.setEventSink(null)
+                }
+            })
     }
 
     /**

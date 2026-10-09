@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
@@ -37,7 +37,7 @@ enum FocusFilterType {
 }
 
 /// Central state for notifications, user actions, and review sessions.
-class NotificationController extends ChangeNotifier {
+class NotificationController extends ChangeNotifier with WidgetsBindingObserver {
   NotificationController({
     NotificationBridge? bridge,
     NotificationStorage? storage,
@@ -67,9 +67,12 @@ class NotificationController extends ChangeNotifier {
   List<AppNotification> _notifications = [];
   bool _isListenerEnabled = false;
   bool _isLoading = true;
-  Timer? _pollTimer;
+  StreamSubscription<dynamic>? _notificationStreamSubscription;
+  Timer? _safetySyncTimer;
   Timer? _cleanupTimer;
   bool _isCleaningUp = false;
+  bool _isPaused = false;
+  bool _isObserverRegistered = false;
 
   ReviewSessionStats sessionStats = ReviewSessionStats();
 
@@ -288,17 +291,62 @@ class NotificationController extends ChangeNotifier {
     return null;
   }
 
-  void startPolling() {
-    _pollTimer?.cancel();
+  void startListening() {
+    stopListening();
+
+    if (!_isObserverRegistered) {
+      WidgetsBinding.instance.addObserver(this);
+      _isObserverRegistered = true;
+    }
+
     _checkPermissionAndFetch();
-    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      fetchNotifications();
+
+    _notificationStreamSubscription = _bridge.notificationStream.listen(
+      (_) {
+        if (!_isPaused) {
+          fetchNotifications();
+        }
+      },
+      onError: (error) {
+        // Silently handle stream error
+      },
+    );
+
+    // Low-frequency periodic safety sync (every 5 minutes)
+    _safetySyncTimer = Timer.periodic(const Duration(minutes: 5), (_) {
+      if (!_isPaused) {
+        fetchNotifications();
+      }
     });
   }
 
-  void stopPolling() {
-    _pollTimer?.cancel();
-    _pollTimer = null;
+  void stopListening() {
+    if (_isObserverRegistered) {
+      WidgetsBinding.instance.removeObserver(this);
+      _isObserverRegistered = false;
+    }
+    _notificationStreamSubscription?.cancel();
+    _notificationStreamSubscription = null;
+    _safetySyncTimer?.cancel();
+    _safetySyncTimer = null;
+  }
+
+  void startPolling() => startListening();
+
+  void stopPolling() => stopListening();
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
+      _isPaused = true;
+      _notificationStreamSubscription?.pause();
+    } else if (state == AppLifecycleState.resumed) {
+      _isPaused = false;
+      if (_notificationStreamSubscription?.isPaused ?? false) {
+        _notificationStreamSubscription?.resume();
+      }
+      _checkPermissionAndFetch();
+    }
   }
 
   bool _isDisposed = false;
@@ -306,7 +354,7 @@ class NotificationController extends ChangeNotifier {
   @override
   void dispose() {
     _isDisposed = true;
-    stopPolling();
+    stopListening();
     _cleanupTimer?.cancel();
     super.dispose();
   }
