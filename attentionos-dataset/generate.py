@@ -7,6 +7,7 @@ from pathlib import Path
 
 from export.csv import write_csv
 from export.jsonl import write_jsonl
+from export.sanitizer import PrivacySanitizer
 from generator import NotificationDatasetGenerator
 from validator.statistics import summarize
 
@@ -23,6 +24,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--ollama", action="store_true", help="Optionally call local Ollama for a small share of text variants.")
     parser.add_argument("--ollama-model", default="gemma3:9b", help="Local Ollama model name.")
     parser.add_argument("--stats", action="store_true", help="Write summary statistics next to the dataset.")
+    parser.add_argument("--sanitize", action=argparse.BooleanOptionalAction, default=True, help="Toggle post-processing privacy sanitization.")
+    parser.add_argument("--perturbation-bound", type=float, default=0.1, help="Configure maximum feature perturbation bound (e.g. 0.1 for 10%%).")
     return parser.parse_args()
 
 
@@ -43,6 +46,13 @@ def main() -> None:
         ollama_model=args.ollama_model,
     )
     records = generator.generate(args.count)
+
+    sanitizer = PrivacySanitizer(
+        enabled=args.sanitize,
+        perturbation_bound=args.perturbation_bound,
+        seed=args.seed,
+    )
+    records = sanitizer.sanitize_stream(records)
 
     if args.stats:
         records, stats_records = tee(records)
