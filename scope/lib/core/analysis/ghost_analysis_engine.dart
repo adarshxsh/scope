@@ -5,6 +5,7 @@ import 'package:scope/core/analysis/policy_engine.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/analysis/score_fusion.dart';
 import 'package:scope/core/analysis/explanation_generator.dart';
+import 'package:scope/core/guardrails/ingestion_guardrails.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
 
@@ -12,12 +13,15 @@ import 'package:scope/core/analysis/ghost_ai.dart';
 class GhostAnalysisEngine {
   final RuleEngine ruleEngine;
   final LiteRtClassifier mlClassifier;
+  final IngestionGuardrailService guardrailService;
 
   GhostAnalysisEngine({
     RuleEngine? ruleEngine,
     LiteRtClassifier? mlClassifier,
+    IngestionGuardrailService? guardrailService,
   })  : ruleEngine = ruleEngine ?? RuleEngine(),
-        mlClassifier = mlClassifier ?? LiteRtClassifier();
+        mlClassifier = mlClassifier ?? LiteRtClassifier(),
+        guardrailService = guardrailService ?? IngestionGuardrailService();
 
   /// Compiles rules loaded from assets on engine startup.
   Future<void> initialize() async {
@@ -28,6 +32,12 @@ class GhostAnalysisEngine {
     } catch (e) {
       // ignore: avoid_print
       print('GhostAnalysisEngine failed to load rules asset: $e');
+    }
+    try {
+      final policyJson = await rootBundle.loadString('assets/ingestion_policy.json');
+      guardrailService.updatePolicy(IngestionPolicy.fromJson(policyJson));
+    } catch (_) {
+      // Keep default ingestion policy on error
     }
     try {
       await GhostAI.instance.initialize();
@@ -42,10 +52,26 @@ class GhostAnalysisEngine {
   Future<AppNotification> analyze(AppNotification notification) async {
     final stopwatch = Stopwatch()..start();
 
-    // 0. Filter out progress/download/sync status notifications to prevent unnecessary analysis
-    if (_isStatusOrProgressNotification(notification)) {
+    // 0. Pre-ingestion guardrail evaluation & string truncation
+    final guardrailResult = guardrailService.evaluate(notification);
+    if (!guardrailResult.isAllowed) {
       stopwatch.stop();
       return notification.copyWith(
+        priority: 'low',
+        priorityScore: 0.0,
+        classifiedCategory: 'system_status',
+        explanation: 'Notification blocked by ingestion guardrails (${guardrailResult.dropReason ?? 'unknown'}).',
+        latencyMs: stopwatch.elapsedMilliseconds,
+        engineVersion: '2.0.0-hybrid',
+      );
+    }
+
+    final targetNotif = guardrailResult.sanitizedNotification;
+
+    // Filter out progress/download/sync status notifications to prevent unnecessary analysis
+    if (_isStatusOrProgressNotification(targetNotif)) {
+      stopwatch.stop();
+      return targetNotif.copyWith(
         priority: 'low',
         priorityScore: 0.0,
         classifiedCategory: 'system_status',
@@ -57,15 +83,15 @@ class GhostAnalysisEngine {
 
     // 1. Structured Feature Extraction
     final features = FeatureExtractor.extract(
-      title: notification.title,
-      content: notification.content,
+      title: targetNotif.title,
+      content: targetNotif.content,
     );
 
     // 2. Rule Engine matching
-    final ruleMatch = ruleEngine.match(notification);
+    final ruleMatch = ruleEngine.match(targetNotif);
 
     // 3. LiteRT Classification Category Inference
-    final mlResult = await mlClassifier.analyze(notification);
+    final mlResult = await mlClassifier.analyze(targetNotif);
 
     // 4. Score Fusion (hybrid conflict resolution or critical bypass triggers)
     final fusedResult = ScoreFusion.fuse(
@@ -74,13 +100,13 @@ class GhostAnalysisEngine {
     );
 
     // Run unified look-again MLP model prediction
-    final ghostResult = await GhostAI.predict(notification);
+    final ghostResult = await GhostAI.predict(targetNotif);
 
     // 5. Policy Engine (category + feature to priority levels resolution)
     final priority = PolicyEngine.resolvePriority(
       fusedResult: fusedResult,
       features: features,
-      notification: notification,
+      notification: targetNotif,
       lookAgainScore: ghostResult.reviewScore,
     );
 
@@ -93,7 +119,7 @@ class GhostAnalysisEngine {
 
     stopwatch.stop();
 
-    return notification.copyWith(
+    return targetNotif.copyWith(
       priority: priority,
       priorityScore: ghostResult.reviewScore,
       classifiedCategory: fusedResult.category,

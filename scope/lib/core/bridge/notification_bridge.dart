@@ -75,4 +75,21 @@ class NotificationBridge {
       // Not on Android — nothing to do
     }
   }
+
+  /// Synchronizes ingestion guardrail policy settings to native Android collector.
+  Future<bool> syncIngestionPolicy(Map<String, dynamic> policy) async {
+    try {
+      final result = await _channel.invokeMethod<bool>(
+        'syncIngestionPolicy',
+        policy,
+      );
+      return result ?? false;
+    } on PlatformException catch (e) {
+      // ignore: avoid_print
+      print('NotificationBridge.syncIngestionPolicy failed: ${e.message}');
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
 }

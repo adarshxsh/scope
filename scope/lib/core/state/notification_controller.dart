@@ -391,20 +391,25 @@ class NotificationController extends ChangeNotifier {
         // Ignore ongoing background/system notifications (e.g. charging, media playback)
         if (raw.isOngoing) continue;
 
+        final guardrailResult = _engine.guardrailService.evaluate(raw);
+        if (!guardrailResult.isAllowed) continue;
+
+        final sanitized = guardrailResult.sanitizedNotification;
+
         final isDuplicate = _notifications.any((n) =>
-            n.packageName == raw.packageName &&
-            n.timestamp == raw.timestamp &&
-            n.title == raw.title &&
-            n.content == raw.content);
+            n.packageName == sanitized.packageName &&
+            n.timestamp == sanitized.timestamp &&
+            n.title == sanitized.title &&
+            n.content == sanitized.content);
 
         if (!isDuplicate) {
           final inBatch = analyzed.any((n) =>
-              n.packageName == raw.packageName &&
-              n.timestamp == raw.timestamp &&
-              n.title == raw.title &&
-              n.content == raw.content);
+              n.packageName == sanitized.packageName &&
+              n.timestamp == sanitized.timestamp &&
+              n.title == sanitized.title &&
+              n.content == sanitized.content);
           if (!inBatch) {
-            analyzed.add(await _engine.analyze(raw));
+            analyzed.add(await _engine.analyze(sanitized));
           }
         }
       }
