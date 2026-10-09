@@ -5,18 +5,72 @@ import 'package:scope/database/tables.dart';
 
 part 'daos.g.dart';
 
-@DriftAccessor(tables: [NotificationsTable])
+@DriftAccessor(tables: [NotificationsTable, ReviewQueueTable])
 class NotificationDao extends DatabaseAccessor<AttentionDatabase> with _$NotificationDaoMixin {
-  NotificationDao(super.db);
+  int maxCapacity;
 
-  Future<void> insertNotification(NotificationEntry entry) async {
-    await into(notificationsTable).insert(entry, mode: InsertMode.insertOrReplace);
+  NotificationDao(super.db, {this.maxCapacity = 5000});
+
+  Future<void> insertNotification(NotificationEntry entry, {int? limit}) async {
+    if (entry.id.trim().isEmpty) return;
+    final cap = limit ?? maxCapacity;
+    try {
+      await transaction(() async {
+        await into(notificationsTable).insert(entry, mode: InsertMode.insertOrReplace);
+        await _pruneToCapacity(cap);
+      });
+    } catch (e) {
+      // Catch and absorb database exceptions during atomic insertion/pruning
+    }
   }
 
-  Future<void> insertAll(List<NotificationEntry> entries) async {
-    await batch((b) {
-      b.insertAll(notificationsTable, entries, mode: InsertMode.insertOrReplace);
-    });
+  Future<void> insertAll(List<NotificationEntry> entries, {int? limit}) async {
+    final validEntries = entries.where((e) => e.id.trim().isNotEmpty).toList();
+    if (validEntries.isEmpty) return;
+    final cap = limit ?? maxCapacity;
+    try {
+      await transaction(() async {
+        await batch((b) {
+          b.insertAll(notificationsTable, validEntries, mode: InsertMode.insertOrReplace);
+        });
+        await _pruneToCapacity(cap);
+      });
+    } catch (e) {
+      // Catch and absorb database exceptions during atomic insertion/pruning
+    }
+  }
+
+  Future<void> _pruneToCapacity(int capacity) async {
+    if (capacity <= 0) return;
+    final currentCount = await getCount();
+    if (currentCount > capacity) {
+      final excess = currentCount - capacity;
+
+      final subquery = selectOnly(notificationsTable)
+        ..addColumns([notificationsTable.id])
+        ..orderBy([
+          OrderingTerm(
+            expression: CustomExpression<int>(
+              "CASE WHEN state = 'ACTIVE' THEN 1 ELSE 0 END",
+            ),
+            mode: OrderingMode.asc,
+          ),
+          OrderingTerm(
+            expression: notificationsTable.timestamp,
+            mode: OrderingMode.asc,
+          ),
+        ])
+        ..limit(excess);
+
+      await (delete(notificationsTable)..where((t) => t.id.isInQuery(subquery))).go();
+
+      final orphanedQuery = delete(attachedDatabase.reviewQueueTable)..where((t) {
+        final hasNotification = selectOnly(notificationsTable)
+          ..addColumns([notificationsTable.id]);
+        return t.notificationId.isNotInQuery(hasNotification);
+      });
+      await orphanedQuery.go();
+    }
   }
 
   Future<NotificationEntry?> getById(String id) {
