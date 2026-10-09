@@ -14,6 +14,14 @@ class NotificationCollectorServiceTest {
     }
 
     @Test
+    fun testDefaultCapacityAndMaxCapacityProperty() {
+        assertEquals(100, NotificationCollectorService.DEFAULT_MAX_CAPACITY)
+        assertEquals(100, NotificationCollectorService.MAX_QUEUE_SIZE)
+        assertEquals(100, NotificationCollectorService.maxCapacity)
+        assertEquals(0, NotificationCollectorService.queueSize())
+    }
+
+    @Test
     fun testQueueCapacityLimit() {
         val now = 1_000_000_000L
 
@@ -79,7 +87,7 @@ class NotificationCollectorServiceTest {
         // Since pruneExpired runs on addNotification, adding an expired item relative to baseTime should not remain
         assertEquals(0, NotificationCollectorService.queueSize())
 
-        // Manually place old item with older timestamp and add fresh item
+        // Add fresh item
         val freshData = NotificationData(
             id = "fresh_1",
             packageName = "com.app.fresh",
