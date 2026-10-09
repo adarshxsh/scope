@@ -151,6 +151,30 @@ void main() {
       );
       expect(values[FeatureVector.featureNames.indexOf('person_present')], 1.0);
     });
+
+    test('supports dynamic dimensions and padding/truncation', () {
+      final shortVec = FeatureVector(List<double>.filled(10, 1.0));
+      expect(shortVec.length, equals(10));
+
+      final padded = shortVec.padOrTruncate(20);
+      expect(padded.length, equals(20));
+      expect(padded.values.sublist(0, 10), equals(List<double>.filled(10, 1.0)));
+      expect(padded.values.sublist(10), equals(List<double>.filled(10, 0.0)));
+
+      final longVec = FeatureVector(List<double>.filled(70, 2.0));
+      expect(longVec.length, equals(70));
+
+      final truncated = longVec.padOrTruncate(63);
+      expect(truncated.length, equals(63));
+      expect(truncated.values.every((v) => v == 2.0), isTrue);
+
+      final adaptedConstructor = FeatureVector(
+        [1.0, 2.0, 3.0],
+        expectedSize: 5,
+      );
+      expect(adaptedConstructor.length, equals(5));
+      expect(adaptedConstructor.values, equals([1.0, 2.0, 3.0, 0.0, 0.0]));
+    });
   });
 
   group('MetadataAnalyzer', () {
