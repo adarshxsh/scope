@@ -232,6 +232,70 @@ void main() {
         final result = await GhostAI.predict(activeTask);
         expect(result.reviewScore, isPositive); // Not overridden
       });
+
+      test('does not override financial notifications containing completed keywords when from non-task apps (category-aware bypass)', () async {
+        final financialCompleted = AppNotification(
+          id: 'finance-ok',
+          packageName: 'com.mybank',
+          title: 'Bank Payment',
+          content: 'payment successful',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        // Ensure the rule database is initialized
+        await GhostAI.instance.initialize();
+
+        final result = await GhostAI.predict(financialCompleted);
+        expect(result.reviewScore, isPositive);
+        expect(result.reviewScore, equals(1.0)); // finance_debit critical rule match bypasses zero-score override
+      });
+
+      test('does not override delivery notifications containing completed keywords when from non-task apps (category-aware bypass)', () async {
+        final deliveryCompleted = AppNotification(
+          id: 'delivery-ok',
+          packageName: 'com.swiggy',
+          title: 'Order Status',
+          content: 'order delivered',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        // Ensure the rule database is initialized
+        await GhostAI.instance.initialize();
+
+        final result = await GhostAI.predict(deliveryCompleted);
+        expect(result.reviewScore, isPositive);
+        expect(result.reviewScore, equals(0.60)); // (0.35 heuristic + 0.85 high priority rule) / 2 = 0.60
+      });
+
+      test('still overrides transaction completed/payment successful notifications if they originate from task apps', () async {
+        final financialTask = AppNotification(
+          id: 'finance-task-override',
+          packageName: 'com.todoist',
+          title: 'Bank Payment',
+          content: 'payment successful',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        await GhostAI.instance.initialize();
+
+        final result = await GhostAI.predict(financialTask);
+        expect(result.reviewScore, equals(0.0)); // Overridden because it's a task app
+      });
+
+      test('still overrides delivery completed notifications if they originate from task apps', () async {
+        final deliveryTask = AppNotification(
+          id: 'delivery-task-override',
+          packageName: 'com.google.android.calendar',
+          title: 'Order Status',
+          content: 'order delivered',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        await GhostAI.instance.initialize();
+
+        final result = await GhostAI.predict(deliveryTask);
+        expect(result.reviewScore, equals(0.0)); // Overridden because it's a calendar/task app
+      });
     });
   });
 }

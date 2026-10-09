@@ -14,8 +14,17 @@
       "category": "finance",
       "priority": "critical",
       "conditions": {
-        "keywords": ["debited", "withdrawn", "spent", "deducted", "sent rs", "sent inr", "charge"],
-        "title_keywords": ["alert", "bank", "charge", "card"]
+        "keywords": ["debited", "withdrawn", "spent", "deducted", "sent rs", "sent inr", "charge", "payment successful", "recharge completed", "payment completed", "recharge successful"],
+        "title_keywords": ["alert", "bank", "charge", "card", "payment", "recharge", "wallet"]
+      }
+    },
+    {
+      "id": "delivery_status",
+      "category": "delivery",
+      "priority": "high",
+      "conditions": {
+        "keywords": ["delivered", "shipped", "out for delivery", "arriving", "order delivered", "parcel", "delivery completed", "successful"],
+        "title_keywords": ["delivery", "order", "shipment", "amazon", "flipkart", "swiggy", "zomato", "courier"]
       }
     },
     {
