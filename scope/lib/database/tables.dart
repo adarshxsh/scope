@@ -19,6 +19,7 @@ class NotificationsTable extends Table {
   TextColumn get ruleVersion => text().nullable()();
   TextColumn get modelVersion => text().nullable()();
   TextColumn get engineVersion => text().nullable()();
+  BoolColumn get isFallback => boolean().withDefault(const Constant(false))();
   TextColumn get extractedFeatures => text().map(const JsonConverter()).nullable()();
   TextColumn get state => textEnum<ReviewState>()();
   DateTimeColumn get snoozedUntil => dateTime().nullable()();
