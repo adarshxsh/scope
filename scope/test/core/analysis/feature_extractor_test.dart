@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
+import 'package:scope/core/analysis/litert_classifier.dart';
 import 'package:scope/core/analysis/metadata_analyzer.dart';
 import 'package:scope/core/models/notification_model.dart';
 
@@ -144,12 +145,47 @@ void main() {
       final values = FeatureExtractor.extractFromAppNotification(notification);
 
       expect(values, isA<List<double>>());
-      expect(values, hasLength(FeatureVector.size));
+      expect(values, hasLength(FeatureVector.baseSize));
       expect(
         values[FeatureVector.featureNames.indexOf('contains_question')],
         1.0,
       );
       expect(values[FeatureVector.featureNames.indexOf('person_present')], 1.0);
+    });
+
+    test('dynamically resizes feature array to match LiteRtClassifier 128 and 256 model shapes', () {
+      final notification = AppNotification(
+        id: 'upgrade-1',
+        packageName: 'com.scope.bank',
+        title: 'Security Alert',
+        content: 'Your OTP is 987654.',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final classifier128 = LiteRtClassifier(
+        metadata: {'feature_vector_size': 128},
+      );
+      final vec128 = FeatureExtractor.extractFromAppNotification(
+        notification,
+        classifier: classifier128,
+      );
+      expect(vec128, hasLength(128));
+
+      final classifier256 = LiteRtClassifier(
+        metadata: {'feature_vector_size': 256},
+      );
+      final vec256 = FeatureExtractor.extractFromAppNotification(
+        notification,
+        classifier: classifier256,
+      );
+      expect(vec256, hasLength(256));
+
+      // Direct targetDimension parameter support
+      final direct256 = FeatureExtractor.extractFromAppNotification(
+        notification,
+        targetDimension: 256,
+      );
+      expect(direct256, hasLength(256));
     });
   });
 

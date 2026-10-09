@@ -23,11 +23,21 @@ def export_saved_model(model: tf.keras.Model, export_dir: Path) -> Path:
 def export_float32_tflite(
     saved_model_dir: Path,
     output_path: Path,
+    metadata: dict | None = None,
 ) -> Path:
+    import json
+
     ensure_dir(output_path.parent)
     converter = tf.lite.TFLiteConverter.from_saved_model(str(saved_model_dir))
     model_bytes = converter.convert()
     output_path.write_bytes(model_bytes)
+
+    if metadata is not None:
+        meta_path = output_path.parent / "metadata.json"
+        write_text = getattr(meta_path, "write_text", None)
+        if write_text:
+            meta_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+
     return output_path
 
 

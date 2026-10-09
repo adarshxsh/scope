@@ -86,8 +86,21 @@ class GhostAI {
   Future<GhostAIResult> _predict(AppNotification notification) async {
     final stopwatch = Stopwatch()..start();
 
-    // 1. Feature extraction using the existing FeatureExtractor
-    final featureVector = FeatureExtractor.extractFromAppNotification(notification);
+    int? expectedDim;
+    if (_interpreter != null) {
+      try {
+        final shape = _interpreter!.getInputTensor(0).shape;
+        if (shape.length >= 2 && shape[1] > 0) {
+          expectedDim = shape[1];
+        }
+      } catch (_) {}
+    }
+
+    // 1. Feature extraction using FeatureExtractor querying target input vector dimension
+    final featureVector = FeatureExtractor.extractFromAppNotification(
+      notification,
+      targetDimension: expectedDim,
+    );
 
     // 2. Model inference
     double predictedScore = 0.0;

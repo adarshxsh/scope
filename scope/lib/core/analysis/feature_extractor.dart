@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:scope/core/analysis/extracted_features.dart';
+import 'package:scope/core/analysis/litert_classifier.dart';
 import 'package:scope/core/models/notification_model.dart';
 
 int _asInt(Object? value) {
@@ -167,16 +168,17 @@ class FeatureVector {
     'category_id',
   ];
 
+  static const int baseSize = 63;
   static const int size = 63;
 
   final List<double> values;
 
-  FeatureVector(Iterable<double> values) : values = List.unmodifiable(values) {
-    if (this.values.length != size) {
+  FeatureVector(Iterable<double> values, {int? expectedSize}) : values = List.unmodifiable(values) {
+    if (expectedSize != null && this.values.length != expectedSize) {
       throw ArgumentError.value(
         this.values.length,
         'values.length',
-        'FeatureVector must contain exactly $size values.',
+        'FeatureVector must contain exactly $expectedSize values.',
       );
     }
     if (this.values.any((value) => value.isNaN || value.isInfinite)) {
@@ -184,10 +186,12 @@ class FeatureVector {
     }
   }
 
+  int get length => values.length;
+
   List<double> toList() => List<double>.from(values, growable: false);
 
   Map<String, double> toNamedMap() => {
-    for (var i = 0; i < featureNames.length; i++) featureNames[i]: values[i],
+    for (var i = 0; i < math.min(featureNames.length, values.length); i++) featureNames[i]: values[i],
   };
 }
 
@@ -196,6 +200,23 @@ class FeatureVector {
 /// This class intentionally uses only regular expressions, keyword dictionaries,
 /// fixed mappings, and stable hashing. It never calls an AI model.
 class FeatureExtractor {
+  static LiteRtClassifier? activeClassifier;
+  static int defaultDimension = 128;
+
+  /// Resolves expected vector dimension querying classifier metadata or target dimension.
+  static int getExpectedDimension({
+    LiteRtClassifier? classifier,
+    int? targetDimension,
+  }) {
+    if (targetDimension != null && targetDimension > 0) {
+      return targetDimension;
+    }
+    final effectiveClassifier = classifier ?? activeClassifier;
+    if (effectiveClassifier != null) {
+      return effectiveClassifier.inputVectorDimension;
+    }
+    return defaultDimension;
+  }
   static final RegExp _wordRegex = RegExp(r"[A-Za-z0-9]+(?:['-][A-Za-z0-9]+)?");
   static final RegExp _upperRegex = RegExp(r'[A-Z]');
   static final RegExp _letterRegex = RegExp(r'[A-Za-z]');
@@ -533,11 +554,13 @@ class FeatureExtractor {
     );
   }
 
-  /// Extracts a fixed-width numerical feature vector from an app notification.
+  /// Extracts a numerical feature vector from an app notification.
   static List<double> extractFromAppNotification(
     AppNotification notification, {
     String appName = '',
     AndroidNotificationMetadata? android,
+    LiteRtClassifier? classifier,
+    int? targetDimension,
   }) {
     return extractVector(
       NotificationFeatureInput.fromAppNotification(
@@ -545,11 +568,33 @@ class FeatureExtractor {
         appName: appName,
         android: android,
       ),
+      classifier: classifier,
+      targetDimension: targetDimension,
     ).toList();
   }
 
-  /// Extracts a fixed-width numerical feature vector from normalized input.
-  static FeatureVector extractVector(NotificationFeatureInput notification) {
+  /// Extracts a numerical feature vector from normalized input.
+  static FeatureVector extractVector(
+    NotificationFeatureInput notification, {
+    LiteRtClassifier? classifier,
+    int? targetDimension,
+  }) {
+    final rawValues = _extractRawVector(notification);
+    final effectiveClassifier = classifier ?? activeClassifier;
+    final expectedDim = targetDimension ?? effectiveClassifier?.inputVectorDimension;
+
+    if (expectedDim == null || expectedDim <= 0 || expectedDim == rawValues.length) {
+      return FeatureVector(rawValues);
+    }
+
+    final resized = List<double>.filled(expectedDim, 0.0);
+    for (var i = 0; i < math.min(rawValues.length, expectedDim); i++) {
+      resized[i] = rawValues[i];
+    }
+    return FeatureVector(resized, expectedSize: expectedDim);
+  }
+
+  static List<double> _extractRawVector(NotificationFeatureInput notification) {
     final title = normalize(notification.title);
     final body = normalize(notification.body);
     final combined = normalize('$title $body');
@@ -668,7 +713,7 @@ class FeatureExtractor {
       categoryId.toDouble(),
     ];
 
-    return FeatureVector(values);
+    return values;
   }
 
   static String? _extractOtp(String text) {
