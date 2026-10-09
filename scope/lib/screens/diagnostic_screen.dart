@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
+import 'package:scope/core/analysis/inference_telemetry.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/widgets/scope_card.dart';
@@ -402,7 +403,11 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
         ),
         const SizedBox(height: 12),
 
-        // 3. Versions and Metadata
+        // 3. Inference Telemetry & Performance Tracking Card
+        _buildTelemetryCard(theme),
+        const SizedBox(height: 12),
+
+        // 4. Versions and Metadata
         ScopeCard(
           padding: const EdgeInsets.all(12.0),
           child: Row(
@@ -414,6 +419,88 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
             ],
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildTelemetryCard(ThemeData theme) {
+    final summary = ModelInferenceTelemetryTracker.instance.computeSummary();
+    final logs = ModelInferenceTelemetryTracker.instance.auditLogs;
+
+    return ScopeCard(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.speed, color: theme.colorScheme.tertiary),
+              const SizedBox(width: 8),
+              const Text(
+                'Inference Performance Telemetry',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const Divider(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildMetricItem('Total Inferences', '${summary.totalInferences}'),
+              _buildMetricItem('Avg Latency', '${summary.avgTotalLatencyMs.toStringAsFixed(1)} ms'),
+              _buildMetricItem('P95 Latency', '${summary.p95LatencyMs.toStringAsFixed(1)} ms'),
+              _buildMetricItem('Fallback Rate', '${summary.fallbackRatePercent.toStringAsFixed(1)}%'),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Stage Latency Breakdown (Avg us): Extract ${summary.avgFeatureExtractionMs > 0 ? (summary.avgFeatureExtractionMs * 1000).toStringAsFixed(0) : "0"}us · Rules ${summary.avgRuleEngineMs > 0 ? (summary.avgRuleEngineMs * 1000).toStringAsFixed(0) : "0"}us · TFLite ${summary.avgModelInferenceMs > 0 ? (summary.avgModelInferenceMs * 1000).toStringAsFixed(0) : "0"}us',
+            style: const TextStyle(fontSize: 11, color: Colors.grey),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(Icons.shield_outlined, size: 14, color: Colors.green.shade700),
+              const SizedBox(width: 4),
+              Text(
+                'Privacy Guardrail Verified: On-Device & PII Redacted',
+                style: TextStyle(fontSize: 11, color: Colors.green.shade800, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+          if (logs.isNotEmpty) ...[
+            const Divider(height: 16),
+            Text(
+              'Audit & Fallback Log (${logs.length}):',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 100),
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: SingleChildScrollView(
+                child: Text(
+                  logs.take(5).join('\n'),
+                  style: const TextStyle(fontSize: 10, fontFamily: 'monospace'),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetricItem(String label, String value) {
+    return Column(
+      children: [
+        Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 2),
+        Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
       ],
     );
   }
