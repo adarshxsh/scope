@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:scope/core/state/notification_controller.dart';
 import 'package:scope/screens/ai_playground_screen.dart';
+import 'package:scope/screens/app_exclusion_screen.dart';
 import 'package:scope/screens/diagnostic_screen.dart';
 import 'package:scope/theme/app_spacing.dart';
 import 'package:scope/theme/scope_navigator.dart';
@@ -42,9 +43,12 @@ class SettingsScreen extends StatelessWidget {
                   const Divider(height: 1, indent: 56),
                   _SettingsTile(
                     icon: Icons.shield_outlined,
-                    title: 'Privacy',
-                    subtitle: 'All analysis runs on your device',
-                    onTap: null,
+                    title: 'App Exclusion Manager',
+                    subtitle: 'Manage banking, OTP, health & package rules',
+                    onTap: () => ScopeNavigator.push(
+                      context,
+                      AppExclusionScreen(controller: controller),
+                    ),
                   ),
                   const Divider(height: 1, indent: 56),
                   _SettingsTile(

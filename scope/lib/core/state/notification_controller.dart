@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/privacy/app_exclusion_manager.dart';
 import 'package:scope/core/storage/notification_storage.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/core/utils/focus_area_mapper.dart';
@@ -43,11 +44,15 @@ class NotificationController extends ChangeNotifier {
     NotificationStorage? storage,
     GhostAnalysisEngine? engine,
     ProviderContainer? container,
+    AppExclusionManager? exclusionManager,
   })  : _bridge = bridge ?? NotificationBridge(),
         _container = container ?? providerContainer,
         _storage = storage ?? DriftNotificationStorage(container?.read(databaseProvider) ?? providerContainer.read(databaseProvider)),
-        _engine = engine ?? GhostAnalysisEngine() {
+        _engine = engine ?? GhostAnalysisEngine(),
+        _exclusionManager = exclusionManager ?? AppExclusionManager(container?.read(databaseProvider) ?? providerContainer.read(databaseProvider)) {
     _engine.initialize();
+    _exclusionManager.init();
+    _exclusionManager.addListener(notifyListeners);
 
     // Listen to changes in Riverpod's reviewQueueProvider to keep legacy notifier list in sync
     _container.listen<List<AppNotification>>(reviewQueueProvider, (previous, next) {
@@ -63,6 +68,7 @@ class NotificationController extends ChangeNotifier {
   final NotificationStorage _storage;
   final GhostAnalysisEngine _engine;
   final ProviderContainer _container;
+  final AppExclusionManager _exclusionManager;
 
   List<AppNotification> _notifications = [];
   bool _isListenerEnabled = false;
@@ -93,6 +99,7 @@ class NotificationController extends ChangeNotifier {
   bool get isListenerEnabled => _isListenerEnabled;
   bool get isLoading => _isLoading;
   GhostAnalysisEngine get engine => _engine;
+  AppExclusionManager get exclusionManager => _exclusionManager;
 
   bool get inFocusSession => _inFocusSession;
   List<String> get focusSessionQueueIds => List.unmodifiable(_focusSessionQueueIds);
@@ -306,6 +313,7 @@ class NotificationController extends ChangeNotifier {
   @override
   void dispose() {
     _isDisposed = true;
+    _exclusionManager.removeListener(notifyListeners);
     stopPolling();
     _cleanupTimer?.cancel();
     super.dispose();
@@ -391,6 +399,11 @@ class NotificationController extends ChangeNotifier {
         // Ignore ongoing background/system notifications (e.g. charging, media playback)
         if (raw.isOngoing) continue;
 
+        // Filter out sensitive & custom excluded app notifications prior to persistent storage
+        if (_exclusionManager.isExcluded(raw.packageName, category: raw.category)) {
+          continue;
+        }
+
         final isDuplicate = _notifications.any((n) =>
             n.packageName == raw.packageName &&
             n.timestamp == raw.timestamp &&
@@ -433,6 +446,11 @@ class NotificationController extends ChangeNotifier {
     final analyzed = <AppNotification>[];
 
     for (final raw in testNotifs) {
+      // Filter out sensitive & custom excluded app notifications prior to persistent storage
+      if (_exclusionManager.isExcluded(raw.packageName, category: raw.category)) {
+        continue;
+      }
+
       final isDuplicate = _notifications.any((n) =>
           n.packageName == raw.packageName &&
           n.timestamp == raw.timestamp &&
