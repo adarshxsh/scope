@@ -297,8 +297,11 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     if (n.title.toLowerCase().contains('credited') || n.content.toLowerCase().contains('credited')) definingWords.add('credited');
     if (n.title.toLowerCase().contains('offer') || n.content.toLowerCase().contains('offer')) definingWords.add('offer');
     if (n.title.toLowerCase().contains('sale') || n.content.toLowerCase().contains('sale')) definingWords.add('sale');
-    if (features.otp != null) definingWords.add('OTP:${features.otp}');
-    if (features.amount != null) definingWords.add('Amount:Rs.${features.amount}');
+    if (features.otp != null || featuresMap['otp'] != null) definingWords.add('OTP:[REDACTED]');
+    if (features.hasAmount || featuresMap['amount'] != null) definingWords.add('Amount:[REDACTED]');
+    if (features.urls.isNotEmpty || featuresMap['urls'] != null) definingWords.add('URL:[REDACTED]');
+    if (features.emails.isNotEmpty || featuresMap['emails'] != null) definingWords.add('Email:[REDACTED]');
+    if (features.phoneNumbers.isNotEmpty || featuresMap['phoneNumbers'] != null) definingWords.add('Phone:[REDACTED]');
 
     return ScopeSurface(
       padding: const EdgeInsets.all(AppSpacing.lg),
