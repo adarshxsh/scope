@@ -185,4 +185,49 @@ class NotificationCollectorServiceTest {
         assertEquals(1, drained.size)
         assertEquals("3", drained[0].id)
     }
+
+    @Test
+    fun testPeekQueueAndAcknowledgeIds() {
+        assertEquals(0, NotificationCollectorService.queueSize())
+
+        // Initial peek on empty queue
+        val emptyPeek = NotificationCollectorService.peekQueue()
+        assertTrue(emptyPeek.isEmpty())
+
+        val now = System.currentTimeMillis()
+        val data1 = NotificationData(
+            id = "notif_1",
+            packageName = "com.app.1",
+            title = "Title 1",
+            content = "Content 1",
+            timestamp = now,
+            category = null,
+            isOngoing = false
+        )
+        val data2 = NotificationData(
+            id = "notif_2",
+            packageName = "com.app.2",
+            title = "Title 2",
+            content = "Content 2",
+            timestamp = now,
+            category = null,
+            isOngoing = false
+        )
+        NotificationCollectorService.addNotification(data1, now)
+        NotificationCollectorService.addNotification(data2, now)
+
+        val peeked = NotificationCollectorService.peekQueue()
+        assertEquals(2, peeked.size)
+        assertEquals("notif_1", peeked[0].id)
+        assertEquals("notif_2", peeked[1].id)
+        assertEquals(2, NotificationCollectorService.queueSize())
+
+        // Acknowledge notif_1
+        NotificationCollectorService.acknowledgeIds(listOf("notif_1"))
+        assertEquals(1, NotificationCollectorService.queueSize())
+
+        val peekedAfterAck = NotificationCollectorService.peekQueue()
+        assertEquals(1, peekedAfterAck.size)
+        assertEquals("notif_2", peekedAfterAck[0].id)
+    }
 }
