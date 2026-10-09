@@ -65,7 +65,7 @@ _meetingLinkRegex = re.compile(
     re.IGNORECASE,
 )
 _relativeDeadlineRegex = re.compile(
-    r'\bin\s+(\d{1,4})\s*(minute|minutes|min|mins|hour|hours|hr|hrs|day|days)\b',
+    r'\bin\s+(\d+)\s*(minute|minutes|min|mins|hour|hours|hr|hrs|day|days)\b',
     re.IGNORECASE,
 )
 
@@ -381,7 +381,8 @@ def extract_amount(text: str) -> float | None:
     if not raw:
         return None
     try:
-        return float(raw.replace(',', ''))
+        val = float(raw.replace(',', ''))
+        return min(val, 1000000.0)
     except ValueError:
         return None
 
@@ -617,9 +618,9 @@ def extract_features(record: dict[str, Any]) -> list[float]:
     weekday = dt_utc.weekday() + 1
 
     values = [
-        float(len(title_norm)),
-        float(len(body_norm)),
-        float(len(_wordRegex.findall(combined))),
+        min(float(len(title_norm)), 500.0),
+        min(float(len(body_norm)), 5000.0),
+        min(float(len(_wordRegex.findall(combined))), 1000.0),
         0.0 if letters == 0 else float(uppercase / letters),
         float(digits / text_unit_count),
         float(len(_emojiRegex.findall(combined))),
@@ -666,8 +667,8 @@ def extract_features(record: dict[str, Any]) -> list[float]:
         1.0 if is_promotion else 0.0,
         1.0 if is_duplicate_candidate(lower) else 0.0,
         1.0 if contains_deadline else 0.0,
-        float(deadline_minutes_remaining(lower)),
-        float(amount),
+        min(float(deadline_minutes_remaining(lower)), 525600.0),
+        min(float(amount), 1000000.0),
         float(_currencyIds.get(currency, 0)),
         float(len(otp) if otp else 0),
         1.0 if (contains_keyword(lower, _merchantWords) or merchant_after_amount(combined)) else 0.0,
