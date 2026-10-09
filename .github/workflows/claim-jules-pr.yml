@@ -7,15 +7,14 @@ on:
 jobs:
   claim-commits:
     # Trigger whenever a PR is created by the Jules bot or on a jules branch
-    if: startsWith(github.head_ref, 'jules/') || github.actor == 'google-labs-jules[bot]'
+    if: github.event.pull_request.head.repo.full_name == github.repository && (startsWith(github.head_ref, 'jules/') || github.actor == 'google-labs-jules[bot]')
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      pull-requests: write
 
     steps:
       - name: Checkout Jules PR Branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
