@@ -30,14 +30,7 @@ class LiteRtClassifier implements NotificationAnalyzer {
       // ignore: avoid_print
       print('LiteRtClassifier failed to initialize: $e');
       _isModelLoaded = false;
-
-      // Ensure tokenizer is loaded even if interpreter fails (so we can test tokenization in fallback)
-      if (_tokenizer == null) {
-        try {
-          final vocabStr = await rootBundle.loadString('assets/vocab.txt');
-          _tokenizer = WordPieceTokenizer.fromLines(vocabStr.split('\n'));
-        } catch (_) {}
-      }
+      _tokenizer = null;
     }
   }
 
@@ -50,11 +43,18 @@ class LiteRtClassifier implements NotificationAnalyzer {
     final combinedText = '${notification.title} ${notification.content}';
 
     // Ensure initialization finished
-    if (_tokenizer == null) {
-      await _initialize();
+    if (_tokenizer == null && !_isModelLoaded) {
+      try {
+        await _initialize();
+      } catch (_) {}
     }
 
-    final tokenIds = _tokenizer?.tokenize(combinedText) ?? List<int>.filled(64, 0);
+    List<int> tokenIds;
+    try {
+      tokenIds = _tokenizer?.tokenize(combinedText) ?? List<int>.filled(64, 0);
+    } catch (_) {
+      tokenIds = List<int>.filled(64, 0);
+    }
 
     if (!_isModelLoaded || _interpreter == null) {
       // Graceful fallback heuristic classifier

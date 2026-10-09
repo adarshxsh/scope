@@ -8,6 +8,7 @@ void main() {
       '[UNK]': 1,
       '[CLS]': 2,
       '[SEP]': 3,
+      '[MASK]': 10,
       'bank': 4,
       '##ing': 5,
       'alert': 6,
@@ -49,6 +50,91 @@ void main() {
       expect(ids.length, equals(8));
       expect(ids[0], equals(2)); // [CLS]
       expect(ids[7], equals(3)); // [SEP]
+    });
+  });
+
+  group('WordPieceTokenizer Contract & Validation Guardrails', () {
+    final validLines = [
+      '[PAD]',
+      '[UNK]',
+      '[CLS]',
+      '[SEP]',
+      '[MASK]',
+      'alert',
+      'bank',
+      'debited',
+      'spent',
+      'mom',
+      'dad',
+      'urgent',
+      'sale',
+      'promo',
+      'discount',
+      'msg',
+      'email',
+      'social',
+      'promo',
+      'finance',
+      'health',
+      'news',
+      'sys',
+      'scholarship',
+      '',
+    ];
+
+    test('fromLines verifies SHA-256 digest and rejects mismatched digests', () {
+      expect(
+        () => WordPieceTokenizer.fromLines(
+          validLines,
+          expectedDigest: '0000000000000000000000000000000000000000000000000000000000000000',
+        ),
+        throwsA(isA<VocabularyValidationException>()),
+      );
+    });
+
+    test('fromLines accepts matching SHA-256 digest', () {
+      final tokenizer = WordPieceTokenizer.fromLines(
+        validLines,
+        expectedDigest: WordPieceTokenizer.defaultExpectedDigest,
+      );
+      expect(tokenizer.vocab['[PAD]'], equals(0));
+      expect(tokenizer.vocab['scholarship'], equals(23));
+    });
+
+    test('rejects empty lines in the middle to enforce line index continuity', () {
+      final linesWithHole = [
+        '[PAD]',
+        '[UNK]',
+        '',
+        '[CLS]',
+        '[SEP]',
+        '[MASK]',
+      ];
+      expect(
+        () => WordPieceTokenizer.fromLines(linesWithHole, expectedDigest: null),
+        throwsA(isA<VocabularyValidationException>()),
+      );
+    });
+
+    test('rejects vocabulary missing mandatory special tokens', () {
+      final missingClsLines = [
+        '[PAD]',
+        '[UNK]',
+        '[SEP]',
+        '[MASK]',
+        'test',
+      ];
+      expect(
+        () => WordPieceTokenizer.fromLines(missingClsLines, expectedDigest: null),
+        throwsA(isA<VocabularyValidationException>()),
+      );
+    });
+
+    test('rejects empty vocabulary', () {
+      expect(
+        () => WordPieceTokenizer.fromLines([], expectedDigest: null),
+        throwsA(isA<VocabularyValidationException>()),
+      );
     });
   });
 }
