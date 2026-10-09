@@ -19,13 +19,33 @@ import android.provider.Settings
 class MainActivity : FlutterActivity() {
 
     companion object {
-        private const val CHANNEL = "com.scope.notifications"
+        private const val NOTIFICATION_CHANNEL = "com.scope.notifications"
+        private const val KEYSTORE_CHANNEL = "com.scope.keystore"
     }
+
+    private lateinit var securityKeyManager: SecurityKeyManager
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
+        securityKeyManager = SecurityKeyManager(applicationContext)
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, KEYSTORE_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "getDatabasePassphrase", "getPassphrase" -> {
+                        try {
+                            val passphrase = securityKeyManager.getDatabasePassphrase()
+                            result.success(passphrase)
+                        } catch (e: Exception) {
+                            result.error("KEYSTORE_ERROR", e.localizedMessage, null)
+                        }
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, NOTIFICATION_CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "getNotifications" -> {

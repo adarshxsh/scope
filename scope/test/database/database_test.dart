@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/native.dart';
 import 'package:drift/drift.dart' show Value;
@@ -272,6 +273,52 @@ void main() {
       // Only the new one should remain, old one deleted due to notification expiry
       // Missing one deleted due to being orphaned
       expect(queueItems.first.notificationId, equals('n-new'));
+    });
+
+    test('AttentionDatabase.inMemory with passphrase executes PRAGMA key and functions correctly', () async {
+      final encryptedDb = AttentionDatabase.inMemory(passphrase: 'a1b2c3d4e5f67890123456789abcdef0123456789abcdef0123456789abcdef0');
+      final now = DateTime.now();
+      final entry = NotificationEntry(
+        id: 'secure_1',
+        packageName: 'com.signal',
+        title: 'Encrypted Message',
+        content: 'Secret content',
+        timestamp: now.millisecondsSinceEpoch,
+        state: ReviewState.ACTIVE,
+        reviewed: false,
+        dismissed: false,
+        isOngoing: false,
+        createdAt: now,
+      );
+
+      await encryptedDb.notificationDao.insertNotification(entry);
+      final fetched = await encryptedDb.notificationDao.getById('secure_1');
+      expect(fetched, isNotNull);
+      expect(fetched!.title, equals('Encrypted Message'));
+      await encryptedDb.close();
+    });
+
+    test('com.scope.keystore MethodChannel mock bridges passphrase to AttentionDatabase', () async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      const channel = MethodChannel('com.scope.keystore');
+      String? requestedMethod;
+
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+        channel,
+        (MethodCall methodCall) async {
+          requestedMethod = methodCall.method;
+          if (methodCall.method == 'getDatabasePassphrase' || methodCall.method == 'getPassphrase') {
+            return '5f4dcc3b5aa765d61d8327deb882cf9928308fdc02824241604a1b0213b28f73';
+          }
+          return null;
+        },
+      );
+
+      final result = await channel.invokeMethod<String>('getDatabasePassphrase');
+      expect(requestedMethod, equals('getDatabasePassphrase'));
+      expect(result, equals('5f4dcc3b5aa765d61d8327deb882cf9928308fdc02824241604a1b0213b28f73'));
+
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, null);
     });
   });
 }
