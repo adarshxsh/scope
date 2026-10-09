@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/storage/model_storage_manager.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -8,13 +10,47 @@ void main() {
   group('GhostAI Tests', () {
     // Clear duplicate cache before each test to prevent test cross-contamination
     setUp(() {
-      GhostAI.instance.clearCache();
+      GhostAI.instance.reset();
     });
 
     test('initialization handles missing assets and falls back gracefully', () async {
       // Should not throw, should log and proceed with isModelLoaded = false
       await GhostAI.instance.initialize();
       expect(GhostAI.instance.isModelLoaded, isFalse);
+    });
+
+    group('ModelStorageManager integration and fallback', () {
+      late Directory tempDir;
+      late ModelStorageManager storageManager;
+
+      setUp(() async {
+        tempDir = await Directory.systemTemp.createTemp('ghost_ai_storage_test_');
+        storageManager = ModelStorageManager(baseDirectory: tempDir);
+      });
+
+      tearDown(() async {
+        if (await tempDir.exists()) {
+          await tempDir.delete(recursive: true);
+        }
+      });
+
+      test('detects corrupt dynamic model file, deletes it, and falls back gracefully', () async {
+        // Write corrupt model bytes
+        await storageManager.saveModelBytes([0xFF, 0xFE, 0xFD]);
+        expect(await storageManager.hasLocalModel(), isTrue);
+
+        await GhostAI.instance.initialize(storageManager: storageManager);
+
+        // Corrupt file should be deleted on failure
+        expect(await storageManager.hasLocalModel(), isFalse);
+        // Falls back (and since test runner doesn't have native tflite asset binary loaded, isModelLoaded is false)
+        expect(GhostAI.instance.isModelLoaded, isFalse);
+      });
+
+      test('initializes without throwing when dynamic model is missing', () async {
+        await GhostAI.instance.initialize(storageManager: storageManager);
+        expect(await storageManager.hasLocalModel(), isFalse);
+      });
     });
 
     test('predict outputs basic inference results and falls back to heuristics', () async {
