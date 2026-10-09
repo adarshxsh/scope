@@ -37,12 +37,16 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
-}
 
-flutter {
-    source = "../.."
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 dependencies {
     testImplementation("junit:junit:4.13.2")
+}
+
+flutter {
+    source = "../.."
 }
