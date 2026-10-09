@@ -3,6 +3,7 @@ package com.scope.attentions
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
+import java.security.MessageDigest
 import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
@@ -17,7 +18,9 @@ import java.util.concurrent.ConcurrentLinkedQueue
  * Design decisions:
  *   - Uses a static ConcurrentLinkedQueue (thread-safe, lock-free) because
  *     the service runs in a separate context from MainActivity.
- *   - No heavy processing here — just capture and queue.
+ *   - Payload fields (title, content) are redacted and AES-256 GCM encrypted in memory.
+ *   - Logcat entries output hashed package names and queue sizes only.
+ *   - Enforces a max capacity of [MAX_QUEUE_SIZE] (100) and [MAX_AGE_MS] (15 mins TTL).
  *   - Skips ongoing/persistent notifications by default (configurable).
  */
 class NotificationCollectorService : NotificationListenerService() {
@@ -36,6 +39,18 @@ class NotificationCollectorService : NotificationListenerService() {
 
         /** Counter for generating simple unique IDs within a session. */
         private var idCounter = 0L
+
+        /**
+         * Hashes package name using SHA-256 for anonymous Logcat output.
+         */
+        private fun hashPackageName(pkg: String): String {
+            return try {
+                val bytes = MessageDigest.getInstance("SHA-256").digest(pkg.toByteArray(Charsets.UTF_8))
+                bytes.take(6).joinToString("") { "%02x".format(it) }
+            } catch (e: Exception) {
+                "anon"
+            }
+        }
 
         /**
          * Removes entries older than [MAX_AGE_MS] from the queue.
@@ -57,8 +72,12 @@ class NotificationCollectorService : NotificationListenerService() {
             }
 
             // Ignore if same package, title, and content already exist in queue
-            val isDuplicate = queue.any {
-                it.packageName == data.packageName && it.title == data.title && it.content == data.content
+            val dataTitle = CryptoManager.decrypt(data.title)
+            val dataContent = CryptoManager.decrypt(data.content)
+            val isDuplicate = queue.any { item ->
+                item.packageName == data.packageName &&
+                CryptoManager.decrypt(item.title) == dataTitle &&
+                CryptoManager.decrypt(item.content) == dataContent
             }
             if (isDuplicate) {
                 return
@@ -73,16 +92,20 @@ class NotificationCollectorService : NotificationListenerService() {
         }
 
         /**
-         * Drains all non-expired notifications from the queue and returns them.
+         * Drains all non-expired notifications from the queue and returns them decrypted.
          * Called by [MainActivity] when Flutter requests notifications.
-         * After this call, the queue is empty.
+         * After this call, matched queue items are cleared.
          */
         fun drainQueue(now: Long = System.currentTimeMillis()): List<NotificationData> {
             val result = mutableListOf<NotificationData>()
             while (true) {
                 val item = queue.poll() ?: break
                 if (now - item.timestamp <= MAX_AGE_MS) {
-                    result.add(item)
+                    val decryptedItem = item.copy(
+                        title = CryptoManager.decrypt(item.title),
+                        content = CryptoManager.decrypt(item.content)
+                    )
+                    result.add(decryptedItem)
                 }
             }
             return result
@@ -105,24 +128,30 @@ class NotificationCollectorService : NotificationListenerService() {
     private fun addSbnToQueue(sbn: StatusBarNotification, now: Long = System.currentTimeMillis()) {
         try {
             val extras = sbn.notification.extras
-            val title = extras?.getCharSequence("android.title")?.toString() ?: ""
-            val text = extras?.getCharSequence("android.text")?.toString() ?: ""
+            val rawTitle = extras?.getCharSequence("android.title")?.toString() ?: ""
+            val rawText = extras?.getCharSequence("android.text")?.toString() ?: ""
             val isOngoing = sbn.isOngoing
             val packageName = sbn.packageName ?: "unknown"
             val timestamp = if (sbn.postTime > 0) sbn.postTime else now
 
+            val redactedTitle = NotificationRedactor.redact(rawTitle)
+            val redactedContent = NotificationRedactor.redact(rawText)
+
+            val encryptedTitle = CryptoManager.encrypt(redactedTitle)
+            val encryptedContent = CryptoManager.encrypt(redactedContent)
+
             val data = NotificationData(
                 id = "notif_${++idCounter}",
                 packageName = packageName,
-                title = title,
-                content = text,
+                title = encryptedTitle,
+                content = encryptedContent,
                 timestamp = timestamp,
                 category = sbn.notification.category,
                 isOngoing = isOngoing
             )
 
             addNotification(data, now)
-            Log.d(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
+            Log.d(TAG, "Captured: pkg=${hashPackageName(packageName)}, queueSize=${queueSize()}")
         } catch (e: Exception) {
             Log.e(TAG, "Error capturing/adding notification", e)
         }
@@ -135,9 +164,8 @@ class NotificationCollectorService : NotificationListenerService() {
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         if (sbn == null) return
-        // Log for now; future phases may track dismissed notifications
-        val removedTitle = sbn.notification.extras?.getCharSequence("android.title")?.toString()
-        Log.d(TAG, "Removed: ${sbn.packageName} - ${NotificationRedactor.redactTitle(removedTitle)}")
+        val pkg = sbn.packageName ?: "unknown"
+        Log.d(TAG, "Removed: pkg=${hashPackageName(pkg)}, queueSize=${queueSize()}")
     }
 
     override fun onListenerConnected() {
