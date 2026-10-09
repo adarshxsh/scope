@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/extracted_features.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
@@ -12,8 +13,13 @@ import 'package:scope/widgets/section_header.dart';
 /// AI Playground for post-mortem analysis and Reinforcement Learning from Human Feedback (RLHF).
 class AiPlaygroundScreen extends StatefulWidget {
   final NotificationController controller;
+  final bool isReleaseMode;
 
-  const AiPlaygroundScreen({super.key, required this.controller});
+  const AiPlaygroundScreen({
+    super.key,
+    required this.controller,
+    @visibleForTesting this.isReleaseMode = kReleaseMode,
+  });
 
   @override
   State<AiPlaygroundScreen> createState() => _AiPlaygroundScreenState();
@@ -146,6 +152,16 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
 
   @override
   Widget build(BuildContext context) {
+    assert(!widget.isReleaseMode, 'AiPlaygroundScreen is disabled in release mode.');
+    if (widget.isReleaseMode) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('AI Playground (RLHF)')),
+        body: const Center(
+          child: Text('AI Playground is disabled in release builds.'),
+        ),
+      );
+    }
+
     final theme = Theme.of(context);
     final notifications = widget.controller.notifications.take(15).toList();
 

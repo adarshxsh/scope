@@ -111,5 +111,17 @@ void main() {
       expect(find.text('Pipeline Explanation Trace'), findsOneWidget);
       expect(find.text('Extracted Text Features'), findsOneWidget);
     });
+
+    testWidgets('DiagnosticScreen throws AssertionError in release mode', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: DiagnosticScreen(engine: mockEngine, isReleaseMode: true),
+          ),
+        ),
+      );
+
+      expect(tester.takeException(), isA<AssertionError>());
+    });
   });
 }

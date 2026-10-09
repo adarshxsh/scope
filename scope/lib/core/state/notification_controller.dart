@@ -38,12 +38,16 @@ enum FocusFilterType {
 
 /// Central state for notifications, user actions, and review sessions.
 class NotificationController extends ChangeNotifier {
+  final bool isReleaseMode;
+
   NotificationController({
     NotificationBridge? bridge,
     NotificationStorage? storage,
     GhostAnalysisEngine? engine,
     ProviderContainer? container,
-  })  : _bridge = bridge ?? NotificationBridge(),
+    @visibleForTesting bool? isReleaseMode,
+  })  : isReleaseMode = isReleaseMode ?? kReleaseMode,
+        _bridge = bridge ?? NotificationBridge(),
         _container = container ?? providerContainer,
         _storage = storage ?? DriftNotificationStorage(container?.read(databaseProvider) ?? providerContainer.read(databaseProvider)),
         _engine = engine ?? GhostAnalysisEngine() {
@@ -426,6 +430,9 @@ class NotificationController extends ChangeNotifier {
   }
 
   Future<void> generateTestData() async {
+    if (isReleaseMode) {
+      throw UnsupportedError('generateTestData is disabled in release mode.');
+    }
     _initialLoadCompleted = true;
     _isLoading = false;
     final generator = TestNotificationGenerator();
@@ -463,6 +470,9 @@ class NotificationController extends ChangeNotifier {
   }
 
   Future<void> clearAll() async {
+    if (isReleaseMode) {
+      throw UnsupportedError('clearAll is disabled in release mode.');
+    }
     await _storage.clear();
     _container.read(reviewQueueProvider.notifier).clear();
     _notifications = [];
