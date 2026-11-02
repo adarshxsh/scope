@@ -1,0 +1,8 @@
+# Android Release Signing Keystore Configuration
+# Copy this file to 'key.properties' in this directory (scope/android) and fill in your keystore credentials.
+# Note: 'key.properties' and keystore files (*.keystore, *.jks) are ignored by git and must never be committed.
+
+storePassword=your_store_password
+keyPassword=your_key_password
+keyAlias=your_key_alias
+storeFile=path/to/upload-keystore.jks
