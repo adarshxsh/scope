@@ -67,6 +67,24 @@ void main() {
       expect(result.isFallback, isTrue);
     });
 
+    test('handles emoji and long payloads without crashing or throwing errors', () async {
+      final classifier = LiteRtClassifier();
+      
+      final notif = AppNotification(
+        id: '3',
+        packageName: 'com.whatsapp',
+        title: 'Promotion 🔥🎉',
+        content: 'Huge discount on products! ' * 20,
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final result = await classifier.analyze(notif);
+      
+      expect(result.category, equals('promo'));
+      expect(result.engineName, contains('fallback'));
+      expect(result.isFallback, isTrue);
+    });
+
     test('executes neural inference and outputs predicted category with softmax score when model is loaded', () async {
       final mockInterpreter = FakeInterpreter(mockLogits: [0.1, 0.2, 0.0, 0.1, 3.0]);
       final mockTokenizer = WordPieceTokenizer.fromLines(['[PAD]', '[UNK]', '[CLS]', '[SEP]']);
@@ -78,7 +96,7 @@ void main() {
       expect(classifier.isModelLoaded, isTrue);
 
       final notif = AppNotification(
-        id: '3',
+        id: '4',
         packageName: 'com.example.bank',
         title: 'Account Update',
         content: 'Your transaction was successful.',
