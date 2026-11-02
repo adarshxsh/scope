@@ -7,6 +7,7 @@ library;
 
 import 'package:flutter/services.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/utils/pii_log_sanitizer.dart';
 
 /// Bridge between Flutter and the Android NotificationCollectorService.
 ///
@@ -40,7 +41,7 @@ class NotificationBridge {
     } on PlatformException catch (e) {
       // Log but don't crash — the service might not be connected yet
       // ignore: avoid_print
-      print('NotificationBridge.getNotifications failed: ${e.message}');
+      print('NotificationBridge.getNotifications failed: ${PiiLogSanitizer.sanitizeException(e)}');
       return [];
     } on MissingPluginException {
       // Happens when running on non-Android platforms or in tests without mock
@@ -70,7 +71,7 @@ class NotificationBridge {
       await _channel.invokeMethod<void>('openNotificationSettings');
     } on PlatformException catch (e) {
       // ignore: avoid_print
-      print('NotificationBridge.openNotificationSettings failed: ${e.message}');
+      print('NotificationBridge.openNotificationSettings failed: ${PiiLogSanitizer.sanitizeException(e)}');
     } on MissingPluginException {
       // Not on Android — nothing to do
     }
