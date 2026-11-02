@@ -273,5 +273,58 @@ void main() {
       // Missing one deleted due to being orphaned
       expect(queueItems.first.notificationId, equals('n-new'));
     });
+
+    test('UserSettingsDao returns defaults and updates settings', () async {
+      final defaultSettings = await db.userSettingsDao.getSettings();
+      expect(defaultSettings.retentionDays, equals(7));
+      expect(defaultSettings.telemetryEnabled, isTrue);
+      expect(defaultSettings.storageQuotaLimit, equals(1000));
+
+      final updated = defaultSettings.copyWith(
+        retentionDays: 3,
+        telemetryEnabled: false,
+        storageQuotaLimit: 500,
+      );
+      await db.userSettingsDao.updateSettings(updated);
+
+      final fetched = await db.userSettingsDao.getSettings();
+      expect(fetched.retentionDays, equals(3));
+      expect(fetched.telemetryEnabled, isFalse);
+      expect(fetched.storageQuotaLimit, equals(500));
+    });
+
+    test('runSetBasedCleanup prunes excess oldest notifications when storage quota limit is exceeded', () async {
+      final now = DateTime.now();
+
+      // Insert 5 notifications with ascending timestamps
+      for (int i = 1; i <= 5; i++) {
+        await db.notificationDao.insertNotification(NotificationEntry(
+          id: 'n$i',
+          packageName: 'app',
+          title: 'Notif $i',
+          content: 'Body $i',
+          timestamp: now.add(Duration(minutes: i)).millisecondsSinceEpoch,
+          state: ReviewState.ACTIVE,
+          reviewed: false,
+          dismissed: false,
+          isOngoing: false,
+          createdAt: now.add(Duration(minutes: i)),
+        ));
+      }
+
+      final countBefore = await db.notificationDao.getAll();
+      expect(countBefore.length, equals(5));
+
+      // Run cleanup with storageQuotaLimit = 3 (and cutoff = 0 so no timestamp expiry)
+      await db.runSetBasedCleanup(0, storageQuotaLimit: 3);
+
+      final countAfter = await db.notificationDao.getAll();
+      expect(countAfter.length, equals(3));
+      // Oldest notifications n1 and n2 should be pruned; n3, n4, n5 remain
+      final remainingIds = countAfter.map((n) => n.id).toList();
+      expect(remainingIds, containsAll(['n3', 'n4', 'n5']));
+      expect(remainingIds, isNot(contains('n1')));
+      expect(remainingIds, isNot(contains('n2')));
+    });
   });
 }

@@ -71,6 +71,10 @@ class NotificationController extends ChangeNotifier {
   Timer? _cleanupTimer;
   bool _isCleaningUp = false;
 
+  int _retentionDays = 7;
+  bool _telemetryEnabled = true;
+  int _storageQuotaLimit = 1000;
+
   ReviewSessionStats sessionStats = ReviewSessionStats();
 
   FocusFilterType _filterType = FocusFilterType.none;
@@ -84,6 +88,11 @@ class NotificationController extends ChangeNotifier {
   int _focusSessionInterruptions = 0;
 
   List<AppNotification> get notifications => List.unmodifiable(_notifications);
+
+  int get retentionDays => _retentionDays;
+  bool get telemetryEnabled => _telemetryEnabled;
+  int get storageQuotaLimit => _storageQuotaLimit;
+  int get currentStorageCount => _notifications.length;
 
   /// Notifications excluding app promotional cards (used for stats/counts only).
   List<AppNotification> _countable(List<AppNotification> list) =>
@@ -318,10 +327,44 @@ class NotificationController extends ChangeNotifier {
     }
   }
 
+  Future<void> updateUserSettings({
+    int? retentionDays,
+    bool? telemetryEnabled,
+    int? storageQuotaLimit,
+  }) async {
+    if (retentionDays != null) _retentionDays = retentionDays;
+    if (telemetryEnabled != null) _telemetryEnabled = telemetryEnabled;
+    if (storageQuotaLimit != null) _storageQuotaLimit = storageQuotaLimit;
+
+    _engine.telemetryEnabled = _telemetryEnabled;
+
+    final db = _container.read(databaseProvider);
+    await db.userSettingsDao.updateSettings(UserSettingsEntry(
+      id: 1,
+      retentionDays: _retentionDays,
+      telemetryEnabled: _telemetryEnabled,
+      storageQuotaLimit: _storageQuotaLimit,
+    ));
+
+    await runBackgroundCleanup();
+    notifyListeners();
+  }
+
   Future<void> _loadInitialNotifications() async {
-    if (_initialLoadCompleted) return;
+    if (_initialLoadCompleted || _isDisposed) return;
+    try {
+      final db = _container.read(databaseProvider);
+      final settings = await db.userSettingsDao.getSettings();
+      if (_isDisposed) return;
+      _retentionDays = settings.retentionDays;
+      _telemetryEnabled = settings.telemetryEnabled;
+      _storageQuotaLimit = settings.storageQuotaLimit;
+      _engine.telemetryEnabled = _telemetryEnabled;
+    } catch (_) {}
+
+    if (_isDisposed) return;
     final loaded = await _storage.getAll();
-    if (_initialLoadCompleted) return;
+    if (_initialLoadCompleted || _isDisposed) return;
 
     if (_notifications.isEmpty) {
       _notifications = loaded;
@@ -331,6 +374,7 @@ class NotificationController extends ChangeNotifier {
       notifier.load(_notifications);
       await notifier.rescore();
     }
+    if (_isDisposed) return;
     _initialLoadCompleted = true;
     _isLoading = false;
     notifyListeners();
@@ -338,6 +382,7 @@ class NotificationController extends ChangeNotifier {
     // Trigger initial cleanup once on startup
     runBackgroundCleanup();
     
+    if (_isDisposed) return;
     // Set up daily cleanup timer
     _cleanupTimer?.cancel();
     _cleanupTimer = Timer.periodic(const Duration(hours: 24), (_) {
@@ -345,9 +390,9 @@ class NotificationController extends ChangeNotifier {
     });
   }
 
-  /// Cleans up old notifications (older than 7 days) and orphaned review queue items.
+  /// Cleans up old notifications based on user-configured retention duration and storage quota limit.
   Future<void> runBackgroundCleanup() async {
-    if (_isCleaningUp) return;
+    if (_isCleaningUp || _isDisposed) return;
 
     try {
       _isCleaningUp = true;
@@ -358,11 +403,38 @@ class NotificationController extends ChangeNotifier {
         if (_isDisposed) return;
       }
 
-      final cutoff = DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch;
+      if (_isDisposed) return;
       final db = _container.read(databaseProvider);
-      
-      // Execute the single-step atomic transaction
-      await db.runSetBasedCleanup(cutoff);
+      try {
+        final settings = await db.userSettingsDao.getSettings();
+        if (_isDisposed) return;
+        _retentionDays = settings.retentionDays;
+        _telemetryEnabled = settings.telemetryEnabled;
+        _storageQuotaLimit = settings.storageQuotaLimit;
+        _engine.telemetryEnabled = _telemetryEnabled;
+      } catch (_) {}
+
+      if (_isDisposed) return;
+      final cutoff = _retentionDays > 0
+          ? DateTime.now().subtract(Duration(days: _retentionDays)).millisecondsSinceEpoch
+          : 0;
+
+      // Execute the single-step atomic transaction with dynamic cutoff and quota limit
+      await db.runSetBasedCleanup(cutoff, storageQuotaLimit: _storageQuotaLimit);
+
+      if (_isDisposed) return;
+      // Refresh in-memory notifications list and review queue if items were purged
+      final loaded = await _storage.getAll();
+      if (_isDisposed) return;
+      if (loaded.length != _notifications.length) {
+        _notifications = loaded;
+        final notifier = _container.read(reviewQueueProvider.notifier);
+        notifier.load(loaded);
+        await notifier.rescore();
+        if (!_isDisposed) {
+          notifyListeners();
+        }
+      }
 
     } catch (_) {
       // Silently handle errors to not interrupt UI

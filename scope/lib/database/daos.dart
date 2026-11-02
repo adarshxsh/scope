@@ -154,3 +154,40 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
     await delete(dailyBriefTable).go();
   }
 }
+
+@DriftAccessor(tables: [UserSettingsTable])
+class UserSettingsDao extends DatabaseAccessor<AttentionDatabase> with _$UserSettingsDaoMixin {
+  UserSettingsDao(super.db);
+
+  Future<UserSettingsEntry> getSettings() async {
+    final entry = await (select(userSettingsTable)..where((t) => t.id.equals(1))).getSingleOrNull();
+    if (entry != null) {
+      return entry;
+    }
+    const defaultEntry = UserSettingsEntry(
+      id: 1,
+      retentionDays: 7,
+      telemetryEnabled: true,
+      storageQuotaLimit: 1000,
+    );
+    await into(userSettingsTable).insert(defaultEntry, mode: InsertMode.insertOrReplace);
+    return defaultEntry;
+  }
+
+  Future<void> updateSettings(UserSettingsEntry settings) async {
+    await into(userSettingsTable).insert(settings.copyWith(id: 1), mode: InsertMode.insertOrReplace);
+  }
+
+  Stream<UserSettingsEntry> watchSettings() {
+    return (select(userSettingsTable)..where((t) => t.id.equals(1))).watchSingleOrNull().map((entry) {
+      return entry ??
+          const UserSettingsEntry(
+            id: 1,
+            retentionDays: 7,
+            telemetryEnabled: true,
+            storageQuotaLimit: 1000,
+          );
+    });
+  }
+}
+

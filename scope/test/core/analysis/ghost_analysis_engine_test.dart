@@ -77,5 +77,22 @@ void main() {
       expect(analyzed.priority, equals('low'));
       expect(analyzed.classifiedCategory, equals('promo'));
     });
+
+    test('silences explanation trace when telemetryEnabled is false', () async {
+      engine.telemetryEnabled = false;
+      final notif = AppNotification(
+        id: '4',
+        packageName: 'com.example.bank',
+        title: 'Transaction Alert',
+        content: 'Your account has been debited Rs. 5,000 for your premium purchase.',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final analyzed = await engine.analyze(notif);
+
+      expect(analyzed.priority, equals('critical'));
+      expect(analyzed.classifiedCategory, equals('finance'));
+      expect(analyzed.explanation, isNull);
+    });
   });
 }
