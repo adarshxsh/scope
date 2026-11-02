@@ -167,16 +167,18 @@ class FeatureVector {
     'category_id',
   ];
 
-  static const int size = 63;
+  static int get size => featureNames.length;
 
   final List<double> values;
 
-  FeatureVector(Iterable<double> values) : values = List.unmodifiable(values) {
-    if (this.values.length != size) {
+  FeatureVector(Iterable<double> values, [int? expectedSize])
+      : values = List.unmodifiable(values) {
+    final targetSize = expectedSize ?? featureNames.length;
+    if (this.values.length != targetSize) {
       throw ArgumentError.value(
         this.values.length,
         'values.length',
-        'FeatureVector must contain exactly $size values.',
+        'FeatureVector must contain exactly $targetSize values.',
       );
     }
     if (this.values.any((value) => value.isNaN || value.isInfinite)) {
@@ -187,8 +189,38 @@ class FeatureVector {
   List<double> toList() => List<double>.from(values, growable: false);
 
   Map<String, double> toNamedMap() => {
-    for (var i = 0; i < featureNames.length; i++) featureNames[i]: values[i],
-  };
+        for (var i = 0; i < featureNames.length && i < values.length; i++)
+          featureNames[i]: values[i],
+      };
+
+  /// Returns the value for a given feature name, or [defaultValue] if not found.
+  double getFeature(String name, {double defaultValue = 0.0}) {
+    return getFeatureFromList(values, name, defaultValue: defaultValue);
+  }
+
+  /// Lookup feature value from a numerical vector by feature name.
+  static double getFeatureFromList(
+    List<double> values,
+    String name, {
+    double defaultValue = 0.0,
+  }) {
+    final index = featureNames.indexOf(name);
+    if (index >= 0 && index < values.length) {
+      return values[index];
+    }
+    return defaultValue;
+  }
+}
+
+/// Convenience extension for named feature access on feature vector lists.
+extension FeatureListExtension on List<double> {
+  double getFeature(String name, {double defaultValue = 0.0}) {
+    return FeatureVector.getFeatureFromList(
+      this,
+      name,
+      defaultValue: defaultValue,
+    );
+  }
 }
 
 /// Deterministic notification feature extraction for TFLite inference.
