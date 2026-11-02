@@ -58,8 +58,10 @@ def build_baseline_mlp(
     mean: list[float],
     stddev: list[float],
     learning_rate: float,
+    feature_vector_size: int | None = None,
 ) -> tf.keras.Model:
-    inputs = tf.keras.Input(shape=(FEATURE_VECTOR_SIZE,), name="features")
+    input_size = feature_vector_size if feature_vector_size is not None else len(mean)
+    inputs = tf.keras.Input(shape=(input_size,), name="features")
     
     # In-graph feature normalization using constants
     mean_const = tf.constant(mean, dtype=tf.float32, name="normalization_mean")

@@ -40,12 +40,17 @@ class DatasetSplit:
     test_indices: np.ndarray
 
 
-def build_dataset(records: list[dict[str, Any]]) -> EncodedDataset:
+def build_dataset(
+    records: list[dict[str, Any]],
+    expected_feature_size: int | None = None,
+) -> EncodedDataset:
     features: list[list[float]] = []
     target: list[float] = []
     raw_labels: dict[str, list[Any]] = {
         key: [] for key in (*CATEGORICAL_LABELS, *BINARY_LABELS, TARGET_LABEL)
     }
+
+    inferred_size = expected_feature_size
 
     for index, record in enumerate(records):
         sample_id = f"sample[{index}]"
@@ -55,7 +60,10 @@ def build_dataset(records: list[dict[str, Any]]) -> EncodedDataset:
         if features_val is None or not isinstance(features_val, list):
             features_val = extract_features(record)
             
-        vector = _validate_features(features_val, sample_id)
+        if inferred_size is None and isinstance(features_val, list) and len(features_val) > 0:
+            inferred_size = len(features_val)
+
+        vector = _validate_features(features_val, sample_id, expected_size=inferred_size)
         
         # 2. Get or construct labels
         raw_labels_dict = record.get("labels") or {}
@@ -146,12 +154,14 @@ def normalization_stats(features: np.ndarray) -> dict[str, list[float]]:
     }
 
 
-def _validate_features(value: Any, sample_id: str) -> list[float]:
+def _validate_features(
+    value: Any, sample_id: str, expected_size: int | None = None
+) -> list[float]:
     if not isinstance(value, list):
         raise ValueError(f"{sample_id}.features must be a list.")
-    if len(value) != FEATURE_VECTOR_SIZE:
+    if expected_size is not None and len(value) != expected_size:
         raise ValueError(
-            f"{sample_id}.features must contain {FEATURE_VECTOR_SIZE} values; "
+            f"{sample_id}.features must contain {expected_size} values; "
             f"received {len(value)}."
         )
 
