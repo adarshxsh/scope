@@ -156,5 +156,37 @@ void main() {
         expect(await storage.count, 2); // upsert, not a new entry
       });
     });
+
+    group('row capping', () {
+      test('evicts oldest entries when exceeding maxRows on save', () async {
+        final cappedStorage = InMemoryNotificationStorage(maxRows: 3);
+        await cappedStorage.save(makeNotification(id: 'n1', timestamp: 1000));
+        await cappedStorage.save(makeNotification(id: 'n2', timestamp: 2000));
+        await cappedStorage.save(makeNotification(id: 'n3', timestamp: 3000));
+        expect(await cappedStorage.count, 3);
+
+        // Save 4th item (newest)
+        await cappedStorage.save(makeNotification(id: 'n4', timestamp: 4000));
+        expect(await cappedStorage.count, 3);
+        expect(await cappedStorage.getById('n1'), isNull); // oldest 'n1' evicted
+        expect(await cappedStorage.getById('n2'), isNotNull);
+        expect(await cappedStorage.getById('n3'), isNotNull);
+        expect(await cappedStorage.getById('n4'), isNotNull);
+      });
+
+      test('evicts oldest entries when exceeding maxRows on saveAll', () async {
+        final cappedStorage = InMemoryNotificationStorage(maxRows: 2);
+        await cappedStorage.saveAll([
+          makeNotification(id: 'n1', timestamp: 1000),
+          makeNotification(id: 'n2', timestamp: 2000),
+          makeNotification(id: 'n3', timestamp: 3000),
+        ]);
+
+        expect(await cappedStorage.count, 2);
+        expect(await cappedStorage.getById('n1'), isNull);
+        expect(await cappedStorage.getById('n2'), isNotNull);
+        expect(await cappedStorage.getById('n3'), isNotNull);
+      });
+    });
   });
 }
