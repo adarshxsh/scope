@@ -2,6 +2,8 @@
 library;
 
 import 'dart:convert';
+import 'dart:isolate';
+import 'dart:math' as math;
 import 'package:crypto/crypto.dart';
 
 /// Exception thrown when vocabulary fails SHA-256 digest verification,
@@ -19,8 +21,15 @@ const String kExpectedVocabSha256 =
     '6229da7b5527533c901e57b32dafc3c6fd701114a407d1fe4f5da60af3b062c5';
 
 class WordPieceTokenizer {
+  static const int minSeqLength = 1;
+  static const int defaultMaxSeqLength = 64;
+  static const int defaultMaxInputCharsPerWord = 100;
+  static const int defaultMinVocabSize = 4;
+  static const int defaultMaxVocabSize = 30522;
+
   final Map<String, int> vocab;
   final int maxSeqLength;
+  final int maxInputCharsPerWord;
 
   /// Dynamic verified special token IDs
   final int clsId;
@@ -30,10 +39,12 @@ class WordPieceTokenizer {
 
   WordPieceTokenizer(
     this.vocab, {
-    this.maxSeqLength = 64,
-    int minVocabSize = 10,
-    int maxVocabSize = 30522,
-  })  : clsId = vocab['[CLS]'] ?? -1,
+    int maxSeqLength = defaultMaxSeqLength,
+    this.maxInputCharsPerWord = defaultMaxInputCharsPerWord,
+    int minVocabSize = defaultMinVocabSize,
+    int maxVocabSize = defaultMaxVocabSize,
+  })  : maxSeqLength = maxSeqLength < minSeqLength ? minSeqLength : maxSeqLength,
+        clsId = vocab['[CLS]'] ?? -1,
         sepId = vocab['[SEP]'] ?? -1,
         padId = vocab['[PAD]'] ?? -1,
         unkId = vocab['[UNK]'] ?? -1 {
@@ -66,10 +77,11 @@ class WordPieceTokenizer {
   /// and validates vocabulary size bounds and required special tokens.
   factory WordPieceTokenizer.fromLines(
     List<String> lines, {
-    int maxSeqLength = 64,
+    int maxSeqLength = defaultMaxSeqLength,
+    int maxInputCharsPerWord = defaultMaxInputCharsPerWord,
     String? expectedDigest,
-    int minVocabSize = 10,
-    int maxVocabSize = 30522,
+    int minVocabSize = defaultMinVocabSize,
+    int maxVocabSize = defaultMaxVocabSize,
   }) {
     if (expectedDigest != null) {
       final content = lines.join('\n');
@@ -92,6 +104,7 @@ class WordPieceTokenizer {
     return WordPieceTokenizer(
       vocabMap,
       maxSeqLength: maxSeqLength,
+      maxInputCharsPerWord: maxInputCharsPerWord,
       minVocabSize: minVocabSize,
       maxVocabSize: maxVocabSize,
     );
@@ -99,51 +112,93 @@ class WordPieceTokenizer {
 
   /// Tokenizes the input [text] into a list of vocabulary token IDs.
   /// Automatically adds [CLS] at the start, [SEP] at the end, and pads with [PAD].
-  List<int> tokenize(String text) {
+  List<int> tokenize(String text, {int? maxSeqLength}) {
+    final targetLength = math.max(minSeqLength, maxSeqLength ?? this.maxSeqLength);
     final tokens = _basicTokenize(text);
     final List<int> ids = [];
 
     ids.add(clsId);
 
     for (final token in tokens) {
-      if (ids.length >= maxSeqLength - 1) break;
+      if (ids.length >= targetLength - 1) break;
 
       final subwords = _wordpieceTokenize(token);
       for (final subword in subwords) {
-        if (ids.length >= maxSeqLength - 1) break;
+        if (ids.length >= targetLength - 1) break;
         ids.add(vocab[subword] ?? unkId);
       }
     }
 
     // Add [SEP] if there is space, otherwise overwrite the last element
-    if (ids.length < maxSeqLength) {
+    if (ids.length < targetLength) {
       ids.add(sepId);
-    } else {
-      ids[maxSeqLength - 1] = sepId;
+    } else if (targetLength > 1) {
+      ids[targetLength - 1] = sepId;
     }
 
     // Pad with [PAD] IDs
-    while (ids.length < maxSeqLength) {
+    while (ids.length < targetLength) {
       ids.add(padId);
+    }
+
+    // Strict boundary enforcement: guarantee output vector matches targetLength
+    if (ids.length > targetLength) {
+      ids.length = targetLength;
     }
 
     return ids;
   }
 
+  /// Asynchronously tokenizes [text] on a background isolate off the main event loop.
+  Future<List<int>> tokenizeAsync(String text, {int? maxSeqLength}) {
+    final targetLength = math.max(minSeqLength, maxSeqLength ?? this.maxSeqLength);
+    return Isolate.run(() => tokenize(text, maxSeqLength: targetLength));
+  }
+
+  /// Alias for [tokenizeAsync] explicitly indicating background isolate execution.
+  Future<List<int>> tokenizeIsolate(String text, {int? maxSeqLength}) =>
+      tokenizeAsync(text, maxSeqLength: maxSeqLength);
+
   List<String> _basicTokenize(String text) {
     final normalized = text.toLowerCase();
-    // Match word characters (alphanumeric) or punctuation symbols separately
-    final regex = RegExp(r"[a-zA-Z0-9]+|[^\s\w]");
+    // Unicode-aware regex matching word characters (letters, numbers, combining marks)
+    // or punctuation / symbols separately while preserving surrogate pairs and emojis
+    final regex = RegExp(r"[\p{L}\p{N}\p{M}]+|[^\s\p{L}\p{N}\p{M}]", unicode: true);
     return regex.allMatches(normalized).map((m) => m.group(0)!).toList();
   }
 
+  bool _isSurrogateLead(int codeUnit) => codeUnit >= 0xD800 && codeUnit <= 0xDBFF;
+  bool _isSurrogateTrail(int codeUnit) => codeUnit >= 0xDC00 && codeUnit <= 0xDFFF;
+
+  int _prevCodePointIndex(String str, int index, int minIndex) {
+    if (index > minIndex + 1 &&
+        _isSurrogateTrail(str.codeUnitAt(index - 1)) &&
+        _isSurrogateLead(str.codeUnitAt(index - 2))) {
+      return index - 2;
+    }
+    return index - 1;
+  }
+
   List<String> _wordpieceTokenize(String word) {
+    // Fast path: avoid quadratic processing on excessively long continuous strings/payloads
+    if (word.length > maxInputCharsPerWord) {
+      return ['[UNK]'];
+    }
+
     final List<String> subwords = [];
     int start = 0;
     bool isBad = false;
 
     while (start < word.length) {
-      int end = word.length;
+      int end = math.min(word.length, start + maxInputCharsPerWord);
+      // Ensure end boundary does not split a surrogate pair
+      if (end < word.length &&
+          end > start &&
+          _isSurrogateTrail(word.codeUnitAt(end)) &&
+          _isSurrogateLead(word.codeUnitAt(end - 1))) {
+        end--;
+      }
+
       String curSubword = '';
       bool found = false;
 
@@ -158,7 +213,7 @@ class WordPieceTokenizer {
           found = true;
           break;
         }
-        end--;
+        end = _prevCodePointIndex(word, end, start);
       }
 
       if (!found) {
