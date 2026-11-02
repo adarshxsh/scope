@@ -33,6 +33,7 @@ from training.export.tflite_exporter import (
     export_float32_tflite,
     export_saved_model,
 )
+from training.federated.server_aggregator import FederatedServerAggregator
 from training.models.mlp import build_baseline_mlp
 from training.utils.io import ensure_dir, read_jsonl, write_json
 from training.utils.preprocessing import (
@@ -65,6 +66,12 @@ def parse_args() -> argparse.Namespace:
         "--learning-rate", type=float, default=TrainingConfig.learning_rate
     )
     parser.add_argument("--seed", type=int, default=RANDOM_SEED)
+    parser.add_argument(
+        "--federated-payloads",
+        type=Path,
+        default=None,
+        help="Optional path to JSON file containing client DP-SGD gradient updates for FedAvg.",
+    )
     return parser.parse_args()
 
 
@@ -131,6 +138,18 @@ def main() -> None:
         saved_model_dir,
         export_dir / "ghost_ai.tflite",
     )
+
+    federated_tflite_path = None
+    federated_checksum = None
+    if args.federated_payloads and args.federated_payloads.exists():
+        import json
+        with open(args.federated_payloads, "r", encoding="utf-8") as f:
+            client_updates = json.load(f)
+        aggregator = FederatedServerAggregator(learning_rate=config.learning_rate)
+        model = aggregator.aggregate_gradients(model, client_updates)
+        federated_tflite_path, federated_checksum = FederatedServerAggregator.export_tflite_with_checksum(
+            model, export_dir / "ghost_ai_federated.tflite"
+        )
 
     write_history_csv(history, output_dir / "history.csv")
     plot_training_history(history, evaluation_dir)
