@@ -1,5 +1,16 @@
 {
   "version": "1.0.0",
+  "calibration": {
+    "finance": { "alpha": 0.90, "a": 1.2, "b": 0.3 },
+    "scholarship": { "alpha": 0.85, "a": 1.1, "b": 0.2 },
+    "health": { "alpha": 0.80, "a": 1.1, "b": 0.1 },
+    "sys": { "alpha": 0.70, "a": 1.0, "b": 0.0 },
+    "msg": { "alpha": 0.65, "a": 1.0, "b": 0.0 },
+    "email": { "alpha": 0.60, "a": 1.0, "b": 0.0 },
+    "social": { "alpha": 0.40, "a": 0.9, "b": -0.3 },
+    "promo": { "alpha": 0.35, "a": 0.8, "b": -0.5 },
+    "default": { "alpha": 0.50, "a": 1.0, "b": 0.0 }
+  },
   "rules": [
     {
       "id": "otp_security",
