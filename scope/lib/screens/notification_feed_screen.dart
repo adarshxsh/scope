@@ -42,7 +42,7 @@ class _NotificationFeedScreenState extends State<NotificationFeedScreen> {
   List<AppNotification> _notifications = [];
   bool _isListenerEnabled = false;
   bool _isLoading = true;
-  Timer? _pollTimer;
+  StreamSubscription<AppNotification>? _subscription;
 
   @override
   void initState() {
@@ -52,17 +52,24 @@ class _NotificationFeedScreenState extends State<NotificationFeedScreen> {
     // Pre-initialize rules asset loading
     _analysisEngine.initialize();
 
-    // Initial check + start polling
+    // Initial check + subscribe to stream
     _checkPermissionAndFetch();
-    _pollTimer = Timer.periodic(
-      const Duration(seconds: 3),
-      (_) => _fetchNotifications(),
-    );
+    _subscription = _bridge.notificationStream.listen((notification) async {
+      final analyzed = await _analysisEngine.analyze(notification);
+      await _storage.saveAll([analyzed]);
+      final all = await _storage.getAll();
+      if (mounted) {
+        setState(() {
+          _notifications = all;
+          _isLoading = false;
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
-    _pollTimer?.cancel();
+    _subscription?.cancel();
     super.dispose();
   }
 

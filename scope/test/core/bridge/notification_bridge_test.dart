@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/services.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
+import 'package:scope/core/models/notification_model.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -127,6 +129,30 @@ void main() {
         });
         // Should complete without throwing
         await bridge.openNotificationSettings();
+      });
+    });
+
+    group('notificationStream', () {
+      test('emits AppNotification when customStream pushes items', () async {
+        final controller = StreamController<AppNotification>();
+        final customBridge = NotificationBridge(customStream: controller.stream);
+
+        final futureItem = customBridge.notificationStream.first;
+        final notif = AppNotification(
+          id: 's1',
+          packageName: 'com.stream.test',
+          title: 'Stream Title',
+          content: 'Stream Content',
+          timestamp: 1700000000000,
+        );
+
+        controller.add(notif);
+        final result = await futureItem;
+
+        expect(result.id, 's1');
+        expect(result.packageName, 'com.stream.test');
+        expect(result.title, 'Stream Title');
+        await controller.close();
       });
     });
   });
