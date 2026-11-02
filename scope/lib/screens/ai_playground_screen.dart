@@ -3,6 +3,7 @@ import 'package:scope/core/analysis/extracted_features.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/state/notification_controller.dart';
+import 'package:scope/core/utils/pii_redactor.dart';
 import 'package:scope/theme/app_colors.dart';
 import 'package:scope/theme/app_spacing.dart';
 import 'package:scope/widgets/primitives/scope_surface.dart';
@@ -22,6 +23,7 @@ class AiPlaygroundScreen extends StatefulWidget {
 class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
   AppNotification? _selectedNotification;
   bool _isCustomMode = false;
+  bool _isPrivacyMode = true;
 
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
@@ -150,7 +152,16 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     final notifications = widget.controller.notifications.take(15).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('AI Playground (RLHF)')),
+      appBar: AppBar(
+        title: const Text('AI Playground (RLHF)'),
+        actions: [
+          IconButton(
+            icon: Icon(_isPrivacyMode ? Icons.visibility_off : Icons.visibility),
+            tooltip: _isPrivacyMode ? 'Privacy Mode Enabled (Masked)' : 'Privacy Mode Disabled (Debug View)',
+            onPressed: () => setState(() => _isPrivacyMode = !_isPrivacyMode),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: ScopeScreenBody(
           child: ListView(
@@ -242,6 +253,12 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
         itemBuilder: (context, index) {
           final n = notifications[index];
           final isSelected = _selectedNotification?.id == n.id;
+          final displayTitle = n.title.isEmpty
+              ? '(No title)'
+              : (_isPrivacyMode ? PiiRedactor.maskText(n.title) : n.title);
+          final displayContent = _isPrivacyMode
+              ? PiiRedactor.maskText(n.content)
+              : n.content;
           return GestureDetector(
             onTap: () => _selectNotification(n),
             child: Container(
@@ -272,10 +289,19 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(n.title.isEmpty ? '(No title)' : n.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12), maxLines: 1),
+                  Text(
+                    displayTitle,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                    maxLines: 1,
+                  ),
                   const SizedBox(height: 2),
                   Expanded(
-                    child: Text(n.content, style: const TextStyle(fontSize: 11, color: Colors.white70), maxLines: 3, overflow: TextOverflow.ellipsis),
+                    child: Text(
+                      displayContent,
+                      style: const TextStyle(fontSize: 11, color: Colors.white70),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),
@@ -297,8 +323,18 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     if (n.title.toLowerCase().contains('credited') || n.content.toLowerCase().contains('credited')) definingWords.add('credited');
     if (n.title.toLowerCase().contains('offer') || n.content.toLowerCase().contains('offer')) definingWords.add('offer');
     if (n.title.toLowerCase().contains('sale') || n.content.toLowerCase().contains('sale')) definingWords.add('sale');
-    if (features.otp != null) definingWords.add('OTP:${features.otp}');
-    if (features.amount != null) definingWords.add('Amount:Rs.${features.amount}');
+    if (features.otp != null) {
+      definingWords.add(_isPrivacyMode ? 'OTP:${PiiRedactor.maskOtp(features.otp)}' : 'OTP:${features.otp}');
+    }
+    if (features.amount != null) {
+      definingWords.add(_isPrivacyMode ? 'Amount:${PiiRedactor.maskAmount(features.amount)}' : 'Amount:Rs.${features.amount}');
+    }
+
+    final rawTarget = '${n.title} - ${n.content}';
+    final targetText = _isPrivacyMode ? PiiRedactor.maskText(rawTarget) : rawTarget;
+    final explanationText = _isPrivacyMode
+        ? PiiRedactor.maskText(n.explanation ?? 'Classified via heuristic rule matching.')
+        : (n.explanation ?? 'Classified via heuristic rule matching.');
 
     return ScopeSurface(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -314,7 +350,7 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
           ),
           const Divider(height: 24),
           Text('Input Target:', style: theme.textTheme.labelLarge?.copyWith(color: Colors.white54)),
-          Text('${n.title} - ${n.content}', style: const TextStyle(fontSize: 14)),
+          Text(targetText, style: const TextStyle(fontSize: 14)),
           const SizedBox(height: AppSpacing.md),
           
           Text('Most Defining Features / Tags:', style: theme.textTheme.labelLarge?.copyWith(color: Colors.white54)),
@@ -323,11 +359,14 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
             spacing: 6,
             children: definingWords.isEmpty
                 ? [const Chip(label: Text('General heuristic'), visualDensity: VisualDensity.compact)]
-                : definingWords.map((w) => Chip(
-                      label: Text(w, style: const TextStyle(fontSize: 11, color: Colors.white)),
+                : definingWords.map((w) {
+                    final tagLabel = _isPrivacyMode ? PiiRedactor.maskText(w) : w;
+                    return Chip(
+                      label: Text(tagLabel, style: const TextStyle(fontSize: 11, color: Colors.white)),
                       backgroundColor: AppColors.seed.withValues(alpha: 0.3),
                       visualDensity: VisualDensity.compact,
-                    )).toList(),
+                    );
+                  }).toList(),
           ),
           const SizedBox(height: AppSpacing.md),
 
@@ -352,7 +391,7 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
           ),
           const SizedBox(height: AppSpacing.md),
           Text('AI Explanation:', style: theme.textTheme.labelLarge?.copyWith(color: Colors.white54)),
-          Text(n.explanation ?? 'Classified via heuristic rule matching.', style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.white70)),
+          Text(explanationText, style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.white70)),
           const Divider(height: 32),
 
           Text('Reinforcement Feedback Loop (RLHF)', style: theme.textTheme.titleSmall),

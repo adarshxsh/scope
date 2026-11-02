@@ -291,6 +291,10 @@ final reviewQueueSortOrderProvider = StateProvider<QueueSortOrder>((ref) {
   return QueueSortOrder.reviewScore;
 });
 
+final privacyModeProvider = StateProvider<bool>((ref) {
+  return true;
+});
+
 final sortedReviewQueueProvider = Provider<List<AppNotification>>((ref) {
   final list = ref.watch(reviewQueueProvider);
   final sortOrder = ref.watch(reviewQueueSortOrderProvider);
