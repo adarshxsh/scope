@@ -40,7 +40,7 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
     'personal',
   ];
 
-  final List<String> _priorities = ['critical', 'high', 'medium', 'low'];
+  final List<String> _priorities = ['high', 'medium', 'low'];
 
   @override
   void dispose() {
@@ -52,7 +52,10 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
 
   void _updateSelectedFields(String? category, String? priority) {
     final cat = category?.toLowerCase() ?? 'financial';
-    final pri = priority?.toLowerCase() ?? 'medium';
+    String pri = priority?.toLowerCase() ?? 'medium';
+    if (pri == 'critical') {
+      pri = 'high';
+    }
     if (!_categories.contains(cat)) {
       _categories.add(cat);
     }

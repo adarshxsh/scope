@@ -65,6 +65,63 @@ class NotificationRule {
       'conditions': conditions.toMap(),
     };
   }
+
+  /// Validates and sanitizes a custom rule.
+  /// Returns a sanitized [NotificationRule] if valid, or null if malformed/invalid.
+  static NotificationRule? validateAndSanitizeCustomRule(NotificationRule rule) {
+    if (rule.id.trim().isEmpty || !rule.id.trim().startsWith('rlhf-')) {
+      return null;
+    }
+    if (rule.category.trim().isEmpty) {
+      return null;
+    }
+    if (rule.priority.trim().isEmpty) {
+      return null;
+    }
+
+    // Priority Ceiling Enforcement:
+    // Custom rules setting 'critical' priority are automatically demoted to 'high'
+    String priority = rule.priority.toLowerCase().trim();
+    if (priority == 'critical') {
+      priority = 'high';
+    } else if (priority != 'high' && priority != 'medium' && priority != 'low') {
+      return null;
+    }
+
+    // Condition Sanitization
+    final sanitizedPackages = rule.conditions.packages
+        .map((p) => p.trim())
+        .where((p) => p.length > 1 && p != '*' && p != '?')
+        .toList();
+
+    final sanitizedTitleKeywords = rule.conditions.titleKeywords
+        .map((k) => k.trim())
+        .where((k) => k.length > 1 && k != '*' && k != '?')
+        .toList();
+
+    final sanitizedKeywords = rule.conditions.keywords
+        .map((k) => k.trim())
+        .where((k) => k.length > 1 && k != '*' && k != '?')
+        .toList();
+
+    // Reject empty condition definitions (must have at least one valid package, titleKeyword, or keyword)
+    if (sanitizedPackages.isEmpty &&
+        sanitizedTitleKeywords.isEmpty &&
+        sanitizedKeywords.isEmpty) {
+      return null;
+    }
+
+    return NotificationRule(
+      id: rule.id.trim(),
+      category: rule.category.trim(),
+      priority: priority,
+      conditions: RuleCondition(
+        packages: sanitizedPackages,
+        titleKeywords: sanitizedTitleKeywords,
+        keywords: sanitizedKeywords,
+      ),
+    );
+  }
 }
 
 /// The result returned by a successful rule engine match.
@@ -73,42 +130,58 @@ class MatchedRuleResult {
   final String category;
   final String priority;
   final String matchedSignal;
+  final bool isSystemRule;
 
   const MatchedRuleResult({
     required this.ruleId,
     required this.category,
     required this.priority,
     required this.matchedSignal,
+    this.isSystemRule = true,
   });
 
   @override
   String toString() => 'MatchedRuleResult(ruleId: $ruleId, category: $category, '
-      'priority: $priority, matchedSignal: $matchedSignal)';
+      'priority: $priority, matchedSignal: $matchedSignal, isSystemRule: $isSystemRule)';
 }
 
 /// Compiled rule engine matching raw notifications against in-memory patterns.
 class RuleEngine {
   String version = '0.0.0';
-  List<NotificationRule> _rules = [];
+  List<NotificationRule> _systemRules = [];
+  List<NotificationRule> _customRules = [];
+
+  /// Combined getter for all active rules (system rules followed by custom rules).
+  List<NotificationRule> get rules => [..._systemRules, ..._customRules];
+  List<NotificationRule> get systemRules => List.unmodifiable(_systemRules);
+  List<NotificationRule> get customRules => List.unmodifiable(_customRules);
 
   /// Compiles a raw JSON rules database into compiled memory structures.
   void compile(String jsonStr) {
     final parsed = json.decode(jsonStr) as Map<String, dynamic>;
     version = parsed['version'] as String? ?? '0.0.0';
     final rawRules = parsed['rules'] as List<dynamic>? ?? const [];
-    
-    _rules = rawRules
+
+    _systemRules = rawRules
         .map((r) => NotificationRule.fromMap(Map<String, dynamic>.from(r as Map)))
         .toList();
   }
 
-  /// Prepends a user-defined reinforcement learning rule to the top of the evaluation chain.
-  void addReinforcementRule(NotificationRule rule) {
-    _rules.insert(0, rule);
+  /// Validates and prepends a user-defined reinforcement learning rule to the top of the custom rule evaluation chain.
+  bool addReinforcementRule(NotificationRule rule) {
+    final sanitized = NotificationRule.validateAndSanitizeCustomRule(rule);
+    if (sanitized == null) {
+      // ignore: avoid_print
+      print('RuleEngine: Rejected invalid custom rule "${rule.id}".');
+      return false;
+    }
+    _customRules.removeWhere((r) => r.id == sanitized.id);
+    _customRules.insert(0, sanitized);
     _saveCustomRules();
+    return true;
   }
 
-  /// Loads custom rules from local storage and prepends them.
+  /// Loads custom rules from local storage, validating each rule through schema validator.
   Future<void> loadCustomRules() async {
     try {
       final dir = await getApplicationDocumentsDirectory();
@@ -116,9 +189,20 @@ class RuleEngine {
       if (await file.exists()) {
         final content = await file.readAsString();
         final list = json.decode(content) as List<dynamic>;
-        final customRules = list.map((r) => NotificationRule.fromMap(Map<String, dynamic>.from(r))).toList();
-        // Insert custom rules at the top
-        _rules.insertAll(0, customRules);
+        final List<NotificationRule> loadedCustom = [];
+        for (final r in list) {
+          if (r is Map) {
+            final rule = NotificationRule.fromMap(Map<String, dynamic>.from(r));
+            final sanitized = NotificationRule.validateAndSanitizeCustomRule(rule);
+            if (sanitized != null) {
+              loadedCustom.add(sanitized);
+            } else {
+              // ignore: avoid_print
+              print('RuleEngine: Rejected malformed custom rule "${rule.id}" from storage.');
+            }
+          }
+        }
+        _customRules = loadedCustom;
       }
     } catch (e) {
       // ignore: avoid_print
@@ -129,10 +213,8 @@ class RuleEngine {
   /// Saves all custom RLHF rules to local storage.
   Future<void> _saveCustomRules() async {
     try {
-      // Filter out base rules (assuming base rules don't have 'rlhf-' prefix in id)
-      final customRules = _rules.where((r) => r.id.startsWith('rlhf-')).toList();
-      final list = customRules.map((r) => r.toMap()).toList();
-      
+      final list = _customRules.map((r) => r.toMap()).toList();
+
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/rlhf_rules.json');
       await file.writeAsString(json.encode(list));
@@ -142,14 +224,34 @@ class RuleEngine {
     }
   }
 
-  /// Scans the database to find the first rule matching this notification.
+  /// Scans system rules first, then custom rules to find the first rule matching this notification.
   /// Returns a [MatchedRuleResult] if a match is found, or null otherwise.
   MatchedRuleResult? match(AppNotification notification) {
+    // 1. Evaluate system security rules chain first
+    final systemMatch = _matchInChain(_systemRules, notification, isSystemRule: true);
+    if (systemMatch != null) {
+      return systemMatch;
+    }
+
+    // 2. Evaluate custom user rules chain second
+    final customMatch = _matchInChain(_customRules, notification, isSystemRule: false);
+    if (customMatch != null) {
+      return customMatch;
+    }
+
+    return null;
+  }
+
+  MatchedRuleResult? _matchInChain(
+    List<NotificationRule> chain,
+    AppNotification notification, {
+    required bool isSystemRule,
+  }) {
     final contentLower = notification.content.toLowerCase();
     final titleLower = notification.title.toLowerCase();
     final package = notification.packageName.toLowerCase();
 
-    for (final rule in _rules) {
+    for (final rule in chain) {
       // 1. Package match constraint
       final packageConditionMatches =
           rule.conditions.packages.isEmpty || rule.conditions.packages.contains(package);
@@ -213,6 +315,7 @@ class RuleEngine {
           category: rule.category,
           priority: rule.priority,
           matchedSignal: signals.join(' AND '),
+          isSystemRule: isSystemRule,
         );
       }
     }
