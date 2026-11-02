@@ -54,7 +54,7 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
 
     // Persist to DB
     if (_db != null) {
-      DriftNotificationStorage(_db).save(newItem);
+      DriftNotificationStorage(_db).save(newItem).catchError((_) {});
       _saveQueueEntry(newItem);
     }
   }
@@ -63,7 +63,7 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
   void remove(String id) {
     state = state.where((n) => n.id != id).toList();
     if (_db != null) {
-      _db.reviewQueueDao.deleteItem(id);
+      _db.reviewQueueDao.deleteItem(id).catchError((_) {});
     }
   }
 
@@ -74,7 +74,7 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
         if (n.id == notification.id) notification else n
     ];
     if (_db != null) {
-      DriftNotificationStorage(_db).save(notification);
+      DriftNotificationStorage(_db).save(notification).catchError((_) {});
       _saveQueueEntry(notification);
     }
   }
@@ -125,8 +125,8 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
     ];
     if (_db != null) {
       final item = state.firstWhere((n) => n.id == id);
-      DriftNotificationStorage(_db).save(item);
-      _db.reviewQueueDao.updateStatus(id, ReviewState.ARCHIVED);
+      DriftNotificationStorage(_db).save(item).catchError((_) {});
+      _db.reviewQueueDao.updateStatus(id, ReviewState.ARCHIVED).catchError((_) {});
     }
   }
 
@@ -142,8 +142,8 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
     ];
     if (_db != null) {
       final item = state.firstWhere((n) => n.id == id);
-      DriftNotificationStorage(_db).save(item);
-      _db.reviewQueueDao.updateStatus(id, ReviewState.EXPIRED);
+      DriftNotificationStorage(_db).save(item).catchError((_) {});
+      _db.reviewQueueDao.updateStatus(id, ReviewState.EXPIRED).catchError((_) {});
     }
   }
 
@@ -164,7 +164,7 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
     ];
     if (_db != null) {
       final item = state.firstWhere((n) => n.id == id);
-      DriftNotificationStorage(_db).save(item);
+      DriftNotificationStorage(_db).save(item).catchError((_) {});
       _saveQueueEntry(item, expiry: snoozedUntil);
     }
   }
@@ -256,14 +256,19 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
 
   Future<void> _saveQueueEntry(AppNotification n, {DateTime? expiry}) async {
     if (_db == null) return;
-    await _db.reviewQueueDao.insertItem(ReviewQueueEntry(
-      id: 0,
-      notificationId: n.id,
-      priority: n.priority ?? 'medium',
-      enqueueTime: DateTime.now(),
-      expiryTime: expiry,
-      status: n.state,
-    ));
+    try {
+      await _db.reviewQueueDao.insertItem(ReviewQueueEntry(
+        id: 0,
+        notificationId: n.id,
+        priority: n.priority ?? 'medium',
+        enqueueTime: DateTime.now(),
+        expiryTime: expiry,
+        status: n.state,
+      ));
+    } catch (e) {
+      if (e.toString().toLowerCase().contains('close')) return;
+      rethrow;
+    }
   }
 
   bool _checkCompletedKeywords(String title, String content) {
