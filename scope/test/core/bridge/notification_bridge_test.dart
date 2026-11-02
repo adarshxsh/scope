@@ -11,7 +11,7 @@ void main() {
 
   setUp(() {
     channel = const MethodChannel('com.scope.notifications.test');
-    bridge = NotificationBridge(channel: channel);
+    bridge = NotificationBridge(channel: channel, sessionToken: 'test_session_token_123');
     log = [];
   });
 
@@ -20,6 +20,9 @@ void main() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
       log.add(call);
+      if (call.method == 'getSessionToken') {
+        return 'test_session_token_123';
+      }
       return handler(call);
     });
   }
@@ -30,9 +33,28 @@ void main() {
   });
 
   group('NotificationBridge', () {
+    group('getSessionToken', () {
+      test('fetches session token from channel when not initialized', () async {
+        final uninitBridge = NotificationBridge(channel: channel);
+        mockHandler((call) async => null);
+
+        final token = await uninitBridge.getSessionToken();
+        expect(token, 'test_session_token_123');
+        expect(log.any((call) => call.method == 'getSessionToken'), true);
+      });
+
+      test('uses pre-initialized session token without calling channel', () async {
+        mockHandler((call) async => null);
+        final token = await bridge.getSessionToken();
+        expect(token, 'test_session_token_123');
+        expect(log.any((call) => call.method == 'getSessionToken'), false);
+      });
+    });
+
     group('getNotifications', () {
-      test('returns parsed notifications from channel', () async {
+      test('returns parsed notifications from channel with session token', () async {
         mockHandler((call) async {
+          expect(call.arguments, {'token': 'test_session_token_123'});
           return [
             {
               'id': 'n1',
@@ -61,7 +83,7 @@ void main() {
         expect(notifications[0].title, 'Hello');
         expect(notifications[1].id, 'n2');
         expect(notifications[1].isOngoing, true);
-        expect(log.single.method, 'getNotifications');
+        expect(log.last.method, 'getNotifications');
       });
 
       test('returns empty list when channel returns null', () async {
@@ -76,9 +98,9 @@ void main() {
         expect(notifications, isEmpty);
       });
 
-      test('returns empty list on PlatformException', () async {
+      test('returns empty list on SecurityException PlatformException', () async {
         mockHandler((call) async {
-          throw PlatformException(code: 'ERROR', message: 'test error');
+          throw PlatformException(code: 'SecurityException', message: 'Invalid or missing session token');
         });
         final notifications = await bridge.getNotifications();
         expect(notifications, isEmpty);
@@ -87,10 +109,13 @@ void main() {
 
     group('isListenerEnabled', () {
       test('returns true when channel returns true', () async {
-        mockHandler((call) async => true);
+        mockHandler((call) async {
+          expect(call.arguments, {'token': 'test_session_token_123'});
+          return true;
+        });
         final result = await bridge.isListenerEnabled();
         expect(result, true);
-        expect(log.single.method, 'isListenerEnabled');
+        expect(log.last.method, 'isListenerEnabled');
       });
 
       test('returns false when channel returns false', () async {
@@ -105,9 +130,9 @@ void main() {
         expect(result, false);
       });
 
-      test('returns false on PlatformException', () async {
+      test('returns false on SecurityException PlatformException', () async {
         mockHandler((call) async {
-          throw PlatformException(code: 'ERROR');
+          throw PlatformException(code: 'SecurityException', message: 'Unauthorized');
         });
         final result = await bridge.isListenerEnabled();
         expect(result, false);
@@ -115,15 +140,18 @@ void main() {
     });
 
     group('openNotificationSettings', () {
-      test('invokes correct method on channel', () async {
-        mockHandler((call) async => true);
+      test('invokes correct method on channel with session token', () async {
+        mockHandler((call) async {
+          expect(call.arguments, {'token': 'test_session_token_123'});
+          return true;
+        });
         await bridge.openNotificationSettings();
-        expect(log.single.method, 'openNotificationSettings');
+        expect(log.last.method, 'openNotificationSettings');
       });
 
       test('does not throw on PlatformException', () async {
         mockHandler((call) async {
-          throw PlatformException(code: 'ERROR');
+          throw PlatformException(code: 'SecurityException', message: 'Unauthorized');
         });
         // Should complete without throwing
         await bridge.openNotificationSettings();
