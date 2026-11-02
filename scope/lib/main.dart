@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scope/core/state/notification_controller.dart';
+import 'package:scope/core/storage/backup_exclusion_helper.dart';
 import 'package:scope/screens/main_shell.dart';
 import 'package:scope/theme/app_theme.dart';
 
@@ -27,6 +28,7 @@ class _AttentionOSAppState extends State<AttentionOSApp> {
   void initState() {
     super.initState();
     _controller = NotificationController();
+    BackupExclusionHelper.excludeSensitiveFiles();
   }
 
   @override
