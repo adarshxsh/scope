@@ -54,7 +54,8 @@ class LiteRtClassifier implements NotificationAnalyzer {
       await _initialize();
     }
 
-    final tokenIds = _tokenizer?.tokenize(combinedText) ?? List<int>.filled(64, 0);
+    final tokenIds = await (_tokenizer?.tokenizeAsync(combinedText) ??
+        Future.value(List<int>.filled(64, 0)));
 
     if (!_isModelLoaded || _interpreter == null) {
       // Graceful fallback heuristic classifier
