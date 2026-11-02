@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:scope/core/analysis/ghost_ai.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
+import 'package:scope/core/bridge/local_dataset_bridge.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/storage/notification_storage.dart';
@@ -566,5 +569,38 @@ class NotificationController extends ChangeNotifier {
           n.packageName.toLowerCase().contains(q) ||
           (n.classifiedCategory?.toLowerCase().contains(q) ?? false);
     }).toList();
+  }
+
+  /// Exports notification feature vectors, priority scores, and user feedback into a structured JSONL training file.
+  Future<File> exportDataset({String? outputPath}) async {
+    final loaded = await _storage.getAll();
+    final listToExport = loaded.isNotEmpty ? loaded : _notifications;
+    return LocalDatasetBridge.instance.exportTrainingDataset(
+      notifications: listToExport,
+      outputPath: outputPath,
+    );
+  }
+
+  /// Records user feedback interaction (reward +1, penalty -1, or queue action).
+  Future<void> recordFeedback({
+    required String notificationId,
+    required String action,
+    double? customTargetScore,
+  }) async {
+    await LocalDatasetBridge.instance.recordFeedback(
+      notificationId: notificationId,
+      action: action,
+      customTargetScore: customTargetScore,
+    );
+    notifyListeners();
+  }
+
+  /// Re-initializes Ghost AI engine to check local app storage for dynamic model binaries.
+  Future<void> reloadModel({File? customModelFile, String? customModelPath}) async {
+    await GhostAI.instance.initialize(
+      customModelFile: customModelFile,
+      customModelPath: customModelPath,
+    );
+    notifyListeners();
   }
 }
