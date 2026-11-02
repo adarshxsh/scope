@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/storage/notification_storage.dart';
 import 'package:scope/database/attention_database.dart';
 import 'package:scope/database/tables.dart';
 
@@ -9,14 +10,56 @@ part 'daos.g.dart';
 class NotificationDao extends DatabaseAccessor<AttentionDatabase> with _$NotificationDaoMixin {
   NotificationDao(super.db);
 
-  Future<void> insertNotification(NotificationEntry entry) async {
-    await into(notificationsTable).insert(entry, mode: InsertMode.insertOrReplace);
+  Future<int> enforceMaxRows(int maxRows) async {
+    if (maxRows <= 0) return 0;
+
+    try {
+      final countQuery = selectOnly(notificationsTable)..addColumns([notificationsTable.id.count()]);
+      final count = await countQuery.map((row) => row.read(notificationsTable.id.count())).getSingle();
+      if (count == null || count <= maxRows) {
+        return 0;
+      }
+
+      final rowsAffected = await customUpdate(
+        'DELETE FROM notifications_table WHERE id IN ('
+        'SELECT id FROM notifications_table ORDER BY timestamp DESC, created_at DESC LIMIT -1 OFFSET ?'
+        ')',
+        variables: [Variable.withInt(maxRows)],
+        updates: {notificationsTable},
+      );
+
+      if (rowsAffected > 0) {
+        await customUpdate(
+          'DELETE FROM review_queue_table WHERE notification_id NOT IN ('
+          'SELECT id FROM notifications_table'
+          ')',
+          updates: {db.reviewQueueTable},
+        );
+      }
+
+      return rowsAffected;
+    } catch (e) {
+      if (e.toString().contains('closed') || e.toString().contains('Closed')) {
+        return 0;
+      }
+      rethrow;
+    }
   }
 
-  Future<void> insertAll(List<NotificationEntry> entries) async {
+  Future<void> insertNotification(NotificationEntry entry, {int maxRows = NotificationStorage.defaultMaxRows}) async {
+    await into(notificationsTable).insert(entry, mode: InsertMode.insertOrReplace);
+    if (maxRows != NotificationStorage.defaultMaxRows) {
+      await enforceMaxRows(maxRows);
+    }
+  }
+
+  Future<void> insertAll(List<NotificationEntry> entries, {int maxRows = NotificationStorage.defaultMaxRows}) async {
     await batch((b) {
       b.insertAll(notificationsTable, entries, mode: InsertMode.insertOrReplace);
     });
+    if (maxRows != NotificationStorage.defaultMaxRows) {
+      await enforceMaxRows(maxRows);
+    }
   }
 
   Future<NotificationEntry?> getById(String id) {
