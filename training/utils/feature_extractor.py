@@ -318,6 +318,13 @@ _currencyIds = {
     'AED': 6,
 }
 
+# Continuous feature extraction upper bounds matching Dart FeatureExtractor
+MAX_TITLE_LENGTH = 1000.0
+MAX_BODY_LENGTH = 1000.0
+MAX_WORD_COUNT = 1000.0
+MAX_AMOUNT = 100000.0
+MAX_DEADLINE_MINUTES = 43200.0
+
 
 def normalize(text: str) -> str:
     return " ".join(text.strip().split())
@@ -589,7 +596,7 @@ def extract_features(record: dict[str, Any]) -> list[float]:
     digits = len(_digitRegex.findall(combined))
     
     otp = extract_otp(combined)
-    amount = extract_amount(combined) or 0.0
+    amount = min(float(extract_amount(combined) or 0.0), MAX_AMOUNT)
     currency = extract_currency(combined)
     
     contains_deadline = contains_keyword(lower, _deadlineWords)
@@ -617,9 +624,9 @@ def extract_features(record: dict[str, Any]) -> list[float]:
     weekday = dt_utc.weekday() + 1
 
     values = [
-        float(len(title_norm)),
-        float(len(body_norm)),
-        float(len(_wordRegex.findall(combined))),
+        min(float(len(title_norm)), MAX_TITLE_LENGTH),
+        min(float(len(body_norm)), MAX_BODY_LENGTH),
+        min(float(len(_wordRegex.findall(combined))), MAX_WORD_COUNT),
         0.0 if letters == 0 else float(uppercase / letters),
         float(digits / text_unit_count),
         float(len(_emojiRegex.findall(combined))),
@@ -666,7 +673,7 @@ def extract_features(record: dict[str, Any]) -> list[float]:
         1.0 if is_promotion else 0.0,
         1.0 if is_duplicate_candidate(lower) else 0.0,
         1.0 if contains_deadline else 0.0,
-        float(deadline_minutes_remaining(lower)),
+        min(float(deadline_minutes_remaining(lower)), MAX_DEADLINE_MINUTES),
         float(amount),
         float(_currencyIds.get(currency, 0)),
         float(len(otp) if otp else 0),
@@ -682,3 +689,6 @@ def extract_features(record: dict[str, Any]) -> list[float]:
         float(category_id),
     ]
     return values
+
+
+extract_features_from_dict = extract_features

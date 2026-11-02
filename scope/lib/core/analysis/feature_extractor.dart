@@ -511,6 +511,13 @@ class FeatureExtractor {
     'AED': 6,
   };
 
+  /// Maximum upper bounds for continuous feature values during extraction.
+  static const double maxTitleLength = 1000.0;
+  static const double maxBodyLength = 1000.0;
+  static const double maxWordCount = 1000.0;
+  static const double maxAmount = 100000.0;
+  static const double maxDeadlineMinutes = 43200.0;
+
   /// Normalize raw text for clean feature extraction.
   static String normalize(String text) {
     return text.trim().replaceAll(RegExp(r'\s+'), ' ');
@@ -564,7 +571,7 @@ class FeatureExtractor {
     final uppercase = _upperRegex.allMatches(combined).length;
     final digits = _digitRegex.allMatches(combined).length;
     final otp = _extractOtp(combined);
-    final amount = _extractAmount(combined) ?? 0.0;
+    final amount = (_extractAmount(combined) ?? 0.0).clamp(0.0, maxAmount);
     final currency = _extractCurrency(combined);
     final containsDeadline = _containsKeyword(lower, _deadlineWords);
     final isPromotion =
@@ -594,9 +601,13 @@ class FeatureExtractor {
     );
 
     final values = [
-      title.runes.length.toDouble(),
-      body.runes.length.toDouble(),
-      _wordRegex.allMatches(combined).length.toDouble(),
+      title.runes.length.toDouble().clamp(0.0, maxTitleLength),
+      body.runes.length.toDouble().clamp(0.0, maxBodyLength),
+      _wordRegex
+          .allMatches(combined)
+          .length
+          .toDouble()
+          .clamp(0.0, maxWordCount),
       letters == 0 ? 0.0 : uppercase / letters,
       digits / textUnitCount,
       _emojiRegex.allMatches(combined).length.toDouble(),
@@ -647,7 +658,10 @@ class FeatureExtractor {
       _bool(isPromotion),
       _bool(_isDuplicateCandidate(lower)),
       _bool(containsDeadline),
-      _deadlineMinutesRemaining(lower).toDouble(),
+      math.min(
+        _deadlineMinutesRemaining(lower).toDouble(),
+        maxDeadlineMinutes,
+      ),
       amount,
       (_currencyIds[currency] ?? 0).toDouble(),
       (otp?.length ?? 0).toDouble(),

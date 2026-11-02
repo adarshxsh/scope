@@ -132,6 +132,12 @@ def main() -> None:
         export_dir / "ghost_ai.tflite",
     )
 
+    import shutil
+    flutter_asset_path = Path("scope/assets/model.tflite")
+    if flutter_asset_path.parent.exists():
+        shutil.copy(tflite_path, flutter_asset_path)
+        print(f"Copied TFLite model to {flutter_asset_path}")
+
     write_history_csv(history, output_dir / "history.csv")
     plot_training_history(history, evaluation_dir)
     plot_regression_results(splits.y_test, predictions, evaluation_dir)
