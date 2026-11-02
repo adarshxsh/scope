@@ -603,16 +603,16 @@ class FeatureExtractor {
       _punctuationRegex.allMatches(combined).length.toDouble(),
       _bool(combined.contains('?')),
       _bool(combined.contains('!')),
-      _bool(_currencySymbolRegex.hasMatch(combined)),
+      _bool(_currencySymbolRegex.hasMatch(combined) || combined.contains('[REDACTED_AMOUNT]')),
       _bool(
-        _amountRegex.hasMatch(combined) || _containsKeyword(lower, _moneyWords),
+        _amountRegex.hasMatch(combined) || _containsKeyword(lower, _moneyWords) || combined.contains('[REDACTED_AMOUNT]'),
       ),
-      _bool(otp != null),
+      _bool(otp != null || combined.contains('[REDACTED_OTP]')),
       _bool(_dateRegex.hasMatch(combined)),
       _bool(_timeRegex.hasMatch(combined)),
       _bool(_containsKeyword(lower, _locationWords)),
-      _bool(_emailRegex.hasMatch(combined)),
-      _bool(_phoneRegex.hasMatch(combined)),
+      _bool(_emailRegex.hasMatch(combined) || combined.contains('[REDACTED_EMAIL]')),
+      _bool(_phoneRegex.hasMatch(combined) || combined.contains('[REDACTED_PHONE]')),
       _bool(_urlRegex.hasMatch(combined)),
       _bool(
         notification.android.containsAttachment || _containsAttachment(lower),
@@ -672,13 +672,16 @@ class FeatureExtractor {
   }
 
   static String? _extractOtp(String text) {
-    if (!_containsKeyword(text.toLowerCase(), _otpWords)) return null;
+    if (!_containsKeyword(text.toLowerCase(), _otpWords) && !text.contains('[REDACTED_OTP]')) return null;
     for (final match in _otpRegex.allMatches(text)) {
       final value = match.group(0);
       if (value == null) continue;
       final number = int.tryParse(value);
       if (number != null && number >= 2020 && number <= 2030) continue;
       return value;
+    }
+    if (text.contains('[REDACTED_OTP]')) {
+      return 'REDACTED';
     }
     return null;
   }
