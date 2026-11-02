@@ -5,6 +5,7 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/utils/pii_redactor.dart';
+import 'package:scope/core/analysis/asset_verifier.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
 class GhostAIResult {
@@ -59,19 +60,23 @@ class GhostAI {
 
   /// Initializes the TFLite interpreter and rules database once on startup.
   Future<void> initialize() async {
-    if (_interpreter != null) return;
-    try {
-      // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
-    } catch (e) {
-      debugPrint('GhostAI: Failed to load TFLite model: $e');
+    if (_interpreter == null) {
+      try {
+        // 1. Verify and load interpreter from assets
+        await AssetVerifier.verifyAsset('assets/model.tflite');
+        _interpreter = await Interpreter.fromAsset('assets/model.tflite');
+        debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      } catch (e) {
+        debugPrint('GhostAI: Failed to load TFLite model: $e');
+      }
     }
 
     try {
-      // 2. Load and compile rules database
+      // 2. Verify and load compiled signed rules database
+      await AssetVerifier.verifyAsset('assets/rules.json');
       final jsonStr = await rootBundle.loadString('assets/rules.json');
-      _ruleEngine.compile(jsonStr);
+      _ruleEngine.compileSigned(jsonStr);
+      await _ruleEngine.loadCustomRules();
       debugPrint('GhostAI: Rule engine initialized (version: ${_ruleEngine.version}).');
     } catch (e) {
       debugPrint('GhostAI: Failed to initialize rules database: $e');
@@ -320,7 +325,7 @@ class GhostAI {
     return false;
   }
 
-  /// Outputs structured AI execution reports in debug mode.
+  /// Outputs structured AI execution reports in debug mode without exposing cleartext PII.
   void _logStructured(AppNotification notification, GhostAIResult result) {
     final redactedTitle = PiiRedactor.redactTitle(notification.title);
     final redactedContent = PiiRedactor.redactContent(notification.content);
