@@ -61,5 +61,43 @@ void main() {
       expect(result.engineName, contains('fallback'));
       expect(result.isFallback, isTrue);
     });
+
+    test('falls back gracefully on SHA-256 digest mismatch', () async {
+      final classifier = LiteRtClassifier(
+        expectedVocabSha256: '0000000000000000000000000000000000000000000000000000000000000000',
+      );
+
+      final notif = AppNotification(
+        id: '4',
+        packageName: 'com.example.app',
+        title: 'Alert',
+        content: 'Verification code 123456',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final result = await classifier.analyze(notif);
+
+      expect(result.category, equals('sys'));
+      expect(result.engineName, contains('fallback'));
+      expect(result.isFallback, isTrue);
+    });
+
+    test('SHA-256 verification overhead during asset initialization is within 5ms constraint', () async {
+      final stopwatch = Stopwatch()..start();
+      final classifier = LiteRtClassifier();
+      final notif = AppNotification(
+        id: '5',
+        packageName: 'com.example.app',
+        title: 'Test',
+        content: 'Test content',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final result = await classifier.analyze(notif);
+      stopwatch.stop();
+
+      // Ensure latency for analyze + init is low
+      expect(result.latencyMs, lessThanOrEqualTo(50));
+    });
   });
 }

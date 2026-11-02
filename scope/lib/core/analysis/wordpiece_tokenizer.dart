@@ -1,9 +1,18 @@
-/// WordPiece tokenizer implementation in pure Dart for BERT models.
-library;
-
+import 'dart:convert';
 import 'dart:isolate';
 import 'dart:math' as math;
+import 'package:crypto/crypto.dart';
 
+/// Exception thrown when vocabulary validation or cryptographic checksum verification fails.
+class VocabularyValidationException implements Exception {
+  final String message;
+  VocabularyValidationException(this.message);
+
+  @override
+  String toString() => 'VocabularyValidationException: $message';
+}
+
+/// WordPiece tokenizer implementation in pure Dart for BERT models.
 class WordPieceTokenizer {
   static const int minSeqLength = 1;
   static const int defaultMaxSeqLength = 64;
@@ -13,25 +22,87 @@ class WordPieceTokenizer {
   final int maxSeqLength;
   final int maxInputCharsPerWord;
 
+  late final int _padId;
+  late final int _unkId;
+  late final int _clsId;
+  late final int _sepId;
+
   WordPieceTokenizer(
     this.vocab, {
     int maxSeqLength = defaultMaxSeqLength,
     this.maxInputCharsPerWord = defaultMaxInputCharsPerWord,
-  }) : maxSeqLength = maxSeqLength < minSeqLength ? minSeqLength : maxSeqLength;
+  }) : maxSeqLength = maxSeqLength < minSeqLength ? minSeqLength : maxSeqLength {
+    _validateAndInitSpecialTokens();
+  }
+
+  void _validateAndInitSpecialTokens() {
+    if (vocab.isEmpty) {
+      throw VocabularyValidationException('Vocabulary map cannot be empty.');
+    }
+
+    final mandatoryTokens = ['[PAD]', '[UNK]', '[CLS]', '[SEP]'];
+    for (final token in mandatoryTokens) {
+      if (!vocab.containsKey(token)) {
+        throw VocabularyValidationException(
+          'Missing mandatory special token "$token" in vocabulary schema.',
+        );
+      }
+      final id = vocab[token]!;
+      if (id < 0 || id >= vocab.length) {
+        throw VocabularyValidationException(
+          'Special token "$token" ID $id is out of vocabulary bounds (0..${vocab.length - 1}).',
+        );
+      }
+    }
+
+    _padId = vocab['[PAD]']!;
+    _unkId = vocab['[UNK]']!;
+    _clsId = vocab['[CLS]']!;
+    _sepId = vocab['[SEP]']!;
+  }
 
   /// Loads vocabulary from a list of lines (e.g. from vocab.txt).
   factory WordPieceTokenizer.fromLines(
     List<String> lines, {
     int maxSeqLength = defaultMaxSeqLength,
     int maxInputCharsPerWord = defaultMaxInputCharsPerWord,
+    String? expectedSha256,
   }) {
-    final vocabMap = <String, int>{};
-    for (int i = 0; i < lines.length; i++) {
-      final line = lines[i].trim();
-      if (line.isNotEmpty) {
-        vocabMap[line] = i;
+    if (lines.isEmpty) {
+      throw VocabularyValidationException('Vocabulary asset is empty.');
+    }
+
+    if (expectedSha256 != null && expectedSha256.isNotEmpty) {
+      final rawContent = lines.join('\n');
+      final digest = sha256.convert(utf8.encode(rawContent)).toString();
+      if (digest.toLowerCase() != expectedSha256.toLowerCase()) {
+        throw VocabularyValidationException(
+          'Vocabulary SHA-256 digest mismatch. Expected $expectedSha256, got $digest',
+        );
       }
     }
+
+    // Strip trailing empty lines (common when splitting text ending with \n)
+    int endIndex = lines.length;
+    while (endIndex > 0 && lines[endIndex - 1].trim().isEmpty) {
+      endIndex--;
+    }
+
+    if (endIndex == 0) {
+      throw VocabularyValidationException('Vocabulary asset contains only empty lines.');
+    }
+
+    final vocabMap = <String, int>{};
+    for (int i = 0; i < endIndex; i++) {
+      final line = lines[i].trim();
+      if (line.isEmpty) {
+        throw VocabularyValidationException(
+          'Empty line detected at index $i, desynchronizing token IDs from line positions.',
+        );
+      }
+      vocabMap.putIfAbsent(line, () => i);
+    }
+
     return WordPieceTokenizer(
       vocabMap,
       maxSeqLength: maxSeqLength,
@@ -46,12 +117,7 @@ class WordPieceTokenizer {
     final tokens = _basicTokenize(text);
     final List<int> ids = [];
 
-    final clsId = vocab['[CLS]'] ?? 101;
-    final sepId = vocab['[SEP]'] ?? 102;
-    final padId = vocab['[PAD]'] ?? 0;
-    final unkId = vocab['[UNK]'] ?? 100;
-
-    ids.add(clsId);
+    ids.add(_clsId);
 
     for (final token in tokens) {
       if (ids.length >= targetLength - 1) break;
@@ -59,25 +125,40 @@ class WordPieceTokenizer {
       final subwords = _wordpieceTokenize(token);
       for (final subword in subwords) {
         if (ids.length >= targetLength - 1) break;
-        ids.add(vocab[subword] ?? unkId);
+        final tokenId = vocab[subword];
+        if (tokenId != null && tokenId >= 0 && tokenId < vocab.length) {
+          ids.add(tokenId);
+        } else {
+          ids.add(_unkId);
+        }
       }
     }
 
     // Add [SEP] if there is space, otherwise overwrite the last element
     if (ids.length < targetLength) {
-      ids.add(sepId);
+      ids.add(_sepId);
     } else if (targetLength > 1) {
-      ids[targetLength - 1] = sepId;
+      ids[targetLength - 1] = _sepId;
     }
 
     // Pad with [PAD] IDs
     while (ids.length < targetLength) {
-      ids.add(padId);
+      ids.add(_padId);
     }
 
     // Strict boundary enforcement: guarantee output vector matches targetLength
     if (ids.length > targetLength) {
       ids.length = targetLength;
+    }
+
+    // Verify all generated token IDs are within 0 <= id < vocab.length
+    for (int i = 0; i < ids.length; i++) {
+      final id = ids[i];
+      if (id < 0 || id >= vocab.length) {
+        throw VocabularyValidationException(
+          'Generated token ID $id at position $i is out of vocabulary bounds (0..${vocab.length - 1}).',
+        );
+      }
     }
 
     return ids;
