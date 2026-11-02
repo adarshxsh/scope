@@ -74,6 +74,24 @@ class LiteRtClassifier implements NotificationAnalyzer {
     }
 
     try {
+      final inputShape = _interpreter!.getInputTensor(0).shape;
+      final isShapeValid = inputShape.length == 2 &&
+          inputShape[0] == 1 &&
+          inputShape[1] == tokenIds.length;
+
+      if (!isShapeValid) {
+        final category = _runFallbackHeuristic(combinedText);
+        return AnalysisResult(
+          category: category,
+          score: 0.50,
+          engineName: 'litert_model (fallback on shape mismatch)',
+          matchedSignals: [
+            'Input tensor shape mismatch: expected $inputShape, got [1, ${tokenIds.length}]',
+          ],
+          latencyMs: stopwatch.elapsedMilliseconds,
+        );
+      }
+
       // Run model inference
       // Enforce input tensor dimension strictly to [1, 64]
       final sanitizedTokenIds = tokenIds.length == 64
