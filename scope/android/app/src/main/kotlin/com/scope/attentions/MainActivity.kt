@@ -34,6 +34,16 @@ class MainActivity : FlutterActivity() {
                         result.success(mapList)
                     }
 
+                    "getQueueSize" -> {
+                        val size = NotificationCollectorService.queueSize()
+                        result.success(size)
+                    }
+
+                    "clearQueue" -> {
+                        NotificationCollectorService.clearQueue()
+                        result.success(true)
+                    }
+
                     "isListenerEnabled" -> {
                         val enabled = isNotificationListenerEnabled()
                         result.success(enabled)

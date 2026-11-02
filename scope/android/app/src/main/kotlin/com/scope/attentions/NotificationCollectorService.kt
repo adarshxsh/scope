@@ -89,11 +89,12 @@ class NotificationCollectorService : NotificationListenerService() {
         }
 
         /**
-         * Clears the queue and resets internal state (for testing).
+         * Clears the queue and resets internal state.
          */
         fun clearQueue() {
             queue.clear()
             idCounter = 0L
+            Log.i(TAG, "Notification queue cleared.")
         }
 
         /**
@@ -111,6 +112,19 @@ class NotificationCollectorService : NotificationListenerService() {
             val packageName = sbn.packageName ?: "unknown"
             val timestamp = if (sbn.postTime > 0) sbn.postTime else now
 
+            // Enforce queue capacity guardrail: evict oldest items if at/exceeding capacity
+            while (queue.size >= MAX_QUEUE_SIZE) {
+                val evicted = queue.poll()
+                if (evicted != null) {
+                    Log.w(
+                        TAG,
+                        "Notification queue capacity limit ($MAX_QUEUE_SIZE) reached. Evicted oldest notification [id=${evicted.id}, package=${evicted.packageName}] to prevent memory leak."
+                    )
+                } else {
+                    break
+                }
+            }
+
             val data = NotificationData(
                 id = "notif_${++idCounter}",
                 packageName = packageName,
@@ -123,7 +137,7 @@ class NotificationCollectorService : NotificationListenerService() {
 
             addNotification(data, now)
             Log.d(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Log.e(TAG, "Error capturing/adding notification", e)
         }
     }
