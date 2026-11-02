@@ -110,6 +110,21 @@ void main() {
       expect(find.text('CRITICAL'), findsOneWidget);
       expect(find.text('Pipeline Explanation Trace'), findsOneWidget);
       expect(find.text('Extracted Text Features'), findsOneWidget);
+
+      // Verify masked by default (98**** instead of cleartext 987652)
+      expect(find.text('98****'), findsOneWidget);
+      expect(find.text('987652'), findsNothing);
+
+      // Scroll and toggle unmask
+      final toggleFinder = find.byKey(const Key('unmask_toggle'));
+      await tester.ensureVisible(toggleFinder);
+      await tester.pumpAndSettle();
+      await tester.tap(toggleFinder);
+      await tester.pumpAndSettle();
+
+      // Verify cleartext OTP is now revealed
+      expect(find.text('987652'), findsOneWidget);
+      expect(find.text('98****'), findsNothing);
     });
   });
 }
