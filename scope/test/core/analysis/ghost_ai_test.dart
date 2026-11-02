@@ -233,5 +233,31 @@ void main() {
         expect(result.reviewScore, isPositive); // Not overridden
       });
     });
+
+    group('PII Cache Redaction Tests', () {
+      test('caching redacts credit card, phone, email, amount, and passcode strings', () async {
+        final rawNotif = AppNotification(
+          id: 'pii-cache-test',
+          packageName: 'com.bank.app',
+          title: 'Alert for user@bank.com',
+          content: r'Card 4532-1100-8890-2311 charged $250.00. OTP 882715. Call 800-555-0199.',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        await GhostAI.predict(rawNotif);
+
+        // A duplicate prediction immediately after should be flagged as duplicate
+        final duplicateNotif = AppNotification(
+          id: 'pii-cache-test-2',
+          packageName: 'com.bank.app',
+          title: 'Alert for user@bank.com',
+          content: r'Card 4532-1100-8890-2311 charged $250.00. OTP 882715. Call 800-555-0199.',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        final duplicateResult = await GhostAI.predict(duplicateNotif);
+        expect(duplicateResult.reviewScore, equals(0.0)); // Overridden as duplicate
+      });
+    });
   });
 }

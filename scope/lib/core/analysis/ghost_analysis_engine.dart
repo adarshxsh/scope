@@ -7,6 +7,7 @@ import 'package:scope/core/analysis/score_fusion.dart';
 import 'package:scope/core/analysis/explanation_generator.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
+import 'package:scope/core/utils/pii_redactor.dart';
 
 /// The central hub of Ghost AI coordinating all classification stages.
 class GhostAnalysisEngine {
@@ -46,6 +47,8 @@ class GhostAnalysisEngine {
     if (_isStatusOrProgressNotification(notification)) {
       stopwatch.stop();
       return notification.copyWith(
+        title: PiiRedactor.redactTitle(notification.title),
+        content: PiiRedactor.redactContent(notification.content),
         priority: 'low',
         priorityScore: 0.0,
         classifiedCategory: 'system_status',
@@ -93,7 +96,12 @@ class GhostAnalysisEngine {
 
     stopwatch.stop();
 
+    final redactedTitle = PiiRedactor.redactTitle(notification.title);
+    final redactedContent = PiiRedactor.redactContent(notification.content);
+
     return notification.copyWith(
+      title: redactedTitle,
+      content: redactedContent,
       priority: priority,
       priorityScore: ghostResult.reviewScore,
       classifiedCategory: fusedResult.category,
