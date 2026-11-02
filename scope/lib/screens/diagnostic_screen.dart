@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
+import 'package:scope/core/utils/pii_redactor.dart';
 import 'package:scope/widgets/scope_card.dart';
 
 class DiagnosticScreen extends StatefulWidget {
@@ -23,6 +24,9 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
   final _packageController = TextEditingController();
   bool _isOngoing = false;
   String _selectedTemplate = 'Custom';
+
+  // Privacy Toggle
+  bool _showSensitiveData = false;
 
   // Analysis Outputs
   AppNotification? _analyzedNotification;
@@ -118,6 +122,15 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
       appBar: AppBar(
         title: const Text('Ghost AI Diagnostics'),
         actions: [
+          IconButton(
+            icon: Icon(_showSensitiveData ? Icons.visibility : Icons.visibility_off),
+            tooltip: _showSensitiveData ? 'Hide Sensitive Data' : 'Show Sensitive Data',
+            onPressed: () {
+              setState(() {
+                _showSensitiveData = !_showSensitiveData;
+              });
+            },
+          ),
           if (!_isEngineReady)
             const Center(
               child: Padding(
@@ -265,10 +278,11 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
     final priorityColor = _getPriorityColor(notif.priority);
 
     // Safely parse feature variables to prevent Dart compilation/ternary ambiguity
-    final features = notif.extractedFeatures ?? {};
+    final rawFeatures = notif.extractedFeatures ?? {};
+    final features = _showSensitiveData ? rawFeatures : PiiRedactor.redactFeatures(rawFeatures);
     final otp = features['otp'] as String?;
     final amount = features['amount'];
-    final amountStr = amount != null ? 'Rs. $amount' : null;
+    final amountStr = amount != null ? (amount is String && amount.startsWith('[REDACTED') ? amount : 'Rs. $amount') : null;
     final hasDeadline = features['hasDeadline'] == true ? 'YES' : null;
 
     final urls = features['urls'] as List?;
@@ -279,6 +293,9 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
 
     final phoneNumbers = features['phoneNumbers'] as List?;
     final phoneNumbersStr = phoneNumbers != null && phoneNumbers.isNotEmpty ? phoneNumbers.toString() : null;
+
+    final rawExplanation = notif.explanation ?? 'No explanation trace was generated.';
+    final explanation = _showSensitiveData ? rawExplanation : PiiRedactor.redact(rawExplanation);
 
     final theme = Theme.of(context);
 
@@ -368,7 +385,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
               ),
               const Divider(height: 20),
               Text(
-                notif.explanation ?? 'No explanation trace was generated.',
+                explanation,
                 style: const TextStyle(height: 1.4),
               ),
             ],

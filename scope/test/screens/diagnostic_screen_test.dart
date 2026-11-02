@@ -105,11 +105,19 @@ void main() {
       await tester.tap(find.text('ANALYZE NOTIFICATION'));
       await tester.pumpAndSettle();
 
-      // Verify result dashboard cards appear
+      // Verify result dashboard cards appear and PII is redacted by default
       expect(find.text('Analysis Pipeline Results'), findsOneWidget);
       expect(find.text('CRITICAL'), findsOneWidget);
       expect(find.text('Pipeline Explanation Trace'), findsOneWidget);
       expect(find.text('Extracted Text Features'), findsOneWidget);
+      expect(find.text('[REDACTED OTP]'), findsAtLeastNWidgets(1));
+
+      // Toggle privacy switch to show sensitive data
+      await tester.tap(find.byIcon(Icons.visibility_off));
+      await tester.pumpAndSettle();
+
+      // Verify actual sensitive data is now revealed
+      expect(find.text('987652'), findsAtLeastNWidgets(1));
     });
   });
 }
