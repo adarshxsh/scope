@@ -79,8 +79,7 @@ void main() {
 
     test('ReviewQueueDao insert, updateStatus, and delete', () async {
       final now = DateTime.now();
-      final qEntry = ReviewQueueEntry(
-        id: 1,
+      final qEntry = ReviewQueueTableCompanion.insert(
         notificationId: 'n1',
         priority: 'high',
         enqueueTime: now,
@@ -105,11 +104,10 @@ void main() {
 
     test('FocusSessionDao active session tracking', () async {
       final now = DateTime.now();
-      final session = FocusSessionEntry(
-        id: 1,
+      final session = FocusSessionsTableCompanion.insert(
         sessionStart: now,
-        interruptions: 2,
-        completion: false,
+        interruptions: const Value(2),
+        completion: const Value(false),
         duration: 0,
       );
 
@@ -120,7 +118,7 @@ void main() {
       expect(active!.interruptions, equals(2));
       expect(active.completion, isFalse);
 
-      final endedSession = session.copyWith(
+      final endedSession = active.copyWith(
         sessionEnd: Value(now.add(const Duration(minutes: 5))),
         completion: true,
         duration: 300,
@@ -138,14 +136,13 @@ void main() {
 
     test('DailyBriefDao stats increment and lookup', () async {
       final date = '2026-06-27';
-      final entry = DailyBriefEntry(
-        id: 1,
+      final entry = DailyBriefTableCompanion.insert(
         date: date,
-        notificationsReviewed: 5,
-        actionsCompleted: 2,
-        calendarEventsCreated: 1,
-        remindersCreated: 1,
-        archivedCount: 3,
+        notificationsReviewed: const Value(5),
+        actionsCompleted: const Value(2),
+        calendarEventsCreated: const Value(1),
+        remindersCreated: const Value(1),
+        archivedCount: const Value(3),
       );
 
       await db.dailyBriefDao.insertOrUpdate(entry);
@@ -235,16 +232,14 @@ void main() {
       await db.notificationDao.insertNotification(nOld);
       await db.notificationDao.insertNotification(nNew);
 
-      await db.reviewQueueDao.insertItem(ReviewQueueEntry(
-        id: 1,
+      await db.reviewQueueDao.insertItem(ReviewQueueTableCompanion.insert(
         notificationId: 'n-old',
         priority: 'high',
         enqueueTime: DateTime.now(),
         status: ReviewState.ACTIVE,
       ));
       
-      await db.reviewQueueDao.insertItem(ReviewQueueEntry(
-        id: 2,
+      await db.reviewQueueDao.insertItem(ReviewQueueTableCompanion.insert(
         notificationId: 'n-new',
         priority: 'high',
         enqueueTime: DateTime.now(),
@@ -252,8 +247,7 @@ void main() {
       ));
 
       // This one is already orphaned before cleanup
-      await db.reviewQueueDao.insertItem(ReviewQueueEntry(
-        id: 3,
+      await db.reviewQueueDao.insertItem(ReviewQueueTableCompanion.insert(
         notificationId: 'n-missing',
         priority: 'low',
         enqueueTime: DateTime.now(),
@@ -272,6 +266,44 @@ void main() {
       // Only the new one should remain, old one deleted due to notification expiry
       // Missing one deleted due to being orphaned
       expect(queueItems.first.notificationId, equals('n-new'));
+    });
+
+    test('Persistence layer rejects hardcoded record identifiers', () async {
+      final now = DateTime.now();
+
+      // 1. FocusSession companion with hardcoded ID
+      final sessionCompanion = FocusSessionsTableCompanion(
+        id: const Value(123),
+        sessionStart: Value(now),
+        duration: const Value(0),
+      );
+      expect(
+        () => db.focusSessionDao.insertSession(sessionCompanion),
+        throwsArgumentError,
+      );
+
+      // 2. ReviewQueue companion with hardcoded ID
+      final queueCompanion = ReviewQueueTableCompanion(
+        id: const Value(123),
+        notificationId: const Value('n1'),
+        priority: const Value('high'),
+        enqueueTime: Value(now),
+        status: const Value(ReviewState.ACTIVE),
+      );
+      expect(
+        () => db.reviewQueueDao.insertItem(queueCompanion),
+        throwsArgumentError,
+      );
+
+      // 3. DailyBrief companion with hardcoded ID
+      final briefCompanion = DailyBriefTableCompanion(
+        id: const Value(123),
+        date: const Value('2026-06-27'),
+      );
+      expect(
+        () => db.dailyBriefDao.insertOrUpdate(briefCompanion),
+        throwsArgumentError,
+      );
     });
   });
 }

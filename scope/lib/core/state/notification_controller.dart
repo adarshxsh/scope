@@ -200,11 +200,10 @@ class NotificationController extends ChangeNotifier {
     resetSessionStats();
 
     final db = _container.read(databaseProvider);
-    db.focusSessionDao.insertSession(FocusSessionEntry(
-      id: 0,
+    db.focusSessionDao.insertSession(FocusSessionsTableCompanion.insert(
       sessionStart: _focusSessionStart!,
-      interruptions: 0,
-      completion: false,
+      interruptions: const Value(0),
+      completion: const Value(false),
       duration: 0,
     ));
 
