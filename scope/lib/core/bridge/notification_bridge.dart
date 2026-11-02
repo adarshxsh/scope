@@ -18,9 +18,14 @@ import 'package:scope/core/models/notification_model.dart';
 class NotificationBridge {
   /// The MethodChannel name must match the one registered in MainActivity.kt
   final MethodChannel _channel;
+  final EventChannel _resourceChannel;
 
-  NotificationBridge({MethodChannel? channel})
-    : _channel = channel ?? const MethodChannel('com.scope.notifications');
+  NotificationBridge({
+    MethodChannel? channel,
+    EventChannel? resourceChannel,
+  })  : _channel = channel ?? const MethodChannel('com.scope.notifications'),
+        _resourceChannel =
+            resourceChannel ?? const EventChannel('com.scope.notifications/resource_state');
 
   /// Drains the notification queue from the Android side.
   ///
@@ -73,6 +78,35 @@ class NotificationBridge {
       print('NotificationBridge.openNotificationSettings failed: ${e.message}');
     } on MissingPluginException {
       // Not on Android — nothing to do
+    }
+  }
+
+  /// Fetches current native resource state (thermal status & battery level).
+  Future<Map<String, dynamic>> getResourceState() async {
+    try {
+      final result = await _channel.invokeMethod<Map<dynamic, dynamic>>('getResourceState');
+      if (result == null) return {};
+      return Map<String, dynamic>.from(result);
+    } on PlatformException catch (e) {
+      // ignore: avoid_print
+      print('NotificationBridge.getResourceState failed: ${e.message}');
+      return {};
+    } on MissingPluginException {
+      return {};
+    }
+  }
+
+  /// Stream of resource state updates from native EventChannel.
+  Stream<Map<String, dynamic>> get resourceStateStream {
+    try {
+      return _resourceChannel.receiveBroadcastStream().map((event) {
+        if (event is Map) {
+          return Map<String, dynamic>.from(event);
+        }
+        return <String, dynamic>{};
+      });
+    } catch (_) {
+      return const Stream.empty();
     }
   }
 }
