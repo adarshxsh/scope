@@ -49,7 +49,8 @@ class LiteRtClassifier implements NotificationAnalyzer {
       await _initialize();
     }
 
-    final tokenIds = _tokenizer?.tokenize(combinedText) ?? List<int>.filled(64, 0);
+    final tokenIds = await (_tokenizer?.tokenizeAsync(combinedText) ??
+        Future.value(List<int>.filled(64, 0)));
 
     if (!_isModelLoaded || _interpreter == null) {
       // Graceful fallback heuristic classifier
@@ -69,8 +70,13 @@ class LiteRtClassifier implements NotificationAnalyzer {
 
     try {
       // Run model inference
-      // Assume input shape: [1, 64]
-      final input = [tokenIds];
+      // Enforce input tensor dimension strictly to [1, 64]
+      final sanitizedTokenIds = tokenIds.length == 64
+          ? tokenIds
+          : (tokenIds.length > 64
+              ? tokenIds.sublist(0, 64)
+              : [...tokenIds, ...List<int>.filled(64 - tokenIds.length, 0)]);
+      final input = [sanitizedTokenIds];
       
       // Output logit tensor shape: [1, 5] (Promo, Social, System, Message, Finance)
       final output = List<double>.filled(5, 0.0).reshape([1, 5]);
