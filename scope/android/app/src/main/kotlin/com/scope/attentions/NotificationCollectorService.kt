@@ -24,6 +24,7 @@ class NotificationCollectorService : NotificationListenerService() {
 
     companion object {
         private const val TAG = "NotifCollector"
+        private const val MAX_TEXT_LENGTH = 2000
 
         /** Maximum allowed queue size to prevent unbounded memory growth. */
         const val MAX_QUEUE_SIZE = 100
@@ -73,13 +74,16 @@ class NotificationCollectorService : NotificationListenerService() {
         }
 
         /**
-         * Drains all non-expired notifications from the queue and returns them.
+         * Drains all non-expired notifications from the queue up to [maxBatchSize] and returns them.
          * Called by [MainActivity] when Flutter requests notifications.
-         * After this call, the queue is empty.
+         * After this call, drained items are removed from the queue.
          */
-        fun drainQueue(now: Long = System.currentTimeMillis()): List<NotificationData> {
+        fun drainQueue(
+            now: Long = System.currentTimeMillis(),
+            maxBatchSize: Int = MAX_QUEUE_SIZE
+        ): List<NotificationData> {
             val result = mutableListOf<NotificationData>()
-            while (true) {
+            while (result.size < maxBatchSize) {
                 val item = queue.poll() ?: break
                 if (now - item.timestamp <= MAX_AGE_MS) {
                     result.add(item)
@@ -105,11 +109,15 @@ class NotificationCollectorService : NotificationListenerService() {
     private fun addSbnToQueue(sbn: StatusBarNotification, now: Long = System.currentTimeMillis()) {
         try {
             val extras = sbn.notification.extras
-            val title = extras?.getCharSequence("android.title")?.toString() ?: ""
-            val text = extras?.getCharSequence("android.text")?.toString() ?: ""
+            val rawTitle = extras?.getCharSequence("android.title")?.toString() ?: ""
+            val rawText = extras?.getCharSequence("android.text")?.toString() ?: ""
             val isOngoing = sbn.isOngoing
             val packageName = sbn.packageName ?: "unknown"
             val timestamp = if (sbn.postTime > 0) sbn.postTime else now
+
+            // Truncate to avoid excessive memory usage
+            val title = if (rawTitle.length > MAX_TEXT_LENGTH) rawTitle.substring(0, MAX_TEXT_LENGTH) else rawTitle
+            val text = if (rawText.length > MAX_TEXT_LENGTH) rawText.substring(0, MAX_TEXT_LENGTH) else rawText
 
             val data = NotificationData(
                 id = "notif_${++idCounter}",
@@ -122,9 +130,9 @@ class NotificationCollectorService : NotificationListenerService() {
             )
 
             addNotification(data, now)
-            Log.d(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
+            Log.d(TAG, "Audit: Captured notification [pkg=$packageName, id=${data.id}, titleLength=${title.length}]")
         } catch (e: Exception) {
-            Log.e(TAG, "Error capturing/adding notification", e)
+            Log.e(TAG, "Audit: Error capturing/adding notification", e)
         }
     }
 
@@ -136,8 +144,7 @@ class NotificationCollectorService : NotificationListenerService() {
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         if (sbn == null) return
         // Log for now; future phases may track dismissed notifications
-        val removedTitle = sbn.notification.extras?.getCharSequence("android.title")?.toString()
-        Log.d(TAG, "Removed: ${sbn.packageName} - ${NotificationRedactor.redactTitle(removedTitle)}")
+        Log.d(TAG, "Audit: Removed notification [pkg=${sbn.packageName}]")
     }
 
     override fun onListenerConnected() {
@@ -161,3 +168,4 @@ class NotificationCollectorService : NotificationListenerService() {
         Log.w(TAG, "NotificationCollectorService disconnected")
     }
 }
+
