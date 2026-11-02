@@ -4,6 +4,7 @@ import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
 import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Android service that captures all incoming notifications.
@@ -17,6 +18,8 @@ import java.util.concurrent.ConcurrentLinkedQueue
  * Design decisions:
  *   - Uses a static ConcurrentLinkedQueue (thread-safe, lock-free) because
  *     the service runs in a separate context from MainActivity.
+ *   - Enforces a bounded queue capacity and TTL-based eviction policy.
+ *   - Uses an AtomicLong for thread-safe unique ID generation.
  *   - No heavy processing here — just capture and queue.
  *   - Skips ongoing/persistent notifications by default (configurable).
  */
@@ -34,8 +37,8 @@ class NotificationCollectorService : NotificationListenerService() {
         /** Thread-safe queue of captured notifications. */
         private val queue = ConcurrentLinkedQueue<NotificationData>()
 
-        /** Counter for generating simple unique IDs within a session. */
-        private var idCounter = 0L
+        /** Counter for generating thread-safe unique IDs within a session. */
+        private val idCounter = AtomicLong(0L)
 
         /**
          * Removes entries older than [MAX_AGE_MS] from the queue.
@@ -93,7 +96,7 @@ class NotificationCollectorService : NotificationListenerService() {
          */
         fun clearQueue() {
             queue.clear()
-            idCounter = 0L
+            idCounter.set(0L)
         }
 
         /**
@@ -112,7 +115,7 @@ class NotificationCollectorService : NotificationListenerService() {
             val timestamp = if (sbn.postTime > 0) sbn.postTime else now
 
             val data = NotificationData(
-                id = "notif_${++idCounter}",
+                id = "notif_${idCounter.incrementAndGet()}",
                 packageName = packageName,
                 title = title,
                 content = text,
