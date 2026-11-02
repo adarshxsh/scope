@@ -65,3 +65,11 @@ class DailyBriefTable extends Table {
   IntColumn get remindersCreated => integer().withDefault(const Constant(0))();
   IntColumn get archivedCount => integer().withDefault(const Constant(0))();
 }
+
+@DataClassName('PrivacyBudgetEntry')
+class PrivacyBudgetTable extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get epochDate => text().unique()();
+  RealColumn get targetEpsilon => real().withDefault(const Constant(1.0))();
+  RealColumn get consumedEpsilon => real().withDefault(const Constant(0.0))();
+}
