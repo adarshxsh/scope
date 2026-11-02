@@ -41,6 +41,7 @@ void main() {
     late RuleEngine engine;
 
     setUp(() {
+      TestWidgetsFlutterBinding.ensureInitialized();
       engine = RuleEngine();
       engine.compile(sampleJson);
     });
@@ -123,6 +124,77 @@ void main() {
       expect(result!.ruleId, equals('swiggy_promo'));
       expect(result.category, equals('promo'));
       expect(result.priority, equals('low'));
+    });
+
+    test('addReinforcementRule accepts valid custom rule and marks isCustom true', () {
+      final validRule = NotificationRule(
+        id: 'rlhf-custom-filter',
+        category: 'social',
+        priority: 'low',
+        conditions: const RuleCondition(
+          keywords: ['newsletter'],
+        ),
+      );
+
+      engine.addReinforcementRule(validRule);
+      expect(engine.customRules.length, equals(1));
+      expect(engine.customRules.first.id, equals('rlhf-custom-filter'));
+      expect(engine.customRules.first.isCustom, isTrue);
+    });
+
+    test('addReinforcementRule rejects privilege escalation attempt with critical priority', () {
+      final invalidRule = NotificationRule(
+        id: 'rlhf-escalate',
+        category: 'sys',
+        priority: 'critical',
+        conditions: const RuleCondition(
+          keywords: ['bypass'],
+        ),
+      );
+
+      engine.addReinforcementRule(invalidRule);
+      expect(engine.customRules, isEmpty);
+    });
+
+    test('addReinforcementRule rejects reserved system rule ID', () {
+      final invalidRule = NotificationRule(
+        id: 'otp_security',
+        category: 'sys',
+        priority: 'high',
+        conditions: const RuleCondition(
+          keywords: ['override'],
+        ),
+      );
+
+      engine.addReinforcementRule(invalidRule);
+      expect(engine.customRules, isEmpty);
+    });
+
+    test('system rules retain precedence over custom rules', () {
+      final customOverridingRule = NotificationRule(
+        id: 'rlhf-override-attempt',
+        category: 'social',
+        priority: 'low',
+        conditions: const RuleCondition(
+          keywords: ['debited'],
+          titleKeywords: ['Alert'],
+        ),
+      );
+
+      engine.addReinforcementRule(customOverridingRule);
+
+      final notif = AppNotification(
+        id: '1',
+        packageName: 'com.hdfc.mobilebanking',
+        title: 'HDFC Bank Alert',
+        content: 'Your account has been debited Rs. 15,000.',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final match = engine.match(notif);
+      expect(match, isNotNull);
+      expect(match!.ruleId, equals('bank_debit'));
+      expect(match.isCustom, isFalse);
     });
   });
 }

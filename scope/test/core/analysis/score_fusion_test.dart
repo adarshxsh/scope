@@ -5,26 +5,27 @@ import 'package:scope/core/analysis/score_fusion.dart';
 
 void main() {
   group('ScoreFusion Tests', () {
-    test('critical bypass rule returns max confidence bypass result', () {
-      final rule = MatchedRuleResult(
+    final defaultModelResult = const AnalysisResult(
+      category: 'msg',
+      score: 0.50,
+      engineName: 'litert_model',
+      matchedSignals: [],
+      latencyMs: 1,
+      isFallback: false,
+    );
+
+    test('system critical rule triggers score bypass (score = 1.0)', () {
+      final systemRule = const MatchedRuleResult(
         ruleId: 'otp_security',
         category: 'sys',
         priority: 'critical',
-        matchedSignal: 'Matched keyword "otp"',
-      );
-
-      final modelResult = AnalysisResult(
-        category: 'sys',
-        score: 0.60,
-        engineName: 'litert_model',
-        matchedSignals: ['Softmax scores'],
-        latencyMs: 5,
-        isFallback: false,
+        matchedSignal: 'Content matches "otp"',
+        isCustom: false,
       );
 
       final fused = ScoreFusion.fuse(
-        ruleResult: rule,
-        modelResult: modelResult,
+        ruleResult: systemRule,
+        modelResult: defaultModelResult,
       );
 
       expect(fused.category, equals('sys'));
@@ -33,15 +34,35 @@ void main() {
       expect(fused.isFallback, isFalse);
     });
 
+    test('custom rule NEVER triggers critical score bypass, even if claiming critical priority or reserved ID', () {
+      final customRulePrivilegeEscalationAttempt = const MatchedRuleResult(
+        ruleId: 'otp_security',
+        category: 'sys',
+        priority: 'critical',
+        matchedSignal: 'Content matches "otp"',
+        isCustom: true,
+      );
+
+      final fused = ScoreFusion.fuse(
+        ruleResult: customRulePrivilegeEscalationAttempt,
+        modelResult: defaultModelResult,
+      );
+
+      expect(fused.score, isNot(equals(1.0)));
+      expect(fused.engineName, equals('score_fusion (hybrid)'));
+      expect(fused.isFallback, isFalse);
+    });
+
     test('authentic model result blends scores when rule matches', () {
-      final rule = MatchedRuleResult(
+      final rule = const MatchedRuleResult(
         ruleId: 'custom_rule_1',
         category: 'msg',
         priority: 'medium',
         matchedSignal: 'Matched message rule',
+        isCustom: false,
       );
 
-      final modelResult = AnalysisResult(
+      final modelResult = const AnalysisResult(
         category: 'msg',
         score: 0.80,
         engineName: 'litert_model',
@@ -61,15 +82,43 @@ void main() {
       expect(fused.isFallback, isFalse);
     });
 
+    test('custom rule matches use standard hybrid confidence scoring', () {
+      final customRule = const MatchedRuleResult(
+        ruleId: 'rlhf-promo-filter',
+        category: 'promo',
+        priority: 'low',
+        matchedSignal: 'Content matches "sale"',
+        isCustom: true,
+      );
+
+      final fused = ScoreFusion.fuse(
+        ruleResult: customRule,
+        modelResult: const AnalysisResult(
+          category: 'promo',
+          score: 0.80,
+          engineName: 'litert_model',
+          matchedSignals: [],
+          latencyMs: 1,
+          isFallback: false,
+        ),
+      );
+
+      expect(fused.engineName, equals('score_fusion (hybrid)'));
+      expect(fused.score, greaterThanOrEqualTo(0.85));
+      expect(fused.score, lessThan(1.0));
+      expect(fused.isFallback, isFalse);
+    });
+
     test('fallback model result does NOT blend score into rule match result', () {
-      final rule = MatchedRuleResult(
+      final rule = const MatchedRuleResult(
         ruleId: 'custom_rule_2',
         category: 'finance',
         priority: 'high',
         matchedSignal: 'Matched finance keyword',
+        isCustom: false,
       );
 
-      final fallbackModelResult = AnalysisResult(
+      final fallbackModelResult = const AnalysisResult(
         category: 'finance',
         score: 0.0,
         engineName: 'litert_model (fallback)',
@@ -90,7 +139,7 @@ void main() {
     });
 
     test('fallback model result returned directly when no rule matches', () {
-      final fallbackModelResult = AnalysisResult(
+      final fallbackModelResult = const AnalysisResult(
         category: 'msg',
         score: 0.0,
         engineName: 'litert_model (fallback)',
