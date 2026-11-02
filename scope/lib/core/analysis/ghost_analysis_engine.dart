@@ -5,8 +5,10 @@ import 'package:scope/core/analysis/policy_engine.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/analysis/score_fusion.dart';
 import 'package:scope/core/analysis/explanation_generator.dart';
+import 'package:scope/core/analysis/analysis_result.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
+import 'package:scope/core/analysis/thermal_guardrails.dart';
 
 /// The central hub of Ghost AI coordinating all classification stages.
 class GhostAnalysisEngine {
@@ -45,13 +47,68 @@ class GhostAnalysisEngine {
     // 0. Filter out progress/download/sync status notifications to prevent unnecessary analysis
     if (_isStatusOrProgressNotification(notification)) {
       stopwatch.stop();
+      final elapsed = stopwatch.elapsedMilliseconds;
+      ThermalGuardrails.instance.recordLatency(elapsed);
       return notification.copyWith(
         priority: 'low',
         priorityScore: 0.0,
         classifiedCategory: 'system_status',
         explanation: 'Status or progress notification ignored by AI.',
-        latencyMs: stopwatch.elapsedMilliseconds,
+        latencyMs: elapsed,
         engineVersion: '2.0.0-hybrid',
+      );
+    }
+
+    // Check dynamic inference thermal and resource guardrails
+    final useFastPath = ThermalGuardrails.instance.shouldUseFastPath;
+
+    if (useFastPath) {
+      // Fast-Path Fallback: Bypass heavy TFLite ML inference and disk IO under resource pressure
+      final features = FeatureExtractor.extract(
+        title: notification.title,
+        content: notification.content,
+      );
+
+      final ruleMatch = ruleEngine.match(notification);
+
+      final category = ruleMatch?.category ?? notification.category ?? 'msg';
+      final fusedResult = AnalysisResult(
+        category: category,
+        score: ruleMatch != null ? 0.90 : 0.50,
+        engineName: 'fastpath_heuristics',
+        matchedSignals: ruleMatch != null ? [ruleMatch.matchedSignal] : [],
+        latencyMs: 0,
+      );
+
+      final ghostResult = await GhostAI.predictFastPath(notification);
+
+      final priority = PolicyEngine.resolvePriority(
+        fusedResult: fusedResult,
+        features: features,
+        notification: notification,
+        lookAgainScore: ghostResult.reviewScore,
+      );
+
+      final explanation = ExplanationGenerator.generate(
+        fusedResult: fusedResult,
+        features: features,
+        priority: priority,
+      );
+
+      stopwatch.stop();
+      final elapsed = stopwatch.elapsedMilliseconds;
+      ThermalGuardrails.instance.recordLatency(elapsed);
+
+      return notification.copyWith(
+        priority: priority,
+        priorityScore: ghostResult.reviewScore,
+        classifiedCategory: fusedResult.category,
+        explanation: '$explanation (Fast-path thermal/resource fallback engaged)',
+        latencyMs: elapsed,
+        ruleVersion: ruleEngine.version,
+        modelVersion: 'fast-path-fallback',
+        engineVersion: '2.0.0-hybrid-fastpath',
+        extractedFeatures: features.toMap(),
       );
     }
 
@@ -92,13 +149,15 @@ class GhostAnalysisEngine {
     );
 
     stopwatch.stop();
+    final elapsed = stopwatch.elapsedMilliseconds;
+    ThermalGuardrails.instance.recordLatency(elapsed);
 
     return notification.copyWith(
       priority: priority,
       priorityScore: ghostResult.reviewScore,
       classifiedCategory: fusedResult.category,
       explanation: explanation,
-      latencyMs: stopwatch.elapsedMilliseconds,
+      latencyMs: elapsed,
       ruleVersion: ruleEngine.version,
       modelVersion: GhostAI.instance.isModelLoaded ? '1.0.0-tflite' : 'fallback-heuristics',
       engineVersion: fusedResult.isFallback ? '2.0.0-hybrid (fallback)' : '2.0.0-hybrid',

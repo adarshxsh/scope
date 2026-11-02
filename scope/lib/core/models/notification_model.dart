@@ -123,13 +123,25 @@ class AppNotification {
     return hash;
   }
 
+  static String _sanitizeString(String val, int maxLength) {
+    var cleaned = val.replaceAll(RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F]'), '');
+    if (cleaned.length > maxLength) {
+      cleaned = cleaned.substring(0, maxLength);
+    }
+    return cleaned;
+  }
+
   /// Creates an [AppNotification] from a Map (used by MethodChannel bridge).
   factory AppNotification.fromMap(Map<String, dynamic> map) {
     final rawId = map['id'] as String? ?? '';
-    final packageName = map['packageName'] as String? ?? '';
-    final title = map['title'] as String? ?? '';
-    final content = map['content'] as String? ?? '';
+    final rawPackageName = map['packageName'] as String? ?? '';
+    final rawTitle = map['title'] as String? ?? '';
+    final rawContent = map['content'] as String? ?? '';
     final timestamp = map['timestamp'] as int? ?? 0;
+
+    final packageName = _sanitizeString(rawPackageName, 256);
+    final title = _sanitizeString(rawTitle, 500);
+    final content = _sanitizeString(rawContent, 2000);
 
     final id = (rawId.isEmpty || rawId.startsWith('notif_'))
         ? (packageName.isEmpty && title.isEmpty && content.isEmpty && timestamp == 0)
@@ -140,7 +152,7 @@ class AppNotification {
                 title: title,
                 content: content,
               )
-        : rawId;
+        : _sanitizeString(rawId, 256);
 
     return AppNotification(
       id: id,
