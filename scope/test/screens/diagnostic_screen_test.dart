@@ -49,6 +49,7 @@ void main() {
       // Verify basic titles load
       expect(find.text('Ghost AI Diagnostics'), findsOneWidget);
       expect(find.text('Input Notification Spec'), findsOneWidget);
+      expect(find.text('Asset Integrity & Model Health'), findsOneWidget);
       expect(find.text('ANALYZE NOTIFICATION'), findsOneWidget);
 
       // Apply template selection
@@ -102,6 +103,7 @@ void main() {
       await tester.enterText(packageFieldFinder, 'com.whatsapp');
 
       // Click analyze
+      await tester.ensureVisible(find.text('ANALYZE NOTIFICATION'));
       await tester.tap(find.text('ANALYZE NOTIFICATION'));
       await tester.pumpAndSettle();
 
