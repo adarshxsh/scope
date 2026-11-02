@@ -2709,6 +2709,681 @@ class DailyBriefTableCompanion extends UpdateCompanion<DailyBriefEntry> {
   }
 }
 
+class $MlFeedbackTableTable extends MlFeedbackTable
+    with TableInfo<$MlFeedbackTableTable, MlFeedbackEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $MlFeedbackTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _notificationIdMeta = const VerificationMeta(
+    'notificationId',
+  );
+  @override
+  late final GeneratedColumn<String> notificationId = GeneratedColumn<String>(
+    'notification_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _packageNameMeta = const VerificationMeta(
+    'packageName',
+  );
+  @override
+  late final GeneratedColumn<String> packageName = GeneratedColumn<String>(
+    'package_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _contentMeta = const VerificationMeta(
+    'content',
+  );
+  @override
+  late final GeneratedColumn<String> content = GeneratedColumn<String>(
+    'content',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _timestampMeta = const VerificationMeta(
+    'timestamp',
+  );
+  @override
+  late final GeneratedColumn<int> timestamp = GeneratedColumn<int>(
+    'timestamp',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _featureVectorMeta = const VerificationMeta(
+    'featureVector',
+  );
+  @override
+  late final GeneratedColumn<String> featureVector = GeneratedColumn<String>(
+    'feature_vector',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _rewardScoreMeta = const VerificationMeta(
+    'rewardScore',
+  );
+  @override
+  late final GeneratedColumn<double> rewardScore = GeneratedColumn<double>(
+    'reward_score',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _targetCategoryMeta = const VerificationMeta(
+    'targetCategory',
+  );
+  @override
+  late final GeneratedColumn<String> targetCategory = GeneratedColumn<String>(
+    'target_category',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _targetPriorityMeta = const VerificationMeta(
+    'targetPriority',
+  );
+  @override
+  late final GeneratedColumn<String> targetPriority = GeneratedColumn<String>(
+    'target_priority',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    notificationId,
+    packageName,
+    title,
+    content,
+    timestamp,
+    featureVector,
+    rewardScore,
+    targetCategory,
+    targetPriority,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'ml_feedback_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<MlFeedbackEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('notification_id')) {
+      context.handle(
+        _notificationIdMeta,
+        notificationId.isAcceptableOrUnknown(
+          data['notification_id']!,
+          _notificationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_notificationIdMeta);
+    }
+    if (data.containsKey('package_name')) {
+      context.handle(
+        _packageNameMeta,
+        packageName.isAcceptableOrUnknown(
+          data['package_name']!,
+          _packageNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_packageNameMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('content')) {
+      context.handle(
+        _contentMeta,
+        content.isAcceptableOrUnknown(data['content']!, _contentMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_contentMeta);
+    }
+    if (data.containsKey('timestamp')) {
+      context.handle(
+        _timestampMeta,
+        timestamp.isAcceptableOrUnknown(data['timestamp']!, _timestampMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_timestampMeta);
+    }
+    if (data.containsKey('feature_vector')) {
+      context.handle(
+        _featureVectorMeta,
+        featureVector.isAcceptableOrUnknown(
+          data['feature_vector']!,
+          _featureVectorMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_featureVectorMeta);
+    }
+    if (data.containsKey('reward_score')) {
+      context.handle(
+        _rewardScoreMeta,
+        rewardScore.isAcceptableOrUnknown(
+          data['reward_score']!,
+          _rewardScoreMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_rewardScoreMeta);
+    }
+    if (data.containsKey('target_category')) {
+      context.handle(
+        _targetCategoryMeta,
+        targetCategory.isAcceptableOrUnknown(
+          data['target_category']!,
+          _targetCategoryMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_targetCategoryMeta);
+    }
+    if (data.containsKey('target_priority')) {
+      context.handle(
+        _targetPriorityMeta,
+        targetPriority.isAcceptableOrUnknown(
+          data['target_priority']!,
+          _targetPriorityMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  MlFeedbackEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return MlFeedbackEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      notificationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notification_id'],
+      )!,
+      packageName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}package_name'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      content: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}content'],
+      )!,
+      timestamp: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}timestamp'],
+      )!,
+      featureVector: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}feature_vector'],
+      )!,
+      rewardScore: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}reward_score'],
+      )!,
+      targetCategory: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_category'],
+      )!,
+      targetPriority: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_priority'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $MlFeedbackTableTable createAlias(String alias) {
+    return $MlFeedbackTableTable(attachedDatabase, alias);
+  }
+}
+
+class MlFeedbackEntry extends DataClass implements Insertable<MlFeedbackEntry> {
+  final int id;
+  final String notificationId;
+  final String packageName;
+  final String title;
+  final String content;
+  final int timestamp;
+  final String featureVector;
+  final double rewardScore;
+  final String targetCategory;
+  final String? targetPriority;
+  final DateTime createdAt;
+  const MlFeedbackEntry({
+    required this.id,
+    required this.notificationId,
+    required this.packageName,
+    required this.title,
+    required this.content,
+    required this.timestamp,
+    required this.featureVector,
+    required this.rewardScore,
+    required this.targetCategory,
+    this.targetPriority,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['notification_id'] = Variable<String>(notificationId);
+    map['package_name'] = Variable<String>(packageName);
+    map['title'] = Variable<String>(title);
+    map['content'] = Variable<String>(content);
+    map['timestamp'] = Variable<int>(timestamp);
+    map['feature_vector'] = Variable<String>(featureVector);
+    map['reward_score'] = Variable<double>(rewardScore);
+    map['target_category'] = Variable<String>(targetCategory);
+    if (!nullToAbsent || targetPriority != null) {
+      map['target_priority'] = Variable<String>(targetPriority);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  MlFeedbackTableCompanion toCompanion(bool nullToAbsent) {
+    return MlFeedbackTableCompanion(
+      id: Value(id),
+      notificationId: Value(notificationId),
+      packageName: Value(packageName),
+      title: Value(title),
+      content: Value(content),
+      timestamp: Value(timestamp),
+      featureVector: Value(featureVector),
+      rewardScore: Value(rewardScore),
+      targetCategory: Value(targetCategory),
+      targetPriority: targetPriority == null && nullToAbsent
+          ? const Value.absent()
+          : Value(targetPriority),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory MlFeedbackEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return MlFeedbackEntry(
+      id: serializer.fromJson<int>(json['id']),
+      notificationId: serializer.fromJson<String>(json['notificationId']),
+      packageName: serializer.fromJson<String>(json['packageName']),
+      title: serializer.fromJson<String>(json['title']),
+      content: serializer.fromJson<String>(json['content']),
+      timestamp: serializer.fromJson<int>(json['timestamp']),
+      featureVector: serializer.fromJson<String>(json['featureVector']),
+      rewardScore: serializer.fromJson<double>(json['rewardScore']),
+      targetCategory: serializer.fromJson<String>(json['targetCategory']),
+      targetPriority: serializer.fromJson<String?>(json['targetPriority']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'notificationId': serializer.toJson<String>(notificationId),
+      'packageName': serializer.toJson<String>(packageName),
+      'title': serializer.toJson<String>(title),
+      'content': serializer.toJson<String>(content),
+      'timestamp': serializer.toJson<int>(timestamp),
+      'featureVector': serializer.toJson<String>(featureVector),
+      'rewardScore': serializer.toJson<double>(rewardScore),
+      'targetCategory': serializer.toJson<String>(targetCategory),
+      'targetPriority': serializer.toJson<String?>(targetPriority),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  MlFeedbackEntry copyWith({
+    int? id,
+    String? notificationId,
+    String? packageName,
+    String? title,
+    String? content,
+    int? timestamp,
+    String? featureVector,
+    double? rewardScore,
+    String? targetCategory,
+    Value<String?> targetPriority = const Value.absent(),
+    DateTime? createdAt,
+  }) => MlFeedbackEntry(
+    id: id ?? this.id,
+    notificationId: notificationId ?? this.notificationId,
+    packageName: packageName ?? this.packageName,
+    title: title ?? this.title,
+    content: content ?? this.content,
+    timestamp: timestamp ?? this.timestamp,
+    featureVector: featureVector ?? this.featureVector,
+    rewardScore: rewardScore ?? this.rewardScore,
+    targetCategory: targetCategory ?? this.targetCategory,
+    targetPriority: targetPriority.present
+        ? targetPriority.value
+        : this.targetPriority,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  MlFeedbackEntry copyWithCompanion(MlFeedbackTableCompanion data) {
+    return MlFeedbackEntry(
+      id: data.id.present ? data.id.value : this.id,
+      notificationId: data.notificationId.present
+          ? data.notificationId.value
+          : this.notificationId,
+      packageName: data.packageName.present
+          ? data.packageName.value
+          : this.packageName,
+      title: data.title.present ? data.title.value : this.title,
+      content: data.content.present ? data.content.value : this.content,
+      timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
+      featureVector: data.featureVector.present
+          ? data.featureVector.value
+          : this.featureVector,
+      rewardScore: data.rewardScore.present
+          ? data.rewardScore.value
+          : this.rewardScore,
+      targetCategory: data.targetCategory.present
+          ? data.targetCategory.value
+          : this.targetCategory,
+      targetPriority: data.targetPriority.present
+          ? data.targetPriority.value
+          : this.targetPriority,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MlFeedbackEntry(')
+          ..write('id: $id, ')
+          ..write('notificationId: $notificationId, ')
+          ..write('packageName: $packageName, ')
+          ..write('title: $title, ')
+          ..write('content: $content, ')
+          ..write('timestamp: $timestamp, ')
+          ..write('featureVector: $featureVector, ')
+          ..write('rewardScore: $rewardScore, ')
+          ..write('targetCategory: $targetCategory, ')
+          ..write('targetPriority: $targetPriority, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    notificationId,
+    packageName,
+    title,
+    content,
+    timestamp,
+    featureVector,
+    rewardScore,
+    targetCategory,
+    targetPriority,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is MlFeedbackEntry &&
+          other.id == this.id &&
+          other.notificationId == this.notificationId &&
+          other.packageName == this.packageName &&
+          other.title == this.title &&
+          other.content == this.content &&
+          other.timestamp == this.timestamp &&
+          other.featureVector == this.featureVector &&
+          other.rewardScore == this.rewardScore &&
+          other.targetCategory == this.targetCategory &&
+          other.targetPriority == this.targetPriority &&
+          other.createdAt == this.createdAt);
+}
+
+class MlFeedbackTableCompanion extends UpdateCompanion<MlFeedbackEntry> {
+  final Value<int> id;
+  final Value<String> notificationId;
+  final Value<String> packageName;
+  final Value<String> title;
+  final Value<String> content;
+  final Value<int> timestamp;
+  final Value<String> featureVector;
+  final Value<double> rewardScore;
+  final Value<String> targetCategory;
+  final Value<String?> targetPriority;
+  final Value<DateTime> createdAt;
+  const MlFeedbackTableCompanion({
+    this.id = const Value.absent(),
+    this.notificationId = const Value.absent(),
+    this.packageName = const Value.absent(),
+    this.title = const Value.absent(),
+    this.content = const Value.absent(),
+    this.timestamp = const Value.absent(),
+    this.featureVector = const Value.absent(),
+    this.rewardScore = const Value.absent(),
+    this.targetCategory = const Value.absent(),
+    this.targetPriority = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  MlFeedbackTableCompanion.insert({
+    this.id = const Value.absent(),
+    required String notificationId,
+    required String packageName,
+    required String title,
+    required String content,
+    required int timestamp,
+    required String featureVector,
+    required double rewardScore,
+    required String targetCategory,
+    this.targetPriority = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  }) : notificationId = Value(notificationId),
+       packageName = Value(packageName),
+       title = Value(title),
+       content = Value(content),
+       timestamp = Value(timestamp),
+       featureVector = Value(featureVector),
+       rewardScore = Value(rewardScore),
+       targetCategory = Value(targetCategory);
+  static Insertable<MlFeedbackEntry> custom({
+    Expression<int>? id,
+    Expression<String>? notificationId,
+    Expression<String>? packageName,
+    Expression<String>? title,
+    Expression<String>? content,
+    Expression<int>? timestamp,
+    Expression<String>? featureVector,
+    Expression<double>? rewardScore,
+    Expression<String>? targetCategory,
+    Expression<String>? targetPriority,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (notificationId != null) 'notification_id': notificationId,
+      if (packageName != null) 'package_name': packageName,
+      if (title != null) 'title': title,
+      if (content != null) 'content': content,
+      if (timestamp != null) 'timestamp': timestamp,
+      if (featureVector != null) 'feature_vector': featureVector,
+      if (rewardScore != null) 'reward_score': rewardScore,
+      if (targetCategory != null) 'target_category': targetCategory,
+      if (targetPriority != null) 'target_priority': targetPriority,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  MlFeedbackTableCompanion copyWith({
+    Value<int>? id,
+    Value<String>? notificationId,
+    Value<String>? packageName,
+    Value<String>? title,
+    Value<String>? content,
+    Value<int>? timestamp,
+    Value<String>? featureVector,
+    Value<double>? rewardScore,
+    Value<String>? targetCategory,
+    Value<String?>? targetPriority,
+    Value<DateTime>? createdAt,
+  }) {
+    return MlFeedbackTableCompanion(
+      id: id ?? this.id,
+      notificationId: notificationId ?? this.notificationId,
+      packageName: packageName ?? this.packageName,
+      title: title ?? this.title,
+      content: content ?? this.content,
+      timestamp: timestamp ?? this.timestamp,
+      featureVector: featureVector ?? this.featureVector,
+      rewardScore: rewardScore ?? this.rewardScore,
+      targetCategory: targetCategory ?? this.targetCategory,
+      targetPriority: targetPriority ?? this.targetPriority,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (notificationId.present) {
+      map['notification_id'] = Variable<String>(notificationId.value);
+    }
+    if (packageName.present) {
+      map['package_name'] = Variable<String>(packageName.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (content.present) {
+      map['content'] = Variable<String>(content.value);
+    }
+    if (timestamp.present) {
+      map['timestamp'] = Variable<int>(timestamp.value);
+    }
+    if (featureVector.present) {
+      map['feature_vector'] = Variable<String>(featureVector.value);
+    }
+    if (rewardScore.present) {
+      map['reward_score'] = Variable<double>(rewardScore.value);
+    }
+    if (targetCategory.present) {
+      map['target_category'] = Variable<String>(targetCategory.value);
+    }
+    if (targetPriority.present) {
+      map['target_priority'] = Variable<String>(targetPriority.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MlFeedbackTableCompanion(')
+          ..write('id: $id, ')
+          ..write('notificationId: $notificationId, ')
+          ..write('packageName: $packageName, ')
+          ..write('title: $title, ')
+          ..write('content: $content, ')
+          ..write('timestamp: $timestamp, ')
+          ..write('featureVector: $featureVector, ')
+          ..write('rewardScore: $rewardScore, ')
+          ..write('targetCategory: $targetCategory, ')
+          ..write('targetPriority: $targetPriority, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AttentionDatabase extends GeneratedDatabase {
   _$AttentionDatabase(QueryExecutor e) : super(e);
   $AttentionDatabaseManager get managers => $AttentionDatabaseManager(this);
@@ -2720,6 +3395,9 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final $FocusSessionsTableTable focusSessionsTable =
       $FocusSessionsTableTable(this);
   late final $DailyBriefTableTable dailyBriefTable = $DailyBriefTableTable(
+    this,
+  );
+  late final $MlFeedbackTableTable mlFeedbackTable = $MlFeedbackTableTable(
     this,
   );
   late final NotificationDao notificationDao = NotificationDao(
@@ -2734,6 +3412,9 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final DailyBriefDao dailyBriefDao = DailyBriefDao(
     this as AttentionDatabase,
   );
+  late final MlFeedbackDao mlFeedbackDao = MlFeedbackDao(
+    this as AttentionDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2743,6 +3424,7 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
     reviewQueueTable,
     focusSessionsTable,
     dailyBriefTable,
+    mlFeedbackTable,
   ];
 }
 
@@ -3406,7 +4088,9 @@ class $$NotificationsTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$NotificationsTableTable, NotificationEntry>(
+                    table,
+                  ),
                   $$NotificationsTableTableReferences(db, table, e),
                 ),
               )
@@ -3749,7 +4433,7 @@ class $$ReviewQueueTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$ReviewQueueTableTable, ReviewQueueEntry>(table),
                   $$ReviewQueueTableTableReferences(db, table, e),
                 ),
               )
@@ -4021,7 +4705,18 @@ class $$FocusSessionsTableTableTableManager
                 duration: duration,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$FocusSessionsTableTable, FocusSessionEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $FocusSessionsTableTable,
+                    FocusSessionEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4273,7 +4968,16 @@ class $$DailyBriefTableTableTableManager
                 archivedCount: archivedCount,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$DailyBriefTableTable, DailyBriefEntry>(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $DailyBriefTableTable,
+                    DailyBriefEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4301,6 +5005,345 @@ typedef $$DailyBriefTableTableProcessedTableManager =
       DailyBriefEntry,
       PrefetchHooks Function()
     >;
+typedef $$MlFeedbackTableTableCreateCompanionBuilder =
+    MlFeedbackTableCompanion Function({
+      Value<int> id,
+      required String notificationId,
+      required String packageName,
+      required String title,
+      required String content,
+      required int timestamp,
+      required String featureVector,
+      required double rewardScore,
+      required String targetCategory,
+      Value<String?> targetPriority,
+      Value<DateTime> createdAt,
+    });
+typedef $$MlFeedbackTableTableUpdateCompanionBuilder =
+    MlFeedbackTableCompanion Function({
+      Value<int> id,
+      Value<String> notificationId,
+      Value<String> packageName,
+      Value<String> title,
+      Value<String> content,
+      Value<int> timestamp,
+      Value<String> featureVector,
+      Value<double> rewardScore,
+      Value<String> targetCategory,
+      Value<String?> targetPriority,
+      Value<DateTime> createdAt,
+    });
+
+class $$MlFeedbackTableTableFilterComposer
+    extends Composer<_$AttentionDatabase, $MlFeedbackTableTable> {
+  $$MlFeedbackTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get packageName => $composableBuilder(
+    column: $table.packageName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get featureVector => $composableBuilder(
+    column: $table.featureVector,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get rewardScore => $composableBuilder(
+    column: $table.rewardScore,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get targetCategory => $composableBuilder(
+    column: $table.targetCategory,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get targetPriority => $composableBuilder(
+    column: $table.targetPriority,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$MlFeedbackTableTableOrderingComposer
+    extends Composer<_$AttentionDatabase, $MlFeedbackTableTable> {
+  $$MlFeedbackTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get packageName => $composableBuilder(
+    column: $table.packageName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get featureVector => $composableBuilder(
+    column: $table.featureVector,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get rewardScore => $composableBuilder(
+    column: $table.rewardScore,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get targetCategory => $composableBuilder(
+    column: $table.targetCategory,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get targetPriority => $composableBuilder(
+    column: $table.targetPriority,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$MlFeedbackTableTableAnnotationComposer
+    extends Composer<_$AttentionDatabase, $MlFeedbackTableTable> {
+  $$MlFeedbackTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get packageName => $composableBuilder(
+    column: $table.packageName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get content =>
+      $composableBuilder(column: $table.content, builder: (column) => column);
+
+  GeneratedColumn<int> get timestamp =>
+      $composableBuilder(column: $table.timestamp, builder: (column) => column);
+
+  GeneratedColumn<String> get featureVector => $composableBuilder(
+    column: $table.featureVector,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get rewardScore => $composableBuilder(
+    column: $table.rewardScore,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get targetCategory => $composableBuilder(
+    column: $table.targetCategory,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get targetPriority => $composableBuilder(
+    column: $table.targetPriority,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$MlFeedbackTableTableTableManager
+    extends
+        RootTableManager<
+          _$AttentionDatabase,
+          $MlFeedbackTableTable,
+          MlFeedbackEntry,
+          $$MlFeedbackTableTableFilterComposer,
+          $$MlFeedbackTableTableOrderingComposer,
+          $$MlFeedbackTableTableAnnotationComposer,
+          $$MlFeedbackTableTableCreateCompanionBuilder,
+          $$MlFeedbackTableTableUpdateCompanionBuilder,
+          (
+            MlFeedbackEntry,
+            BaseReferences<
+              _$AttentionDatabase,
+              $MlFeedbackTableTable,
+              MlFeedbackEntry
+            >,
+          ),
+          MlFeedbackEntry,
+          PrefetchHooks Function()
+        > {
+  $$MlFeedbackTableTableTableManager(
+    _$AttentionDatabase db,
+    $MlFeedbackTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$MlFeedbackTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$MlFeedbackTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$MlFeedbackTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> notificationId = const Value.absent(),
+                Value<String> packageName = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> content = const Value.absent(),
+                Value<int> timestamp = const Value.absent(),
+                Value<String> featureVector = const Value.absent(),
+                Value<double> rewardScore = const Value.absent(),
+                Value<String> targetCategory = const Value.absent(),
+                Value<String?> targetPriority = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => MlFeedbackTableCompanion(
+                id: id,
+                notificationId: notificationId,
+                packageName: packageName,
+                title: title,
+                content: content,
+                timestamp: timestamp,
+                featureVector: featureVector,
+                rewardScore: rewardScore,
+                targetCategory: targetCategory,
+                targetPriority: targetPriority,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String notificationId,
+                required String packageName,
+                required String title,
+                required String content,
+                required int timestamp,
+                required String featureVector,
+                required double rewardScore,
+                required String targetCategory,
+                Value<String?> targetPriority = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => MlFeedbackTableCompanion.insert(
+                id: id,
+                notificationId: notificationId,
+                packageName: packageName,
+                title: title,
+                content: content,
+                timestamp: timestamp,
+                featureVector: featureVector,
+                rewardScore: rewardScore,
+                targetCategory: targetCategory,
+                targetPriority: targetPriority,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$MlFeedbackTableTable, MlFeedbackEntry>(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $MlFeedbackTableTable,
+                    MlFeedbackEntry
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$MlFeedbackTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AttentionDatabase,
+      $MlFeedbackTableTable,
+      MlFeedbackEntry,
+      $$MlFeedbackTableTableFilterComposer,
+      $$MlFeedbackTableTableOrderingComposer,
+      $$MlFeedbackTableTableAnnotationComposer,
+      $$MlFeedbackTableTableCreateCompanionBuilder,
+      $$MlFeedbackTableTableUpdateCompanionBuilder,
+      (
+        MlFeedbackEntry,
+        BaseReferences<
+          _$AttentionDatabase,
+          $MlFeedbackTableTable,
+          MlFeedbackEntry
+        >,
+      ),
+      MlFeedbackEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AttentionDatabaseManager {
   final _$AttentionDatabase _db;
@@ -4313,4 +5356,6 @@ class $AttentionDatabaseManager {
       $$FocusSessionsTableTableTableManager(_db, _db.focusSessionsTable);
   $$DailyBriefTableTableTableManager get dailyBriefTable =>
       $$DailyBriefTableTableTableManager(_db, _db.dailyBriefTable);
+  $$MlFeedbackTableTableTableManager get mlFeedbackTable =>
+      $$MlFeedbackTableTableTableManager(_db, _db.mlFeedbackTable);
 }

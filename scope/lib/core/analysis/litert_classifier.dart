@@ -5,11 +5,13 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/analysis_result.dart';
 import 'package:scope/core/analysis/notification_analyzer.dart';
 import 'package:scope/core/analysis/wordpiece_tokenizer.dart';
+import 'package:scope/core/analysis/model_lifecycle_manager.dart';
 
 /// Classifier using LiteRT (TensorFlow Lite) to classify text categories.
 class LiteRtClassifier implements NotificationAnalyzer {
   Interpreter? _interpreter;
   WordPieceTokenizer? _tokenizer;
+  ModelLoadResult? _loadResult;
   bool _isModelLoaded = false;
 
   LiteRtClassifier() {
@@ -23,15 +25,17 @@ class LiteRtClassifier implements NotificationAnalyzer {
       final lines = vocabStr.split('\n');
       _tokenizer = WordPieceTokenizer.fromLines(lines);
 
-      // 2. Load Interpreter (Bypassed: model.tflite is now the look-again regression model)
-      _isModelLoaded = false;
+      // 2. Load Classifier Interpreter via ModelLifecycleManager
+      _loadResult = await ModelLifecycleManager.instance.loadCategoryClassifierModel();
+      _interpreter = _loadResult?.interpreter;
+      _isModelLoaded = _interpreter != null;
     } catch (e) {
       // Graceful degradation: Log and set flags so analyze runs in fallback mode
       // ignore: avoid_print
       print('LiteRtClassifier failed to initialize: $e');
       _isModelLoaded = false;
 
-      // Ensure tokenizer is loaded even if interpreter fails (so we can test tokenization in fallback)
+      // Ensure tokenizer is loaded even if interpreter fails
       if (_tokenizer == null) {
         try {
           final vocabStr = await rootBundle.loadString('assets/vocab.txt');
@@ -43,6 +47,9 @@ class LiteRtClassifier implements NotificationAnalyzer {
 
   /// Expose model loading status for diagnostics screen.
   bool get isModelLoaded => _isModelLoaded;
+
+  /// Expose model lifecycle details.
+  ModelLoadResult? get loadResult => _loadResult;
 
   @override
   Future<AnalysisResult> analyze(AppNotification notification) async {
