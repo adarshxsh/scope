@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/extracted_features.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/state/notification_controller.dart';
+import 'package:scope/core/utils/smart_action_launcher.dart';
 import 'package:scope/core/utils/smart_actions.dart';
 import 'package:scope/theme/app_colors.dart';
 import 'package:scope/theme/app_spacing.dart';
@@ -173,57 +174,63 @@ class NotificationDetailScreen extends StatelessWidget {
     );
   }
 
-  void _handleAction(BuildContext context, SmartAction action) {
+  Future<void> _handleAction(BuildContext context, SmartAction action) async {
     bool shouldPop = false;
+    final launcher = SmartActionLauncherService();
+
     switch (action.type) {
       case SmartActionType.archive:
         controller.archive(notification.id);
         shouldPop = true;
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${action.label} recorded'), duration: const Duration(seconds: 2)),
+          );
+        }
         break;
       case SmartActionType.complete:
         controller.complete(notification.id);
         shouldPop = true;
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${action.label} recorded'), duration: const Duration(seconds: 2)),
+          );
+        }
         break;
       case SmartActionType.addCalendar:
         controller.saveActionItem(notification, action);
         controller.recordCalendarEvent();
         shouldPop = true;
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${action.label} recorded'), duration: const Duration(seconds: 2)),
+          );
+        }
         break;
       case SmartActionType.remind:
         controller.saveActionItem(notification, action);
         controller.recordReminder();
         shouldPop = true;
-        break;
-      case SmartActionType.track:
-        controller.saveActionItem(notification, action);
-        controller.recordAction();
-        shouldPop = true;
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${action.label} recorded'), duration: const Duration(seconds: 2)),
+          );
+        }
         break;
       default:
         controller.recordAction();
-        controller.complete(notification.id); // Mark complete since we are executing it
+        controller.complete(notification.id);
         shouldPop = true;
+        await launcher.launchAction(
+          context: context,
+          action: action,
+          notification: notification,
+        );
         break;
     }
     
-    if (context.mounted) {
-      final isGeneric = action.type == SmartActionType.archive || 
-                        action.type == SmartActionType.complete ||
-                        action.type == SmartActionType.addCalendar ||
-                        action.type == SmartActionType.remind ||
-                        action.type == SmartActionType.track;
-      
-      final msg = isGeneric 
-          ? '${action.label} recorded'
-          : 'Opening App for: ${action.label}...';
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg), duration: const Duration(seconds: 2)),
-      );
-      
-      if (shouldPop && Navigator.canPop(context)) {
-        Navigator.pop(context);
-      }
+    if (context.mounted && shouldPop && Navigator.canPop(context)) {
+      Navigator.pop(context);
     }
   }
 }
