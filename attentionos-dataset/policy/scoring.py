@@ -138,4 +138,5 @@ def score_notification(record: dict[str, Any], now: datetime | None = None) -> d
         "urgency": priority,
         "look_again_score": look_again_score,
         "look_again": look_again_score >= 55,
+        "review_score": score,
     }

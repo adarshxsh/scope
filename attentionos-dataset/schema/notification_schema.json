@@ -30,5 +30,6 @@
   "priority_reason": "string",
   "look_again_score": "integer 0..100",
   "look_again": "boolean",
+  "review_score": "number 0..100",
   "labels": "object"
 }
