@@ -44,13 +44,31 @@ void main() {
       expect(result.isFallback, isTrue);
     });
 
+    test('handles emoji and long payloads without crashing or throwing errors', () async {
+      final classifier = LiteRtClassifier();
+      
+      final notif = AppNotification(
+        id: '3',
+        packageName: 'com.whatsapp',
+        title: 'Promotion 🔥🎉',
+        content: 'Huge discount on products! ' * 20,
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final result = await classifier.analyze(notif);
+      
+      expect(result.category, equals('promo'));
+      expect(result.engineName, contains('fallback'));
+      expect(result.isFallback, isTrue);
+    });
+
     test('falls back gracefully on SHA-256 digest mismatch', () async {
       final classifier = LiteRtClassifier(
         expectedVocabSha256: '0000000000000000000000000000000000000000000000000000000000000000',
       );
 
       final notif = AppNotification(
-        id: '3',
+        id: '4',
         packageName: 'com.example.app',
         title: 'Alert',
         content: 'Verification code 123456',
@@ -61,13 +79,14 @@ void main() {
 
       expect(result.category, equals('sys'));
       expect(result.engineName, contains('fallback'));
+      expect(result.isFallback, isTrue);
     });
 
     test('SHA-256 verification overhead during asset initialization is within 5ms constraint', () async {
       final stopwatch = Stopwatch()..start();
       final classifier = LiteRtClassifier();
       final notif = AppNotification(
-        id: '4',
+        id: '5',
         packageName: 'com.example.app',
         title: 'Test',
         content: 'Test content',
