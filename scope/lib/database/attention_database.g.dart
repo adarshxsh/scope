@@ -174,6 +174,21 @@ class $NotificationsTableTable extends NotificationsTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _isFallbackMeta = const VerificationMeta(
+    'isFallback',
+  );
+  @override
+  late final GeneratedColumn<bool> isFallback = GeneratedColumn<bool>(
+    'is_fallback',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_fallback" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   late final GeneratedColumnWithTypeConverter<Map<String, dynamic>?, String>
   extractedFeatures =
@@ -298,6 +313,7 @@ class $NotificationsTableTable extends NotificationsTable
     ruleVersion,
     modelVersion,
     engineVersion,
+    isFallback,
     extractedFeatures,
     state,
     snoozedUntil,
@@ -438,6 +454,12 @@ class $NotificationsTableTable extends NotificationsTable
         ),
       );
     }
+    if (data.containsKey('is_fallback')) {
+      context.handle(
+        _isFallbackMeta,
+        isFallback.isAcceptableOrUnknown(data['is_fallback']!, _isFallbackMeta),
+      );
+    }
     if (data.containsKey('snoozed_until')) {
       context.handle(
         _snoozedUntilMeta,
@@ -558,6 +580,10 @@ class $NotificationsTableTable extends NotificationsTable
         DriftSqlType.string,
         data['${effectivePrefix}engine_version'],
       ),
+      isFallback: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_fallback'],
+      )!,
       extractedFeatures: $NotificationsTableTable.$converterextractedFeaturesn
           .fromSql(
             attachedDatabase.typeMapping.read(
@@ -634,6 +660,7 @@ class NotificationEntry extends DataClass
   final String? ruleVersion;
   final String? modelVersion;
   final String? engineVersion;
+  final bool isFallback;
   final Map<String, dynamic>? extractedFeatures;
   final ReviewState state;
   final DateTime? snoozedUntil;
@@ -659,6 +686,7 @@ class NotificationEntry extends DataClass
     this.ruleVersion,
     this.modelVersion,
     this.engineVersion,
+    required this.isFallback,
     this.extractedFeatures,
     required this.state,
     this.snoozedUntil,
@@ -705,6 +733,7 @@ class NotificationEntry extends DataClass
     if (!nullToAbsent || engineVersion != null) {
       map['engine_version'] = Variable<String>(engineVersion);
     }
+    map['is_fallback'] = Variable<bool>(isFallback);
     if (!nullToAbsent || extractedFeatures != null) {
       map['extracted_features'] = Variable<String>(
         $NotificationsTableTable.$converterextractedFeaturesn.toSql(
@@ -770,6 +799,7 @@ class NotificationEntry extends DataClass
       engineVersion: engineVersion == null && nullToAbsent
           ? const Value.absent()
           : Value(engineVersion),
+      isFallback: Value(isFallback),
       extractedFeatures: extractedFeatures == null && nullToAbsent
           ? const Value.absent()
           : Value(extractedFeatures),
@@ -815,6 +845,7 @@ class NotificationEntry extends DataClass
       ruleVersion: serializer.fromJson<String?>(json['ruleVersion']),
       modelVersion: serializer.fromJson<String?>(json['modelVersion']),
       engineVersion: serializer.fromJson<String?>(json['engineVersion']),
+      isFallback: serializer.fromJson<bool>(json['isFallback']),
       extractedFeatures: serializer.fromJson<Map<String, dynamic>?>(
         json['extractedFeatures'],
       ),
@@ -849,6 +880,7 @@ class NotificationEntry extends DataClass
       'ruleVersion': serializer.toJson<String?>(ruleVersion),
       'modelVersion': serializer.toJson<String?>(modelVersion),
       'engineVersion': serializer.toJson<String?>(engineVersion),
+      'isFallback': serializer.toJson<bool>(isFallback),
       'extractedFeatures': serializer.toJson<Map<String, dynamic>?>(
         extractedFeatures,
       ),
@@ -881,6 +913,7 @@ class NotificationEntry extends DataClass
     Value<String?> ruleVersion = const Value.absent(),
     Value<String?> modelVersion = const Value.absent(),
     Value<String?> engineVersion = const Value.absent(),
+    bool? isFallback,
     Value<Map<String, dynamic>?> extractedFeatures = const Value.absent(),
     ReviewState? state,
     Value<DateTime?> snoozedUntil = const Value.absent(),
@@ -912,6 +945,7 @@ class NotificationEntry extends DataClass
     engineVersion: engineVersion.present
         ? engineVersion.value
         : this.engineVersion,
+    isFallback: isFallback ?? this.isFallback,
     extractedFeatures: extractedFeatures.present
         ? extractedFeatures.value
         : this.extractedFeatures,
@@ -955,6 +989,9 @@ class NotificationEntry extends DataClass
       engineVersion: data.engineVersion.present
           ? data.engineVersion.value
           : this.engineVersion,
+      isFallback: data.isFallback.present
+          ? data.isFallback.value
+          : this.isFallback,
       extractedFeatures: data.extractedFeatures.present
           ? data.extractedFeatures.value
           : this.extractedFeatures,
@@ -995,6 +1032,7 @@ class NotificationEntry extends DataClass
           ..write('ruleVersion: $ruleVersion, ')
           ..write('modelVersion: $modelVersion, ')
           ..write('engineVersion: $engineVersion, ')
+          ..write('isFallback: $isFallback, ')
           ..write('extractedFeatures: $extractedFeatures, ')
           ..write('state: $state, ')
           ..write('snoozedUntil: $snoozedUntil, ')
@@ -1025,6 +1063,7 @@ class NotificationEntry extends DataClass
     ruleVersion,
     modelVersion,
     engineVersion,
+    isFallback,
     extractedFeatures,
     state,
     snoozedUntil,
@@ -1054,6 +1093,7 @@ class NotificationEntry extends DataClass
           other.ruleVersion == this.ruleVersion &&
           other.modelVersion == this.modelVersion &&
           other.engineVersion == this.engineVersion &&
+          other.isFallback == this.isFallback &&
           other.extractedFeatures == this.extractedFeatures &&
           other.state == this.state &&
           other.snoozedUntil == this.snoozedUntil &&
@@ -1081,6 +1121,7 @@ class NotificationsTableCompanion extends UpdateCompanion<NotificationEntry> {
   final Value<String?> ruleVersion;
   final Value<String?> modelVersion;
   final Value<String?> engineVersion;
+  final Value<bool> isFallback;
   final Value<Map<String, dynamic>?> extractedFeatures;
   final Value<ReviewState> state;
   final Value<DateTime?> snoozedUntil;
@@ -1107,6 +1148,7 @@ class NotificationsTableCompanion extends UpdateCompanion<NotificationEntry> {
     this.ruleVersion = const Value.absent(),
     this.modelVersion = const Value.absent(),
     this.engineVersion = const Value.absent(),
+    this.isFallback = const Value.absent(),
     this.extractedFeatures = const Value.absent(),
     this.state = const Value.absent(),
     this.snoozedUntil = const Value.absent(),
@@ -1134,6 +1176,7 @@ class NotificationsTableCompanion extends UpdateCompanion<NotificationEntry> {
     this.ruleVersion = const Value.absent(),
     this.modelVersion = const Value.absent(),
     this.engineVersion = const Value.absent(),
+    this.isFallback = const Value.absent(),
     this.extractedFeatures = const Value.absent(),
     required ReviewState state,
     this.snoozedUntil = const Value.absent(),
@@ -1166,6 +1209,7 @@ class NotificationsTableCompanion extends UpdateCompanion<NotificationEntry> {
     Expression<String>? ruleVersion,
     Expression<String>? modelVersion,
     Expression<String>? engineVersion,
+    Expression<bool>? isFallback,
     Expression<String>? extractedFeatures,
     Expression<String>? state,
     Expression<DateTime>? snoozedUntil,
@@ -1193,6 +1237,7 @@ class NotificationsTableCompanion extends UpdateCompanion<NotificationEntry> {
       if (ruleVersion != null) 'rule_version': ruleVersion,
       if (modelVersion != null) 'model_version': modelVersion,
       if (engineVersion != null) 'engine_version': engineVersion,
+      if (isFallback != null) 'is_fallback': isFallback,
       if (extractedFeatures != null) 'extracted_features': extractedFeatures,
       if (state != null) 'state': state,
       if (snoozedUntil != null) 'snoozed_until': snoozedUntil,
@@ -1222,6 +1267,7 @@ class NotificationsTableCompanion extends UpdateCompanion<NotificationEntry> {
     Value<String?>? ruleVersion,
     Value<String?>? modelVersion,
     Value<String?>? engineVersion,
+    Value<bool>? isFallback,
     Value<Map<String, dynamic>?>? extractedFeatures,
     Value<ReviewState>? state,
     Value<DateTime?>? snoozedUntil,
@@ -1249,6 +1295,7 @@ class NotificationsTableCompanion extends UpdateCompanion<NotificationEntry> {
       ruleVersion: ruleVersion ?? this.ruleVersion,
       modelVersion: modelVersion ?? this.modelVersion,
       engineVersion: engineVersion ?? this.engineVersion,
+      isFallback: isFallback ?? this.isFallback,
       extractedFeatures: extractedFeatures ?? this.extractedFeatures,
       state: state ?? this.state,
       snoozedUntil: snoozedUntil ?? this.snoozedUntil,
@@ -1310,6 +1357,9 @@ class NotificationsTableCompanion extends UpdateCompanion<NotificationEntry> {
     if (engineVersion.present) {
       map['engine_version'] = Variable<String>(engineVersion.value);
     }
+    if (isFallback.present) {
+      map['is_fallback'] = Variable<bool>(isFallback.value);
+    }
     if (extractedFeatures.present) {
       map['extracted_features'] = Variable<String>(
         $NotificationsTableTable.$converterextractedFeaturesn.toSql(
@@ -1367,6 +1417,7 @@ class NotificationsTableCompanion extends UpdateCompanion<NotificationEntry> {
           ..write('ruleVersion: $ruleVersion, ')
           ..write('modelVersion: $modelVersion, ')
           ..write('engineVersion: $engineVersion, ')
+          ..write('isFallback: $isFallback, ')
           ..write('extractedFeatures: $extractedFeatures, ')
           ..write('state: $state, ')
           ..write('snoozedUntil: $snoozedUntil, ')
@@ -2763,6 +2814,7 @@ typedef $$NotificationsTableTableCreateCompanionBuilder =
       Value<String?> ruleVersion,
       Value<String?> modelVersion,
       Value<String?> engineVersion,
+      Value<bool> isFallback,
       Value<Map<String, dynamic>?> extractedFeatures,
       required ReviewState state,
       Value<DateTime?> snoozedUntil,
@@ -2791,6 +2843,7 @@ typedef $$NotificationsTableTableUpdateCompanionBuilder =
       Value<String?> ruleVersion,
       Value<String?> modelVersion,
       Value<String?> engineVersion,
+      Value<bool> isFallback,
       Value<Map<String, dynamic>?> extractedFeatures,
       Value<ReviewState> state,
       Value<DateTime?> snoozedUntil,
@@ -2920,6 +2973,11 @@ class $$NotificationsTableTableFilterComposer
 
   ColumnFilters<String> get engineVersion => $composableBuilder(
     column: $table.engineVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isFallback => $composableBuilder(
+    column: $table.isFallback,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3084,6 +3142,11 @@ class $$NotificationsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isFallback => $composableBuilder(
+    column: $table.isFallback,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get extractedFeatures => $composableBuilder(
     column: $table.extractedFeatures,
     builder: (column) => ColumnOrderings(column),
@@ -3195,6 +3258,11 @@ class $$NotificationsTableTableAnnotationComposer
 
   GeneratedColumn<String> get engineVersion => $composableBuilder(
     column: $table.engineVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isFallback => $composableBuilder(
+    column: $table.isFallback,
     builder: (column) => column,
   );
 
@@ -3310,6 +3378,7 @@ class $$NotificationsTableTableTableManager
                 Value<String?> ruleVersion = const Value.absent(),
                 Value<String?> modelVersion = const Value.absent(),
                 Value<String?> engineVersion = const Value.absent(),
+                Value<bool> isFallback = const Value.absent(),
                 Value<Map<String, dynamic>?> extractedFeatures =
                     const Value.absent(),
                 Value<ReviewState> state = const Value.absent(),
@@ -3337,6 +3406,7 @@ class $$NotificationsTableTableTableManager
                 ruleVersion: ruleVersion,
                 modelVersion: modelVersion,
                 engineVersion: engineVersion,
+                isFallback: isFallback,
                 extractedFeatures: extractedFeatures,
                 state: state,
                 snoozedUntil: snoozedUntil,
@@ -3365,6 +3435,7 @@ class $$NotificationsTableTableTableManager
                 Value<String?> ruleVersion = const Value.absent(),
                 Value<String?> modelVersion = const Value.absent(),
                 Value<String?> engineVersion = const Value.absent(),
+                Value<bool> isFallback = const Value.absent(),
                 Value<Map<String, dynamic>?> extractedFeatures =
                     const Value.absent(),
                 required ReviewState state,
@@ -3392,6 +3463,7 @@ class $$NotificationsTableTableTableManager
                 ruleVersion: ruleVersion,
                 modelVersion: modelVersion,
                 engineVersion: engineVersion,
+                isFallback: isFallback,
                 extractedFeatures: extractedFeatures,
                 state: state,
                 snoozedUntil: snoozedUntil,
@@ -3406,7 +3478,9 @@ class $$NotificationsTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$NotificationsTableTable, NotificationEntry>(
+                    table,
+                  ),
                   $$NotificationsTableTableReferences(db, table, e),
                 ),
               )
@@ -3749,7 +3823,7 @@ class $$ReviewQueueTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$ReviewQueueTableTable, ReviewQueueEntry>(table),
                   $$ReviewQueueTableTableReferences(db, table, e),
                 ),
               )
@@ -4021,7 +4095,18 @@ class $$FocusSessionsTableTableTableManager
                 duration: duration,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$FocusSessionsTableTable, FocusSessionEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $FocusSessionsTableTable,
+                    FocusSessionEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4273,7 +4358,16 @@ class $$DailyBriefTableTableTableManager
                 archivedCount: archivedCount,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$DailyBriefTableTable, DailyBriefEntry>(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $DailyBriefTableTable,
+                    DailyBriefEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),

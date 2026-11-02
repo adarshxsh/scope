@@ -29,6 +29,7 @@ void main() {
         reviewed: false,
         dismissed: false,
         isOngoing: false,
+        isFallback: false,
         createdAt: now,
       );
 
@@ -53,6 +54,7 @@ void main() {
         reviewed: false,
         dismissed: false,
         isOngoing: false,
+        isFallback: false,
         createdAt: now,
       );
 
@@ -66,6 +68,7 @@ void main() {
         reviewed: false,
         dismissed: false,
         isOngoing: false,
+        isFallback: false,
         createdAt: now,
       );
 
@@ -174,6 +177,7 @@ void main() {
         reviewed: false,
         dismissed: false,
         isOngoing: false,
+        isFallback: false,
         createdAt: DateTime.now(),
       );
 
@@ -187,6 +191,7 @@ void main() {
         reviewed: false,
         dismissed: false,
         isOngoing: false,
+        isFallback: false,
         createdAt: DateTime.now(),
       );
 
@@ -216,6 +221,7 @@ void main() {
         reviewed: false,
         dismissed: false,
         isOngoing: false,
+        isFallback: false,
         createdAt: DateTime.now(),
       );
 
@@ -229,6 +235,7 @@ void main() {
         reviewed: false,
         dismissed: false,
         isOngoing: false,
+        isFallback: false,
         createdAt: DateTime.now(),
       );
 
