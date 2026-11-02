@@ -170,8 +170,11 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
   }
 
   /// Re-scores notifications and applies auto-expiry/cleanup rules.
-  Future<void> rescore() async {
+  Future<void> rescore({int? referenceTimestamp}) async {
     final now = DateTime.now();
+    final evalTime = referenceTimestamp != null
+        ? DateTime.fromMillisecondsSinceEpoch(referenceTimestamp)
+        : now;
     final updated = <AppNotification>[];
 
     for (final item in state) {
@@ -185,12 +188,15 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
       ReviewState currentState = item.state;
       if (currentState == ReviewState.SNOOZED &&
           item.snoozedUntil != null &&
-          now.isAfter(item.snoozedUntil!)) {
+          evalTime.isAfter(item.snoozedUntil!)) {
         currentState = ReviewState.ACTIVE;
       }
 
       // 2. Perform re-scoring prediction via GhostAI
-      final ghostResult = await GhostAI.predict(item);
+      final ghostResult = await GhostAI.predict(
+        item,
+        referenceTimestamp: referenceTimestamp,
+      );
 
       var updatedItem = item.copyWith(
         priorityScore: ghostResult.reviewScore,

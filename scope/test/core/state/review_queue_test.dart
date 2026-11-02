@@ -194,6 +194,24 @@ void main() {
       final item = container.read(reviewQueueProvider).first;
       expect(item.state, equals(ReviewState.ARCHIVED));
     });
+
+    test('rescore(referenceTimestamp: ...) preserves priority score during historical queue rescoring', () async {
+      final historicalTimestamp = DateTime.now().millisecondsSinceEpoch - 2 * 60 * 60 * 1000; // 2 hours ago
+      final oldOtp = AppNotification(
+        id: 'otp-hist',
+        packageName: 'com.whatsapp',
+        title: 'OTP Verification',
+        content: 'Your verification code is 883102. Valid for 10 minutes.',
+        timestamp: historicalTimestamp,
+      );
+
+      notifier.add(oldOtp);
+      await notifier.rescore(referenceTimestamp: historicalTimestamp);
+
+      final item = container.read(reviewQueueProvider).first;
+      expect(item.priorityScore, equals(1.0));
+      expect(item.state, equals(ReviewState.ACTIVE));
+    });
   });
 
   group('Queue Sorting and Filtering Tests', () {
