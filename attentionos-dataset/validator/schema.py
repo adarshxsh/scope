@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from validator.privacy import check_privacy_leaks
+
 REQUIRED_FIELDS = {
     "id",
     "app_name",
@@ -21,7 +23,7 @@ REQUIRED_FIELDS = {
 }
 
 
-def validate_record(record: dict) -> list[str]:
+def validate_record(record: dict, check_privacy: bool = True) -> list[str]:
     errors: list[str] = []
     missing = REQUIRED_FIELDS.difference(record)
     if missing:
@@ -35,4 +37,8 @@ def validate_record(record: dict) -> list[str]:
     score = record.get("priority_score")
     if not isinstance(score, int) or score < 0 or score > 100:
         errors.append("priority_score must be an integer in 0..100")
+    if check_privacy:
+        privacy_errors = check_privacy_leaks(record)
+        errors.extend(privacy_errors)
     return errors
+
