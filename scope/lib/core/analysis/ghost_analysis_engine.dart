@@ -1,4 +1,7 @@
+import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/litert_classifier.dart';
 import 'package:scope/core/analysis/policy_engine.dart';
@@ -7,15 +10,21 @@ import 'package:scope/core/analysis/score_fusion.dart';
 import 'package:scope/core/analysis/explanation_generator.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
+import 'package:scope/database/attention_database.dart';
+import 'package:scope/database/daos.dart';
+import 'package:scope/core/utils/pii_redactor.dart';
+
 
 /// The central hub of Ghost AI coordinating all classification stages.
 class GhostAnalysisEngine {
   final RuleEngine ruleEngine;
   final LiteRtClassifier mlClassifier;
+  final InferenceAuditDao? auditDao;
 
   GhostAnalysisEngine({
     RuleEngine? ruleEngine,
     LiteRtClassifier? mlClassifier,
+    this.auditDao,
   })  : ruleEngine = ruleEngine ?? RuleEngine(),
         mlClassifier = mlClassifier ?? LiteRtClassifier();
 
@@ -89,22 +98,53 @@ class GhostAnalysisEngine {
       fusedResult: fusedResult,
       features: features,
       priority: priority,
+      ghostResult: ghostResult,
     );
 
     stopwatch.stop();
+    final elapsedMs = stopwatch.elapsedMilliseconds;
+
+    // Build enriched extracted features map
+    final enrichedFeatures = features.toMap();
+    enrichedFeatures['featureAttributions'] = ghostResult.featureAttributions.map((f) => f.toMap()).toList();
+    enrichedFeatures['scoreEvolution'] = ghostResult.scoreEvolutionSteps.map((s) => s.toMap()).toList();
+    enrichedFeatures['overrideTrigger'] = ghostResult.overrideTrigger;
+
+    // 7. Audit Logging
+    if (auditDao != null) {
+      try {
+        final entry = InferenceAuditLogsTableCompanion.insert(
+          notificationId: notification.id,
+          timestamp: notification.timestamp,
+          packageName: PiiRedactor.redact(notification.packageName),
+          classifiedCategory: Value(fusedResult.category),
+          rawMlScore: Value(ghostResult.predictedScore),
+          fusedScore: Value(ghostResult.reviewScore),
+          finalPriority: priority,
+          overrideTrigger: ghostResult.overrideTrigger,
+          latencyMs: elapsedMs,
+          createdAt: Value(DateTime.now()),
+        );
+        await auditDao!.insertAuditLog(entry);
+      } catch (e) {
+        debugPrint('GhostAnalysisEngine: Non-fatal audit log error: $e');
+      }
+    }
+
 
     return notification.copyWith(
       priority: priority,
       priorityScore: ghostResult.reviewScore,
       classifiedCategory: fusedResult.category,
       explanation: explanation,
-      latencyMs: stopwatch.elapsedMilliseconds,
+      latencyMs: elapsedMs,
       ruleVersion: ruleEngine.version,
       modelVersion: GhostAI.instance.isModelLoaded ? '1.0.0-tflite' : 'fallback-heuristics',
       engineVersion: fusedResult.isFallback ? '2.0.0-hybrid (fallback)' : '2.0.0-hybrid',
-      extractedFeatures: features.toMap(),
+      extractedFeatures: enrichedFeatures,
     );
   }
+
 
   bool _isStatusOrProgressNotification(AppNotification notification) {
     if (notification.category == 'progress' || notification.category == 'status') {

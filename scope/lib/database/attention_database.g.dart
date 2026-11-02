@@ -2709,6 +2709,818 @@ class DailyBriefTableCompanion extends UpdateCompanion<DailyBriefEntry> {
   }
 }
 
+class $InferenceAuditLogsTableTable extends InferenceAuditLogsTable
+    with TableInfo<$InferenceAuditLogsTableTable, InferenceAuditLogEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $InferenceAuditLogsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _notificationIdMeta = const VerificationMeta(
+    'notificationId',
+  );
+  @override
+  late final GeneratedColumn<String> notificationId = GeneratedColumn<String>(
+    'notification_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _timestampMeta = const VerificationMeta(
+    'timestamp',
+  );
+  @override
+  late final GeneratedColumn<int> timestamp = GeneratedColumn<int>(
+    'timestamp',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _packageNameMeta = const VerificationMeta(
+    'packageName',
+  );
+  @override
+  late final GeneratedColumn<String> packageName = GeneratedColumn<String>(
+    'package_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _classifiedCategoryMeta =
+      const VerificationMeta('classifiedCategory');
+  @override
+  late final GeneratedColumn<String> classifiedCategory =
+      GeneratedColumn<String>(
+        'classified_category',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _rawMlScoreMeta = const VerificationMeta(
+    'rawMlScore',
+  );
+  @override
+  late final GeneratedColumn<double> rawMlScore = GeneratedColumn<double>(
+    'raw_ml_score',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _fusedScoreMeta = const VerificationMeta(
+    'fusedScore',
+  );
+  @override
+  late final GeneratedColumn<double> fusedScore = GeneratedColumn<double>(
+    'fused_score',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _finalPriorityMeta = const VerificationMeta(
+    'finalPriority',
+  );
+  @override
+  late final GeneratedColumn<String> finalPriority = GeneratedColumn<String>(
+    'final_priority',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _overrideTriggerMeta = const VerificationMeta(
+    'overrideTrigger',
+  );
+  @override
+  late final GeneratedColumn<String> overrideTrigger = GeneratedColumn<String>(
+    'override_trigger',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _latencyMsMeta = const VerificationMeta(
+    'latencyMs',
+  );
+  @override
+  late final GeneratedColumn<int> latencyMs = GeneratedColumn<int>(
+    'latency_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _featureAttributionsJsonMeta =
+      const VerificationMeta('featureAttributionsJson');
+  @override
+  late final GeneratedColumn<String> featureAttributionsJson =
+      GeneratedColumn<String>(
+        'feature_attributions_json',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _scoreEvolutionJsonMeta =
+      const VerificationMeta('scoreEvolutionJson');
+  @override
+  late final GeneratedColumn<String> scoreEvolutionJson =
+      GeneratedColumn<String>(
+        'score_evolution_json',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    notificationId,
+    timestamp,
+    packageName,
+    classifiedCategory,
+    rawMlScore,
+    fusedScore,
+    finalPriority,
+    overrideTrigger,
+    latencyMs,
+    featureAttributionsJson,
+    scoreEvolutionJson,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'inference_audit_logs_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<InferenceAuditLogEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('notification_id')) {
+      context.handle(
+        _notificationIdMeta,
+        notificationId.isAcceptableOrUnknown(
+          data['notification_id']!,
+          _notificationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_notificationIdMeta);
+    }
+    if (data.containsKey('timestamp')) {
+      context.handle(
+        _timestampMeta,
+        timestamp.isAcceptableOrUnknown(data['timestamp']!, _timestampMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_timestampMeta);
+    }
+    if (data.containsKey('package_name')) {
+      context.handle(
+        _packageNameMeta,
+        packageName.isAcceptableOrUnknown(
+          data['package_name']!,
+          _packageNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_packageNameMeta);
+    }
+    if (data.containsKey('classified_category')) {
+      context.handle(
+        _classifiedCategoryMeta,
+        classifiedCategory.isAcceptableOrUnknown(
+          data['classified_category']!,
+          _classifiedCategoryMeta,
+        ),
+      );
+    }
+    if (data.containsKey('raw_ml_score')) {
+      context.handle(
+        _rawMlScoreMeta,
+        rawMlScore.isAcceptableOrUnknown(
+          data['raw_ml_score']!,
+          _rawMlScoreMeta,
+        ),
+      );
+    }
+    if (data.containsKey('fused_score')) {
+      context.handle(
+        _fusedScoreMeta,
+        fusedScore.isAcceptableOrUnknown(data['fused_score']!, _fusedScoreMeta),
+      );
+    }
+    if (data.containsKey('final_priority')) {
+      context.handle(
+        _finalPriorityMeta,
+        finalPriority.isAcceptableOrUnknown(
+          data['final_priority']!,
+          _finalPriorityMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_finalPriorityMeta);
+    }
+    if (data.containsKey('override_trigger')) {
+      context.handle(
+        _overrideTriggerMeta,
+        overrideTrigger.isAcceptableOrUnknown(
+          data['override_trigger']!,
+          _overrideTriggerMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_overrideTriggerMeta);
+    }
+    if (data.containsKey('latency_ms')) {
+      context.handle(
+        _latencyMsMeta,
+        latencyMs.isAcceptableOrUnknown(data['latency_ms']!, _latencyMsMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_latencyMsMeta);
+    }
+    if (data.containsKey('feature_attributions_json')) {
+      context.handle(
+        _featureAttributionsJsonMeta,
+        featureAttributionsJson.isAcceptableOrUnknown(
+          data['feature_attributions_json']!,
+          _featureAttributionsJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('score_evolution_json')) {
+      context.handle(
+        _scoreEvolutionJsonMeta,
+        scoreEvolutionJson.isAcceptableOrUnknown(
+          data['score_evolution_json']!,
+          _scoreEvolutionJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  InferenceAuditLogEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return InferenceAuditLogEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      notificationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notification_id'],
+      )!,
+      timestamp: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}timestamp'],
+      )!,
+      packageName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}package_name'],
+      )!,
+      classifiedCategory: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}classified_category'],
+      ),
+      rawMlScore: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}raw_ml_score'],
+      ),
+      fusedScore: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}fused_score'],
+      ),
+      finalPriority: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}final_priority'],
+      )!,
+      overrideTrigger: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}override_trigger'],
+      )!,
+      latencyMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}latency_ms'],
+      )!,
+      featureAttributionsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}feature_attributions_json'],
+      ),
+      scoreEvolutionJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}score_evolution_json'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $InferenceAuditLogsTableTable createAlias(String alias) {
+    return $InferenceAuditLogsTableTable(attachedDatabase, alias);
+  }
+}
+
+class InferenceAuditLogEntry extends DataClass
+    implements Insertable<InferenceAuditLogEntry> {
+  final int id;
+  final String notificationId;
+  final int timestamp;
+  final String packageName;
+  final String? classifiedCategory;
+  final double? rawMlScore;
+  final double? fusedScore;
+  final String finalPriority;
+  final String overrideTrigger;
+  final int latencyMs;
+  final String? featureAttributionsJson;
+  final String? scoreEvolutionJson;
+  final DateTime createdAt;
+  const InferenceAuditLogEntry({
+    required this.id,
+    required this.notificationId,
+    required this.timestamp,
+    required this.packageName,
+    this.classifiedCategory,
+    this.rawMlScore,
+    this.fusedScore,
+    required this.finalPriority,
+    required this.overrideTrigger,
+    required this.latencyMs,
+    this.featureAttributionsJson,
+    this.scoreEvolutionJson,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['notification_id'] = Variable<String>(notificationId);
+    map['timestamp'] = Variable<int>(timestamp);
+    map['package_name'] = Variable<String>(packageName);
+    if (!nullToAbsent || classifiedCategory != null) {
+      map['classified_category'] = Variable<String>(classifiedCategory);
+    }
+    if (!nullToAbsent || rawMlScore != null) {
+      map['raw_ml_score'] = Variable<double>(rawMlScore);
+    }
+    if (!nullToAbsent || fusedScore != null) {
+      map['fused_score'] = Variable<double>(fusedScore);
+    }
+    map['final_priority'] = Variable<String>(finalPriority);
+    map['override_trigger'] = Variable<String>(overrideTrigger);
+    map['latency_ms'] = Variable<int>(latencyMs);
+    if (!nullToAbsent || featureAttributionsJson != null) {
+      map['feature_attributions_json'] = Variable<String>(
+        featureAttributionsJson,
+      );
+    }
+    if (!nullToAbsent || scoreEvolutionJson != null) {
+      map['score_evolution_json'] = Variable<String>(scoreEvolutionJson);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  InferenceAuditLogsTableCompanion toCompanion(bool nullToAbsent) {
+    return InferenceAuditLogsTableCompanion(
+      id: Value(id),
+      notificationId: Value(notificationId),
+      timestamp: Value(timestamp),
+      packageName: Value(packageName),
+      classifiedCategory: classifiedCategory == null && nullToAbsent
+          ? const Value.absent()
+          : Value(classifiedCategory),
+      rawMlScore: rawMlScore == null && nullToAbsent
+          ? const Value.absent()
+          : Value(rawMlScore),
+      fusedScore: fusedScore == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fusedScore),
+      finalPriority: Value(finalPriority),
+      overrideTrigger: Value(overrideTrigger),
+      latencyMs: Value(latencyMs),
+      featureAttributionsJson: featureAttributionsJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(featureAttributionsJson),
+      scoreEvolutionJson: scoreEvolutionJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(scoreEvolutionJson),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory InferenceAuditLogEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return InferenceAuditLogEntry(
+      id: serializer.fromJson<int>(json['id']),
+      notificationId: serializer.fromJson<String>(json['notificationId']),
+      timestamp: serializer.fromJson<int>(json['timestamp']),
+      packageName: serializer.fromJson<String>(json['packageName']),
+      classifiedCategory: serializer.fromJson<String?>(
+        json['classifiedCategory'],
+      ),
+      rawMlScore: serializer.fromJson<double?>(json['rawMlScore']),
+      fusedScore: serializer.fromJson<double?>(json['fusedScore']),
+      finalPriority: serializer.fromJson<String>(json['finalPriority']),
+      overrideTrigger: serializer.fromJson<String>(json['overrideTrigger']),
+      latencyMs: serializer.fromJson<int>(json['latencyMs']),
+      featureAttributionsJson: serializer.fromJson<String?>(
+        json['featureAttributionsJson'],
+      ),
+      scoreEvolutionJson: serializer.fromJson<String?>(
+        json['scoreEvolutionJson'],
+      ),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'notificationId': serializer.toJson<String>(notificationId),
+      'timestamp': serializer.toJson<int>(timestamp),
+      'packageName': serializer.toJson<String>(packageName),
+      'classifiedCategory': serializer.toJson<String?>(classifiedCategory),
+      'rawMlScore': serializer.toJson<double?>(rawMlScore),
+      'fusedScore': serializer.toJson<double?>(fusedScore),
+      'finalPriority': serializer.toJson<String>(finalPriority),
+      'overrideTrigger': serializer.toJson<String>(overrideTrigger),
+      'latencyMs': serializer.toJson<int>(latencyMs),
+      'featureAttributionsJson': serializer.toJson<String?>(
+        featureAttributionsJson,
+      ),
+      'scoreEvolutionJson': serializer.toJson<String?>(scoreEvolutionJson),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  InferenceAuditLogEntry copyWith({
+    int? id,
+    String? notificationId,
+    int? timestamp,
+    String? packageName,
+    Value<String?> classifiedCategory = const Value.absent(),
+    Value<double?> rawMlScore = const Value.absent(),
+    Value<double?> fusedScore = const Value.absent(),
+    String? finalPriority,
+    String? overrideTrigger,
+    int? latencyMs,
+    Value<String?> featureAttributionsJson = const Value.absent(),
+    Value<String?> scoreEvolutionJson = const Value.absent(),
+    DateTime? createdAt,
+  }) => InferenceAuditLogEntry(
+    id: id ?? this.id,
+    notificationId: notificationId ?? this.notificationId,
+    timestamp: timestamp ?? this.timestamp,
+    packageName: packageName ?? this.packageName,
+    classifiedCategory: classifiedCategory.present
+        ? classifiedCategory.value
+        : this.classifiedCategory,
+    rawMlScore: rawMlScore.present ? rawMlScore.value : this.rawMlScore,
+    fusedScore: fusedScore.present ? fusedScore.value : this.fusedScore,
+    finalPriority: finalPriority ?? this.finalPriority,
+    overrideTrigger: overrideTrigger ?? this.overrideTrigger,
+    latencyMs: latencyMs ?? this.latencyMs,
+    featureAttributionsJson: featureAttributionsJson.present
+        ? featureAttributionsJson.value
+        : this.featureAttributionsJson,
+    scoreEvolutionJson: scoreEvolutionJson.present
+        ? scoreEvolutionJson.value
+        : this.scoreEvolutionJson,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  InferenceAuditLogEntry copyWithCompanion(
+    InferenceAuditLogsTableCompanion data,
+  ) {
+    return InferenceAuditLogEntry(
+      id: data.id.present ? data.id.value : this.id,
+      notificationId: data.notificationId.present
+          ? data.notificationId.value
+          : this.notificationId,
+      timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
+      packageName: data.packageName.present
+          ? data.packageName.value
+          : this.packageName,
+      classifiedCategory: data.classifiedCategory.present
+          ? data.classifiedCategory.value
+          : this.classifiedCategory,
+      rawMlScore: data.rawMlScore.present
+          ? data.rawMlScore.value
+          : this.rawMlScore,
+      fusedScore: data.fusedScore.present
+          ? data.fusedScore.value
+          : this.fusedScore,
+      finalPriority: data.finalPriority.present
+          ? data.finalPriority.value
+          : this.finalPriority,
+      overrideTrigger: data.overrideTrigger.present
+          ? data.overrideTrigger.value
+          : this.overrideTrigger,
+      latencyMs: data.latencyMs.present ? data.latencyMs.value : this.latencyMs,
+      featureAttributionsJson: data.featureAttributionsJson.present
+          ? data.featureAttributionsJson.value
+          : this.featureAttributionsJson,
+      scoreEvolutionJson: data.scoreEvolutionJson.present
+          ? data.scoreEvolutionJson.value
+          : this.scoreEvolutionJson,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InferenceAuditLogEntry(')
+          ..write('id: $id, ')
+          ..write('notificationId: $notificationId, ')
+          ..write('timestamp: $timestamp, ')
+          ..write('packageName: $packageName, ')
+          ..write('classifiedCategory: $classifiedCategory, ')
+          ..write('rawMlScore: $rawMlScore, ')
+          ..write('fusedScore: $fusedScore, ')
+          ..write('finalPriority: $finalPriority, ')
+          ..write('overrideTrigger: $overrideTrigger, ')
+          ..write('latencyMs: $latencyMs, ')
+          ..write('featureAttributionsJson: $featureAttributionsJson, ')
+          ..write('scoreEvolutionJson: $scoreEvolutionJson, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    notificationId,
+    timestamp,
+    packageName,
+    classifiedCategory,
+    rawMlScore,
+    fusedScore,
+    finalPriority,
+    overrideTrigger,
+    latencyMs,
+    featureAttributionsJson,
+    scoreEvolutionJson,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is InferenceAuditLogEntry &&
+          other.id == this.id &&
+          other.notificationId == this.notificationId &&
+          other.timestamp == this.timestamp &&
+          other.packageName == this.packageName &&
+          other.classifiedCategory == this.classifiedCategory &&
+          other.rawMlScore == this.rawMlScore &&
+          other.fusedScore == this.fusedScore &&
+          other.finalPriority == this.finalPriority &&
+          other.overrideTrigger == this.overrideTrigger &&
+          other.latencyMs == this.latencyMs &&
+          other.featureAttributionsJson == this.featureAttributionsJson &&
+          other.scoreEvolutionJson == this.scoreEvolutionJson &&
+          other.createdAt == this.createdAt);
+}
+
+class InferenceAuditLogsTableCompanion
+    extends UpdateCompanion<InferenceAuditLogEntry> {
+  final Value<int> id;
+  final Value<String> notificationId;
+  final Value<int> timestamp;
+  final Value<String> packageName;
+  final Value<String?> classifiedCategory;
+  final Value<double?> rawMlScore;
+  final Value<double?> fusedScore;
+  final Value<String> finalPriority;
+  final Value<String> overrideTrigger;
+  final Value<int> latencyMs;
+  final Value<String?> featureAttributionsJson;
+  final Value<String?> scoreEvolutionJson;
+  final Value<DateTime> createdAt;
+  const InferenceAuditLogsTableCompanion({
+    this.id = const Value.absent(),
+    this.notificationId = const Value.absent(),
+    this.timestamp = const Value.absent(),
+    this.packageName = const Value.absent(),
+    this.classifiedCategory = const Value.absent(),
+    this.rawMlScore = const Value.absent(),
+    this.fusedScore = const Value.absent(),
+    this.finalPriority = const Value.absent(),
+    this.overrideTrigger = const Value.absent(),
+    this.latencyMs = const Value.absent(),
+    this.featureAttributionsJson = const Value.absent(),
+    this.scoreEvolutionJson = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  InferenceAuditLogsTableCompanion.insert({
+    this.id = const Value.absent(),
+    required String notificationId,
+    required int timestamp,
+    required String packageName,
+    this.classifiedCategory = const Value.absent(),
+    this.rawMlScore = const Value.absent(),
+    this.fusedScore = const Value.absent(),
+    required String finalPriority,
+    required String overrideTrigger,
+    required int latencyMs,
+    this.featureAttributionsJson = const Value.absent(),
+    this.scoreEvolutionJson = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  }) : notificationId = Value(notificationId),
+       timestamp = Value(timestamp),
+       packageName = Value(packageName),
+       finalPriority = Value(finalPriority),
+       overrideTrigger = Value(overrideTrigger),
+       latencyMs = Value(latencyMs);
+  static Insertable<InferenceAuditLogEntry> custom({
+    Expression<int>? id,
+    Expression<String>? notificationId,
+    Expression<int>? timestamp,
+    Expression<String>? packageName,
+    Expression<String>? classifiedCategory,
+    Expression<double>? rawMlScore,
+    Expression<double>? fusedScore,
+    Expression<String>? finalPriority,
+    Expression<String>? overrideTrigger,
+    Expression<int>? latencyMs,
+    Expression<String>? featureAttributionsJson,
+    Expression<String>? scoreEvolutionJson,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (notificationId != null) 'notification_id': notificationId,
+      if (timestamp != null) 'timestamp': timestamp,
+      if (packageName != null) 'package_name': packageName,
+      if (classifiedCategory != null) 'classified_category': classifiedCategory,
+      if (rawMlScore != null) 'raw_ml_score': rawMlScore,
+      if (fusedScore != null) 'fused_score': fusedScore,
+      if (finalPriority != null) 'final_priority': finalPriority,
+      if (overrideTrigger != null) 'override_trigger': overrideTrigger,
+      if (latencyMs != null) 'latency_ms': latencyMs,
+      if (featureAttributionsJson != null)
+        'feature_attributions_json': featureAttributionsJson,
+      if (scoreEvolutionJson != null)
+        'score_evolution_json': scoreEvolutionJson,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  InferenceAuditLogsTableCompanion copyWith({
+    Value<int>? id,
+    Value<String>? notificationId,
+    Value<int>? timestamp,
+    Value<String>? packageName,
+    Value<String?>? classifiedCategory,
+    Value<double?>? rawMlScore,
+    Value<double?>? fusedScore,
+    Value<String>? finalPriority,
+    Value<String>? overrideTrigger,
+    Value<int>? latencyMs,
+    Value<String?>? featureAttributionsJson,
+    Value<String?>? scoreEvolutionJson,
+    Value<DateTime>? createdAt,
+  }) {
+    return InferenceAuditLogsTableCompanion(
+      id: id ?? this.id,
+      notificationId: notificationId ?? this.notificationId,
+      timestamp: timestamp ?? this.timestamp,
+      packageName: packageName ?? this.packageName,
+      classifiedCategory: classifiedCategory ?? this.classifiedCategory,
+      rawMlScore: rawMlScore ?? this.rawMlScore,
+      fusedScore: fusedScore ?? this.fusedScore,
+      finalPriority: finalPriority ?? this.finalPriority,
+      overrideTrigger: overrideTrigger ?? this.overrideTrigger,
+      latencyMs: latencyMs ?? this.latencyMs,
+      featureAttributionsJson:
+          featureAttributionsJson ?? this.featureAttributionsJson,
+      scoreEvolutionJson: scoreEvolutionJson ?? this.scoreEvolutionJson,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (notificationId.present) {
+      map['notification_id'] = Variable<String>(notificationId.value);
+    }
+    if (timestamp.present) {
+      map['timestamp'] = Variable<int>(timestamp.value);
+    }
+    if (packageName.present) {
+      map['package_name'] = Variable<String>(packageName.value);
+    }
+    if (classifiedCategory.present) {
+      map['classified_category'] = Variable<String>(classifiedCategory.value);
+    }
+    if (rawMlScore.present) {
+      map['raw_ml_score'] = Variable<double>(rawMlScore.value);
+    }
+    if (fusedScore.present) {
+      map['fused_score'] = Variable<double>(fusedScore.value);
+    }
+    if (finalPriority.present) {
+      map['final_priority'] = Variable<String>(finalPriority.value);
+    }
+    if (overrideTrigger.present) {
+      map['override_trigger'] = Variable<String>(overrideTrigger.value);
+    }
+    if (latencyMs.present) {
+      map['latency_ms'] = Variable<int>(latencyMs.value);
+    }
+    if (featureAttributionsJson.present) {
+      map['feature_attributions_json'] = Variable<String>(
+        featureAttributionsJson.value,
+      );
+    }
+    if (scoreEvolutionJson.present) {
+      map['score_evolution_json'] = Variable<String>(scoreEvolutionJson.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InferenceAuditLogsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('notificationId: $notificationId, ')
+          ..write('timestamp: $timestamp, ')
+          ..write('packageName: $packageName, ')
+          ..write('classifiedCategory: $classifiedCategory, ')
+          ..write('rawMlScore: $rawMlScore, ')
+          ..write('fusedScore: $fusedScore, ')
+          ..write('finalPriority: $finalPriority, ')
+          ..write('overrideTrigger: $overrideTrigger, ')
+          ..write('latencyMs: $latencyMs, ')
+          ..write('featureAttributionsJson: $featureAttributionsJson, ')
+          ..write('scoreEvolutionJson: $scoreEvolutionJson, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AttentionDatabase extends GeneratedDatabase {
   _$AttentionDatabase(QueryExecutor e) : super(e);
   $AttentionDatabaseManager get managers => $AttentionDatabaseManager(this);
@@ -2722,6 +3534,8 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final $DailyBriefTableTable dailyBriefTable = $DailyBriefTableTable(
     this,
   );
+  late final $InferenceAuditLogsTableTable inferenceAuditLogsTable =
+      $InferenceAuditLogsTableTable(this);
   late final NotificationDao notificationDao = NotificationDao(
     this as AttentionDatabase,
   );
@@ -2734,6 +3548,9 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final DailyBriefDao dailyBriefDao = DailyBriefDao(
     this as AttentionDatabase,
   );
+  late final InferenceAuditDao inferenceAuditDao = InferenceAuditDao(
+    this as AttentionDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2743,6 +3560,7 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
     reviewQueueTable,
     focusSessionsTable,
     dailyBriefTable,
+    inferenceAuditLogsTable,
   ];
 }
 
@@ -3406,7 +4224,9 @@ class $$NotificationsTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$NotificationsTableTable, NotificationEntry>(
+                    table,
+                  ),
                   $$NotificationsTableTableReferences(db, table, e),
                 ),
               )
@@ -3749,7 +4569,7 @@ class $$ReviewQueueTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$ReviewQueueTableTable, ReviewQueueEntry>(table),
                   $$ReviewQueueTableTableReferences(db, table, e),
                 ),
               )
@@ -4021,7 +4841,18 @@ class $$FocusSessionsTableTableTableManager
                 duration: duration,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$FocusSessionsTableTable, FocusSessionEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $FocusSessionsTableTable,
+                    FocusSessionEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4273,7 +5104,16 @@ class $$DailyBriefTableTableTableManager
                 archivedCount: archivedCount,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$DailyBriefTableTable, DailyBriefEntry>(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $DailyBriefTableTable,
+                    DailyBriefEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4301,6 +5141,401 @@ typedef $$DailyBriefTableTableProcessedTableManager =
       DailyBriefEntry,
       PrefetchHooks Function()
     >;
+typedef $$InferenceAuditLogsTableTableCreateCompanionBuilder =
+    InferenceAuditLogsTableCompanion Function({
+      Value<int> id,
+      required String notificationId,
+      required int timestamp,
+      required String packageName,
+      Value<String?> classifiedCategory,
+      Value<double?> rawMlScore,
+      Value<double?> fusedScore,
+      required String finalPriority,
+      required String overrideTrigger,
+      required int latencyMs,
+      Value<String?> featureAttributionsJson,
+      Value<String?> scoreEvolutionJson,
+      Value<DateTime> createdAt,
+    });
+typedef $$InferenceAuditLogsTableTableUpdateCompanionBuilder =
+    InferenceAuditLogsTableCompanion Function({
+      Value<int> id,
+      Value<String> notificationId,
+      Value<int> timestamp,
+      Value<String> packageName,
+      Value<String?> classifiedCategory,
+      Value<double?> rawMlScore,
+      Value<double?> fusedScore,
+      Value<String> finalPriority,
+      Value<String> overrideTrigger,
+      Value<int> latencyMs,
+      Value<String?> featureAttributionsJson,
+      Value<String?> scoreEvolutionJson,
+      Value<DateTime> createdAt,
+    });
+
+class $$InferenceAuditLogsTableTableFilterComposer
+    extends Composer<_$AttentionDatabase, $InferenceAuditLogsTableTable> {
+  $$InferenceAuditLogsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get packageName => $composableBuilder(
+    column: $table.packageName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get classifiedCategory => $composableBuilder(
+    column: $table.classifiedCategory,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get rawMlScore => $composableBuilder(
+    column: $table.rawMlScore,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get fusedScore => $composableBuilder(
+    column: $table.fusedScore,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get finalPriority => $composableBuilder(
+    column: $table.finalPriority,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get overrideTrigger => $composableBuilder(
+    column: $table.overrideTrigger,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get latencyMs => $composableBuilder(
+    column: $table.latencyMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get featureAttributionsJson => $composableBuilder(
+    column: $table.featureAttributionsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get scoreEvolutionJson => $composableBuilder(
+    column: $table.scoreEvolutionJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$InferenceAuditLogsTableTableOrderingComposer
+    extends Composer<_$AttentionDatabase, $InferenceAuditLogsTableTable> {
+  $$InferenceAuditLogsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get packageName => $composableBuilder(
+    column: $table.packageName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get classifiedCategory => $composableBuilder(
+    column: $table.classifiedCategory,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get rawMlScore => $composableBuilder(
+    column: $table.rawMlScore,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get fusedScore => $composableBuilder(
+    column: $table.fusedScore,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get finalPriority => $composableBuilder(
+    column: $table.finalPriority,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get overrideTrigger => $composableBuilder(
+    column: $table.overrideTrigger,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get latencyMs => $composableBuilder(
+    column: $table.latencyMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get featureAttributionsJson => $composableBuilder(
+    column: $table.featureAttributionsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get scoreEvolutionJson => $composableBuilder(
+    column: $table.scoreEvolutionJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$InferenceAuditLogsTableTableAnnotationComposer
+    extends Composer<_$AttentionDatabase, $InferenceAuditLogsTableTable> {
+  $$InferenceAuditLogsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get timestamp =>
+      $composableBuilder(column: $table.timestamp, builder: (column) => column);
+
+  GeneratedColumn<String> get packageName => $composableBuilder(
+    column: $table.packageName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get classifiedCategory => $composableBuilder(
+    column: $table.classifiedCategory,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get rawMlScore => $composableBuilder(
+    column: $table.rawMlScore,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get fusedScore => $composableBuilder(
+    column: $table.fusedScore,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get finalPriority => $composableBuilder(
+    column: $table.finalPriority,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get overrideTrigger => $composableBuilder(
+    column: $table.overrideTrigger,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get latencyMs =>
+      $composableBuilder(column: $table.latencyMs, builder: (column) => column);
+
+  GeneratedColumn<String> get featureAttributionsJson => $composableBuilder(
+    column: $table.featureAttributionsJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get scoreEvolutionJson => $composableBuilder(
+    column: $table.scoreEvolutionJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$InferenceAuditLogsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AttentionDatabase,
+          $InferenceAuditLogsTableTable,
+          InferenceAuditLogEntry,
+          $$InferenceAuditLogsTableTableFilterComposer,
+          $$InferenceAuditLogsTableTableOrderingComposer,
+          $$InferenceAuditLogsTableTableAnnotationComposer,
+          $$InferenceAuditLogsTableTableCreateCompanionBuilder,
+          $$InferenceAuditLogsTableTableUpdateCompanionBuilder,
+          (
+            InferenceAuditLogEntry,
+            BaseReferences<
+              _$AttentionDatabase,
+              $InferenceAuditLogsTableTable,
+              InferenceAuditLogEntry
+            >,
+          ),
+          InferenceAuditLogEntry,
+          PrefetchHooks Function()
+        > {
+  $$InferenceAuditLogsTableTableTableManager(
+    _$AttentionDatabase db,
+    $InferenceAuditLogsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$InferenceAuditLogsTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$InferenceAuditLogsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$InferenceAuditLogsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> notificationId = const Value.absent(),
+                Value<int> timestamp = const Value.absent(),
+                Value<String> packageName = const Value.absent(),
+                Value<String?> classifiedCategory = const Value.absent(),
+                Value<double?> rawMlScore = const Value.absent(),
+                Value<double?> fusedScore = const Value.absent(),
+                Value<String> finalPriority = const Value.absent(),
+                Value<String> overrideTrigger = const Value.absent(),
+                Value<int> latencyMs = const Value.absent(),
+                Value<String?> featureAttributionsJson = const Value.absent(),
+                Value<String?> scoreEvolutionJson = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => InferenceAuditLogsTableCompanion(
+                id: id,
+                notificationId: notificationId,
+                timestamp: timestamp,
+                packageName: packageName,
+                classifiedCategory: classifiedCategory,
+                rawMlScore: rawMlScore,
+                fusedScore: fusedScore,
+                finalPriority: finalPriority,
+                overrideTrigger: overrideTrigger,
+                latencyMs: latencyMs,
+                featureAttributionsJson: featureAttributionsJson,
+                scoreEvolutionJson: scoreEvolutionJson,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String notificationId,
+                required int timestamp,
+                required String packageName,
+                Value<String?> classifiedCategory = const Value.absent(),
+                Value<double?> rawMlScore = const Value.absent(),
+                Value<double?> fusedScore = const Value.absent(),
+                required String finalPriority,
+                required String overrideTrigger,
+                required int latencyMs,
+                Value<String?> featureAttributionsJson = const Value.absent(),
+                Value<String?> scoreEvolutionJson = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => InferenceAuditLogsTableCompanion.insert(
+                id: id,
+                notificationId: notificationId,
+                timestamp: timestamp,
+                packageName: packageName,
+                classifiedCategory: classifiedCategory,
+                rawMlScore: rawMlScore,
+                fusedScore: fusedScore,
+                finalPriority: finalPriority,
+                overrideTrigger: overrideTrigger,
+                latencyMs: latencyMs,
+                featureAttributionsJson: featureAttributionsJson,
+                scoreEvolutionJson: scoreEvolutionJson,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $InferenceAuditLogsTableTable,
+                    InferenceAuditLogEntry
+                  >(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $InferenceAuditLogsTableTable,
+                    InferenceAuditLogEntry
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$InferenceAuditLogsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AttentionDatabase,
+      $InferenceAuditLogsTableTable,
+      InferenceAuditLogEntry,
+      $$InferenceAuditLogsTableTableFilterComposer,
+      $$InferenceAuditLogsTableTableOrderingComposer,
+      $$InferenceAuditLogsTableTableAnnotationComposer,
+      $$InferenceAuditLogsTableTableCreateCompanionBuilder,
+      $$InferenceAuditLogsTableTableUpdateCompanionBuilder,
+      (
+        InferenceAuditLogEntry,
+        BaseReferences<
+          _$AttentionDatabase,
+          $InferenceAuditLogsTableTable,
+          InferenceAuditLogEntry
+        >,
+      ),
+      InferenceAuditLogEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AttentionDatabaseManager {
   final _$AttentionDatabase _db;
@@ -4313,4 +5548,9 @@ class $AttentionDatabaseManager {
       $$FocusSessionsTableTableTableManager(_db, _db.focusSessionsTable);
   $$DailyBriefTableTableTableManager get dailyBriefTable =>
       $$DailyBriefTableTableTableManager(_db, _db.dailyBriefTable);
+  $$InferenceAuditLogsTableTableTableManager get inferenceAuditLogsTable =>
+      $$InferenceAuditLogsTableTableTableManager(
+        _db,
+        _db.inferenceAuditLogsTable,
+      );
 }
