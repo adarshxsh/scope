@@ -47,6 +47,12 @@ class GhostAI {
   static const int _maxCacheSize = 100;
   static const int _duplicateWindowMs = 300000; // 5 minutes
 
+  // Bounded cache for raw ML model predictions and features
+  final Map<String, _RawPredictionCacheEntry> _predictionCache = {};
+  static const int _maxPredictionCacheSize = 200;
+  int _cacheHits = 0;
+  int _cacheMisses = 0;
+
   GhostAI._();
 
   static GhostAI get instance => _instance ??= GhostAI._();
@@ -56,6 +62,11 @@ class GhostAI {
 
   /// Returns whether the model is loaded.
   bool get isModelLoaded => _interpreter != null;
+
+  /// Cache performance metrics for diagnostics.
+  int get cacheHits => _cacheHits;
+  int get cacheMisses => _cacheMisses;
+  int get predictionCacheSize => _predictionCache.length;
 
   /// Initializes the TFLite interpreter and rules database once on startup.
   Future<void> initialize() async {
@@ -78,6 +89,10 @@ class GhostAI {
     }
   }
 
+  String _cacheKey(AppNotification notification) {
+    return '${notification.id}_${notification.packageName}_${notification.timestamp}_${notification.title}_${notification.content}';
+  }
+
   /// Public API: resolves look-again priority score for a notification.
   static Future<GhostAIResult> predict(AppNotification notification) async {
     return instance._predict(notification);
@@ -85,71 +100,97 @@ class GhostAI {
 
   Future<GhostAIResult> _predict(AppNotification notification) async {
     final stopwatch = Stopwatch()..start();
+    final key = _cacheKey(notification);
 
-    // 1. Feature extraction using the existing FeatureExtractor
-    final featureVector = FeatureExtractor.extractFromAppNotification(notification);
+    _RawPredictionCacheEntry? cached = _predictionCache[key];
+    final bool isCacheHit = cached != null;
 
-    // 2. Model inference
-    double predictedScore = 0.0;
-    int inferenceTimeUs = 0;
-
-    if (_interpreter != null) {
-      final input = [featureVector];
-      final output = List<double>.filled(1, 0.0).reshape([1, 1]);
-
-      final inferStopwatch = Stopwatch()..start();
-      _interpreter!.run(input, output);
-      inferStopwatch.stop();
-
-      inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
-      // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
-      predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
+    if (isCacheHit) {
+      _cacheHits++;
+      // Move to back for LRU ordering
+      _predictionCache.remove(key);
+      _predictionCache[key] = cached;
     } else {
-      // Heuristic fallback if model not loaded
-      predictedScore = _heuristicLookAgainScore(featureVector);
-    }
+      _cacheMisses++;
 
-    // 3. Rule matching
-    final ruleMatch = _ruleEngine.match(notification);
-    double? ruleScore;
-    if (ruleMatch != null) {
-      switch (ruleMatch.priority) {
-        case 'critical':
-          ruleScore = 1.0;
-          break;
-        case 'high':
-          ruleScore = 0.85;
-          break;
-        case 'medium':
-          ruleScore = 0.50;
-          break;
-        case 'low':
-        default:
-          ruleScore = 0.15;
-          break;
-      }
-    }
+      // 1. Feature extraction using the existing FeatureExtractor
+      final featureVector = FeatureExtractor.extractFromAppNotification(notification);
 
-    // 4. Score Fusion (rules + predictions)
-    double finalScore = predictedScore;
-    if (ruleScore != null && ruleMatch != null) {
-      // Immediate critical bypass triggers
-      final isCriticalBypass = ruleMatch.priority == 'critical' ||
-          ruleMatch.ruleId == 'otp_security' ||
-          ruleMatch.ruleId == 'finance_debit' ||
-          ruleMatch.ruleId == 'scholarship_portal';
+      // 2. Model inference
+      double predictedScore = 0.0;
+      int inferenceTimeUs = 0;
 
-      if (isCriticalBypass) {
-        finalScore = 1.0;
+      if (_interpreter != null) {
+        final input = [featureVector];
+        final output = List<double>.filled(1, 0.0).reshape([1, 1]);
+
+        final inferStopwatch = Stopwatch()..start();
+        _interpreter!.run(input, output);
+        inferStopwatch.stop();
+
+        inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
+        // Scale predicted score from 0.0-100.0 range to 0.0-1.0 range
+        predictedScore = (output[0][0] / 100.0).clamp(0.0, 1.0);
       } else {
-        // Average rule score and predicted score
-        finalScore = (predictedScore + ruleScore) / 2.0;
+        // Heuristic fallback if model not loaded
+        predictedScore = _heuristicLookAgainScore(featureVector);
       }
+
+      // 3. Rule matching
+      final ruleMatch = _ruleEngine.match(notification);
+      double? ruleScore;
+      if (ruleMatch != null) {
+        switch (ruleMatch.priority) {
+          case 'critical':
+            ruleScore = 1.0;
+            break;
+          case 'high':
+            ruleScore = 0.85;
+            break;
+          case 'medium':
+            ruleScore = 0.50;
+            break;
+          case 'low':
+          default:
+            ruleScore = 0.15;
+            break;
+        }
+      }
+
+      // 4. Score Fusion (rules + predictions)
+      double fusedScore = predictedScore;
+      if (ruleScore != null && ruleMatch != null) {
+        final isCriticalBypass = ruleMatch.priority == 'critical' ||
+            ruleMatch.ruleId == 'otp_security' ||
+            ruleMatch.ruleId == 'finance_debit' ||
+            ruleMatch.ruleId == 'scholarship_portal';
+
+        if (isCriticalBypass) {
+          fusedScore = 1.0;
+        } else {
+          // Average rule score and predicted score
+          fusedScore = (predictedScore + ruleScore) / 2.0;
+        }
+      }
+
+      cached = _RawPredictionCacheEntry(
+        featureVector: featureVector,
+        predictedScore: predictedScore,
+        ruleScore: ruleScore,
+        fusedScore: fusedScore,
+        inferenceTimeUs: inferenceTimeUs > 0 ? inferenceTimeUs : stopwatch.elapsedMicroseconds,
+      );
+
+      if (_predictionCache.length >= _maxPredictionCacheSize) {
+        _predictionCache.remove(_predictionCache.keys.first);
+      }
+      _predictionCache[key] = cached;
     }
 
-    // 5. Apply deterministic overrides (expired OTP, expired reminders, duplicates, completed tasks)
-    final hasOtp = featureVector[11] == 1.0; // contains_otp
-    final hasDeadline = featureVector[27] == 1.0; // contains_deadline
+    // 5. Apply deterministic overrides dynamically on every call
+    double finalScore = cached.fusedScore;
+    final hasOtp = cached.featureVector[11] == 1.0; // contains_otp
+    final hasDeadline = cached.featureVector[27] == 1.0; // contains_deadline
 
     if (hasOtp && _isOtpExpired(notification)) {
       finalScore = 0.0;
@@ -169,15 +210,15 @@ class GhostAI {
     final result = GhostAIResult(
       reviewScore: finalScore,
       confidence: 1.0,
-      inferenceTimeUs: inferenceTimeUs > 0 ? inferenceTimeUs : stopwatch.elapsedMicroseconds,
-      featureVector: featureVector,
-      predictedScore: predictedScore,
-      ruleScore: ruleScore,
+      inferenceTimeUs: isCacheHit ? 0 : cached.inferenceTimeUs,
+      featureVector: cached.featureVector,
+      predictedScore: cached.predictedScore,
+      ruleScore: cached.ruleScore,
     );
 
     // Structured logging in debug mode
     if (kDebugMode) {
-      _logStructured(notification, result);
+      _logStructured(notification, result, cacheHit: isCacheHit);
     }
 
     return result;
@@ -285,9 +326,12 @@ class GhostAI {
     }
   }
 
-  /// Helper to clear the duplicate memory cache (used for unit tests).
+  /// Helper to clear the duplicate memory cache and prediction cache (used for unit tests).
   void clearCache() {
     _processedNotifications.clear();
+    _predictionCache.clear();
+    _cacheHits = 0;
+    _cacheMisses = 0;
   }
 
   /// Returns whether a notification indicates that a task/action is completed.
@@ -321,12 +365,13 @@ class GhostAI {
   }
 
   /// Outputs structured AI execution reports in debug mode.
-  void _logStructured(AppNotification notification, GhostAIResult result) {
+  void _logStructured(AppNotification notification, GhostAIResult result, {bool cacheHit = false}) {
     final redactedTitle = PiiRedactor.redactTitle(notification.title);
     final redactedContent = PiiRedactor.redactContent(notification.content);
     debugPrint('=== GHOST AI INFERENCE REPORT ===');
     debugPrint('Notification: "$redactedTitle" - "$redactedContent"');
     debugPrint('Package: ${notification.packageName}');
+    debugPrint('Cache Status: ${cacheHit ? "HIT (inference bypassed)" : "MISS"}');
     debugPrint('Feature Vector (First 15): ${result.featureVector.take(15).toList()}...');
     debugPrint('Inference Time: ${result.inferenceTimeUs} us');
     debugPrint('Raw Predicted Score: ${(result.predictedScore * 100).toStringAsFixed(2)}');
@@ -334,4 +379,20 @@ class GhostAI {
     debugPrint('Final Fused Score: ${(result.reviewScore * 100).toStringAsFixed(2)}');
     debugPrint('==================================');
   }
+}
+
+class _RawPredictionCacheEntry {
+  final List<double> featureVector;
+  final double predictedScore;
+  final double? ruleScore;
+  final double fusedScore;
+  final int inferenceTimeUs;
+
+  _RawPredictionCacheEntry({
+    required this.featureVector,
+    required this.predictedScore,
+    this.ruleScore,
+    required this.fusedScore,
+    required this.inferenceTimeUs,
+  });
 }
