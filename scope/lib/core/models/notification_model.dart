@@ -67,6 +67,9 @@ class AppNotification {
   /// Version of the analysis pipeline software.
   final String? engineVersion;
 
+  /// Whether the analysis result was produced by a fallback heuristic.
+  final bool isFallback;
+
   /// Structured features extracted from the text elements.
   final Map<String, dynamic>? extractedFeatures;
 
@@ -95,6 +98,7 @@ class AppNotification {
     this.ruleVersion,
     this.modelVersion,
     this.engineVersion,
+    this.isFallback = false,
     this.extractedFeatures,
     this.state = ReviewState.ACTIVE,
     this.snoozedUntil,
@@ -158,6 +162,7 @@ class AppNotification {
       ruleVersion: map['ruleVersion'] as String?,
       modelVersion: map['modelVersion'] as String?,
       engineVersion: map['engineVersion'] as String?,
+      isFallback: map['isFallback'] as bool? ?? false,
       extractedFeatures: map['extractedFeatures'] != null
           ? Map<String, dynamic>.from(map['extractedFeatures'] as Map)
           : null,
@@ -189,6 +194,7 @@ class AppNotification {
       'ruleVersion': ruleVersion,
       'modelVersion': modelVersion,
       'engineVersion': engineVersion,
+      'isFallback': isFallback,
       'extractedFeatures': extractedFeatures,
       'state': state.name,
       'snoozedUntil': snoozedUntil?.millisecondsSinceEpoch,
@@ -215,6 +221,7 @@ class AppNotification {
         other.ruleVersion == ruleVersion &&
         other.modelVersion == modelVersion &&
         other.engineVersion == engineVersion &&
+        other.isFallback == isFallback &&
         other.state == state &&
         other.snoozedUntil == snoozedUntil &&
         other.lastUpdated == lastUpdated &&
@@ -249,6 +256,7 @@ class AppNotification {
         ruleVersion,
         modelVersion,
         engineVersion,
+        isFallback,
         state,
         snoozedUntil,
         lastUpdated,
@@ -264,7 +272,7 @@ class AppNotification {
         'priorityScore: $priorityScore, classifiedCategory: $classifiedCategory, '
         'explanation: $explanation, latencyMs: $latencyMs, '
         'ruleVersion: $ruleVersion, modelVersion: $modelVersion, '
-        'engineVersion: $engineVersion, state: $state, '
+        'engineVersion: $engineVersion, isFallback: $isFallback, state: $state, '
         'snoozedUntil: $snoozedUntil, lastUpdated: $lastUpdated, '
         'extractedFeatures: $extractedFeatures)';
   }
@@ -286,6 +294,7 @@ class AppNotification {
     String? ruleVersion,
     String? modelVersion,
     String? engineVersion,
+    bool? isFallback,
     Map<String, dynamic>? extractedFeatures,
     ReviewState? state,
     DateTime? snoozedUntil,
@@ -307,6 +316,7 @@ class AppNotification {
       ruleVersion: ruleVersion ?? this.ruleVersion,
       modelVersion: modelVersion ?? this.modelVersion,
       engineVersion: engineVersion ?? this.engineVersion,
+      isFallback: isFallback ?? this.isFallback,
       extractedFeatures: extractedFeatures ?? this.extractedFeatures,
       state: state ?? this.state,
       snoozedUntil: snoozedUntil ?? this.snoozedUntil,
