@@ -65,3 +65,12 @@ class DailyBriefTable extends Table {
   IntColumn get remindersCreated => integer().withDefault(const Constant(0))();
   IntColumn get archivedCount => integer().withDefault(const Constant(0))();
 }
+
+@DataClassName('UserSettingsEntry')
+class UserSettingsTable extends Table {
+  TextColumn get key => text()();
+  TextColumn get value => text()();
+
+  @override
+  Set<Column> get primaryKey => {key};
+}
