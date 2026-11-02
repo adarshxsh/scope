@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
+import 'package:scope/core/utils/pii_redactor.dart';
 import 'package:scope/widgets/scope_card.dart';
 
 class DiagnosticScreen extends StatefulWidget {
@@ -266,19 +267,28 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
 
     // Safely parse feature variables to prevent Dart compilation/ternary ambiguity
     final features = notif.extractedFeatures ?? {};
-    final otp = features['otp'] as String?;
-    final amount = features['amount'];
-    final amountStr = amount != null ? 'Rs. $amount' : null;
+    final rawOtp = features['otp'] as String?;
+    final otp = rawOtp != null ? PiiRedactor.redact(rawOtp) : null;
+
+    final rawAmount = features['amount'];
+    final amountStr = rawAmount != null ? PiiRedactor.redact('Rs. $rawAmount') : null;
+
     final hasDeadline = features['hasDeadline'] == true ? 'YES' : null;
 
     final urls = features['urls'] as List?;
-    final urlsStr = urls != null && urls.isNotEmpty ? urls.toString() : null;
+    final urlsStr = urls != null && urls.isNotEmpty
+        ? urls.map((u) => PiiRedactor.redact(u?.toString())).toList().toString()
+        : null;
 
     final emails = features['emails'] as List?;
-    final emailsStr = emails != null && emails.isNotEmpty ? emails.toString() : null;
+    final emailsStr = emails != null && emails.isNotEmpty
+        ? emails.map((e) => PiiRedactor.redact(e?.toString())).toList().toString()
+        : null;
 
     final phoneNumbers = features['phoneNumbers'] as List?;
-    final phoneNumbersStr = phoneNumbers != null && phoneNumbers.isNotEmpty ? phoneNumbers.toString() : null;
+    final phoneNumbersStr = phoneNumbers != null && phoneNumbers.isNotEmpty
+        ? phoneNumbers.map((p) => PiiRedactor.redact(p?.toString())).toList().toString()
+        : null;
 
     final theme = Theme.of(context);
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/extracted_features.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/state/notification_controller.dart';
+import 'package:scope/core/utils/pii_redactor.dart';
 import 'package:scope/core/utils/smart_actions.dart';
 import 'package:scope/theme/app_colors.dart';
 import 'package:scope/theme/app_spacing.dart';
@@ -25,10 +26,11 @@ class NotificationDetailScreen extends StatelessWidget {
 
   String get _summary {
     if (notification.explanation != null && notification.explanation!.isNotEmpty) {
-      return notification.explanation!.split('\n').first.replaceAll(RegExp(r'^[-•*]\s*'), '');
+      final line = notification.explanation!.split('\n').first.replaceAll(RegExp(r'^[-•*]\s*'), '');
+      return PiiRedactor.redactContent(line);
     }
     return notification.content.isNotEmpty
-        ? notification.content
+        ? PiiRedactor.redactContent(notification.content)
         : 'No additional summary available.';
   }
 
@@ -62,7 +64,7 @@ class NotificationDetailScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        notification.title.isNotEmpty ? notification.title : notification.packageName,
+                        notification.title.isNotEmpty ? PiiRedactor.redactTitle(notification.title) : notification.packageName,
                         style: theme.textTheme.titleMedium,
                       ),
                       Text(
@@ -134,7 +136,7 @@ class NotificationDetailScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _DetailSection(title: 'Raw Message', child: Text(notification.content, style: theme.textTheme.bodyMedium)),
+                        _DetailSection(title: 'Raw Message', child: Text(PiiRedactor.redactContent(notification.content), style: theme.textTheme.bodyMedium)),
                         const SizedBox(height: AppSpacing.md),
                         _DetailSection(
                           title: 'What I found',
@@ -143,16 +145,19 @@ class NotificationDetailScreen extends StatelessWidget {
                             children: [
                               if (features.hasDeadline)
                                 const ScopeInfoRow(label: 'Deadline', value: 'Detected'),
+                              if (features.otp != null)
+                                ScopeInfoRow(label: 'OTP', value: PiiRedactor.redact(features.otp)),
                               if (features.amount != null)
-                                ScopeInfoRow(label: 'Amount', value: '₹${features.amount}'),
+                                ScopeInfoRow(label: 'Amount', value: PiiRedactor.redact('₹${features.amount}')),
                               if (features.urls.isNotEmpty)
-                                ScopeInfoRow(label: 'Website', value: features.urls.first),
+                                ScopeInfoRow(label: 'Website', value: PiiRedactor.redact(features.urls.first)),
                               if (features.phoneNumbers.isNotEmpty)
-                                ScopeInfoRow(label: 'Phone', value: features.phoneNumbers.first),
+                                ScopeInfoRow(label: 'Phone', value: PiiRedactor.redact(features.phoneNumbers.first)),
                               if (features.emails.isNotEmpty)
-                                ScopeInfoRow(label: 'Email', value: features.emails.first),
+                                ScopeInfoRow(label: 'Email', value: PiiRedactor.redact(features.emails.first)),
                               ScopeInfoRow(label: 'Organization', value: notification.packageName),
                               if (!features.hasDeadline &&
+                                  features.otp == null &&
                                   features.amount == null &&
                                   features.urls.isEmpty &&
                                   features.phoneNumbers.isEmpty &&
