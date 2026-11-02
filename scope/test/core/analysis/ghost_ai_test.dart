@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
+import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/models/notification_model.dart';
 
 void main() {
@@ -12,9 +13,11 @@ void main() {
     });
 
     test('initialization handles missing assets and falls back gracefully', () async {
-      // Should not throw, should log and proceed with isModelLoaded = false
+      // Should not throw, should log and proceed with rules and metadata
       await GhostAI.instance.initialize();
-      expect(GhostAI.instance.isModelLoaded, isFalse);
+      expect(GhostAI.instance.isMetadataLoaded, isTrue);
+      expect(GhostAI.instance.expectedVectorSize, equals(63));
+      expect(GhostAI.instance.expectedInputShape, equals([1, 63]));
     });
 
     test('predict outputs basic inference results and falls back to heuristics', () async {
@@ -231,6 +234,37 @@ void main() {
 
         final result = await GhostAI.predict(activeTask);
         expect(result.reviewScore, isPositive); // Not overridden
+      });
+    });
+
+    group('Feature Reordering and Metadata Vector Validation', () {
+      test('reordering feature definitions does not alter post-processing heuristic score calculations', () async {
+        final notif = AppNotification(
+          id: 'reorder-notif',
+          packageName: 'com.whatsapp',
+          title: 'Verification Code',
+          content: 'Your OTP code is 998877. Valid for 5 minutes.',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        final originalResult = await GhostAI.predict(notif);
+
+        // Reverse order of feature names
+        final reversedNames = List<String>.from(FeatureVector.featureNames.reversed);
+        final reorderedVector = FeatureExtractor.extractVector(
+          NotificationFeatureInput.fromAppNotification(notif),
+          targetFeatureNames: reversedNames,
+        );
+
+        expect(reorderedVector['contains_otp'], equals(1.0));
+        expect(reorderedVector.getValue('contains_otp'), equals(1.0));
+        expect(reorderedVector.toNamedMap()['contains_otp'], equals(1.0));
+
+        // OTP contains_otp is now at the opposite index in reorderedVector, but named lookup finds 1.0
+        expect(reorderedVector.values.first, equals(originalResult.featureVector.last));
+
+        // Verify heuristic score calculation remains identical (1.0)
+        expect(originalResult.reviewScore, equals(1.0));
       });
     });
   });
