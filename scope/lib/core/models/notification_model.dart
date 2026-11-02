@@ -123,13 +123,22 @@ class AppNotification {
     return hash;
   }
 
+  static String _sanitize(dynamic val, {int maxLength = 4000}) {
+    if (val == null) return '';
+    final str = val.toString().replaceAll('\u0000', '').trim();
+    return str.length > maxLength ? str.substring(0, maxLength) : str;
+  }
+
   /// Creates an [AppNotification] from a Map (used by MethodChannel bridge).
   factory AppNotification.fromMap(Map<String, dynamic> map) {
-    final rawId = map['id'] as String? ?? '';
-    final packageName = map['packageName'] as String? ?? '';
-    final title = map['title'] as String? ?? '';
-    final content = map['content'] as String? ?? '';
-    final timestamp = map['timestamp'] as int? ?? 0;
+    final rawId = map['id']?.toString() ?? '';
+    final packageName = _sanitize(map['packageName'], maxLength: 256);
+    final title = _sanitize(map['title'], maxLength: 1000);
+    final content = _sanitize(map['content'], maxLength: 4000);
+    final rawTs = map['timestamp'];
+    final timestamp = (rawTs is num)
+        ? rawTs.toInt()
+        : int.tryParse(rawTs?.toString() ?? '') ?? 0;
 
     final id = (rawId.isEmpty || rawId.startsWith('notif_'))
         ? (packageName.isEmpty && title.isEmpty && content.isEmpty && timestamp == 0)
@@ -148,25 +157,25 @@ class AppNotification {
       title: title,
       content: content,
       timestamp: timestamp,
-      category: map['category'] as String?,
-      isOngoing: map['isOngoing'] as bool? ?? false,
-      priority: map['priority'] as String?,
+      category: map['category']?.toString(),
+      isOngoing: map['isOngoing'] == true,
+      priority: map['priority']?.toString(),
       priorityScore: (map['priorityScore'] as num?)?.toDouble(),
-      classifiedCategory: map['classifiedCategory'] as String?,
-      explanation: map['explanation'] as String?,
-      latencyMs: map['latencyMs'] as int?,
-      ruleVersion: map['ruleVersion'] as String?,
-      modelVersion: map['modelVersion'] as String?,
-      engineVersion: map['engineVersion'] as String?,
+      classifiedCategory: map['classifiedCategory']?.toString(),
+      explanation: map['explanation']?.toString(),
+      latencyMs: (map['latencyMs'] as num?)?.toInt(),
+      ruleVersion: map['ruleVersion']?.toString(),
+      modelVersion: map['modelVersion']?.toString(),
+      engineVersion: map['engineVersion']?.toString(),
       extractedFeatures: map['extractedFeatures'] != null
           ? Map<String, dynamic>.from(map['extractedFeatures'] as Map)
           : null,
       state: _parseReviewState(map['state']),
-      snoozedUntil: map['snoozedUntil'] != null
-          ? DateTime.fromMillisecondsSinceEpoch(map['snoozedUntil'] as int)
+      snoozedUntil: (map['snoozedUntil'] is num)
+          ? DateTime.fromMillisecondsSinceEpoch((map['snoozedUntil'] as num).toInt())
           : null,
-      lastUpdated: map['lastUpdated'] != null
-          ? DateTime.fromMillisecondsSinceEpoch(map['lastUpdated'] as int)
+      lastUpdated: (map['lastUpdated'] is num)
+          ? DateTime.fromMillisecondsSinceEpoch((map['lastUpdated'] as num).toInt())
           : null,
     );
   }

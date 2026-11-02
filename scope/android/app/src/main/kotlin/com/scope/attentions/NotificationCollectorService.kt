@@ -4,6 +4,7 @@ import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
 import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Android service that captures all incoming notifications.
@@ -15,10 +16,10 @@ import java.util.concurrent.ConcurrentLinkedQueue
  * by [MainActivity] when Flutter requests them via MethodChannel.
  *
  * Design decisions:
- *   - Uses a static ConcurrentLinkedQueue (thread-safe, lock-free) because
- *     the service runs in a separate context from MainActivity.
- *   - No heavy processing here — just capture and queue.
- *   - Skips ongoing/persistent notifications by default (configurable).
+ *   - Uses a static ConcurrentLinkedQueue (thread-safe, lock-free) bounded to [MAX_QUEUE_SIZE].
+ *   - Thread-safe [idCounter] using [AtomicLong] prevents ID collision across background threads.
+ *   - Input sanitization enforces string length boundaries and null safety.
+ *   - Zero cleartext PII logging to protect user privacy.
  */
 class NotificationCollectorService : NotificationListenerService() {
 
@@ -34,8 +35,11 @@ class NotificationCollectorService : NotificationListenerService() {
         /** Thread-safe queue of captured notifications. */
         private val queue = ConcurrentLinkedQueue<NotificationData>()
 
-        /** Counter for generating simple unique IDs within a session. */
-        private var idCounter = 0L
+        /** Thread-safe counter for generating unique IDs across background threads. */
+        private val idCounter = AtomicLong(System.currentTimeMillis())
+
+        /** Total notifications evicted/dropped due to queue overflow. */
+        private val droppedCount = AtomicLong(0)
 
         /**
          * Removes entries older than [MAX_AGE_MS] from the queue.
@@ -67,6 +71,7 @@ class NotificationCollectorService : NotificationListenerService() {
             // Evict oldest notification if queue reaches MAX_QUEUE_SIZE before adding new items
             while (queue.size >= MAX_QUEUE_SIZE) {
                 queue.poll()
+                droppedCount.incrementAndGet()
             }
 
             queue.add(data)
@@ -93,36 +98,68 @@ class NotificationCollectorService : NotificationListenerService() {
          */
         fun clearQueue() {
             queue.clear()
-            idCounter = 0L
+            idCounter.set(0L)
+            droppedCount.set(0L)
         }
 
         /**
          * Returns the current queue size (for diagnostics).
          */
         fun queueSize(): Int = queue.size
+
+        /**
+         * Returns queue diagnostic stats without exposing cleartext PII.
+         */
+        fun getQueueStats(): Map<String, Any> {
+            return mapOf(
+                "queueSize" to queue.size,
+                "maxQueueSize" to MAX_QUEUE_SIZE,
+                "droppedCount" to droppedCount.get()
+            )
+        }
+
+        /**
+         * Sanitizes and bounds input strings to prevent excessive RAM/DB footprint.
+         */
+        private fun sanitizeInput(input: String?, maxLength: Int): String {
+            if (input == null) return ""
+            val cleaned = input.replace("\u0000", "").trim()
+            return if (cleaned.length > maxLength) cleaned.substring(0, maxLength) else cleaned
+        }
     }
 
     private fun addSbnToQueue(sbn: StatusBarNotification, now: Long = System.currentTimeMillis()) {
         try {
             val extras = sbn.notification.extras
-            val title = extras?.getCharSequence("android.title")?.toString() ?: ""
-            val text = extras?.getCharSequence("android.text")?.toString() ?: ""
+            val rawTitle = extras?.getCharSequence("android.title")?.toString()
+            val rawText = extras?.getCharSequence("android.text")?.toString()
             val isOngoing = sbn.isOngoing
-            val packageName = sbn.packageName ?: "unknown"
+            val rawPackageName = sbn.packageName
+
+            // Sanitize & Validate inputs
+            val packageName = sanitizeInput(rawPackageName ?: "unknown", maxLength = 256)
+            val title = sanitizeInput(rawTitle, maxLength = 1000)
+            val content = sanitizeInput(rawText, maxLength = 4000)
+
+            if (packageName.isBlank() && title.isBlank() && content.isBlank()) {
+                Log.w(TAG, "Skipping empty notification entry")
+                return
+            }
+
             val timestamp = if (sbn.postTime > 0) sbn.postTime else now
 
             val data = NotificationData(
-                id = "notif_${++idCounter}",
+                id = "notif_${idCounter.incrementAndGet()}",
                 packageName = packageName,
                 title = title,
-                content = text,
+                content = content,
                 timestamp = timestamp,
                 category = sbn.notification.category,
                 isOngoing = isOngoing
             )
 
             addNotification(data, now)
-            Log.d(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
+            Log.d(TAG, "Captured: pkg=$packageName, title=${NotificationRedactor.redactTitle(title)}")
         } catch (e: Exception) {
             Log.e(TAG, "Error capturing/adding notification", e)
         }
@@ -135,9 +172,8 @@ class NotificationCollectorService : NotificationListenerService() {
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         if (sbn == null) return
-        // Log for now; future phases may track dismissed notifications
         val removedTitle = sbn.notification.extras?.getCharSequence("android.title")?.toString()
-        Log.d(TAG, "Removed: ${sbn.packageName} - ${NotificationRedactor.redactTitle(removedTitle)}")
+        Log.d(TAG, "Removed: pkg=${sbn.packageName}, title=${NotificationRedactor.redactTitle(removedTitle)}")
     }
 
     override fun onListenerConnected() {

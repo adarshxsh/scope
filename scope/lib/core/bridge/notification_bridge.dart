@@ -75,4 +75,28 @@ class NotificationBridge {
       // Not on Android — nothing to do
     }
   }
+
+  /// Fetches diagnostic queue statistics from the native Android service.
+  Future<Map<String, dynamic>> getQueueStats() async {
+    try {
+      final result = await _channel.invokeMethod<Map<dynamic, dynamic>>('getQueueStats');
+      if (result == null) return {};
+      return Map<String, dynamic>.from(result);
+    } on PlatformException {
+      return {};
+    } on MissingPluginException {
+      return {};
+    }
+  }
+
+  /// Clears the native Android notification queue.
+  Future<void> clearQueue() async {
+    try {
+      await _channel.invokeMethod<void>('clearQueue');
+    } on PlatformException {
+      // ignore
+    } on MissingPluginException {
+      // ignore
+    }
+  }
 }
