@@ -35,6 +35,19 @@ class NotificationsTable extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+@DataClassName('UserSettingsEntry')
+class UserSettingsTable extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get retentionDays => integer().withDefault(const Constant(7))();
+  IntColumn get maxNotificationRows => integer().withDefault(const Constant(5000))();
+  IntColumn get maxStorageQuotaBytes => integer().withDefault(const Constant(25 * 1024 * 1024))(); // 25 MB ceiling
+  IntColumn get storageHighWaterMarkBytes => integer().withDefault(const Constant(20 * 1024 * 1024))(); // 20 MB high-water mark
+  BoolColumn get autoCleanupEnabled => boolean().withDefault(const Constant(true))();
+  DateTimeColumn get lastCleanupTime => dateTime().nullable()();
+  IntColumn get totalCleanedRows => integer().withDefault(const Constant(0))();
+  IntColumn get lastCleanedCount => integer().withDefault(const Constant(0))();
+}
+
 @DataClassName('ReviewQueueEntry')
 class ReviewQueueTable extends Table {
   IntColumn get id => integer().autoIncrement()();

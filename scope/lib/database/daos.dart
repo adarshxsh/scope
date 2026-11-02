@@ -10,13 +10,38 @@ class NotificationDao extends DatabaseAccessor<AttentionDatabase> with _$Notific
   NotificationDao(super.db);
 
   Future<void> insertNotification(NotificationEntry entry) async {
-    await into(notificationsTable).insert(entry, mode: InsertMode.insertOrReplace);
+    final sanitized = _sanitizeEntry(entry);
+    await into(notificationsTable).insert(sanitized, mode: InsertMode.insertOrReplace);
   }
 
   Future<void> insertAll(List<NotificationEntry> entries) async {
+    final sanitizedEntries = entries.map(_sanitizeEntry).toList();
     await batch((b) {
-      b.insertAll(notificationsTable, entries, mode: InsertMode.insertOrReplace);
+      b.insertAll(notificationsTable, sanitizedEntries, mode: InsertMode.insertOrReplace);
     });
+  }
+
+  NotificationEntry _sanitizeEntry(NotificationEntry e) {
+    return e.copyWith(
+      title: _truncate(e.title, 500),
+      content: _truncate(e.content, 2000),
+    );
+  }
+
+  String _truncate(String str, int maxLen) {
+    if (str.length <= maxLen) return str;
+    return str.substring(0, maxLen);
+  }
+
+  Future<int> enforceRowCap({int maxRows = 5000}) async {
+    final count = await getCount();
+    if (count <= maxRows) return 0;
+    final excess = count - maxRows;
+    final oldestSubquery = selectOnly(notificationsTable)
+      ..addColumns([notificationsTable.id])
+      ..orderBy([OrderingTerm(expression: notificationsTable.timestamp, mode: OrderingMode.asc)])
+      ..limit(excess);
+    return await (delete(notificationsTable)..where((t) => t.id.isInQuery(oldestSubquery))).go();
   }
 
   Future<NotificationEntry?> getById(String id) {
@@ -154,3 +179,38 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
     await delete(dailyBriefTable).go();
   }
 }
+
+@DriftAccessor(tables: [UserSettingsTable])
+class UserSettingsDao extends DatabaseAccessor<AttentionDatabase> with _$UserSettingsDaoMixin {
+  UserSettingsDao(super.db);
+
+  Future<UserSettingsEntry> getSettings() async {
+    final existing = await (select(userSettingsTable)..limit(1)).getSingleOrNull();
+    if (existing != null) {
+      return existing;
+    }
+    const defaultSettings = UserSettingsTableCompanion(
+      retentionDays: Value(7),
+      maxNotificationRows: Value(5000),
+      maxStorageQuotaBytes: Value(25 * 1024 * 1024),
+      storageHighWaterMarkBytes: Value(20 * 1024 * 1024),
+      autoCleanupEnabled: Value(true),
+    );
+    final id = await into(userSettingsTable).insert(defaultSettings);
+    return (await (select(userSettingsTable)..where((t) => t.id.equals(id))).getSingle());
+  }
+
+  Future<void> updateSettings(UserSettingsEntry entry) async {
+    await update(userSettingsTable).replace(entry);
+  }
+
+  Future<void> recordCleanup({required int count, required DateTime timestamp}) async {
+    final current = await getSettings();
+    await update(userSettingsTable).replace(current.copyWith(
+      lastCleanupTime: Value(timestamp),
+      lastCleanedCount: count,
+      totalCleanedRows: current.totalCleanedRows + count,
+    ));
+  }
+}
+

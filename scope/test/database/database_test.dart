@@ -273,5 +273,71 @@ void main() {
       // Missing one deleted due to being orphaned
       expect(queueItems.first.notificationId, equals('n-new'));
     });
+
+    test('runSetBasedCleanup enforces maxNotificationRows row cap', () async {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final entries = List.generate(150, (i) => NotificationEntry(
+        id: 'n-$i',
+        packageName: 'app',
+        title: 'Title $i',
+        content: 'Content $i',
+        timestamp: now + i,
+        state: ReviewState.ACTIVE,
+        reviewed: false,
+        dismissed: false,
+        isOngoing: false,
+        createdAt: DateTime.now(),
+      ));
+
+      await db.notificationDao.insertAll(entries);
+      expect(await db.notificationDao.getCount(), equals(150));
+
+      final result = await db.runSetBasedCleanup(null, 100);
+      expect(result.deletedByRowCapCount, equals(50));
+
+      final remaining = await db.notificationDao.getAll();
+      expect(remaining.length, equals(100));
+      // Remaining items should be the newest (timestamp from now+50 to now+149)
+      expect(remaining.first.id, equals('n-149'));
+      expect(remaining.last.id, equals('n-50'));
+    });
+
+    test('UserSettingsDao default values and updates', () async {
+      final settings = await db.userSettingsDao.getSettings();
+      expect(settings.retentionDays, equals(7));
+      expect(settings.maxNotificationRows, equals(5000));
+      expect(settings.maxStorageQuotaBytes, equals(25 * 1024 * 1024));
+      expect(settings.storageHighWaterMarkBytes, equals(20 * 1024 * 1024));
+
+      final updated = settings.copyWith(maxNotificationRows: 2000);
+      await db.userSettingsDao.updateSettings(updated);
+
+      final fetched = await db.userSettingsDao.getSettings();
+      expect(fetched.maxNotificationRows, equals(2000));
+    });
+
+    test('NotificationDao truncates title and content exceeding max length guardrails', () async {
+      final hugeTitle = 'A' * 1000;
+      final hugeContent = 'B' * 5000;
+      final entry = NotificationEntry(
+        id: 'n-huge',
+        packageName: 'app',
+        title: hugeTitle,
+        content: hugeContent,
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+        state: ReviewState.ACTIVE,
+        reviewed: false,
+        dismissed: false,
+        isOngoing: false,
+        createdAt: DateTime.now(),
+      );
+
+      await db.notificationDao.insertNotification(entry);
+      final fetched = await db.notificationDao.getById('n-huge');
+
+      expect(fetched, isNotNull);
+      expect(fetched!.title.length, equals(500));
+      expect(fetched.content.length, equals(2000));
+    });
   });
 }

@@ -345,27 +345,46 @@ class NotificationController extends ChangeNotifier {
     });
   }
 
-  /// Cleans up old notifications (older than 7 days) and orphaned review queue items.
-  Future<void> runBackgroundCleanup() async {
-    if (_isCleaningUp) return;
+  CleanupResult? _lastCleanupResult;
+  CleanupResult? get lastCleanupResult => _lastCleanupResult;
+
+  /// Cleans up old notifications (older than 7 days), enforces row caps & storage quotas,
+  /// and removes orphaned review queue items.
+  Future<CleanupResult?> runBackgroundCleanup({bool forceEmergency = false}) async {
+    if (_isCleaningUp) return _lastCleanupResult;
 
     try {
       _isCleaningUp = true;
-      
-      // Defer execution if user is engaged in active focus session interactions
-      while (_inFocusSession) {
-        await Future.delayed(const Duration(minutes: 5));
-        if (_isDisposed) return;
+      final db = _container.read(databaseProvider);
+
+      int deferralCount = 0;
+      const maxDeferrals = 6; // Max 30 minutes total deferral during active focus session
+
+      bool isEmergency = forceEmergency;
+      if (!isEmergency) {
+        try {
+          final count = await db.notificationDao.getCount();
+          final storageSize = await db.getStorageSizeBytes();
+          if (count > 6000 || storageSize > (25 * 1024 * 1024)) {
+            isEmergency = true;
+          }
+        } catch (_) {}
+      }
+
+      if (!isEmergency) {
+        while (_inFocusSession && deferralCount < maxDeferrals) {
+          await Future.delayed(const Duration(minutes: 5));
+          if (_isDisposed) return _lastCleanupResult;
+          deferralCount++;
+        }
       }
 
       final cutoff = DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch;
-      final db = _container.read(databaseProvider);
-      
-      // Execute the single-step atomic transaction
-      await db.runSetBasedCleanup(cutoff);
+      _lastCleanupResult = await db.runSetBasedCleanup(cutoff);
+      return _lastCleanupResult;
 
     } catch (_) {
-      // Silently handle errors to not interrupt UI
+      return _lastCleanupResult;
     } finally {
       _isCleaningUp = false;
     }
