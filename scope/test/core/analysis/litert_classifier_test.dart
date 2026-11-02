@@ -50,5 +50,23 @@ void main() {
       // On desktop/headless test runners without native C library, isModelLoaded is false
       expect(classifier.isModelLoaded, isFalse);
     });
+
+    test('handles emoji and long payloads without crashing or throwing errors', () async {
+      final classifier = LiteRtClassifier();
+      
+      final notif = AppNotification(
+        id: '3',
+        packageName: 'com.whatsapp',
+        title: 'Promotion 🔥🎉',
+        content: 'Huge discount on products! ' * 20,
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final result = await classifier.analyze(notif);
+      
+      expect(result.category, equals('promo'));
+      expect(result.engineName, contains('fallback'));
+      expect(result.isFallback, isTrue);
+    });
   });
 }
