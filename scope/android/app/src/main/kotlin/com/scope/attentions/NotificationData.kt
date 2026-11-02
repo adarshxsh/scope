@@ -16,7 +16,8 @@ data class NotificationData(
     val content: String,
     val timestamp: Long,
     val category: String?,
-    val isOngoing: Boolean
+    val isOngoing: Boolean,
+    val isLowPowerMode: Boolean = false
 ) {
     /**
      * Converts to a HashMap for MethodChannel serialization.
@@ -30,7 +31,8 @@ data class NotificationData(
             "content" to content,
             "timestamp" to timestamp,
             "category" to category,
-            "isOngoing" to isOngoing
+            "isOngoing" to isOngoing,
+            "isLowPowerMode" to isLowPowerMode
         )
     }
 }
