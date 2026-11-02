@@ -89,6 +89,12 @@ class _NotificationFeedScreenState extends State<NotificationFeedScreen> {
         await _storage.saveAll(analyzedNotifications);
       }
 
+      // Explicitly acknowledge batch IDs only after successful storage persistence
+      if (newNotifications.isNotEmpty) {
+        final idsToAcknowledge = newNotifications.map((n) => n.id).toList();
+        await _bridge.acknowledgeNotifications(idsToAcknowledge);
+      }
+
       // Get all stored (sorted newest first)
       final all = await _storage.getAll();
 

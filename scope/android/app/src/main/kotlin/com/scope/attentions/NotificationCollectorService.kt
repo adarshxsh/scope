@@ -3,7 +3,6 @@ package com.scope.attentions
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
-import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
  * Android service that captures all incoming notifications.
@@ -11,12 +10,14 @@ import java.util.concurrent.ConcurrentLinkedQueue
  * Extends [NotificationListenerService] which requires the user to manually
  * grant "Notification access" in system Settings.
  *
- * Captured notifications are placed in a static [queue] which is drained
- * by [MainActivity] when Flutter requests them via MethodChannel.
+ * Captured notifications are placed in a staging buffer which is peeked and acknowledged
+ * by [MainActivity] when Flutter requests them via MethodChannel (two-phase handshake).
  *
  * Design decisions:
- *   - Uses a static ConcurrentLinkedQueue (thread-safe, lock-free) because
- *     the service runs in a separate context from MainActivity.
+ *   - Uses a thread-safe synchronized LinkedHashMap preserving insertion order.
+ *   - Caps maximum queue size at [MAX_QUEUE_SIZE] (100) and evicts oldest entries (FIFO).
+ *   - Enforces 15-minute time-to-live ([MAX_AGE_MS]) to prune stale notifications.
+ *   - Supports two-phase non-destructive peeking ([peekQueue]) and explicit acknowledgment ([acknowledgeNotifications]).
  *   - No heavy processing here — just capture and queue.
  *   - Skips ongoing/persistent notifications by default (configurable).
  */
@@ -28,78 +29,151 @@ class NotificationCollectorService : NotificationListenerService() {
         /** Maximum allowed queue size to prevent unbounded memory growth. */
         const val MAX_QUEUE_SIZE = 100
 
+        /** Alias for [MAX_QUEUE_SIZE] for backward compatibility. */
+        const val MAX_BUFFER_CAPACITY = MAX_QUEUE_SIZE
+
         /** Maximum time-to-live for queued notifications (15 minutes in milliseconds). */
         const val MAX_AGE_MS = 15 * 60 * 1000L
 
-        /** Thread-safe queue of captured notifications. */
-        private val queue = ConcurrentLinkedQueue<NotificationData>()
+        private val lock = Any()
+
+        /** Thread-safe unacknowledged staging buffer preserving insertion order. */
+        private val buffer = LinkedHashMap<String, NotificationData>()
 
         /** Counter for generating simple unique IDs within a session. */
         private var idCounter = 0L
 
         /**
-         * Removes entries older than [MAX_AGE_MS] from the queue.
+         * Removes entries older than [MAX_AGE_MS] relative to [now] from the buffer.
          */
+        @JvmOverloads
         fun pruneExpired(now: Long = System.currentTimeMillis()) {
-            queue.removeIf { now - it.timestamp > MAX_AGE_MS }
-        }
-
-        /**
-         * Adds a [NotificationData] item to the queue after pruning expired items
-         * and enforcing maximum queue capacity.
-         */
-        fun addNotification(data: NotificationData, now: Long = System.currentTimeMillis()) {
-            pruneExpired(now)
-
-            // Do not add item if it is already expired relative to current time
-            if (now - data.timestamp > MAX_AGE_MS) {
-                return
-            }
-
-            // Ignore if same package, title, and content already exist in queue
-            val isDuplicate = queue.any {
-                it.packageName == data.packageName && it.title == data.title && it.content == data.content
-            }
-            if (isDuplicate) {
-                return
-            }
-
-            // Evict oldest notification if queue reaches MAX_QUEUE_SIZE before adding new items
-            while (queue.size >= MAX_QUEUE_SIZE) {
-                queue.poll()
-            }
-
-            queue.add(data)
-        }
-
-        /**
-         * Drains all non-expired notifications from the queue and returns them.
-         * Called by [MainActivity] when Flutter requests notifications.
-         * After this call, the queue is empty.
-         */
-        fun drainQueue(now: Long = System.currentTimeMillis()): List<NotificationData> {
-            val result = mutableListOf<NotificationData>()
-            while (true) {
-                val item = queue.poll() ?: break
-                if (now - item.timestamp <= MAX_AGE_MS) {
-                    result.add(item)
+            synchronized(lock) {
+                val iterator = buffer.values.iterator()
+                while (iterator.hasNext()) {
+                    val item = iterator.next()
+                    if (now - item.timestamp > MAX_AGE_MS) {
+                        iterator.remove()
+                    }
                 }
             }
-            return result
         }
 
         /**
-         * Clears the queue and resets internal state (for testing).
+         * Adds a [NotificationData] item to the buffer after pruning expired items
+         * and enforcing maximum queue capacity.
+         */
+        @JvmOverloads
+        fun addNotification(data: NotificationData, now: Long = System.currentTimeMillis()) {
+            synchronized(lock) {
+                pruneExpired(now)
+
+                // Do not add item if it is already expired relative to current time
+                if (now - data.timestamp > MAX_AGE_MS) {
+                    return
+                }
+
+                // Ignore if same package, title, and content already exist in queue
+                val isDuplicate = buffer.values.any {
+                    it.packageName == data.packageName && it.title == data.title && it.content == data.content
+                }
+                if (isDuplicate) {
+                    return
+                }
+
+                // Evict oldest notification if queue reaches MAX_QUEUE_SIZE before adding new items
+                while (buffer.size >= MAX_QUEUE_SIZE) {
+                    val oldestKey = buffer.keys.firstOrNull() ?: break
+                    buffer.remove(oldestKey)
+                }
+
+                buffer[data.id] = data
+            }
+        }
+
+        /**
+         * Peeks and returns all non-expired pending notifications without removing them from memory.
+         * Called by [MainActivity] when Flutter requests notifications (Phase 1 of two-phase handshake).
+         */
+        @JvmOverloads
+        fun peekQueue(now: Long = System.currentTimeMillis()): List<NotificationData> {
+            synchronized(lock) {
+                pruneExpired(now)
+                return buffer.values.toList()
+            }
+        }
+
+        /**
+         * Alias for [peekQueue] for clarity.
+         */
+        fun getPendingNotifications(): List<NotificationData> = peekQueue()
+
+        /**
+         * Explicitly acknowledges notifications by ID, removing them from the native staging buffer.
+         * Called by [MainActivity] after Flutter successfully persists notifications (Phase 2 of two-phase handshake).
+         * Returns the number of items successfully removed.
+         */
+        fun acknowledgeNotifications(ids: Collection<String>): Int {
+            if (ids.isEmpty()) return 0
+            val idSet = ids.toSet()
+            var count = 0
+            synchronized(lock) {
+                val iterator = buffer.entries.iterator()
+                while (iterator.hasNext()) {
+                    val entry = iterator.next()
+                    if (entry.key in idSet) {
+                        iterator.remove()
+                        count++
+                    }
+                }
+            }
+            return count
+        }
+
+        /**
+         * Clears the queue/buffer and resets internal state (for testing or reset).
          */
         fun clearQueue() {
-            queue.clear()
-            idCounter = 0L
+            synchronized(lock) {
+                buffer.clear()
+                idCounter = 0L
+            }
         }
 
         /**
-         * Returns the current queue size (for diagnostics).
+         * Clears all notifications from the buffer (alias for [clearQueue]).
          */
-        fun queueSize(): Int = queue.size
+        fun clearBuffer() = clearQueue()
+
+        /**
+         * Helper for unit tests to insert test notifications into the staging buffer.
+         */
+        fun addNotificationForTest(data: NotificationData) {
+            addNotification(data, data.timestamp)
+        }
+
+        /**
+         * Drains all non-expired notifications from the buffer and returns them.
+         * Maintained for backward compatibility.
+         */
+        @JvmOverloads
+        fun drainQueue(now: Long = System.currentTimeMillis()): List<NotificationData> {
+            synchronized(lock) {
+                pruneExpired(now)
+                val result = buffer.values.toList()
+                buffer.clear()
+                return result
+            }
+        }
+
+        /**
+         * Returns the current queue/buffer size (for diagnostics).
+         */
+        fun queueSize(): Int {
+            synchronized(lock) {
+                return buffer.size
+            }
+        }
     }
 
     private fun addSbnToQueue(sbn: StatusBarNotification, now: Long = System.currentTimeMillis()) {

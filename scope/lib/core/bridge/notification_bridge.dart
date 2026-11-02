@@ -22,7 +22,7 @@ class NotificationBridge {
   NotificationBridge({MethodChannel? channel})
     : _channel = channel ?? const MethodChannel('com.scope.notifications');
 
-  /// Drains the notification queue from the Android side.
+  /// Drains/peeks the notification queue from the Android side.
   ///
   /// Returns a list of [AppNotification] objects captured since the last call.
   /// Returns an empty list if the service isn't running or no new notifications.
@@ -45,6 +45,30 @@ class NotificationBridge {
     } on MissingPluginException {
       // Happens when running on non-Android platforms or in tests without mock
       return [];
+    }
+  }
+
+  /// Explicitly acknowledges notification batch/item IDs on the native side.
+  ///
+  /// Removes successfully processed notifications from native staging memory.
+  /// Returns true if acknowledgment was confirmed or gracefully ignored on non-Android platforms.
+  Future<bool> acknowledgeNotifications(List<String> ids) async {
+    if (ids.isEmpty) return true;
+    try {
+      final result = await _channel.invokeMethod<dynamic>(
+        'acknowledgeNotifications',
+        {'ids': ids},
+      );
+      if (result is bool) return result;
+      if (result is int) return result >= 0;
+      return true;
+    } on PlatformException catch (e) {
+      // ignore: avoid_print
+      print('NotificationBridge.acknowledgeNotifications failed: ${e.message}');
+      return false;
+    } on MissingPluginException {
+      // Happens when running on non-Android platforms or in tests without mock
+      return true;
     }
   }
 
