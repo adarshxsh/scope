@@ -129,5 +129,48 @@ void main() {
         await bridge.openNotificationSettings();
       });
     });
+
+    group('ingestionGuardrails', () {
+      test('getIngestionGuardrails parses map response', () async {
+        mockHandler((call) async {
+          return {
+            'blockedPackages': ['com.whatsapp'],
+            'allowedPackages': ['com.test.app'],
+            'isWhitelistMode': true,
+            'excludeOtp': true,
+            'excludeFinance': true,
+            'excludeHealth': true,
+            'excludeSystemServices': true,
+            'droppedCount': 5,
+          };
+        });
+
+        final guardrails = await bridge.getIngestionGuardrails();
+        expect(guardrails.blockedPackages, ['com.whatsapp']);
+        expect(guardrails.allowedPackages, ['com.test.app']);
+        expect(guardrails.isWhitelistMode, true);
+        expect(guardrails.excludeOtp, true);
+        expect(guardrails.excludeHealth, true);
+        expect(guardrails.droppedCount, 5);
+        expect(log.single.method, 'getIngestionGuardrails');
+      });
+
+      test('updateIngestionGuardrails sends method call with map arguments', () async {
+        mockHandler((call) async => true);
+
+        const guardrails = IngestionGuardrails(
+          blockedPackages: ['com.whatsapp', 'in.amazon.*'],
+          excludeOtp: true,
+          excludeFinance: true,
+          droppedCount: 2,
+        );
+
+        final success = await bridge.updateIngestionGuardrails(guardrails);
+        expect(success, true);
+        expect(log.single.method, 'updateIngestionGuardrails');
+        expect(log.single.arguments, isA<Map>());
+        expect((log.single.arguments as Map)['blockedPackages'], ['com.whatsapp', 'in.amazon.*']);
+      });
+    });
   });
 }
