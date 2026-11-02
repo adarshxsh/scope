@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
 import 'package:scope/core/models/notification_model.dart';
 
@@ -233,5 +234,96 @@ void main() {
         expect(result.reviewScore, isPositive); // Not overridden
       });
     });
+
+    group('TFLite Interpreter Error Handling & Guardrails', () {
+      final notif = AppNotification(
+        id: 'error-test-notif',
+        packageName: 'com.whatsapp',
+        title: 'WhatsApp Code',
+        content: 'Your verification code is 882715.',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      tearDown(() {
+        GhostAI.instance.setInterpreterForTesting(null);
+      });
+
+      test('handles interpreter run throwing StateError and falls back to heuristic score', () async {
+        GhostAI.instance.setInterpreterForTesting(ThrowingInterpreter());
+
+        final result = await GhostAI.predict(notif);
+
+        expect(result.predictedScore, equals(1.0)); // Fallback heuristic for OTP
+        expect(result.inferenceTimeUs, greaterThanOrEqualTo(0));
+      });
+
+      test('handles interpreter outputting NaN value and falls back to heuristic score', () async {
+        GhostAI.instance.setInterpreterForTesting(NanOutputInterpreter());
+
+        final result = await GhostAI.predict(notif);
+
+        expect(result.reviewScore.isNaN, isFalse);
+        expect(result.predictedScore, equals(1.0)); // Fallback heuristic for OTP
+      });
+
+      test('adapts feature vector when expected input tensor shape differs', () async {
+        GhostAI.instance.setInterpreterForTesting(CustomShapeInterpreter([1, 30]));
+
+        final result = await GhostAI.predict(notif);
+
+        expect(result.predictedScore, equals(0.50)); // Raw 50.0 / 100.0
+      });
+    });
   });
+}
+
+class ThrowingInterpreter implements Interpreter {
+  @override
+  void run(Object input, Object output) {
+    throw StateError('Simulated TFLite native runtime invocation error');
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class NanOutputInterpreter implements Interpreter {
+  @override
+  void run(Object input, Object output) {
+    if (output is List && output.isNotEmpty && output[0] is List) {
+      (output[0] as List)[0] = double.nan;
+    }
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class CustomShapeTensor implements Tensor {
+  final List<int> _shape;
+  CustomShapeTensor(this._shape);
+
+  @override
+  List<int> get shape => _shape;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class CustomShapeInterpreter implements Interpreter {
+  final List<int> _shape;
+  CustomShapeInterpreter(this._shape);
+
+  @override
+  Tensor getInputTensor(int index) => CustomShapeTensor(_shape);
+
+  @override
+  void run(Object input, Object output) {
+    if (output is List && output.isNotEmpty && output[0] is List) {
+      (output[0] as List)[0] = 50.0;
+    }
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
