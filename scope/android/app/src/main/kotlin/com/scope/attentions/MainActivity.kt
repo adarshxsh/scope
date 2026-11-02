@@ -34,6 +34,11 @@ class MainActivity : FlutterActivity() {
                         result.success(mapList)
                     }
 
+                    "getTelemetry" -> {
+                        val telemetry = NotificationCollectorService.getTelemetry()
+                        result.success(telemetry)
+                    }
+
                     "isListenerEnabled" -> {
                         val enabled = isNotificationListenerEnabled()
                         result.success(enabled)

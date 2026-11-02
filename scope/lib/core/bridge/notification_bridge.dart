@@ -75,4 +75,19 @@ class NotificationBridge {
       // Not on Android — nothing to do
     }
   }
+
+  /// Returns diagnostic telemetry metrics from the native notification service.
+  Future<Map<String, dynamic>> getTelemetry() async {
+    try {
+      final result = await _channel.invokeMapMethod<String, dynamic>('getTelemetry');
+      return result ?? {};
+    } on PlatformException catch (e) {
+      // ignore: avoid_print
+      print('NotificationBridge.getTelemetry failed: ${e.message}');
+      return {};
+    } on MissingPluginException {
+      return {};
+    }
+  }
 }
+
