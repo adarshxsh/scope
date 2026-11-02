@@ -72,6 +72,24 @@ void main() {
       expect(result.isFallback, isTrue);
     });
 
+    test('handles emoji and long payloads without crashing or throwing errors', () async {
+      final classifier = LiteRtClassifier();
+      
+      final notif = AppNotification(
+        id: '3',
+        packageName: 'com.whatsapp',
+        title: 'Promotion 🔥🎉',
+        content: 'Huge discount on products! ' * 20,
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final result = await classifier.analyze(notif);
+      
+      expect(result.category, equals('promo'));
+      expect(result.engineName, contains('fallback'));
+      expect(result.isFallback, isTrue);
+    });
+
     test('executes active TFLite interpreter model inference and computes softmax category scores', () async {
       // Logits corresponding to categories: ['promo', 'social', 'sys', 'msg', 'finance']
       // Index 4 (finance) has highest logit 5.0
@@ -83,7 +101,7 @@ void main() {
       expect(classifier.isModelLoaded, isTrue);
 
       final notif = AppNotification(
-        id: '3',
+        id: '4',
         packageName: 'com.example.bank',
         title: 'Bank Alert',
         content: 'Your account XX3412 has been debited Rs. 2,000.',
@@ -108,7 +126,7 @@ void main() {
       final classifier = LiteRtClassifier(interpreter: fakeInterpreter);
 
       final notif = AppNotification(
-        id: '4',
+        id: '5',
         packageName: 'com.shopping.app',
         title: 'Mega Discount',
         content: 'Get 50% off on all items today!',
@@ -129,7 +147,7 @@ void main() {
       final classifier = LiteRtClassifier(interpreter: fakeInterpreter);
 
       final notif = AppNotification(
-        id: '5',
+        id: '6',
         packageName: 'com.example.app',
         title: '',
         content: '',
@@ -152,7 +170,7 @@ void main() {
       final classifier = LiteRtClassifier(interpreter: fakeInterpreter);
 
       final notif = AppNotification(
-        id: '6',
+        id: '7',
         packageName: 'com.example.bank',
         title: 'Bank Alert',
         content: 'Your account has been debited Rs. 5,000.',
