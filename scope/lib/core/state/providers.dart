@@ -256,14 +256,16 @@ class ReviewQueueNotifier extends StateNotifier<List<AppNotification>> {
 
   Future<void> _saveQueueEntry(AppNotification n, {DateTime? expiry}) async {
     if (_db == null) return;
-    await _db.reviewQueueDao.insertItem(ReviewQueueEntry(
-      id: 0,
-      notificationId: n.id,
-      priority: n.priority ?? 'medium',
-      enqueueTime: DateTime.now(),
-      expiryTime: expiry,
-      status: n.state,
-    ));
+    try {
+      await _db.reviewQueueDao.insertItem(ReviewQueueEntry(
+        id: 0,
+        notificationId: n.id,
+        priority: n.priority ?? 'medium',
+        enqueueTime: DateTime.now(),
+        expiryTime: expiry,
+        status: n.state,
+      ));
+    } catch (_) {}
   }
 
   bool _checkCompletedKeywords(String title, String content) {

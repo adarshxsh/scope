@@ -41,18 +41,51 @@ abstract class NotificationStorage {
 /// Will be replaced by a persistent backend in a later phase.
 class InMemoryNotificationStorage implements NotificationStorage {
   final List<AppNotification> _store = [];
+  final int maxRows;
+
+  InMemoryNotificationStorage({this.maxRows = 1000});
 
   @override
   Future<void> save(AppNotification notification) async {
     // Remove existing entry with the same ID (upsert behavior)
     _store.removeWhere((n) => n.id == notification.id);
     _store.add(notification);
+    _enforceMaxRows();
   }
 
   @override
   Future<void> saveAll(List<AppNotification> notifications) async {
     for (final notification in notifications) {
-      await save(notification);
+      _store.removeWhere((n) => n.id == notification.id);
+      _store.add(notification);
+    }
+    _enforceMaxRows();
+  }
+
+  void _enforceMaxRows() {
+    if (_store.length <= maxRows) return;
+    final excess = _store.length - maxRows;
+
+    // 1. Try to remove archived/expired/reviewed entries first
+    final archivedCandidates = _store
+        .where((n) =>
+            n.state == ReviewState.ARCHIVED ||
+            n.state == ReviewState.EXPIRED ||
+            n.state == ReviewState.REVIEWED)
+        .toList()
+      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+
+    final toRemoveArchived = archivedCandidates.take(excess).map((n) => n.id).toSet();
+    _store.removeWhere((n) => toRemoveArchived.contains(n.id));
+
+    final remainingExcess = _store.length - maxRows;
+    if (remainingExcess > 0) {
+      // 2. Remove remaining oldest entries
+      final remainingCandidates = List<AppNotification>.from(_store)
+        ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+      final toRemoveRemaining =
+          remainingCandidates.take(remainingExcess).map((n) => n.id).toSet();
+      _store.removeWhere((n) => toRemoveRemaining.contains(n.id));
     }
   }
 
