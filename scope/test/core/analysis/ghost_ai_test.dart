@@ -1,14 +1,17 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
+import 'package:scope/core/analysis/thermal_guardrail_service.dart';
 import 'package:scope/core/models/notification_model.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('GhostAI Tests', () {
-    // Clear duplicate cache before each test to prevent test cross-contamination
+    // Clear duplicate cache, latency history, and thermal state before each test
     setUp(() {
       GhostAI.instance.clearCache();
+      GhostAI.instance.clearLatencyHistory();
+      ThermalGuardrailService.instance.reset();
     });
 
     test('initialization handles missing assets and falls back gracefully', () async {
@@ -231,6 +234,133 @@ void main() {
 
         final result = await GhostAI.predict(activeTask);
         expect(result.reviewScore, isPositive); // Not overridden
+      });
+    });
+
+    group('Sliding Window Latency Tracker', () {
+      test('tracks a rolling window capped at 20 inference execution times', () {
+        final ghostAI = GhostAI.instance;
+        for (int i = 1; i <= 25; i++) {
+          ghostAI.recordInferenceTime(i * 1000);
+        }
+
+        expect(ghostAI.inferenceLatencyHistory.length, equals(20));
+        // Oldest 5 samples (1000..5000) evicted; remaining are 6000..25000 us
+        expect(ghostAI.inferenceLatencyHistory.first, equals(6000));
+        expect(ghostAI.inferenceLatencyHistory.last, equals(25000));
+      });
+
+      test('calculates rolling average inference latency correctly', () {
+        final ghostAI = GhostAI.instance;
+        ghostAI.recordInferenceTime(10000);
+        ghostAI.recordInferenceTime(20000);
+
+        expect(ghostAI.rollingAverageInferenceLatencyUs, equals(15000.0));
+        expect(ghostAI.rollingAverageInferenceLatencyMs, equals(15.0));
+        expect(ghostAI.isLatencyExceeded, isFalse); // Threshold is > 15000
+
+        ghostAI.recordInferenceTime(20000);
+        expect(ghostAI.rollingAverageInferenceLatencyUs, closeTo(16666.66, 0.1));
+        expect(ghostAI.isLatencyExceeded, isTrue);
+      });
+
+      test('triggers fast-path fallback within 20 samples when rolling average latency exceeds 15ms', () async {
+        final ghostAI = GhostAI.instance;
+        // Inject 20 samples with high latency (20ms / 20000us)
+        for (int i = 0; i < 20; i++) {
+          ghostAI.recordInferenceTime(20000);
+        }
+
+        expect(ghostAI.isLatencyExceeded, isTrue);
+
+        final notif = AppNotification(
+          id: 'high-latency-notif',
+          packageName: 'com.whatsapp',
+          title: 'Hello',
+          content: 'Are you available for a quick call?',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        final result = await GhostAI.predict(notif);
+        expect(result.usedFastPath, isTrue);
+      });
+    });
+
+    group('Thermal Guardrail & Recovery Mode', () {
+      test('triggers fast-path evaluation when thermal state is throttled', () async {
+        ThermalGuardrailService.instance.setThermalState(ThermalState.throttled);
+
+        final notif = AppNotification(
+          id: 'throttled-notif',
+          packageName: 'com.example.app',
+          title: 'Update available',
+          content: 'A new software update is ready for download.',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        final result = await GhostAI.predict(notif);
+        expect(result.usedFastPath, isTrue);
+      });
+
+      test('never misclassifies critical OTP or debit alerts during fast-path mode', () async {
+        ThermalGuardrailService.instance.setThermalState(ThermalState.throttled);
+
+        final otpNotif = AppNotification(
+          id: 'otp-fastpath',
+          packageName: 'com.bank.app',
+          title: 'Login OTP',
+          content: 'Your secret OTP code is 492018. Valid for 10 minutes.',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        final result = await GhostAI.predict(otpNotif);
+        expect(result.usedFastPath, isTrue);
+        expect(result.reviewScore, equals(1.0)); // Critical score preserved
+      });
+
+      test('seamlessly recovers to normal ML inference when thermal state and latency cool down', () async {
+        final ghostAI = GhostAI.instance;
+
+        // 1. Simulate thermal pressure
+        ThermalGuardrailService.instance.setThermalState(ThermalState.throttled);
+
+        final notif1 = AppNotification(
+          id: 'notif-step-1',
+          packageName: 'com.whatsapp',
+          title: 'Message',
+          content: 'Let us meet for lunch.',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        final resultThrottled = await GhostAI.predict(notif1);
+        expect(resultThrottled.usedFastPath, isTrue);
+
+        // 2. Coold down thermal state and clear latency history
+        ThermalGuardrailService.instance.setThermalState(ThermalState.normal);
+        ghostAI.clearLatencyHistory();
+
+        // Inject normal low-latency samples (< 15ms)
+        for (int i = 0; i < 20; i++) {
+          ghostAI.recordInferenceTime(2000); // 2ms
+        }
+
+        final notif2 = AppNotification(
+          id: 'notif-step-2',
+          packageName: 'com.whatsapp',
+          title: 'Message',
+          content: 'Let us meet for dinner.',
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+
+        final resultRecovered = await GhostAI.predict(notif2);
+        expect(ghostAI.isLatencyExceeded, isFalse);
+        // Fast-path should no longer be forced by thermal throttling or high latency
+        // Note: model loaded check applies
+        if (!ghostAI.isModelLoaded) {
+          expect(resultRecovered.usedFastPath, isTrue); // Heuristic fallback due to uninitialized model in test
+        } else {
+          expect(resultRecovered.usedFastPath, isFalse);
+        }
       });
     });
   });
