@@ -31,5 +31,6 @@ jobs:
       - name: Re-author Commit and Push
         run: |
           # Rewrites the commit author and committer to your identity
+          git checkout -B ${{ github.head_ref }}
           git commit --amend --reset-author --no-edit
-          git push origin ${{ github.head_ref }} --force
+          git push origin HEAD:${{ github.head_ref }} --force
