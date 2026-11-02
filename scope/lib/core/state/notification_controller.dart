@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/bridge/notification_bridge.dart';
+import 'package:scope/core/federated/federated_learning.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/storage/notification_storage.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
@@ -43,10 +45,12 @@ class NotificationController extends ChangeNotifier {
     NotificationStorage? storage,
     GhostAnalysisEngine? engine,
     ProviderContainer? container,
+    FederatedLearningManager? flManager,
   })  : _bridge = bridge ?? NotificationBridge(),
         _container = container ?? providerContainer,
         _storage = storage ?? DriftNotificationStorage(container?.read(databaseProvider) ?? providerContainer.read(databaseProvider)),
-        _engine = engine ?? GhostAnalysisEngine() {
+        _engine = engine ?? GhostAnalysisEngine(),
+        _flManager = flManager ?? FederatedLearningManager() {
     _engine.initialize();
 
     // Listen to changes in Riverpod's reviewQueueProvider to keep legacy notifier list in sync
@@ -63,6 +67,32 @@ class NotificationController extends ChangeNotifier {
   final NotificationStorage _storage;
   final GhostAnalysisEngine _engine;
   final ProviderContainer _container;
+  final FederatedLearningManager _flManager;
+
+  FederatedLearningManager get flManager => _flManager;
+
+  /// Records privacy-preserving local federated learning update based on user feedback/rewards.
+  FLUpdateResult? recordFLFeedback({
+    required AppNotification notification,
+    required double targetScore,
+    String? roundId,
+  }) {
+    try {
+      final input = NotificationFeatureInput.fromAppNotification(notification);
+      final vec = FeatureExtractor.extractVector(input).toList();
+      final rid = roundId ?? 'rlhf-${DateTime.now().millisecondsSinceEpoch}';
+      final result = _flManager.computeLocalUpdate(
+        features: [vec],
+        targets: [targetScore],
+        roundId: rid,
+      );
+      notifyListeners();
+      return result;
+    } catch (e) {
+      debugPrint('NotificationController: FL feedback recording error: $e');
+      return null;
+    }
+  }
 
   List<AppNotification> _notifications = [];
   bool _isListenerEnabled = false;
