@@ -472,12 +472,40 @@ class NotificationController extends ChangeNotifier {
     notifyListeners();
   }
 
+  String _todayDateString() {
+    final now = DateTime.now();
+    return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+  }
+
+  void _incrementDailyBriefStats({
+    int reviewed = 0,
+    int completed = 0,
+    int calendar = 0,
+    int reminders = 0,
+    int archived = 0,
+  }) {
+    try {
+      final db = _container.read(databaseProvider);
+      db.dailyBriefDao.incrementStats(
+        _todayDateString(),
+        reviewed: reviewed,
+        completed: completed,
+        calendar: calendar,
+        reminders: reminders,
+        archived: archived,
+      );
+    } catch (_) {
+      // Gracefully handle uninitialized database or container in tests
+    }
+  }
+
   void openNotificationSettings() => _bridge.openNotificationSettings();
 
   void archive(String id) {
     _container.read(reviewQueueProvider.notifier).archive(id);
     _savedActionItems.removeWhere((item) => item.notification.id == id);
     sessionStats.archived++;
+    _incrementDailyBriefStats(archived: 1);
     notifyListeners();
   }
 
@@ -485,6 +513,7 @@ class NotificationController extends ChangeNotifier {
     _container.read(reviewQueueProvider.notifier).reviewed(id);
     _savedActionItems.removeWhere((item) => item.notification.id == id);
     sessionStats.actionsCompleted++;
+    _incrementDailyBriefStats(completed: 1);
     notifyListeners();
   }
 
@@ -495,21 +524,25 @@ class NotificationController extends ChangeNotifier {
 
   void recordCalendarEvent() {
     sessionStats.calendarEventsCreated++;
+    _incrementDailyBriefStats(calendar: 1);
     notifyListeners();
   }
 
   void recordReminder() {
     sessionStats.remindersCreated++;
+    _incrementDailyBriefStats(reminders: 1);
     notifyListeners();
   }
 
   void recordReviewed() {
     sessionStats.notificationsReviewed++;
+    _incrementDailyBriefStats(reviewed: 1);
     notifyListeners();
   }
 
   void recordAction() {
     sessionStats.actionsCompleted++;
+    _incrementDailyBriefStats(completed: 1);
     notifyListeners();
   }
 
