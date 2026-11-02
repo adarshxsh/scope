@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:scope/core/analysis/crypto_utils.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
 
@@ -26,7 +28,15 @@ void main() {
 
     setUp(() {
       engine = GhostAnalysisEngine();
-      engine.ruleEngine.compile(sampleJson);
+      final payloadObj = json.decode(sampleJson);
+      final payloadBytes = utf8.encode(json.encode(payloadObj));
+      final sig = CryptoUtils.signEd25519(messageBytes: payloadBytes);
+      final envelopeJson = json.encode({
+        'payload': payloadObj,
+        'signature': sig,
+        'key_id': CryptoUtils.publisherKeyId,
+      });
+      engine.ruleEngine.compile(envelopeJson);
     });
 
     test('orchestrates pipeline and classifies bank debit notification as critical', () async {
