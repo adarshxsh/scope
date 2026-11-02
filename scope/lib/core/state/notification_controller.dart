@@ -319,9 +319,9 @@ class NotificationController extends ChangeNotifier {
   }
 
   Future<void> _loadInitialNotifications() async {
-    if (_initialLoadCompleted) return;
+    if (_initialLoadCompleted || _isDisposed) return;
     final loaded = await _storage.getAll();
-    if (_initialLoadCompleted) return;
+    if (_initialLoadCompleted || _isDisposed) return;
 
     if (_notifications.isEmpty) {
       _notifications = loaded;
@@ -331,13 +331,15 @@ class NotificationController extends ChangeNotifier {
       notifier.load(_notifications);
       await notifier.rescore();
     }
+    if (_isDisposed) return;
     _initialLoadCompleted = true;
     _isLoading = false;
     notifyListeners();
 
     // Trigger initial cleanup once on startup
-    runBackgroundCleanup();
-    
+    await runBackgroundCleanup();
+    if (_isDisposed) return;
+
     // Set up daily cleanup timer
     _cleanupTimer?.cancel();
     _cleanupTimer = Timer.periodic(const Duration(hours: 24), (_) {
@@ -345,7 +347,30 @@ class NotificationController extends ChangeNotifier {
     });
   }
 
-  /// Cleans up old notifications (older than 7 days) and orphaned review queue items.
+
+  /// Configures user settings (retention days, telemetry toggle, max row cap, max storage MB).
+  Future<void> updateUserSettings({
+    int? retentionDays,
+    bool? telemetryEnabled,
+    int? maxRowCap,
+    int? maxStorageMb,
+  }) async {
+    try {
+      final db = _container.read(databaseProvider);
+      await db.userSettingsDao.updateSettings(
+        retentionDays: retentionDays,
+        telemetryEnabled: telemetryEnabled,
+        maxRowCap: maxRowCap,
+        maxStorageMb: maxStorageMb,
+      );
+      await runBackgroundCleanup();
+      notifyListeners();
+    } catch (_) {
+      // Handle setting updates gracefully
+    }
+  }
+
+  /// Cleans up old notifications according to user settings and enforces storage quotas.
   Future<void> runBackgroundCleanup() async {
     if (_isCleaningUp) return;
 
@@ -358,11 +383,28 @@ class NotificationController extends ChangeNotifier {
         if (_isDisposed) return;
       }
 
-      final cutoff = DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch;
       final db = _container.read(databaseProvider);
-      
-      // Execute the single-step atomic transaction
-      await db.runSetBasedCleanup(cutoff);
+      final settings = await db.userSettingsDao.getSettings();
+
+      final int cutoff;
+      if (settings.retentionDays > 0) {
+        cutoff = DateTime.now().subtract(Duration(days: settings.retentionDays)).millisecondsSinceEpoch;
+      } else {
+        cutoff = 0; // -1 means Unlimited retention
+      }
+
+      // Execute single-step atomic cleanup with dynamic retention and storage quota parameters
+      await db.runSetBasedCleanup(
+        cutoff,
+        maxRowCap: settings.maxRowCap,
+        maxStorageMb: settings.maxStorageMb,
+        clearTelemetry: !settings.telemetryEnabled,
+      );
+
+      final loaded = await _storage.getAll();
+      _notifications = loaded;
+      _container.read(reviewQueueProvider.notifier).load(loaded);
+      notifyListeners();
 
     } catch (_) {
       // Silently handle errors to not interrupt UI
@@ -370,6 +412,7 @@ class NotificationController extends ChangeNotifier {
       _isCleaningUp = false;
     }
   }
+
 
   Future<void> _checkPermissionAndFetch() async {
     _isListenerEnabled = await _bridge.isListenerEnabled();

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/ghost_ai.dart';
 import 'package:scope/database/attention_database.dart';
+import 'package:scope/database/daos.dart';
 import 'package:scope/database/database_provider.dart';
 import 'package:scope/database/drift_notification_storage.dart';
 
@@ -341,3 +342,22 @@ final sortedReviewQueueProvider = Provider<List<AppNotification>>((ref) {
 
   return activeItems;
 });
+
+final userSettingsStreamProvider = StreamProvider<UserSettingsEntry>((ref) {
+  final db = ref.watch(databaseProvider);
+  return db.userSettingsDao.watchSettings();
+});
+
+final userSettingsProvider = Provider<UserSettingsEntry?>((ref) {
+  final asyncVal = ref.watch(userSettingsStreamProvider);
+  return asyncVal.valueOrNull;
+});
+
+final storageStatsProvider = FutureProvider<StorageStats>((ref) async {
+  final db = ref.watch(databaseProvider);
+  // Re-evaluate whenever user settings change or queue changes
+  ref.watch(userSettingsProvider);
+  ref.watch(reviewQueueProvider);
+  return await db.userSettingsDao.getStorageStats();
+});
+
