@@ -2709,6 +2709,1830 @@ class DailyBriefTableCompanion extends UpdateCompanion<DailyBriefEntry> {
   }
 }
 
+class $InferenceTelemetryTableTable extends InferenceTelemetryTable
+    with TableInfo<$InferenceTelemetryTableTable, InferenceTelemetryEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $InferenceTelemetryTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _notificationIdMeta = const VerificationMeta(
+    'notificationId',
+  );
+  @override
+  late final GeneratedColumn<String> notificationId = GeneratedColumn<String>(
+    'notification_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _quantizedTimestampMeta =
+      const VerificationMeta('quantizedTimestamp');
+  @override
+  late final GeneratedColumn<int> quantizedTimestamp = GeneratedColumn<int>(
+    'quantized_timestamp',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _latencyMsMeta = const VerificationMeta(
+    'latencyMs',
+  );
+  @override
+  late final GeneratedColumn<int> latencyMs = GeneratedColumn<int>(
+    'latency_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _modelVersionMeta = const VerificationMeta(
+    'modelVersion',
+  );
+  @override
+  late final GeneratedColumn<String> modelVersion = GeneratedColumn<String>(
+    'model_version',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _ruleVersionMeta = const VerificationMeta(
+    'ruleVersion',
+  );
+  @override
+  late final GeneratedColumn<String> ruleVersion = GeneratedColumn<String>(
+    'rule_version',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _engineVersionMeta = const VerificationMeta(
+    'engineVersion',
+  );
+  @override
+  late final GeneratedColumn<String> engineVersion = GeneratedColumn<String>(
+    'engine_version',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isFallbackMeta = const VerificationMeta(
+    'isFallback',
+  );
+  @override
+  late final GeneratedColumn<bool> isFallback = GeneratedColumn<bool>(
+    'is_fallback',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_fallback" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _priorityScoreMeta = const VerificationMeta(
+    'priorityScore',
+  );
+  @override
+  late final GeneratedColumn<double> priorityScore = GeneratedColumn<double>(
+    'priority_score',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _priorityLevelMeta = const VerificationMeta(
+    'priorityLevel',
+  );
+  @override
+  late final GeneratedColumn<String> priorityLevel = GeneratedColumn<String>(
+    'priority_level',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    notificationId,
+    quantizedTimestamp,
+    latencyMs,
+    modelVersion,
+    ruleVersion,
+    engineVersion,
+    isFallback,
+    priorityScore,
+    priorityLevel,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'inference_telemetry_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<InferenceTelemetryEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('notification_id')) {
+      context.handle(
+        _notificationIdMeta,
+        notificationId.isAcceptableOrUnknown(
+          data['notification_id']!,
+          _notificationIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('quantized_timestamp')) {
+      context.handle(
+        _quantizedTimestampMeta,
+        quantizedTimestamp.isAcceptableOrUnknown(
+          data['quantized_timestamp']!,
+          _quantizedTimestampMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_quantizedTimestampMeta);
+    }
+    if (data.containsKey('latency_ms')) {
+      context.handle(
+        _latencyMsMeta,
+        latencyMs.isAcceptableOrUnknown(data['latency_ms']!, _latencyMsMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_latencyMsMeta);
+    }
+    if (data.containsKey('model_version')) {
+      context.handle(
+        _modelVersionMeta,
+        modelVersion.isAcceptableOrUnknown(
+          data['model_version']!,
+          _modelVersionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('rule_version')) {
+      context.handle(
+        _ruleVersionMeta,
+        ruleVersion.isAcceptableOrUnknown(
+          data['rule_version']!,
+          _ruleVersionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('engine_version')) {
+      context.handle(
+        _engineVersionMeta,
+        engineVersion.isAcceptableOrUnknown(
+          data['engine_version']!,
+          _engineVersionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_fallback')) {
+      context.handle(
+        _isFallbackMeta,
+        isFallback.isAcceptableOrUnknown(data['is_fallback']!, _isFallbackMeta),
+      );
+    }
+    if (data.containsKey('priority_score')) {
+      context.handle(
+        _priorityScoreMeta,
+        priorityScore.isAcceptableOrUnknown(
+          data['priority_score']!,
+          _priorityScoreMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_priorityScoreMeta);
+    }
+    if (data.containsKey('priority_level')) {
+      context.handle(
+        _priorityLevelMeta,
+        priorityLevel.isAcceptableOrUnknown(
+          data['priority_level']!,
+          _priorityLevelMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  InferenceTelemetryEntry map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return InferenceTelemetryEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      notificationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notification_id'],
+      ),
+      quantizedTimestamp: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}quantized_timestamp'],
+      )!,
+      latencyMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}latency_ms'],
+      )!,
+      modelVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}model_version'],
+      ),
+      ruleVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}rule_version'],
+      ),
+      engineVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}engine_version'],
+      ),
+      isFallback: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_fallback'],
+      )!,
+      priorityScore: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}priority_score'],
+      )!,
+      priorityLevel: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}priority_level'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $InferenceTelemetryTableTable createAlias(String alias) {
+    return $InferenceTelemetryTableTable(attachedDatabase, alias);
+  }
+}
+
+class InferenceTelemetryEntry extends DataClass
+    implements Insertable<InferenceTelemetryEntry> {
+  final int id;
+  final String? notificationId;
+  final int quantizedTimestamp;
+  final int latencyMs;
+  final String? modelVersion;
+  final String? ruleVersion;
+  final String? engineVersion;
+  final bool isFallback;
+  final double priorityScore;
+  final String? priorityLevel;
+  final DateTime createdAt;
+  const InferenceTelemetryEntry({
+    required this.id,
+    this.notificationId,
+    required this.quantizedTimestamp,
+    required this.latencyMs,
+    this.modelVersion,
+    this.ruleVersion,
+    this.engineVersion,
+    required this.isFallback,
+    required this.priorityScore,
+    this.priorityLevel,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    if (!nullToAbsent || notificationId != null) {
+      map['notification_id'] = Variable<String>(notificationId);
+    }
+    map['quantized_timestamp'] = Variable<int>(quantizedTimestamp);
+    map['latency_ms'] = Variable<int>(latencyMs);
+    if (!nullToAbsent || modelVersion != null) {
+      map['model_version'] = Variable<String>(modelVersion);
+    }
+    if (!nullToAbsent || ruleVersion != null) {
+      map['rule_version'] = Variable<String>(ruleVersion);
+    }
+    if (!nullToAbsent || engineVersion != null) {
+      map['engine_version'] = Variable<String>(engineVersion);
+    }
+    map['is_fallback'] = Variable<bool>(isFallback);
+    map['priority_score'] = Variable<double>(priorityScore);
+    if (!nullToAbsent || priorityLevel != null) {
+      map['priority_level'] = Variable<String>(priorityLevel);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  InferenceTelemetryTableCompanion toCompanion(bool nullToAbsent) {
+    return InferenceTelemetryTableCompanion(
+      id: Value(id),
+      notificationId: notificationId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notificationId),
+      quantizedTimestamp: Value(quantizedTimestamp),
+      latencyMs: Value(latencyMs),
+      modelVersion: modelVersion == null && nullToAbsent
+          ? const Value.absent()
+          : Value(modelVersion),
+      ruleVersion: ruleVersion == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ruleVersion),
+      engineVersion: engineVersion == null && nullToAbsent
+          ? const Value.absent()
+          : Value(engineVersion),
+      isFallback: Value(isFallback),
+      priorityScore: Value(priorityScore),
+      priorityLevel: priorityLevel == null && nullToAbsent
+          ? const Value.absent()
+          : Value(priorityLevel),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory InferenceTelemetryEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return InferenceTelemetryEntry(
+      id: serializer.fromJson<int>(json['id']),
+      notificationId: serializer.fromJson<String?>(json['notificationId']),
+      quantizedTimestamp: serializer.fromJson<int>(json['quantizedTimestamp']),
+      latencyMs: serializer.fromJson<int>(json['latencyMs']),
+      modelVersion: serializer.fromJson<String?>(json['modelVersion']),
+      ruleVersion: serializer.fromJson<String?>(json['ruleVersion']),
+      engineVersion: serializer.fromJson<String?>(json['engineVersion']),
+      isFallback: serializer.fromJson<bool>(json['isFallback']),
+      priorityScore: serializer.fromJson<double>(json['priorityScore']),
+      priorityLevel: serializer.fromJson<String?>(json['priorityLevel']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'notificationId': serializer.toJson<String?>(notificationId),
+      'quantizedTimestamp': serializer.toJson<int>(quantizedTimestamp),
+      'latencyMs': serializer.toJson<int>(latencyMs),
+      'modelVersion': serializer.toJson<String?>(modelVersion),
+      'ruleVersion': serializer.toJson<String?>(ruleVersion),
+      'engineVersion': serializer.toJson<String?>(engineVersion),
+      'isFallback': serializer.toJson<bool>(isFallback),
+      'priorityScore': serializer.toJson<double>(priorityScore),
+      'priorityLevel': serializer.toJson<String?>(priorityLevel),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  InferenceTelemetryEntry copyWith({
+    int? id,
+    Value<String?> notificationId = const Value.absent(),
+    int? quantizedTimestamp,
+    int? latencyMs,
+    Value<String?> modelVersion = const Value.absent(),
+    Value<String?> ruleVersion = const Value.absent(),
+    Value<String?> engineVersion = const Value.absent(),
+    bool? isFallback,
+    double? priorityScore,
+    Value<String?> priorityLevel = const Value.absent(),
+    DateTime? createdAt,
+  }) => InferenceTelemetryEntry(
+    id: id ?? this.id,
+    notificationId: notificationId.present
+        ? notificationId.value
+        : this.notificationId,
+    quantizedTimestamp: quantizedTimestamp ?? this.quantizedTimestamp,
+    latencyMs: latencyMs ?? this.latencyMs,
+    modelVersion: modelVersion.present ? modelVersion.value : this.modelVersion,
+    ruleVersion: ruleVersion.present ? ruleVersion.value : this.ruleVersion,
+    engineVersion: engineVersion.present
+        ? engineVersion.value
+        : this.engineVersion,
+    isFallback: isFallback ?? this.isFallback,
+    priorityScore: priorityScore ?? this.priorityScore,
+    priorityLevel: priorityLevel.present
+        ? priorityLevel.value
+        : this.priorityLevel,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  InferenceTelemetryEntry copyWithCompanion(
+    InferenceTelemetryTableCompanion data,
+  ) {
+    return InferenceTelemetryEntry(
+      id: data.id.present ? data.id.value : this.id,
+      notificationId: data.notificationId.present
+          ? data.notificationId.value
+          : this.notificationId,
+      quantizedTimestamp: data.quantizedTimestamp.present
+          ? data.quantizedTimestamp.value
+          : this.quantizedTimestamp,
+      latencyMs: data.latencyMs.present ? data.latencyMs.value : this.latencyMs,
+      modelVersion: data.modelVersion.present
+          ? data.modelVersion.value
+          : this.modelVersion,
+      ruleVersion: data.ruleVersion.present
+          ? data.ruleVersion.value
+          : this.ruleVersion,
+      engineVersion: data.engineVersion.present
+          ? data.engineVersion.value
+          : this.engineVersion,
+      isFallback: data.isFallback.present
+          ? data.isFallback.value
+          : this.isFallback,
+      priorityScore: data.priorityScore.present
+          ? data.priorityScore.value
+          : this.priorityScore,
+      priorityLevel: data.priorityLevel.present
+          ? data.priorityLevel.value
+          : this.priorityLevel,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InferenceTelemetryEntry(')
+          ..write('id: $id, ')
+          ..write('notificationId: $notificationId, ')
+          ..write('quantizedTimestamp: $quantizedTimestamp, ')
+          ..write('latencyMs: $latencyMs, ')
+          ..write('modelVersion: $modelVersion, ')
+          ..write('ruleVersion: $ruleVersion, ')
+          ..write('engineVersion: $engineVersion, ')
+          ..write('isFallback: $isFallback, ')
+          ..write('priorityScore: $priorityScore, ')
+          ..write('priorityLevel: $priorityLevel, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    notificationId,
+    quantizedTimestamp,
+    latencyMs,
+    modelVersion,
+    ruleVersion,
+    engineVersion,
+    isFallback,
+    priorityScore,
+    priorityLevel,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is InferenceTelemetryEntry &&
+          other.id == this.id &&
+          other.notificationId == this.notificationId &&
+          other.quantizedTimestamp == this.quantizedTimestamp &&
+          other.latencyMs == this.latencyMs &&
+          other.modelVersion == this.modelVersion &&
+          other.ruleVersion == this.ruleVersion &&
+          other.engineVersion == this.engineVersion &&
+          other.isFallback == this.isFallback &&
+          other.priorityScore == this.priorityScore &&
+          other.priorityLevel == this.priorityLevel &&
+          other.createdAt == this.createdAt);
+}
+
+class InferenceTelemetryTableCompanion
+    extends UpdateCompanion<InferenceTelemetryEntry> {
+  final Value<int> id;
+  final Value<String?> notificationId;
+  final Value<int> quantizedTimestamp;
+  final Value<int> latencyMs;
+  final Value<String?> modelVersion;
+  final Value<String?> ruleVersion;
+  final Value<String?> engineVersion;
+  final Value<bool> isFallback;
+  final Value<double> priorityScore;
+  final Value<String?> priorityLevel;
+  final Value<DateTime> createdAt;
+  const InferenceTelemetryTableCompanion({
+    this.id = const Value.absent(),
+    this.notificationId = const Value.absent(),
+    this.quantizedTimestamp = const Value.absent(),
+    this.latencyMs = const Value.absent(),
+    this.modelVersion = const Value.absent(),
+    this.ruleVersion = const Value.absent(),
+    this.engineVersion = const Value.absent(),
+    this.isFallback = const Value.absent(),
+    this.priorityScore = const Value.absent(),
+    this.priorityLevel = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  InferenceTelemetryTableCompanion.insert({
+    this.id = const Value.absent(),
+    this.notificationId = const Value.absent(),
+    required int quantizedTimestamp,
+    required int latencyMs,
+    this.modelVersion = const Value.absent(),
+    this.ruleVersion = const Value.absent(),
+    this.engineVersion = const Value.absent(),
+    this.isFallback = const Value.absent(),
+    required double priorityScore,
+    this.priorityLevel = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  }) : quantizedTimestamp = Value(quantizedTimestamp),
+       latencyMs = Value(latencyMs),
+       priorityScore = Value(priorityScore);
+  static Insertable<InferenceTelemetryEntry> custom({
+    Expression<int>? id,
+    Expression<String>? notificationId,
+    Expression<int>? quantizedTimestamp,
+    Expression<int>? latencyMs,
+    Expression<String>? modelVersion,
+    Expression<String>? ruleVersion,
+    Expression<String>? engineVersion,
+    Expression<bool>? isFallback,
+    Expression<double>? priorityScore,
+    Expression<String>? priorityLevel,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (notificationId != null) 'notification_id': notificationId,
+      if (quantizedTimestamp != null) 'quantized_timestamp': quantizedTimestamp,
+      if (latencyMs != null) 'latency_ms': latencyMs,
+      if (modelVersion != null) 'model_version': modelVersion,
+      if (ruleVersion != null) 'rule_version': ruleVersion,
+      if (engineVersion != null) 'engine_version': engineVersion,
+      if (isFallback != null) 'is_fallback': isFallback,
+      if (priorityScore != null) 'priority_score': priorityScore,
+      if (priorityLevel != null) 'priority_level': priorityLevel,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  InferenceTelemetryTableCompanion copyWith({
+    Value<int>? id,
+    Value<String?>? notificationId,
+    Value<int>? quantizedTimestamp,
+    Value<int>? latencyMs,
+    Value<String?>? modelVersion,
+    Value<String?>? ruleVersion,
+    Value<String?>? engineVersion,
+    Value<bool>? isFallback,
+    Value<double>? priorityScore,
+    Value<String?>? priorityLevel,
+    Value<DateTime>? createdAt,
+  }) {
+    return InferenceTelemetryTableCompanion(
+      id: id ?? this.id,
+      notificationId: notificationId ?? this.notificationId,
+      quantizedTimestamp: quantizedTimestamp ?? this.quantizedTimestamp,
+      latencyMs: latencyMs ?? this.latencyMs,
+      modelVersion: modelVersion ?? this.modelVersion,
+      ruleVersion: ruleVersion ?? this.ruleVersion,
+      engineVersion: engineVersion ?? this.engineVersion,
+      isFallback: isFallback ?? this.isFallback,
+      priorityScore: priorityScore ?? this.priorityScore,
+      priorityLevel: priorityLevel ?? this.priorityLevel,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (notificationId.present) {
+      map['notification_id'] = Variable<String>(notificationId.value);
+    }
+    if (quantizedTimestamp.present) {
+      map['quantized_timestamp'] = Variable<int>(quantizedTimestamp.value);
+    }
+    if (latencyMs.present) {
+      map['latency_ms'] = Variable<int>(latencyMs.value);
+    }
+    if (modelVersion.present) {
+      map['model_version'] = Variable<String>(modelVersion.value);
+    }
+    if (ruleVersion.present) {
+      map['rule_version'] = Variable<String>(ruleVersion.value);
+    }
+    if (engineVersion.present) {
+      map['engine_version'] = Variable<String>(engineVersion.value);
+    }
+    if (isFallback.present) {
+      map['is_fallback'] = Variable<bool>(isFallback.value);
+    }
+    if (priorityScore.present) {
+      map['priority_score'] = Variable<double>(priorityScore.value);
+    }
+    if (priorityLevel.present) {
+      map['priority_level'] = Variable<String>(priorityLevel.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InferenceTelemetryTableCompanion(')
+          ..write('id: $id, ')
+          ..write('notificationId: $notificationId, ')
+          ..write('quantizedTimestamp: $quantizedTimestamp, ')
+          ..write('latencyMs: $latencyMs, ')
+          ..write('modelVersion: $modelVersion, ')
+          ..write('ruleVersion: $ruleVersion, ')
+          ..write('engineVersion: $engineVersion, ')
+          ..write('isFallback: $isFallback, ')
+          ..write('priorityScore: $priorityScore, ')
+          ..write('priorityLevel: $priorityLevel, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $InferenceAuditLogsTableTable extends InferenceAuditLogsTable
+    with TableInfo<$InferenceAuditLogsTableTable, InferenceAuditLogEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $InferenceAuditLogsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _timestampMeta = const VerificationMeta(
+    'timestamp',
+  );
+  @override
+  late final GeneratedColumn<int> timestamp = GeneratedColumn<int>(
+    'timestamp',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _eventTypeMeta = const VerificationMeta(
+    'eventType',
+  );
+  @override
+  late final GeneratedColumn<String> eventType = GeneratedColumn<String>(
+    'event_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _logMessageMeta = const VerificationMeta(
+    'logMessage',
+  );
+  @override
+  late final GeneratedColumn<String> logMessage = GeneratedColumn<String>(
+    'log_message',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    timestamp,
+    eventType,
+    logMessage,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'inference_audit_logs_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<InferenceAuditLogEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('timestamp')) {
+      context.handle(
+        _timestampMeta,
+        timestamp.isAcceptableOrUnknown(data['timestamp']!, _timestampMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_timestampMeta);
+    }
+    if (data.containsKey('event_type')) {
+      context.handle(
+        _eventTypeMeta,
+        eventType.isAcceptableOrUnknown(data['event_type']!, _eventTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_eventTypeMeta);
+    }
+    if (data.containsKey('log_message')) {
+      context.handle(
+        _logMessageMeta,
+        logMessage.isAcceptableOrUnknown(data['log_message']!, _logMessageMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_logMessageMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  InferenceAuditLogEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return InferenceAuditLogEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      timestamp: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}timestamp'],
+      )!,
+      eventType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}event_type'],
+      )!,
+      logMessage: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}log_message'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $InferenceAuditLogsTableTable createAlias(String alias) {
+    return $InferenceAuditLogsTableTable(attachedDatabase, alias);
+  }
+}
+
+class InferenceAuditLogEntry extends DataClass
+    implements Insertable<InferenceAuditLogEntry> {
+  final int id;
+  final int timestamp;
+  final String eventType;
+  final String logMessage;
+  final DateTime createdAt;
+  const InferenceAuditLogEntry({
+    required this.id,
+    required this.timestamp,
+    required this.eventType,
+    required this.logMessage,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['timestamp'] = Variable<int>(timestamp);
+    map['event_type'] = Variable<String>(eventType);
+    map['log_message'] = Variable<String>(logMessage);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  InferenceAuditLogsTableCompanion toCompanion(bool nullToAbsent) {
+    return InferenceAuditLogsTableCompanion(
+      id: Value(id),
+      timestamp: Value(timestamp),
+      eventType: Value(eventType),
+      logMessage: Value(logMessage),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory InferenceAuditLogEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return InferenceAuditLogEntry(
+      id: serializer.fromJson<int>(json['id']),
+      timestamp: serializer.fromJson<int>(json['timestamp']),
+      eventType: serializer.fromJson<String>(json['eventType']),
+      logMessage: serializer.fromJson<String>(json['logMessage']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'timestamp': serializer.toJson<int>(timestamp),
+      'eventType': serializer.toJson<String>(eventType),
+      'logMessage': serializer.toJson<String>(logMessage),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  InferenceAuditLogEntry copyWith({
+    int? id,
+    int? timestamp,
+    String? eventType,
+    String? logMessage,
+    DateTime? createdAt,
+  }) => InferenceAuditLogEntry(
+    id: id ?? this.id,
+    timestamp: timestamp ?? this.timestamp,
+    eventType: eventType ?? this.eventType,
+    logMessage: logMessage ?? this.logMessage,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  InferenceAuditLogEntry copyWithCompanion(
+    InferenceAuditLogsTableCompanion data,
+  ) {
+    return InferenceAuditLogEntry(
+      id: data.id.present ? data.id.value : this.id,
+      timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
+      eventType: data.eventType.present ? data.eventType.value : this.eventType,
+      logMessage: data.logMessage.present
+          ? data.logMessage.value
+          : this.logMessage,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InferenceAuditLogEntry(')
+          ..write('id: $id, ')
+          ..write('timestamp: $timestamp, ')
+          ..write('eventType: $eventType, ')
+          ..write('logMessage: $logMessage, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, timestamp, eventType, logMessage, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is InferenceAuditLogEntry &&
+          other.id == this.id &&
+          other.timestamp == this.timestamp &&
+          other.eventType == this.eventType &&
+          other.logMessage == this.logMessage &&
+          other.createdAt == this.createdAt);
+}
+
+class InferenceAuditLogsTableCompanion
+    extends UpdateCompanion<InferenceAuditLogEntry> {
+  final Value<int> id;
+  final Value<int> timestamp;
+  final Value<String> eventType;
+  final Value<String> logMessage;
+  final Value<DateTime> createdAt;
+  const InferenceAuditLogsTableCompanion({
+    this.id = const Value.absent(),
+    this.timestamp = const Value.absent(),
+    this.eventType = const Value.absent(),
+    this.logMessage = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  InferenceAuditLogsTableCompanion.insert({
+    this.id = const Value.absent(),
+    required int timestamp,
+    required String eventType,
+    required String logMessage,
+    this.createdAt = const Value.absent(),
+  }) : timestamp = Value(timestamp),
+       eventType = Value(eventType),
+       logMessage = Value(logMessage);
+  static Insertable<InferenceAuditLogEntry> custom({
+    Expression<int>? id,
+    Expression<int>? timestamp,
+    Expression<String>? eventType,
+    Expression<String>? logMessage,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (timestamp != null) 'timestamp': timestamp,
+      if (eventType != null) 'event_type': eventType,
+      if (logMessage != null) 'log_message': logMessage,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  InferenceAuditLogsTableCompanion copyWith({
+    Value<int>? id,
+    Value<int>? timestamp,
+    Value<String>? eventType,
+    Value<String>? logMessage,
+    Value<DateTime>? createdAt,
+  }) {
+    return InferenceAuditLogsTableCompanion(
+      id: id ?? this.id,
+      timestamp: timestamp ?? this.timestamp,
+      eventType: eventType ?? this.eventType,
+      logMessage: logMessage ?? this.logMessage,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (timestamp.present) {
+      map['timestamp'] = Variable<int>(timestamp.value);
+    }
+    if (eventType.present) {
+      map['event_type'] = Variable<String>(eventType.value);
+    }
+    if (logMessage.present) {
+      map['log_message'] = Variable<String>(logMessage.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InferenceAuditLogsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('timestamp: $timestamp, ')
+          ..write('eventType: $eventType, ')
+          ..write('logMessage: $logMessage, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PrivacyBudgetTableTable extends PrivacyBudgetTable
+    with TableInfo<$PrivacyBudgetTableTable, PrivacyBudgetEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PrivacyBudgetTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _entityMeta = const VerificationMeta('entity');
+  @override
+  late final GeneratedColumn<String> entity = GeneratedColumn<String>(
+    'entity',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _allocatedEpsilonMeta = const VerificationMeta(
+    'allocatedEpsilon',
+  );
+  @override
+  late final GeneratedColumn<double> allocatedEpsilon = GeneratedColumn<double>(
+    'allocated_epsilon',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(2.0),
+  );
+  static const VerificationMeta _consumedEpsilonMeta = const VerificationMeta(
+    'consumedEpsilon',
+  );
+  @override
+  late final GeneratedColumn<double> consumedEpsilon = GeneratedColumn<double>(
+    'consumed_epsilon',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0.0),
+  );
+  static const VerificationMeta _deltaMeta = const VerificationMeta('delta');
+  @override
+  late final GeneratedColumn<double> delta = GeneratedColumn<double>(
+    'delta',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1e-5),
+  );
+  static const VerificationMeta _lastUpdatedMeta = const VerificationMeta(
+    'lastUpdated',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastUpdated = GeneratedColumn<DateTime>(
+    'last_updated',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    entity,
+    allocatedEpsilon,
+    consumedEpsilon,
+    delta,
+    lastUpdated,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'privacy_budget_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PrivacyBudgetEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('entity')) {
+      context.handle(
+        _entityMeta,
+        entity.isAcceptableOrUnknown(data['entity']!, _entityMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_entityMeta);
+    }
+    if (data.containsKey('allocated_epsilon')) {
+      context.handle(
+        _allocatedEpsilonMeta,
+        allocatedEpsilon.isAcceptableOrUnknown(
+          data['allocated_epsilon']!,
+          _allocatedEpsilonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('consumed_epsilon')) {
+      context.handle(
+        _consumedEpsilonMeta,
+        consumedEpsilon.isAcceptableOrUnknown(
+          data['consumed_epsilon']!,
+          _consumedEpsilonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('delta')) {
+      context.handle(
+        _deltaMeta,
+        delta.isAcceptableOrUnknown(data['delta']!, _deltaMeta),
+      );
+    }
+    if (data.containsKey('last_updated')) {
+      context.handle(
+        _lastUpdatedMeta,
+        lastUpdated.isAcceptableOrUnknown(
+          data['last_updated']!,
+          _lastUpdatedMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PrivacyBudgetEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PrivacyBudgetEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      entity: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity'],
+      )!,
+      allocatedEpsilon: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}allocated_epsilon'],
+      )!,
+      consumedEpsilon: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}consumed_epsilon'],
+      )!,
+      delta: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}delta'],
+      )!,
+      lastUpdated: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_updated'],
+      )!,
+    );
+  }
+
+  @override
+  $PrivacyBudgetTableTable createAlias(String alias) {
+    return $PrivacyBudgetTableTable(attachedDatabase, alias);
+  }
+}
+
+class PrivacyBudgetEntry extends DataClass
+    implements Insertable<PrivacyBudgetEntry> {
+  final int id;
+  final String entity;
+  final double allocatedEpsilon;
+  final double consumedEpsilon;
+  final double delta;
+  final DateTime lastUpdated;
+  const PrivacyBudgetEntry({
+    required this.id,
+    required this.entity,
+    required this.allocatedEpsilon,
+    required this.consumedEpsilon,
+    required this.delta,
+    required this.lastUpdated,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['entity'] = Variable<String>(entity);
+    map['allocated_epsilon'] = Variable<double>(allocatedEpsilon);
+    map['consumed_epsilon'] = Variable<double>(consumedEpsilon);
+    map['delta'] = Variable<double>(delta);
+    map['last_updated'] = Variable<DateTime>(lastUpdated);
+    return map;
+  }
+
+  PrivacyBudgetTableCompanion toCompanion(bool nullToAbsent) {
+    return PrivacyBudgetTableCompanion(
+      id: Value(id),
+      entity: Value(entity),
+      allocatedEpsilon: Value(allocatedEpsilon),
+      consumedEpsilon: Value(consumedEpsilon),
+      delta: Value(delta),
+      lastUpdated: Value(lastUpdated),
+    );
+  }
+
+  factory PrivacyBudgetEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PrivacyBudgetEntry(
+      id: serializer.fromJson<int>(json['id']),
+      entity: serializer.fromJson<String>(json['entity']),
+      allocatedEpsilon: serializer.fromJson<double>(json['allocatedEpsilon']),
+      consumedEpsilon: serializer.fromJson<double>(json['consumedEpsilon']),
+      delta: serializer.fromJson<double>(json['delta']),
+      lastUpdated: serializer.fromJson<DateTime>(json['lastUpdated']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'entity': serializer.toJson<String>(entity),
+      'allocatedEpsilon': serializer.toJson<double>(allocatedEpsilon),
+      'consumedEpsilon': serializer.toJson<double>(consumedEpsilon),
+      'delta': serializer.toJson<double>(delta),
+      'lastUpdated': serializer.toJson<DateTime>(lastUpdated),
+    };
+  }
+
+  PrivacyBudgetEntry copyWith({
+    int? id,
+    String? entity,
+    double? allocatedEpsilon,
+    double? consumedEpsilon,
+    double? delta,
+    DateTime? lastUpdated,
+  }) => PrivacyBudgetEntry(
+    id: id ?? this.id,
+    entity: entity ?? this.entity,
+    allocatedEpsilon: allocatedEpsilon ?? this.allocatedEpsilon,
+    consumedEpsilon: consumedEpsilon ?? this.consumedEpsilon,
+    delta: delta ?? this.delta,
+    lastUpdated: lastUpdated ?? this.lastUpdated,
+  );
+  PrivacyBudgetEntry copyWithCompanion(PrivacyBudgetTableCompanion data) {
+    return PrivacyBudgetEntry(
+      id: data.id.present ? data.id.value : this.id,
+      entity: data.entity.present ? data.entity.value : this.entity,
+      allocatedEpsilon: data.allocatedEpsilon.present
+          ? data.allocatedEpsilon.value
+          : this.allocatedEpsilon,
+      consumedEpsilon: data.consumedEpsilon.present
+          ? data.consumedEpsilon.value
+          : this.consumedEpsilon,
+      delta: data.delta.present ? data.delta.value : this.delta,
+      lastUpdated: data.lastUpdated.present
+          ? data.lastUpdated.value
+          : this.lastUpdated,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PrivacyBudgetEntry(')
+          ..write('id: $id, ')
+          ..write('entity: $entity, ')
+          ..write('allocatedEpsilon: $allocatedEpsilon, ')
+          ..write('consumedEpsilon: $consumedEpsilon, ')
+          ..write('delta: $delta, ')
+          ..write('lastUpdated: $lastUpdated')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    entity,
+    allocatedEpsilon,
+    consumedEpsilon,
+    delta,
+    lastUpdated,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PrivacyBudgetEntry &&
+          other.id == this.id &&
+          other.entity == this.entity &&
+          other.allocatedEpsilon == this.allocatedEpsilon &&
+          other.consumedEpsilon == this.consumedEpsilon &&
+          other.delta == this.delta &&
+          other.lastUpdated == this.lastUpdated);
+}
+
+class PrivacyBudgetTableCompanion extends UpdateCompanion<PrivacyBudgetEntry> {
+  final Value<int> id;
+  final Value<String> entity;
+  final Value<double> allocatedEpsilon;
+  final Value<double> consumedEpsilon;
+  final Value<double> delta;
+  final Value<DateTime> lastUpdated;
+  const PrivacyBudgetTableCompanion({
+    this.id = const Value.absent(),
+    this.entity = const Value.absent(),
+    this.allocatedEpsilon = const Value.absent(),
+    this.consumedEpsilon = const Value.absent(),
+    this.delta = const Value.absent(),
+    this.lastUpdated = const Value.absent(),
+  });
+  PrivacyBudgetTableCompanion.insert({
+    this.id = const Value.absent(),
+    required String entity,
+    this.allocatedEpsilon = const Value.absent(),
+    this.consumedEpsilon = const Value.absent(),
+    this.delta = const Value.absent(),
+    this.lastUpdated = const Value.absent(),
+  }) : entity = Value(entity);
+  static Insertable<PrivacyBudgetEntry> custom({
+    Expression<int>? id,
+    Expression<String>? entity,
+    Expression<double>? allocatedEpsilon,
+    Expression<double>? consumedEpsilon,
+    Expression<double>? delta,
+    Expression<DateTime>? lastUpdated,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (entity != null) 'entity': entity,
+      if (allocatedEpsilon != null) 'allocated_epsilon': allocatedEpsilon,
+      if (consumedEpsilon != null) 'consumed_epsilon': consumedEpsilon,
+      if (delta != null) 'delta': delta,
+      if (lastUpdated != null) 'last_updated': lastUpdated,
+    });
+  }
+
+  PrivacyBudgetTableCompanion copyWith({
+    Value<int>? id,
+    Value<String>? entity,
+    Value<double>? allocatedEpsilon,
+    Value<double>? consumedEpsilon,
+    Value<double>? delta,
+    Value<DateTime>? lastUpdated,
+  }) {
+    return PrivacyBudgetTableCompanion(
+      id: id ?? this.id,
+      entity: entity ?? this.entity,
+      allocatedEpsilon: allocatedEpsilon ?? this.allocatedEpsilon,
+      consumedEpsilon: consumedEpsilon ?? this.consumedEpsilon,
+      delta: delta ?? this.delta,
+      lastUpdated: lastUpdated ?? this.lastUpdated,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (entity.present) {
+      map['entity'] = Variable<String>(entity.value);
+    }
+    if (allocatedEpsilon.present) {
+      map['allocated_epsilon'] = Variable<double>(allocatedEpsilon.value);
+    }
+    if (consumedEpsilon.present) {
+      map['consumed_epsilon'] = Variable<double>(consumedEpsilon.value);
+    }
+    if (delta.present) {
+      map['delta'] = Variable<double>(delta.value);
+    }
+    if (lastUpdated.present) {
+      map['last_updated'] = Variable<DateTime>(lastUpdated.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PrivacyBudgetTableCompanion(')
+          ..write('id: $id, ')
+          ..write('entity: $entity, ')
+          ..write('allocatedEpsilon: $allocatedEpsilon, ')
+          ..write('consumedEpsilon: $consumedEpsilon, ')
+          ..write('delta: $delta, ')
+          ..write('lastUpdated: $lastUpdated')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PrivacyLedgerTableTable extends PrivacyLedgerTable
+    with TableInfo<$PrivacyLedgerTableTable, PrivacyLedgerEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PrivacyLedgerTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _entityMeta = const VerificationMeta('entity');
+  @override
+  late final GeneratedColumn<String> entity = GeneratedColumn<String>(
+    'entity',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _epsilonSpentMeta = const VerificationMeta(
+    'epsilonSpent',
+  );
+  @override
+  late final GeneratedColumn<double> epsilonSpent = GeneratedColumn<double>(
+    'epsilon_spent',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _operationMeta = const VerificationMeta(
+    'operation',
+  );
+  @override
+  late final GeneratedColumn<String> operation = GeneratedColumn<String>(
+    'operation',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _timestampMeta = const VerificationMeta(
+    'timestamp',
+  );
+  @override
+  late final GeneratedColumn<int> timestamp = GeneratedColumn<int>(
+    'timestamp',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    entity,
+    epsilonSpent,
+    operation,
+    timestamp,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'privacy_ledger_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PrivacyLedgerEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('entity')) {
+      context.handle(
+        _entityMeta,
+        entity.isAcceptableOrUnknown(data['entity']!, _entityMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_entityMeta);
+    }
+    if (data.containsKey('epsilon_spent')) {
+      context.handle(
+        _epsilonSpentMeta,
+        epsilonSpent.isAcceptableOrUnknown(
+          data['epsilon_spent']!,
+          _epsilonSpentMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_epsilonSpentMeta);
+    }
+    if (data.containsKey('operation')) {
+      context.handle(
+        _operationMeta,
+        operation.isAcceptableOrUnknown(data['operation']!, _operationMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_operationMeta);
+    }
+    if (data.containsKey('timestamp')) {
+      context.handle(
+        _timestampMeta,
+        timestamp.isAcceptableOrUnknown(data['timestamp']!, _timestampMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_timestampMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PrivacyLedgerEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PrivacyLedgerEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      entity: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity'],
+      )!,
+      epsilonSpent: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}epsilon_spent'],
+      )!,
+      operation: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}operation'],
+      )!,
+      timestamp: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}timestamp'],
+      )!,
+    );
+  }
+
+  @override
+  $PrivacyLedgerTableTable createAlias(String alias) {
+    return $PrivacyLedgerTableTable(attachedDatabase, alias);
+  }
+}
+
+class PrivacyLedgerEntry extends DataClass
+    implements Insertable<PrivacyLedgerEntry> {
+  final int id;
+  final String entity;
+  final double epsilonSpent;
+  final String operation;
+  final int timestamp;
+  const PrivacyLedgerEntry({
+    required this.id,
+    required this.entity,
+    required this.epsilonSpent,
+    required this.operation,
+    required this.timestamp,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['entity'] = Variable<String>(entity);
+    map['epsilon_spent'] = Variable<double>(epsilonSpent);
+    map['operation'] = Variable<String>(operation);
+    map['timestamp'] = Variable<int>(timestamp);
+    return map;
+  }
+
+  PrivacyLedgerTableCompanion toCompanion(bool nullToAbsent) {
+    return PrivacyLedgerTableCompanion(
+      id: Value(id),
+      entity: Value(entity),
+      epsilonSpent: Value(epsilonSpent),
+      operation: Value(operation),
+      timestamp: Value(timestamp),
+    );
+  }
+
+  factory PrivacyLedgerEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PrivacyLedgerEntry(
+      id: serializer.fromJson<int>(json['id']),
+      entity: serializer.fromJson<String>(json['entity']),
+      epsilonSpent: serializer.fromJson<double>(json['epsilonSpent']),
+      operation: serializer.fromJson<String>(json['operation']),
+      timestamp: serializer.fromJson<int>(json['timestamp']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'entity': serializer.toJson<String>(entity),
+      'epsilonSpent': serializer.toJson<double>(epsilonSpent),
+      'operation': serializer.toJson<String>(operation),
+      'timestamp': serializer.toJson<int>(timestamp),
+    };
+  }
+
+  PrivacyLedgerEntry copyWith({
+    int? id,
+    String? entity,
+    double? epsilonSpent,
+    String? operation,
+    int? timestamp,
+  }) => PrivacyLedgerEntry(
+    id: id ?? this.id,
+    entity: entity ?? this.entity,
+    epsilonSpent: epsilonSpent ?? this.epsilonSpent,
+    operation: operation ?? this.operation,
+    timestamp: timestamp ?? this.timestamp,
+  );
+  PrivacyLedgerEntry copyWithCompanion(PrivacyLedgerTableCompanion data) {
+    return PrivacyLedgerEntry(
+      id: data.id.present ? data.id.value : this.id,
+      entity: data.entity.present ? data.entity.value : this.entity,
+      epsilonSpent: data.epsilonSpent.present
+          ? data.epsilonSpent.value
+          : this.epsilonSpent,
+      operation: data.operation.present ? data.operation.value : this.operation,
+      timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PrivacyLedgerEntry(')
+          ..write('id: $id, ')
+          ..write('entity: $entity, ')
+          ..write('epsilonSpent: $epsilonSpent, ')
+          ..write('operation: $operation, ')
+          ..write('timestamp: $timestamp')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, entity, epsilonSpent, operation, timestamp);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PrivacyLedgerEntry &&
+          other.id == this.id &&
+          other.entity == this.entity &&
+          other.epsilonSpent == this.epsilonSpent &&
+          other.operation == this.operation &&
+          other.timestamp == this.timestamp);
+}
+
+class PrivacyLedgerTableCompanion extends UpdateCompanion<PrivacyLedgerEntry> {
+  final Value<int> id;
+  final Value<String> entity;
+  final Value<double> epsilonSpent;
+  final Value<String> operation;
+  final Value<int> timestamp;
+  const PrivacyLedgerTableCompanion({
+    this.id = const Value.absent(),
+    this.entity = const Value.absent(),
+    this.epsilonSpent = const Value.absent(),
+    this.operation = const Value.absent(),
+    this.timestamp = const Value.absent(),
+  });
+  PrivacyLedgerTableCompanion.insert({
+    this.id = const Value.absent(),
+    required String entity,
+    required double epsilonSpent,
+    required String operation,
+    required int timestamp,
+  }) : entity = Value(entity),
+       epsilonSpent = Value(epsilonSpent),
+       operation = Value(operation),
+       timestamp = Value(timestamp);
+  static Insertable<PrivacyLedgerEntry> custom({
+    Expression<int>? id,
+    Expression<String>? entity,
+    Expression<double>? epsilonSpent,
+    Expression<String>? operation,
+    Expression<int>? timestamp,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (entity != null) 'entity': entity,
+      if (epsilonSpent != null) 'epsilon_spent': epsilonSpent,
+      if (operation != null) 'operation': operation,
+      if (timestamp != null) 'timestamp': timestamp,
+    });
+  }
+
+  PrivacyLedgerTableCompanion copyWith({
+    Value<int>? id,
+    Value<String>? entity,
+    Value<double>? epsilonSpent,
+    Value<String>? operation,
+    Value<int>? timestamp,
+  }) {
+    return PrivacyLedgerTableCompanion(
+      id: id ?? this.id,
+      entity: entity ?? this.entity,
+      epsilonSpent: epsilonSpent ?? this.epsilonSpent,
+      operation: operation ?? this.operation,
+      timestamp: timestamp ?? this.timestamp,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (entity.present) {
+      map['entity'] = Variable<String>(entity.value);
+    }
+    if (epsilonSpent.present) {
+      map['epsilon_spent'] = Variable<double>(epsilonSpent.value);
+    }
+    if (operation.present) {
+      map['operation'] = Variable<String>(operation.value);
+    }
+    if (timestamp.present) {
+      map['timestamp'] = Variable<int>(timestamp.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PrivacyLedgerTableCompanion(')
+          ..write('id: $id, ')
+          ..write('entity: $entity, ')
+          ..write('epsilonSpent: $epsilonSpent, ')
+          ..write('operation: $operation, ')
+          ..write('timestamp: $timestamp')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AttentionDatabase extends GeneratedDatabase {
   _$AttentionDatabase(QueryExecutor e) : super(e);
   $AttentionDatabaseManager get managers => $AttentionDatabaseManager(this);
@@ -2722,6 +4546,14 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final $DailyBriefTableTable dailyBriefTable = $DailyBriefTableTable(
     this,
   );
+  late final $InferenceTelemetryTableTable inferenceTelemetryTable =
+      $InferenceTelemetryTableTable(this);
+  late final $InferenceAuditLogsTableTable inferenceAuditLogsTable =
+      $InferenceAuditLogsTableTable(this);
+  late final $PrivacyBudgetTableTable privacyBudgetTable =
+      $PrivacyBudgetTableTable(this);
+  late final $PrivacyLedgerTableTable privacyLedgerTable =
+      $PrivacyLedgerTableTable(this);
   late final NotificationDao notificationDao = NotificationDao(
     this as AttentionDatabase,
   );
@@ -2734,6 +4566,8 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final DailyBriefDao dailyBriefDao = DailyBriefDao(
     this as AttentionDatabase,
   );
+  late final InferenceTelemetryDao inferenceTelemetryDao =
+      InferenceTelemetryDao(this as AttentionDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2743,6 +4577,10 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
     reviewQueueTable,
     focusSessionsTable,
     dailyBriefTable,
+    inferenceTelemetryTable,
+    inferenceAuditLogsTable,
+    privacyBudgetTable,
+    privacyLedgerTable,
   ];
 }
 
@@ -3406,7 +5244,9 @@ class $$NotificationsTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$NotificationsTableTable, NotificationEntry>(
+                    table,
+                  ),
                   $$NotificationsTableTableReferences(db, table, e),
                 ),
               )
@@ -3749,7 +5589,7 @@ class $$ReviewQueueTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$ReviewQueueTableTable, ReviewQueueEntry>(table),
                   $$ReviewQueueTableTableReferences(db, table, e),
                 ),
               )
@@ -4021,7 +5861,18 @@ class $$FocusSessionsTableTableTableManager
                 duration: duration,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$FocusSessionsTableTable, FocusSessionEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $FocusSessionsTableTable,
+                    FocusSessionEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4273,7 +6124,16 @@ class $$DailyBriefTableTableTableManager
                 archivedCount: archivedCount,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$DailyBriefTableTable, DailyBriefEntry>(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $DailyBriefTableTable,
+                    DailyBriefEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4301,6 +6161,1051 @@ typedef $$DailyBriefTableTableProcessedTableManager =
       DailyBriefEntry,
       PrefetchHooks Function()
     >;
+typedef $$InferenceTelemetryTableTableCreateCompanionBuilder =
+    InferenceTelemetryTableCompanion Function({
+      Value<int> id,
+      Value<String?> notificationId,
+      required int quantizedTimestamp,
+      required int latencyMs,
+      Value<String?> modelVersion,
+      Value<String?> ruleVersion,
+      Value<String?> engineVersion,
+      Value<bool> isFallback,
+      required double priorityScore,
+      Value<String?> priorityLevel,
+      Value<DateTime> createdAt,
+    });
+typedef $$InferenceTelemetryTableTableUpdateCompanionBuilder =
+    InferenceTelemetryTableCompanion Function({
+      Value<int> id,
+      Value<String?> notificationId,
+      Value<int> quantizedTimestamp,
+      Value<int> latencyMs,
+      Value<String?> modelVersion,
+      Value<String?> ruleVersion,
+      Value<String?> engineVersion,
+      Value<bool> isFallback,
+      Value<double> priorityScore,
+      Value<String?> priorityLevel,
+      Value<DateTime> createdAt,
+    });
+
+class $$InferenceTelemetryTableTableFilterComposer
+    extends Composer<_$AttentionDatabase, $InferenceTelemetryTableTable> {
+  $$InferenceTelemetryTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get quantizedTimestamp => $composableBuilder(
+    column: $table.quantizedTimestamp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get latencyMs => $composableBuilder(
+    column: $table.latencyMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get modelVersion => $composableBuilder(
+    column: $table.modelVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ruleVersion => $composableBuilder(
+    column: $table.ruleVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get engineVersion => $composableBuilder(
+    column: $table.engineVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isFallback => $composableBuilder(
+    column: $table.isFallback,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get priorityScore => $composableBuilder(
+    column: $table.priorityScore,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get priorityLevel => $composableBuilder(
+    column: $table.priorityLevel,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$InferenceTelemetryTableTableOrderingComposer
+    extends Composer<_$AttentionDatabase, $InferenceTelemetryTableTable> {
+  $$InferenceTelemetryTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get quantizedTimestamp => $composableBuilder(
+    column: $table.quantizedTimestamp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get latencyMs => $composableBuilder(
+    column: $table.latencyMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get modelVersion => $composableBuilder(
+    column: $table.modelVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ruleVersion => $composableBuilder(
+    column: $table.ruleVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get engineVersion => $composableBuilder(
+    column: $table.engineVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isFallback => $composableBuilder(
+    column: $table.isFallback,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get priorityScore => $composableBuilder(
+    column: $table.priorityScore,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get priorityLevel => $composableBuilder(
+    column: $table.priorityLevel,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$InferenceTelemetryTableTableAnnotationComposer
+    extends Composer<_$AttentionDatabase, $InferenceTelemetryTableTable> {
+  $$InferenceTelemetryTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get quantizedTimestamp => $composableBuilder(
+    column: $table.quantizedTimestamp,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get latencyMs =>
+      $composableBuilder(column: $table.latencyMs, builder: (column) => column);
+
+  GeneratedColumn<String> get modelVersion => $composableBuilder(
+    column: $table.modelVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get ruleVersion => $composableBuilder(
+    column: $table.ruleVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get engineVersion => $composableBuilder(
+    column: $table.engineVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isFallback => $composableBuilder(
+    column: $table.isFallback,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get priorityScore => $composableBuilder(
+    column: $table.priorityScore,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get priorityLevel => $composableBuilder(
+    column: $table.priorityLevel,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$InferenceTelemetryTableTableTableManager
+    extends
+        RootTableManager<
+          _$AttentionDatabase,
+          $InferenceTelemetryTableTable,
+          InferenceTelemetryEntry,
+          $$InferenceTelemetryTableTableFilterComposer,
+          $$InferenceTelemetryTableTableOrderingComposer,
+          $$InferenceTelemetryTableTableAnnotationComposer,
+          $$InferenceTelemetryTableTableCreateCompanionBuilder,
+          $$InferenceTelemetryTableTableUpdateCompanionBuilder,
+          (
+            InferenceTelemetryEntry,
+            BaseReferences<
+              _$AttentionDatabase,
+              $InferenceTelemetryTableTable,
+              InferenceTelemetryEntry
+            >,
+          ),
+          InferenceTelemetryEntry,
+          PrefetchHooks Function()
+        > {
+  $$InferenceTelemetryTableTableTableManager(
+    _$AttentionDatabase db,
+    $InferenceTelemetryTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$InferenceTelemetryTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$InferenceTelemetryTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$InferenceTelemetryTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String?> notificationId = const Value.absent(),
+                Value<int> quantizedTimestamp = const Value.absent(),
+                Value<int> latencyMs = const Value.absent(),
+                Value<String?> modelVersion = const Value.absent(),
+                Value<String?> ruleVersion = const Value.absent(),
+                Value<String?> engineVersion = const Value.absent(),
+                Value<bool> isFallback = const Value.absent(),
+                Value<double> priorityScore = const Value.absent(),
+                Value<String?> priorityLevel = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => InferenceTelemetryTableCompanion(
+                id: id,
+                notificationId: notificationId,
+                quantizedTimestamp: quantizedTimestamp,
+                latencyMs: latencyMs,
+                modelVersion: modelVersion,
+                ruleVersion: ruleVersion,
+                engineVersion: engineVersion,
+                isFallback: isFallback,
+                priorityScore: priorityScore,
+                priorityLevel: priorityLevel,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String?> notificationId = const Value.absent(),
+                required int quantizedTimestamp,
+                required int latencyMs,
+                Value<String?> modelVersion = const Value.absent(),
+                Value<String?> ruleVersion = const Value.absent(),
+                Value<String?> engineVersion = const Value.absent(),
+                Value<bool> isFallback = const Value.absent(),
+                required double priorityScore,
+                Value<String?> priorityLevel = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => InferenceTelemetryTableCompanion.insert(
+                id: id,
+                notificationId: notificationId,
+                quantizedTimestamp: quantizedTimestamp,
+                latencyMs: latencyMs,
+                modelVersion: modelVersion,
+                ruleVersion: ruleVersion,
+                engineVersion: engineVersion,
+                isFallback: isFallback,
+                priorityScore: priorityScore,
+                priorityLevel: priorityLevel,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $InferenceTelemetryTableTable,
+                    InferenceTelemetryEntry
+                  >(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $InferenceTelemetryTableTable,
+                    InferenceTelemetryEntry
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$InferenceTelemetryTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AttentionDatabase,
+      $InferenceTelemetryTableTable,
+      InferenceTelemetryEntry,
+      $$InferenceTelemetryTableTableFilterComposer,
+      $$InferenceTelemetryTableTableOrderingComposer,
+      $$InferenceTelemetryTableTableAnnotationComposer,
+      $$InferenceTelemetryTableTableCreateCompanionBuilder,
+      $$InferenceTelemetryTableTableUpdateCompanionBuilder,
+      (
+        InferenceTelemetryEntry,
+        BaseReferences<
+          _$AttentionDatabase,
+          $InferenceTelemetryTableTable,
+          InferenceTelemetryEntry
+        >,
+      ),
+      InferenceTelemetryEntry,
+      PrefetchHooks Function()
+    >;
+typedef $$InferenceAuditLogsTableTableCreateCompanionBuilder =
+    InferenceAuditLogsTableCompanion Function({
+      Value<int> id,
+      required int timestamp,
+      required String eventType,
+      required String logMessage,
+      Value<DateTime> createdAt,
+    });
+typedef $$InferenceAuditLogsTableTableUpdateCompanionBuilder =
+    InferenceAuditLogsTableCompanion Function({
+      Value<int> id,
+      Value<int> timestamp,
+      Value<String> eventType,
+      Value<String> logMessage,
+      Value<DateTime> createdAt,
+    });
+
+class $$InferenceAuditLogsTableTableFilterComposer
+    extends Composer<_$AttentionDatabase, $InferenceAuditLogsTableTable> {
+  $$InferenceAuditLogsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get eventType => $composableBuilder(
+    column: $table.eventType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get logMessage => $composableBuilder(
+    column: $table.logMessage,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$InferenceAuditLogsTableTableOrderingComposer
+    extends Composer<_$AttentionDatabase, $InferenceAuditLogsTableTable> {
+  $$InferenceAuditLogsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get eventType => $composableBuilder(
+    column: $table.eventType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get logMessage => $composableBuilder(
+    column: $table.logMessage,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$InferenceAuditLogsTableTableAnnotationComposer
+    extends Composer<_$AttentionDatabase, $InferenceAuditLogsTableTable> {
+  $$InferenceAuditLogsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get timestamp =>
+      $composableBuilder(column: $table.timestamp, builder: (column) => column);
+
+  GeneratedColumn<String> get eventType =>
+      $composableBuilder(column: $table.eventType, builder: (column) => column);
+
+  GeneratedColumn<String> get logMessage => $composableBuilder(
+    column: $table.logMessage,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$InferenceAuditLogsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AttentionDatabase,
+          $InferenceAuditLogsTableTable,
+          InferenceAuditLogEntry,
+          $$InferenceAuditLogsTableTableFilterComposer,
+          $$InferenceAuditLogsTableTableOrderingComposer,
+          $$InferenceAuditLogsTableTableAnnotationComposer,
+          $$InferenceAuditLogsTableTableCreateCompanionBuilder,
+          $$InferenceAuditLogsTableTableUpdateCompanionBuilder,
+          (
+            InferenceAuditLogEntry,
+            BaseReferences<
+              _$AttentionDatabase,
+              $InferenceAuditLogsTableTable,
+              InferenceAuditLogEntry
+            >,
+          ),
+          InferenceAuditLogEntry,
+          PrefetchHooks Function()
+        > {
+  $$InferenceAuditLogsTableTableTableManager(
+    _$AttentionDatabase db,
+    $InferenceAuditLogsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$InferenceAuditLogsTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$InferenceAuditLogsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$InferenceAuditLogsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> timestamp = const Value.absent(),
+                Value<String> eventType = const Value.absent(),
+                Value<String> logMessage = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => InferenceAuditLogsTableCompanion(
+                id: id,
+                timestamp: timestamp,
+                eventType: eventType,
+                logMessage: logMessage,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int timestamp,
+                required String eventType,
+                required String logMessage,
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => InferenceAuditLogsTableCompanion.insert(
+                id: id,
+                timestamp: timestamp,
+                eventType: eventType,
+                logMessage: logMessage,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $InferenceAuditLogsTableTable,
+                    InferenceAuditLogEntry
+                  >(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $InferenceAuditLogsTableTable,
+                    InferenceAuditLogEntry
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$InferenceAuditLogsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AttentionDatabase,
+      $InferenceAuditLogsTableTable,
+      InferenceAuditLogEntry,
+      $$InferenceAuditLogsTableTableFilterComposer,
+      $$InferenceAuditLogsTableTableOrderingComposer,
+      $$InferenceAuditLogsTableTableAnnotationComposer,
+      $$InferenceAuditLogsTableTableCreateCompanionBuilder,
+      $$InferenceAuditLogsTableTableUpdateCompanionBuilder,
+      (
+        InferenceAuditLogEntry,
+        BaseReferences<
+          _$AttentionDatabase,
+          $InferenceAuditLogsTableTable,
+          InferenceAuditLogEntry
+        >,
+      ),
+      InferenceAuditLogEntry,
+      PrefetchHooks Function()
+    >;
+typedef $$PrivacyBudgetTableTableCreateCompanionBuilder =
+    PrivacyBudgetTableCompanion Function({
+      Value<int> id,
+      required String entity,
+      Value<double> allocatedEpsilon,
+      Value<double> consumedEpsilon,
+      Value<double> delta,
+      Value<DateTime> lastUpdated,
+    });
+typedef $$PrivacyBudgetTableTableUpdateCompanionBuilder =
+    PrivacyBudgetTableCompanion Function({
+      Value<int> id,
+      Value<String> entity,
+      Value<double> allocatedEpsilon,
+      Value<double> consumedEpsilon,
+      Value<double> delta,
+      Value<DateTime> lastUpdated,
+    });
+
+class $$PrivacyBudgetTableTableFilterComposer
+    extends Composer<_$AttentionDatabase, $PrivacyBudgetTableTable> {
+  $$PrivacyBudgetTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entity => $composableBuilder(
+    column: $table.entity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get allocatedEpsilon => $composableBuilder(
+    column: $table.allocatedEpsilon,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get consumedEpsilon => $composableBuilder(
+    column: $table.consumedEpsilon,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get delta => $composableBuilder(
+    column: $table.delta,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastUpdated => $composableBuilder(
+    column: $table.lastUpdated,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PrivacyBudgetTableTableOrderingComposer
+    extends Composer<_$AttentionDatabase, $PrivacyBudgetTableTable> {
+  $$PrivacyBudgetTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entity => $composableBuilder(
+    column: $table.entity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get allocatedEpsilon => $composableBuilder(
+    column: $table.allocatedEpsilon,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get consumedEpsilon => $composableBuilder(
+    column: $table.consumedEpsilon,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get delta => $composableBuilder(
+    column: $table.delta,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastUpdated => $composableBuilder(
+    column: $table.lastUpdated,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PrivacyBudgetTableTableAnnotationComposer
+    extends Composer<_$AttentionDatabase, $PrivacyBudgetTableTable> {
+  $$PrivacyBudgetTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get entity =>
+      $composableBuilder(column: $table.entity, builder: (column) => column);
+
+  GeneratedColumn<double> get allocatedEpsilon => $composableBuilder(
+    column: $table.allocatedEpsilon,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get consumedEpsilon => $composableBuilder(
+    column: $table.consumedEpsilon,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get delta =>
+      $composableBuilder(column: $table.delta, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastUpdated => $composableBuilder(
+    column: $table.lastUpdated,
+    builder: (column) => column,
+  );
+}
+
+class $$PrivacyBudgetTableTableTableManager
+    extends
+        RootTableManager<
+          _$AttentionDatabase,
+          $PrivacyBudgetTableTable,
+          PrivacyBudgetEntry,
+          $$PrivacyBudgetTableTableFilterComposer,
+          $$PrivacyBudgetTableTableOrderingComposer,
+          $$PrivacyBudgetTableTableAnnotationComposer,
+          $$PrivacyBudgetTableTableCreateCompanionBuilder,
+          $$PrivacyBudgetTableTableUpdateCompanionBuilder,
+          (
+            PrivacyBudgetEntry,
+            BaseReferences<
+              _$AttentionDatabase,
+              $PrivacyBudgetTableTable,
+              PrivacyBudgetEntry
+            >,
+          ),
+          PrivacyBudgetEntry,
+          PrefetchHooks Function()
+        > {
+  $$PrivacyBudgetTableTableTableManager(
+    _$AttentionDatabase db,
+    $PrivacyBudgetTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PrivacyBudgetTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PrivacyBudgetTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PrivacyBudgetTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> entity = const Value.absent(),
+                Value<double> allocatedEpsilon = const Value.absent(),
+                Value<double> consumedEpsilon = const Value.absent(),
+                Value<double> delta = const Value.absent(),
+                Value<DateTime> lastUpdated = const Value.absent(),
+              }) => PrivacyBudgetTableCompanion(
+                id: id,
+                entity: entity,
+                allocatedEpsilon: allocatedEpsilon,
+                consumedEpsilon: consumedEpsilon,
+                delta: delta,
+                lastUpdated: lastUpdated,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String entity,
+                Value<double> allocatedEpsilon = const Value.absent(),
+                Value<double> consumedEpsilon = const Value.absent(),
+                Value<double> delta = const Value.absent(),
+                Value<DateTime> lastUpdated = const Value.absent(),
+              }) => PrivacyBudgetTableCompanion.insert(
+                id: id,
+                entity: entity,
+                allocatedEpsilon: allocatedEpsilon,
+                consumedEpsilon: consumedEpsilon,
+                delta: delta,
+                lastUpdated: lastUpdated,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$PrivacyBudgetTableTable, PrivacyBudgetEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $PrivacyBudgetTableTable,
+                    PrivacyBudgetEntry
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PrivacyBudgetTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AttentionDatabase,
+      $PrivacyBudgetTableTable,
+      PrivacyBudgetEntry,
+      $$PrivacyBudgetTableTableFilterComposer,
+      $$PrivacyBudgetTableTableOrderingComposer,
+      $$PrivacyBudgetTableTableAnnotationComposer,
+      $$PrivacyBudgetTableTableCreateCompanionBuilder,
+      $$PrivacyBudgetTableTableUpdateCompanionBuilder,
+      (
+        PrivacyBudgetEntry,
+        BaseReferences<
+          _$AttentionDatabase,
+          $PrivacyBudgetTableTable,
+          PrivacyBudgetEntry
+        >,
+      ),
+      PrivacyBudgetEntry,
+      PrefetchHooks Function()
+    >;
+typedef $$PrivacyLedgerTableTableCreateCompanionBuilder =
+    PrivacyLedgerTableCompanion Function({
+      Value<int> id,
+      required String entity,
+      required double epsilonSpent,
+      required String operation,
+      required int timestamp,
+    });
+typedef $$PrivacyLedgerTableTableUpdateCompanionBuilder =
+    PrivacyLedgerTableCompanion Function({
+      Value<int> id,
+      Value<String> entity,
+      Value<double> epsilonSpent,
+      Value<String> operation,
+      Value<int> timestamp,
+    });
+
+class $$PrivacyLedgerTableTableFilterComposer
+    extends Composer<_$AttentionDatabase, $PrivacyLedgerTableTable> {
+  $$PrivacyLedgerTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entity => $composableBuilder(
+    column: $table.entity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get epsilonSpent => $composableBuilder(
+    column: $table.epsilonSpent,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get operation => $composableBuilder(
+    column: $table.operation,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PrivacyLedgerTableTableOrderingComposer
+    extends Composer<_$AttentionDatabase, $PrivacyLedgerTableTable> {
+  $$PrivacyLedgerTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entity => $composableBuilder(
+    column: $table.entity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get epsilonSpent => $composableBuilder(
+    column: $table.epsilonSpent,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get operation => $composableBuilder(
+    column: $table.operation,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PrivacyLedgerTableTableAnnotationComposer
+    extends Composer<_$AttentionDatabase, $PrivacyLedgerTableTable> {
+  $$PrivacyLedgerTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get entity =>
+      $composableBuilder(column: $table.entity, builder: (column) => column);
+
+  GeneratedColumn<double> get epsilonSpent => $composableBuilder(
+    column: $table.epsilonSpent,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get operation =>
+      $composableBuilder(column: $table.operation, builder: (column) => column);
+
+  GeneratedColumn<int> get timestamp =>
+      $composableBuilder(column: $table.timestamp, builder: (column) => column);
+}
+
+class $$PrivacyLedgerTableTableTableManager
+    extends
+        RootTableManager<
+          _$AttentionDatabase,
+          $PrivacyLedgerTableTable,
+          PrivacyLedgerEntry,
+          $$PrivacyLedgerTableTableFilterComposer,
+          $$PrivacyLedgerTableTableOrderingComposer,
+          $$PrivacyLedgerTableTableAnnotationComposer,
+          $$PrivacyLedgerTableTableCreateCompanionBuilder,
+          $$PrivacyLedgerTableTableUpdateCompanionBuilder,
+          (
+            PrivacyLedgerEntry,
+            BaseReferences<
+              _$AttentionDatabase,
+              $PrivacyLedgerTableTable,
+              PrivacyLedgerEntry
+            >,
+          ),
+          PrivacyLedgerEntry,
+          PrefetchHooks Function()
+        > {
+  $$PrivacyLedgerTableTableTableManager(
+    _$AttentionDatabase db,
+    $PrivacyLedgerTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PrivacyLedgerTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PrivacyLedgerTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PrivacyLedgerTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> entity = const Value.absent(),
+                Value<double> epsilonSpent = const Value.absent(),
+                Value<String> operation = const Value.absent(),
+                Value<int> timestamp = const Value.absent(),
+              }) => PrivacyLedgerTableCompanion(
+                id: id,
+                entity: entity,
+                epsilonSpent: epsilonSpent,
+                operation: operation,
+                timestamp: timestamp,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String entity,
+                required double epsilonSpent,
+                required String operation,
+                required int timestamp,
+              }) => PrivacyLedgerTableCompanion.insert(
+                id: id,
+                entity: entity,
+                epsilonSpent: epsilonSpent,
+                operation: operation,
+                timestamp: timestamp,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$PrivacyLedgerTableTable, PrivacyLedgerEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $PrivacyLedgerTableTable,
+                    PrivacyLedgerEntry
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PrivacyLedgerTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AttentionDatabase,
+      $PrivacyLedgerTableTable,
+      PrivacyLedgerEntry,
+      $$PrivacyLedgerTableTableFilterComposer,
+      $$PrivacyLedgerTableTableOrderingComposer,
+      $$PrivacyLedgerTableTableAnnotationComposer,
+      $$PrivacyLedgerTableTableCreateCompanionBuilder,
+      $$PrivacyLedgerTableTableUpdateCompanionBuilder,
+      (
+        PrivacyLedgerEntry,
+        BaseReferences<
+          _$AttentionDatabase,
+          $PrivacyLedgerTableTable,
+          PrivacyLedgerEntry
+        >,
+      ),
+      PrivacyLedgerEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AttentionDatabaseManager {
   final _$AttentionDatabase _db;
@@ -4313,4 +7218,18 @@ class $AttentionDatabaseManager {
       $$FocusSessionsTableTableTableManager(_db, _db.focusSessionsTable);
   $$DailyBriefTableTableTableManager get dailyBriefTable =>
       $$DailyBriefTableTableTableManager(_db, _db.dailyBriefTable);
+  $$InferenceTelemetryTableTableTableManager get inferenceTelemetryTable =>
+      $$InferenceTelemetryTableTableTableManager(
+        _db,
+        _db.inferenceTelemetryTable,
+      );
+  $$InferenceAuditLogsTableTableTableManager get inferenceAuditLogsTable =>
+      $$InferenceAuditLogsTableTableTableManager(
+        _db,
+        _db.inferenceAuditLogsTable,
+      );
+  $$PrivacyBudgetTableTableTableManager get privacyBudgetTable =>
+      $$PrivacyBudgetTableTableTableManager(_db, _db.privacyBudgetTable);
+  $$PrivacyLedgerTableTableTableManager get privacyLedgerTable =>
+      $$PrivacyLedgerTableTableTableManager(_db, _db.privacyLedgerTable);
 }

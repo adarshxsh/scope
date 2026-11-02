@@ -27,6 +27,7 @@ class AnalysisResult {
     this.isFallback = false,
   });
 
+
   @override
   String toString() => 'AnalysisResult(category: $category, score: $score, '
       'engineName: $engineName, matchedSignals: $matchedSignals, latencyMs: ${latencyMs}ms, isFallback: $isFallback)';

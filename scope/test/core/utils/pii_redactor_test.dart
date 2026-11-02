@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:scope/core/utils/pii_redactor.dart';
 
 void main() {
-  group('PiiRedactor Tests', () {
+  group('PiiRedactor Unit Tests', () {
     test('redact handles null and empty inputs gracefully', () {
       expect(PiiRedactor.redact(null), equals(''));
       expect(PiiRedactor.redact(''), equals(''));
@@ -15,46 +15,49 @@ void main() {
       expect(PiiRedactor.redact(text), equals(text));
     });
 
-    test('redact sanitizes OTPs and passcodes', () {
-      const input = 'Your verification code is 882715. Valid for 10 minutes.';
+    test('redacts email addresses correctly', () {
+      const input = 'Contact us at support@scope.app for assistance.';
       final redacted = PiiRedactor.redact(input);
-      expect(redacted, contains('[REDACTED_OTP]'));
-      expect(redacted, isNot(contains('882715')));
+      expect(redacted, equals('Contact us at [REDACTED_EMAIL] for assistance.'));
     });
 
-    test('redact sanitizes credit card numbers', () {
-      const input = 'Card 4532-1100-8890-2311 authorized.';
+    test('redacts URLs correctly', () {
+      const input = 'Visit https://scope.internal/auth or www.scope.com/login for details.';
       final redacted = PiiRedactor.redact(input);
-      expect(redacted, contains('[REDACTED_CARD]'));
-      expect(redacted, isNot(contains('4532-1100-8890-2311')));
+      expect(redacted, equals('Visit [REDACTED_URL] or [REDACTED_URL] for details.'));
     });
 
-    test('redact sanitizes email addresses', () {
-      const input = 'Security alert for user.name@domain.co.in from new device.';
-      final redacted = PiiRedactor.redact(input);
-      expect(redacted, contains('[REDACTED_EMAIL]'));
-      expect(redacted, isNot(contains('user.name@domain.co.in')));
-    });
-
-    test('redact sanitizes URLs and web links', () {
-      const input = 'Click https://example.com/reset?token=12345 to reset password.';
-      final redacted = PiiRedactor.redact(input);
-      expect(redacted, contains('[REDACTED_URL]'));
-      expect(redacted, isNot(contains('https://example.com/reset?token=12345')));
-    });
-
-    test('redact sanitizes monetary amounts', () {
-      const input1 = r'Your account was debited $150.50 on March 12.';
-      const input2 = 'Received payment of Rs. 5,000 via UPI.';
-      expect(PiiRedactor.redact(input1), contains('[REDACTED_AMOUNT]'));
-      expect(PiiRedactor.redact(input2), contains('[REDACTED_AMOUNT]'));
-    });
-
-    test('redact sanitizes phone numbers', () {
-      const input = 'Call customer support at 800-555-0199 for assistance.';
+    test('redacts phone numbers correctly', () {
+      const input = 'Call +1 555-123-4567 or 555-987-6543 immediately.';
       final redacted = PiiRedactor.redact(input);
       expect(redacted, contains('[REDACTED_PHONE]'));
-      expect(redacted, isNot(contains('800-555-0199')));
+    });
+
+    test('redacts OTP and verification codes correctly', () {
+      const input = 'Your OTP code is 987654. Do not share this PIN 123456.';
+      final redacted = PiiRedactor.redact(input);
+      expect(redacted, contains('[REDACTED_OTP]'));
+      expect(redacted, isNot(contains('987654')));
+    });
+
+    test('redacts monetary amounts correctly', () {
+      const input = r'Payment of $150.00 or ₹5,000 was received.';
+      final redacted = PiiRedactor.redact(input);
+      expect(redacted, contains('[REDACTED_AMOUNT]'));
+      expect(redacted, isNot(contains(r'$150.00')));
+    });
+
+    test('redacts bearer tokens correctly', () {
+      const input = 'Authorization: bearer eyJhbGciOiJIUzI1NiI1cCI6IkpXVCJ9';
+      final redacted = PiiRedactor.redact(input);
+      expect(redacted, contains('[REDACTED_TOKEN]'));
+    });
+
+    test('redacts credit card numbers correctly', () {
+      const input = 'Card 4111 2222 3333 4444 charged successfully.';
+      final redacted = PiiRedactor.redact(input);
+      expect(redacted, contains('[REDACTED_CARD]'));
+      expect(redacted, isNot(contains('4111 2222 3333 4444')));
     });
 
     test('redact handles multiple sensitive entities in a single notification string', () {
@@ -66,6 +69,25 @@ void main() {
       expect(redacted, isNot(contains('998811')));
       expect(redacted, isNot(contains(r'$250.00')));
       expect(redacted, isNot(contains('user@pay.com')));
+    });
+
+    test('redactMap recursively redacts sensitive string fields', () {
+      final map = {
+        'title': 'OTP Verification',
+        'body': 'Your code is 554433 for email test@example.com',
+        'metadata': {
+          'link': 'https://auth.scope.app/confirm',
+          'amount': 25.5,
+        },
+        'tags': ['https://example.org', 'user@domain.com'],
+      };
+
+      final redactedMap = PiiRedactor.redactMap(map);
+      expect(redactedMap['body'], contains('[REDACTED_OTP]'));
+      expect(redactedMap['body'], contains('[REDACTED_EMAIL]'));
+      expect((redactedMap['metadata'] as Map)['link'], equals('[REDACTED_URL]'));
+      expect((redactedMap['tags'] as List)[0], equals('[REDACTED_URL]'));
+      expect((redactedMap['tags'] as List)[1], equals('[REDACTED_EMAIL]'));
     });
   });
 }

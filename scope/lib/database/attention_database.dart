@@ -16,12 +16,17 @@ part 'attention_database.g.dart';
     ReviewQueueTable,
     FocusSessionsTable,
     DailyBriefTable,
+    InferenceTelemetryTable,
+    InferenceAuditLogsTable,
+    PrivacyBudgetTable,
+    PrivacyLedgerTable,
   ],
   daos: [
     NotificationDao,
     ReviewQueueDao,
     FocusSessionDao,
     DailyBriefDao,
+    InferenceTelemetryDao,
   ],
 )
 class AttentionDatabase extends _$AttentionDatabase {
@@ -32,9 +37,25 @@ class AttentionDatabase extends _$AttentionDatabase {
   }
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) async {
+          await m.createAll();
+        },
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.createTable(inferenceTelemetryTable);
+            await m.createTable(inferenceAuditLogsTable);
+            await m.createTable(privacyBudgetTable);
+            await m.createTable(privacyLedgerTable);
+          }
+        },
+      );
 
   /// Runs a single-step atomic transaction to clean up expired notifications
+
   /// and any orphaned review queue entries, avoiding main-thread loops.
   Future<void> runSetBasedCleanup(int cutoffTimestamp) async {
     await transaction(() async {

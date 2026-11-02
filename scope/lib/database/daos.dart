@@ -1,5 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/telemetry/telemetry_governance_service.dart';
+import 'package:scope/core/utils/pii_redactor.dart';
 import 'package:scope/database/attention_database.dart';
 import 'package:scope/database/tables.dart';
 
@@ -84,7 +86,11 @@ class FocusSessionDao extends DatabaseAccessor<AttentionDatabase> with _$FocusSe
   FocusSessionDao(super.db);
 
   Future<void> insertSession(FocusSessionEntry entry) async {
-    await into(focusSessionsTable).insert(entry);
+    final sanitizedEntry = entry.copyWith(
+      duration: TelemetryGovernanceService.quantizeDuration(entry.duration),
+      interruptions: TelemetryGovernanceService.quantizeInterruptions(entry.interruptions),
+    );
+    await into(focusSessionsTable).insert(sanitizedEntry);
   }
 
   Future<FocusSessionEntry?> getActiveSession() {
@@ -92,7 +98,11 @@ class FocusSessionDao extends DatabaseAccessor<AttentionDatabase> with _$FocusSe
   }
 
   Future<void> updateSession(FocusSessionEntry entry) async {
-    await update(focusSessionsTable).replace(entry);
+    final sanitizedEntry = entry.copyWith(
+      duration: TelemetryGovernanceService.quantizeDuration(entry.duration),
+      interruptions: TelemetryGovernanceService.quantizeInterruptions(entry.interruptions),
+    );
+    await update(focusSessionsTable).replace(sanitizedEntry);
   }
 
   Future<List<FocusSessionEntry>> getAll() {
@@ -154,3 +164,63 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
     await delete(dailyBriefTable).go();
   }
 }
+
+@DriftAccessor(tables: [
+  InferenceTelemetryTable,
+  InferenceAuditLogsTable,
+  PrivacyBudgetTable,
+  PrivacyLedgerTable,
+])
+class InferenceTelemetryDao extends DatabaseAccessor<AttentionDatabase> with _$InferenceTelemetryDaoMixin {
+  InferenceTelemetryDao(super.db);
+
+  Future<void> insertTelemetry(InferenceTelemetryEntry entry) async {
+    final quantizedEntry = entry.copyWith(
+      quantizedTimestamp: TelemetryGovernanceService.quantizeTimestamp(entry.quantizedTimestamp),
+    );
+    await into(inferenceTelemetryTable).insert(quantizedEntry);
+  }
+
+  Future<void> insertAuditLog({
+    required int timestamp,
+    required String eventType,
+    required String logMessage,
+  }) async {
+    final redactedMessage = PiiRedactor.redact(logMessage);
+    await into(inferenceAuditLogsTable).insert(
+      InferenceAuditLogsTableCompanion.insert(
+        timestamp: timestamp,
+        eventType: eventType,
+        logMessage: redactedMessage,
+      ),
+    );
+  }
+
+  Future<List<InferenceTelemetryEntry>> getAllTelemetry() {
+    return select(inferenceTelemetryTable).get();
+  }
+
+  Future<List<InferenceAuditLogEntry>> getAllAuditLogs() {
+    return select(inferenceAuditLogsTable).get();
+  }
+
+  Future<PrivacyBudgetEntry?> getPrivacyBudget(String entity) {
+    return (select(privacyBudgetTable)..where((t) => t.entity.equals(entity))).getSingleOrNull();
+  }
+
+  Future<void> updatePrivacyBudget(PrivacyBudgetEntry entry) async {
+    await into(privacyBudgetTable).insert(entry, mode: InsertMode.insertOrReplace);
+  }
+
+  Future<void> recordLedgerEntry(PrivacyLedgerEntry entry) async {
+    await into(privacyLedgerTable).insert(entry);
+  }
+
+  Future<void> clearAll() async {
+    await delete(inferenceTelemetryTable).go();
+    await delete(inferenceAuditLogsTable).go();
+    await delete(privacyBudgetTable).go();
+    await delete(privacyLedgerTable).go();
+  }
+}
+
