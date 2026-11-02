@@ -3,6 +3,7 @@ import 'package:drift/native.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/database/attention_database.dart';
+import 'package:scope/database/daos.dart';
 
 void main() {
   late AttentionDatabase db;
@@ -272,6 +273,92 @@ void main() {
       // Only the new one should remain, old one deleted due to notification expiry
       // Missing one deleted due to being orphaned
       expect(queueItems.first.notificationId, equals('n-new'));
+    });
+
+    test('insertAll enforcing 1,000 capacity limit on 1,500 items preserving newest 1,000', () async {
+      final baseTime = DateTime(2026, 1, 1).millisecondsSinceEpoch;
+      final entries = List.generate(1500, (i) {
+        return NotificationEntry(
+          id: 'n-$i',
+          packageName: 'com.example.app',
+          title: 'Notification $i',
+          content: 'Content $i',
+          timestamp: baseTime + (i * 1000), // increasing timestamp
+          state: ReviewState.ACTIVE,
+          reviewed: false,
+          dismissed: false,
+          isOngoing: false,
+          createdAt: DateTime.now(),
+        );
+      });
+
+      await db.notificationDao.insertAll(entries);
+
+      final count = await db.notificationDao.getCount();
+      expect(count, equals(1000));
+
+      final all = await db.notificationDao.getAll();
+      expect(all.length, equals(1000));
+
+      // Since getAll returns sorted by timestamp DESC, first is n-1499, last is n-500
+      expect(all.first.id, equals('n-1499'));
+      expect(all.last.id, equals('n-500'));
+
+      // Verify oldest 500 (n-0 to n-499) were evicted
+      final fetchedOldest = await db.notificationDao.getById('n-0');
+      expect(fetchedOldest, isNull);
+      final fetchedCutoff = await db.notificationDao.getById('n-499');
+      expect(fetchedCutoff, isNull);
+      final fetchedFirstKept = await db.notificationDao.getById('n-500');
+      expect(fetchedFirstKept, isNotNull);
+    });
+
+    test('insertNotification enforces custom capacity limit and cleans up orphaned review queue records', () async {
+      final customDao = NotificationDao(db, maxCapacity: 3);
+      final baseTime = DateTime(2026, 1, 1).millisecondsSinceEpoch;
+
+      for (int i = 0; i < 5; i++) {
+        final entry = NotificationEntry(
+          id: 'item-$i',
+          packageName: 'com.example.app',
+          title: 'Title $i',
+          content: 'Content $i',
+          timestamp: baseTime + (i * 1000),
+          state: ReviewState.ACTIVE,
+          reviewed: false,
+          dismissed: false,
+          isOngoing: false,
+          createdAt: DateTime.now(),
+        );
+
+        await customDao.insertNotification(entry);
+
+        await db.reviewQueueDao.insertItem(ReviewQueueEntry(
+          id: i + 1,
+          notificationId: 'item-$i',
+          priority: 'high',
+          enqueueTime: DateTime.now(),
+          status: ReviewState.ACTIVE,
+        ));
+      }
+
+      // At this point, 5 items were inserted sequentially.
+      // After capacity eviction with maxCapacity = 3, remaining notifications should be item-2, item-3, item-4.
+      final count = await customDao.getCount();
+      expect(count, equals(3));
+
+      final allNotifications = await customDao.getAll();
+      final ids = allNotifications.map((n) => n.id).toList();
+      expect(ids, containsAll(['item-2', 'item-3', 'item-4']));
+      expect(ids, isNot(contains('item-0')));
+      expect(ids, isNot(contains('item-1')));
+
+      // Verify orphaned review queue items were cleaned up atomically
+      final queueItems = await db.reviewQueueDao.getAll();
+      final queueNotifIds = queueItems.map((q) => q.notificationId).toList();
+      expect(queueNotifIds, containsAll(['item-2', 'item-3', 'item-4']));
+      expect(queueNotifIds, isNot(contains('item-0')));
+      expect(queueNotifIds, isNot(contains('item-1')));
     });
   });
 }
