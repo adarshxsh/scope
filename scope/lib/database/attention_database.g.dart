@@ -2709,6 +2709,725 @@ class DailyBriefTableCompanion extends UpdateCompanion<DailyBriefEntry> {
   }
 }
 
+class $UserFeedbackTableTable extends UserFeedbackTable
+    with TableInfo<$UserFeedbackTableTable, UserFeedbackEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $UserFeedbackTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _notificationIdMeta = const VerificationMeta(
+    'notificationId',
+  );
+  @override
+  late final GeneratedColumn<String> notificationId = GeneratedColumn<String>(
+    'notification_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _packageNameMeta = const VerificationMeta(
+    'packageName',
+  );
+  @override
+  late final GeneratedColumn<String> packageName = GeneratedColumn<String>(
+    'package_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _contentMeta = const VerificationMeta(
+    'content',
+  );
+  @override
+  late final GeneratedColumn<String> content = GeneratedColumn<String>(
+    'content',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _ratingMeta = const VerificationMeta('rating');
+  @override
+  late final GeneratedColumn<int> rating = GeneratedColumn<int>(
+    'rating',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _feedbackTypeMeta = const VerificationMeta(
+    'feedbackType',
+  );
+  @override
+  late final GeneratedColumn<String> feedbackType = GeneratedColumn<String>(
+    'feedback_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _featureVectorMeta = const VerificationMeta(
+    'featureVector',
+  );
+  @override
+  late final GeneratedColumn<String> featureVector = GeneratedColumn<String>(
+    'feature_vector',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _categoryMeta = const VerificationMeta(
+    'category',
+  );
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+    'category',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _priorityMeta = const VerificationMeta(
+    'priority',
+  );
+  @override
+  late final GeneratedColumn<String> priority = GeneratedColumn<String>(
+    'priority',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lookAgainScoreMeta = const VerificationMeta(
+    'lookAgainScore',
+  );
+  @override
+  late final GeneratedColumn<double> lookAgainScore = GeneratedColumn<double>(
+    'look_again_score',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _timestampMeta = const VerificationMeta(
+    'timestamp',
+  );
+  @override
+  late final GeneratedColumn<DateTime> timestamp = GeneratedColumn<DateTime>(
+    'timestamp',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    notificationId,
+    packageName,
+    title,
+    content,
+    rating,
+    feedbackType,
+    featureVector,
+    category,
+    priority,
+    lookAgainScore,
+    timestamp,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'user_feedback_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<UserFeedbackEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('notification_id')) {
+      context.handle(
+        _notificationIdMeta,
+        notificationId.isAcceptableOrUnknown(
+          data['notification_id']!,
+          _notificationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_notificationIdMeta);
+    }
+    if (data.containsKey('package_name')) {
+      context.handle(
+        _packageNameMeta,
+        packageName.isAcceptableOrUnknown(
+          data['package_name']!,
+          _packageNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_packageNameMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('content')) {
+      context.handle(
+        _contentMeta,
+        content.isAcceptableOrUnknown(data['content']!, _contentMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_contentMeta);
+    }
+    if (data.containsKey('rating')) {
+      context.handle(
+        _ratingMeta,
+        rating.isAcceptableOrUnknown(data['rating']!, _ratingMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_ratingMeta);
+    }
+    if (data.containsKey('feedback_type')) {
+      context.handle(
+        _feedbackTypeMeta,
+        feedbackType.isAcceptableOrUnknown(
+          data['feedback_type']!,
+          _feedbackTypeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_feedbackTypeMeta);
+    }
+    if (data.containsKey('feature_vector')) {
+      context.handle(
+        _featureVectorMeta,
+        featureVector.isAcceptableOrUnknown(
+          data['feature_vector']!,
+          _featureVectorMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_featureVectorMeta);
+    }
+    if (data.containsKey('category')) {
+      context.handle(
+        _categoryMeta,
+        category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
+      );
+    }
+    if (data.containsKey('priority')) {
+      context.handle(
+        _priorityMeta,
+        priority.isAcceptableOrUnknown(data['priority']!, _priorityMeta),
+      );
+    }
+    if (data.containsKey('look_again_score')) {
+      context.handle(
+        _lookAgainScoreMeta,
+        lookAgainScore.isAcceptableOrUnknown(
+          data['look_again_score']!,
+          _lookAgainScoreMeta,
+        ),
+      );
+    }
+    if (data.containsKey('timestamp')) {
+      context.handle(
+        _timestampMeta,
+        timestamp.isAcceptableOrUnknown(data['timestamp']!, _timestampMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  UserFeedbackEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return UserFeedbackEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      notificationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notification_id'],
+      )!,
+      packageName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}package_name'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      content: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}content'],
+      )!,
+      rating: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}rating'],
+      )!,
+      feedbackType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}feedback_type'],
+      )!,
+      featureVector: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}feature_vector'],
+      )!,
+      category: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category'],
+      ),
+      priority: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}priority'],
+      ),
+      lookAgainScore: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}look_again_score'],
+      ),
+      timestamp: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}timestamp'],
+      )!,
+    );
+  }
+
+  @override
+  $UserFeedbackTableTable createAlias(String alias) {
+    return $UserFeedbackTableTable(attachedDatabase, alias);
+  }
+}
+
+class UserFeedbackEntry extends DataClass
+    implements Insertable<UserFeedbackEntry> {
+  final int id;
+  final String notificationId;
+  final String packageName;
+  final String title;
+  final String content;
+  final int rating;
+  final String feedbackType;
+  final String featureVector;
+  final String? category;
+  final String? priority;
+  final double? lookAgainScore;
+  final DateTime timestamp;
+  const UserFeedbackEntry({
+    required this.id,
+    required this.notificationId,
+    required this.packageName,
+    required this.title,
+    required this.content,
+    required this.rating,
+    required this.feedbackType,
+    required this.featureVector,
+    this.category,
+    this.priority,
+    this.lookAgainScore,
+    required this.timestamp,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['notification_id'] = Variable<String>(notificationId);
+    map['package_name'] = Variable<String>(packageName);
+    map['title'] = Variable<String>(title);
+    map['content'] = Variable<String>(content);
+    map['rating'] = Variable<int>(rating);
+    map['feedback_type'] = Variable<String>(feedbackType);
+    map['feature_vector'] = Variable<String>(featureVector);
+    if (!nullToAbsent || category != null) {
+      map['category'] = Variable<String>(category);
+    }
+    if (!nullToAbsent || priority != null) {
+      map['priority'] = Variable<String>(priority);
+    }
+    if (!nullToAbsent || lookAgainScore != null) {
+      map['look_again_score'] = Variable<double>(lookAgainScore);
+    }
+    map['timestamp'] = Variable<DateTime>(timestamp);
+    return map;
+  }
+
+  UserFeedbackTableCompanion toCompanion(bool nullToAbsent) {
+    return UserFeedbackTableCompanion(
+      id: Value(id),
+      notificationId: Value(notificationId),
+      packageName: Value(packageName),
+      title: Value(title),
+      content: Value(content),
+      rating: Value(rating),
+      feedbackType: Value(feedbackType),
+      featureVector: Value(featureVector),
+      category: category == null && nullToAbsent
+          ? const Value.absent()
+          : Value(category),
+      priority: priority == null && nullToAbsent
+          ? const Value.absent()
+          : Value(priority),
+      lookAgainScore: lookAgainScore == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lookAgainScore),
+      timestamp: Value(timestamp),
+    );
+  }
+
+  factory UserFeedbackEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return UserFeedbackEntry(
+      id: serializer.fromJson<int>(json['id']),
+      notificationId: serializer.fromJson<String>(json['notificationId']),
+      packageName: serializer.fromJson<String>(json['packageName']),
+      title: serializer.fromJson<String>(json['title']),
+      content: serializer.fromJson<String>(json['content']),
+      rating: serializer.fromJson<int>(json['rating']),
+      feedbackType: serializer.fromJson<String>(json['feedbackType']),
+      featureVector: serializer.fromJson<String>(json['featureVector']),
+      category: serializer.fromJson<String?>(json['category']),
+      priority: serializer.fromJson<String?>(json['priority']),
+      lookAgainScore: serializer.fromJson<double?>(json['lookAgainScore']),
+      timestamp: serializer.fromJson<DateTime>(json['timestamp']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'notificationId': serializer.toJson<String>(notificationId),
+      'packageName': serializer.toJson<String>(packageName),
+      'title': serializer.toJson<String>(title),
+      'content': serializer.toJson<String>(content),
+      'rating': serializer.toJson<int>(rating),
+      'feedbackType': serializer.toJson<String>(feedbackType),
+      'featureVector': serializer.toJson<String>(featureVector),
+      'category': serializer.toJson<String?>(category),
+      'priority': serializer.toJson<String?>(priority),
+      'lookAgainScore': serializer.toJson<double?>(lookAgainScore),
+      'timestamp': serializer.toJson<DateTime>(timestamp),
+    };
+  }
+
+  UserFeedbackEntry copyWith({
+    int? id,
+    String? notificationId,
+    String? packageName,
+    String? title,
+    String? content,
+    int? rating,
+    String? feedbackType,
+    String? featureVector,
+    Value<String?> category = const Value.absent(),
+    Value<String?> priority = const Value.absent(),
+    Value<double?> lookAgainScore = const Value.absent(),
+    DateTime? timestamp,
+  }) => UserFeedbackEntry(
+    id: id ?? this.id,
+    notificationId: notificationId ?? this.notificationId,
+    packageName: packageName ?? this.packageName,
+    title: title ?? this.title,
+    content: content ?? this.content,
+    rating: rating ?? this.rating,
+    feedbackType: feedbackType ?? this.feedbackType,
+    featureVector: featureVector ?? this.featureVector,
+    category: category.present ? category.value : this.category,
+    priority: priority.present ? priority.value : this.priority,
+    lookAgainScore: lookAgainScore.present
+        ? lookAgainScore.value
+        : this.lookAgainScore,
+    timestamp: timestamp ?? this.timestamp,
+  );
+  UserFeedbackEntry copyWithCompanion(UserFeedbackTableCompanion data) {
+    return UserFeedbackEntry(
+      id: data.id.present ? data.id.value : this.id,
+      notificationId: data.notificationId.present
+          ? data.notificationId.value
+          : this.notificationId,
+      packageName: data.packageName.present
+          ? data.packageName.value
+          : this.packageName,
+      title: data.title.present ? data.title.value : this.title,
+      content: data.content.present ? data.content.value : this.content,
+      rating: data.rating.present ? data.rating.value : this.rating,
+      feedbackType: data.feedbackType.present
+          ? data.feedbackType.value
+          : this.feedbackType,
+      featureVector: data.featureVector.present
+          ? data.featureVector.value
+          : this.featureVector,
+      category: data.category.present ? data.category.value : this.category,
+      priority: data.priority.present ? data.priority.value : this.priority,
+      lookAgainScore: data.lookAgainScore.present
+          ? data.lookAgainScore.value
+          : this.lookAgainScore,
+      timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UserFeedbackEntry(')
+          ..write('id: $id, ')
+          ..write('notificationId: $notificationId, ')
+          ..write('packageName: $packageName, ')
+          ..write('title: $title, ')
+          ..write('content: $content, ')
+          ..write('rating: $rating, ')
+          ..write('feedbackType: $feedbackType, ')
+          ..write('featureVector: $featureVector, ')
+          ..write('category: $category, ')
+          ..write('priority: $priority, ')
+          ..write('lookAgainScore: $lookAgainScore, ')
+          ..write('timestamp: $timestamp')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    notificationId,
+    packageName,
+    title,
+    content,
+    rating,
+    feedbackType,
+    featureVector,
+    category,
+    priority,
+    lookAgainScore,
+    timestamp,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is UserFeedbackEntry &&
+          other.id == this.id &&
+          other.notificationId == this.notificationId &&
+          other.packageName == this.packageName &&
+          other.title == this.title &&
+          other.content == this.content &&
+          other.rating == this.rating &&
+          other.feedbackType == this.feedbackType &&
+          other.featureVector == this.featureVector &&
+          other.category == this.category &&
+          other.priority == this.priority &&
+          other.lookAgainScore == this.lookAgainScore &&
+          other.timestamp == this.timestamp);
+}
+
+class UserFeedbackTableCompanion extends UpdateCompanion<UserFeedbackEntry> {
+  final Value<int> id;
+  final Value<String> notificationId;
+  final Value<String> packageName;
+  final Value<String> title;
+  final Value<String> content;
+  final Value<int> rating;
+  final Value<String> feedbackType;
+  final Value<String> featureVector;
+  final Value<String?> category;
+  final Value<String?> priority;
+  final Value<double?> lookAgainScore;
+  final Value<DateTime> timestamp;
+  const UserFeedbackTableCompanion({
+    this.id = const Value.absent(),
+    this.notificationId = const Value.absent(),
+    this.packageName = const Value.absent(),
+    this.title = const Value.absent(),
+    this.content = const Value.absent(),
+    this.rating = const Value.absent(),
+    this.feedbackType = const Value.absent(),
+    this.featureVector = const Value.absent(),
+    this.category = const Value.absent(),
+    this.priority = const Value.absent(),
+    this.lookAgainScore = const Value.absent(),
+    this.timestamp = const Value.absent(),
+  });
+  UserFeedbackTableCompanion.insert({
+    this.id = const Value.absent(),
+    required String notificationId,
+    required String packageName,
+    required String title,
+    required String content,
+    required int rating,
+    required String feedbackType,
+    required String featureVector,
+    this.category = const Value.absent(),
+    this.priority = const Value.absent(),
+    this.lookAgainScore = const Value.absent(),
+    this.timestamp = const Value.absent(),
+  }) : notificationId = Value(notificationId),
+       packageName = Value(packageName),
+       title = Value(title),
+       content = Value(content),
+       rating = Value(rating),
+       feedbackType = Value(feedbackType),
+       featureVector = Value(featureVector);
+  static Insertable<UserFeedbackEntry> custom({
+    Expression<int>? id,
+    Expression<String>? notificationId,
+    Expression<String>? packageName,
+    Expression<String>? title,
+    Expression<String>? content,
+    Expression<int>? rating,
+    Expression<String>? feedbackType,
+    Expression<String>? featureVector,
+    Expression<String>? category,
+    Expression<String>? priority,
+    Expression<double>? lookAgainScore,
+    Expression<DateTime>? timestamp,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (notificationId != null) 'notification_id': notificationId,
+      if (packageName != null) 'package_name': packageName,
+      if (title != null) 'title': title,
+      if (content != null) 'content': content,
+      if (rating != null) 'rating': rating,
+      if (feedbackType != null) 'feedback_type': feedbackType,
+      if (featureVector != null) 'feature_vector': featureVector,
+      if (category != null) 'category': category,
+      if (priority != null) 'priority': priority,
+      if (lookAgainScore != null) 'look_again_score': lookAgainScore,
+      if (timestamp != null) 'timestamp': timestamp,
+    });
+  }
+
+  UserFeedbackTableCompanion copyWith({
+    Value<int>? id,
+    Value<String>? notificationId,
+    Value<String>? packageName,
+    Value<String>? title,
+    Value<String>? content,
+    Value<int>? rating,
+    Value<String>? feedbackType,
+    Value<String>? featureVector,
+    Value<String?>? category,
+    Value<String?>? priority,
+    Value<double?>? lookAgainScore,
+    Value<DateTime>? timestamp,
+  }) {
+    return UserFeedbackTableCompanion(
+      id: id ?? this.id,
+      notificationId: notificationId ?? this.notificationId,
+      packageName: packageName ?? this.packageName,
+      title: title ?? this.title,
+      content: content ?? this.content,
+      rating: rating ?? this.rating,
+      feedbackType: feedbackType ?? this.feedbackType,
+      featureVector: featureVector ?? this.featureVector,
+      category: category ?? this.category,
+      priority: priority ?? this.priority,
+      lookAgainScore: lookAgainScore ?? this.lookAgainScore,
+      timestamp: timestamp ?? this.timestamp,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (notificationId.present) {
+      map['notification_id'] = Variable<String>(notificationId.value);
+    }
+    if (packageName.present) {
+      map['package_name'] = Variable<String>(packageName.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (content.present) {
+      map['content'] = Variable<String>(content.value);
+    }
+    if (rating.present) {
+      map['rating'] = Variable<int>(rating.value);
+    }
+    if (feedbackType.present) {
+      map['feedback_type'] = Variable<String>(feedbackType.value);
+    }
+    if (featureVector.present) {
+      map['feature_vector'] = Variable<String>(featureVector.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (priority.present) {
+      map['priority'] = Variable<String>(priority.value);
+    }
+    if (lookAgainScore.present) {
+      map['look_again_score'] = Variable<double>(lookAgainScore.value);
+    }
+    if (timestamp.present) {
+      map['timestamp'] = Variable<DateTime>(timestamp.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UserFeedbackTableCompanion(')
+          ..write('id: $id, ')
+          ..write('notificationId: $notificationId, ')
+          ..write('packageName: $packageName, ')
+          ..write('title: $title, ')
+          ..write('content: $content, ')
+          ..write('rating: $rating, ')
+          ..write('feedbackType: $feedbackType, ')
+          ..write('featureVector: $featureVector, ')
+          ..write('category: $category, ')
+          ..write('priority: $priority, ')
+          ..write('lookAgainScore: $lookAgainScore, ')
+          ..write('timestamp: $timestamp')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AttentionDatabase extends GeneratedDatabase {
   _$AttentionDatabase(QueryExecutor e) : super(e);
   $AttentionDatabaseManager get managers => $AttentionDatabaseManager(this);
@@ -2722,6 +3441,8 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final $DailyBriefTableTable dailyBriefTable = $DailyBriefTableTable(
     this,
   );
+  late final $UserFeedbackTableTable userFeedbackTable =
+      $UserFeedbackTableTable(this);
   late final NotificationDao notificationDao = NotificationDao(
     this as AttentionDatabase,
   );
@@ -2734,6 +3455,9 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final DailyBriefDao dailyBriefDao = DailyBriefDao(
     this as AttentionDatabase,
   );
+  late final UserFeedbackDao userFeedbackDao = UserFeedbackDao(
+    this as AttentionDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2743,6 +3467,7 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
     reviewQueueTable,
     focusSessionsTable,
     dailyBriefTable,
+    userFeedbackTable,
   ];
 }
 
@@ -3406,7 +4131,9 @@ class $$NotificationsTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$NotificationsTableTable, NotificationEntry>(
+                    table,
+                  ),
                   $$NotificationsTableTableReferences(db, table, e),
                 ),
               )
@@ -3749,7 +4476,7 @@ class $$ReviewQueueTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$ReviewQueueTableTable, ReviewQueueEntry>(table),
                   $$ReviewQueueTableTableReferences(db, table, e),
                 ),
               )
@@ -4021,7 +4748,18 @@ class $$FocusSessionsTableTableTableManager
                 duration: duration,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$FocusSessionsTableTable, FocusSessionEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $FocusSessionsTableTable,
+                    FocusSessionEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4273,7 +5011,16 @@ class $$DailyBriefTableTableTableManager
                 archivedCount: archivedCount,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$DailyBriefTableTable, DailyBriefEntry>(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $DailyBriefTableTable,
+                    DailyBriefEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4301,6 +5048,367 @@ typedef $$DailyBriefTableTableProcessedTableManager =
       DailyBriefEntry,
       PrefetchHooks Function()
     >;
+typedef $$UserFeedbackTableTableCreateCompanionBuilder =
+    UserFeedbackTableCompanion Function({
+      Value<int> id,
+      required String notificationId,
+      required String packageName,
+      required String title,
+      required String content,
+      required int rating,
+      required String feedbackType,
+      required String featureVector,
+      Value<String?> category,
+      Value<String?> priority,
+      Value<double?> lookAgainScore,
+      Value<DateTime> timestamp,
+    });
+typedef $$UserFeedbackTableTableUpdateCompanionBuilder =
+    UserFeedbackTableCompanion Function({
+      Value<int> id,
+      Value<String> notificationId,
+      Value<String> packageName,
+      Value<String> title,
+      Value<String> content,
+      Value<int> rating,
+      Value<String> feedbackType,
+      Value<String> featureVector,
+      Value<String?> category,
+      Value<String?> priority,
+      Value<double?> lookAgainScore,
+      Value<DateTime> timestamp,
+    });
+
+class $$UserFeedbackTableTableFilterComposer
+    extends Composer<_$AttentionDatabase, $UserFeedbackTableTable> {
+  $$UserFeedbackTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get packageName => $composableBuilder(
+    column: $table.packageName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get rating => $composableBuilder(
+    column: $table.rating,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get feedbackType => $composableBuilder(
+    column: $table.feedbackType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get featureVector => $composableBuilder(
+    column: $table.featureVector,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get priority => $composableBuilder(
+    column: $table.priority,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get lookAgainScore => $composableBuilder(
+    column: $table.lookAgainScore,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$UserFeedbackTableTableOrderingComposer
+    extends Composer<_$AttentionDatabase, $UserFeedbackTableTable> {
+  $$UserFeedbackTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get packageName => $composableBuilder(
+    column: $table.packageName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get rating => $composableBuilder(
+    column: $table.rating,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get feedbackType => $composableBuilder(
+    column: $table.feedbackType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get featureVector => $composableBuilder(
+    column: $table.featureVector,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get priority => $composableBuilder(
+    column: $table.priority,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get lookAgainScore => $composableBuilder(
+    column: $table.lookAgainScore,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$UserFeedbackTableTableAnnotationComposer
+    extends Composer<_$AttentionDatabase, $UserFeedbackTableTable> {
+  $$UserFeedbackTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get notificationId => $composableBuilder(
+    column: $table.notificationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get packageName => $composableBuilder(
+    column: $table.packageName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get content =>
+      $composableBuilder(column: $table.content, builder: (column) => column);
+
+  GeneratedColumn<int> get rating =>
+      $composableBuilder(column: $table.rating, builder: (column) => column);
+
+  GeneratedColumn<String> get feedbackType => $composableBuilder(
+    column: $table.feedbackType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get featureVector => $composableBuilder(
+    column: $table.featureVector,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumn<String> get priority =>
+      $composableBuilder(column: $table.priority, builder: (column) => column);
+
+  GeneratedColumn<double> get lookAgainScore => $composableBuilder(
+    column: $table.lookAgainScore,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get timestamp =>
+      $composableBuilder(column: $table.timestamp, builder: (column) => column);
+}
+
+class $$UserFeedbackTableTableTableManager
+    extends
+        RootTableManager<
+          _$AttentionDatabase,
+          $UserFeedbackTableTable,
+          UserFeedbackEntry,
+          $$UserFeedbackTableTableFilterComposer,
+          $$UserFeedbackTableTableOrderingComposer,
+          $$UserFeedbackTableTableAnnotationComposer,
+          $$UserFeedbackTableTableCreateCompanionBuilder,
+          $$UserFeedbackTableTableUpdateCompanionBuilder,
+          (
+            UserFeedbackEntry,
+            BaseReferences<
+              _$AttentionDatabase,
+              $UserFeedbackTableTable,
+              UserFeedbackEntry
+            >,
+          ),
+          UserFeedbackEntry,
+          PrefetchHooks Function()
+        > {
+  $$UserFeedbackTableTableTableManager(
+    _$AttentionDatabase db,
+    $UserFeedbackTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$UserFeedbackTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$UserFeedbackTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$UserFeedbackTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> notificationId = const Value.absent(),
+                Value<String> packageName = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> content = const Value.absent(),
+                Value<int> rating = const Value.absent(),
+                Value<String> feedbackType = const Value.absent(),
+                Value<String> featureVector = const Value.absent(),
+                Value<String?> category = const Value.absent(),
+                Value<String?> priority = const Value.absent(),
+                Value<double?> lookAgainScore = const Value.absent(),
+                Value<DateTime> timestamp = const Value.absent(),
+              }) => UserFeedbackTableCompanion(
+                id: id,
+                notificationId: notificationId,
+                packageName: packageName,
+                title: title,
+                content: content,
+                rating: rating,
+                feedbackType: feedbackType,
+                featureVector: featureVector,
+                category: category,
+                priority: priority,
+                lookAgainScore: lookAgainScore,
+                timestamp: timestamp,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String notificationId,
+                required String packageName,
+                required String title,
+                required String content,
+                required int rating,
+                required String feedbackType,
+                required String featureVector,
+                Value<String?> category = const Value.absent(),
+                Value<String?> priority = const Value.absent(),
+                Value<double?> lookAgainScore = const Value.absent(),
+                Value<DateTime> timestamp = const Value.absent(),
+              }) => UserFeedbackTableCompanion.insert(
+                id: id,
+                notificationId: notificationId,
+                packageName: packageName,
+                title: title,
+                content: content,
+                rating: rating,
+                feedbackType: feedbackType,
+                featureVector: featureVector,
+                category: category,
+                priority: priority,
+                lookAgainScore: lookAgainScore,
+                timestamp: timestamp,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$UserFeedbackTableTable, UserFeedbackEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $UserFeedbackTableTable,
+                    UserFeedbackEntry
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$UserFeedbackTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AttentionDatabase,
+      $UserFeedbackTableTable,
+      UserFeedbackEntry,
+      $$UserFeedbackTableTableFilterComposer,
+      $$UserFeedbackTableTableOrderingComposer,
+      $$UserFeedbackTableTableAnnotationComposer,
+      $$UserFeedbackTableTableCreateCompanionBuilder,
+      $$UserFeedbackTableTableUpdateCompanionBuilder,
+      (
+        UserFeedbackEntry,
+        BaseReferences<
+          _$AttentionDatabase,
+          $UserFeedbackTableTable,
+          UserFeedbackEntry
+        >,
+      ),
+      UserFeedbackEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AttentionDatabaseManager {
   final _$AttentionDatabase _db;
@@ -4313,4 +5421,6 @@ class $AttentionDatabaseManager {
       $$FocusSessionsTableTableTableManager(_db, _db.focusSessionsTable);
   $$DailyBriefTableTableTableManager get dailyBriefTable =>
       $$DailyBriefTableTableTableManager(_db, _db.dailyBriefTable);
+  $$UserFeedbackTableTableTableManager get userFeedbackTable =>
+      $$UserFeedbackTableTableTableManager(_db, _db.userFeedbackTable);
 }

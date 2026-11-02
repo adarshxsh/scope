@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:scope/core/analysis/ghost_ai.dart';
 import 'package:scope/core/state/notification_controller.dart';
 import 'package:scope/screens/ai_playground_screen.dart';
 import 'package:scope/screens/diagnostic_screen.dart';
+import 'package:scope/theme/app_colors.dart';
 import 'package:scope/theme/app_spacing.dart';
 import 'package:scope/theme/scope_navigator.dart';
 import 'package:scope/widgets/primitives/scope_icon_box.dart';
@@ -99,6 +101,52 @@ class SettingsScreen extends StatelessWidget {
                       context,
                       DiagnosticScreen(engine: controller.engine),
                     ),
+                  ),
+                  const Divider(height: 1, indent: 56),
+                  _SettingsTile(
+                    icon: Icons.download_rounded,
+                    title: 'Export Training Dataset (JSONL)',
+                    subtitle: 'Save 63-feature RLHF feedback samples to disk',
+                    onTap: () async {
+                      try {
+                        final file = await controller.exportDatasetToJsonl();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Dataset exported: ${file.path}'),
+                              backgroundColor: AppColors.seed,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Export failed: $e'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
+                    },
+                  ),
+                  const Divider(height: 1, indent: 56),
+                  _SettingsTile(
+                    icon: Icons.refresh_rounded,
+                    title: 'Reload Dynamic Model',
+                    subtitle: 'Active: ${GhostAI.instance.modelSource}',
+                    onTap: () async {
+                      final ok = await controller.reloadModel();
+                      if (context.mounted) {
+                        final source = GhostAI.instance.modelSource;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(ok ? 'Reloaded model. Source: $source' : 'Model fallback to heuristics.'),
+                            backgroundColor: ok ? Colors.green : Colors.orange,
+                          ),
+                        );
+                      }
+                    },
                   ),
                   const Divider(height: 1, indent: 56),
                   _SettingsTile(
