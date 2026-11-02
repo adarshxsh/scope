@@ -20,7 +20,10 @@ class MainActivity : FlutterActivity() {
 
     companion object {
         private const val CHANNEL = "com.scope.notifications"
+        private const val KEYSTORE_CHANNEL = "com.scope.keystore"
     }
+
+    private val keyStoreManager = KeyStoreManager()
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -42,6 +45,29 @@ class MainActivity : FlutterActivity() {
                     "openNotificationSettings" -> {
                         openNotificationListenerSettings()
                         result.success(true)
+                    }
+
+                    else -> result.notImplemented()
+                }
+            }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, KEYSTORE_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "getOrCreateDatabasePassphrase" -> {
+                        val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+                        Thread {
+                            try {
+                                val passphrase = keyStoreManager.getOrCreateDatabasePassphrase(applicationContext)
+                                mainHandler.post {
+                                    result.success(passphrase)
+                                }
+                            } catch (e: Exception) {
+                                mainHandler.post {
+                                    result.error("KEYSTORE_ERROR", e.localizedMessage, null)
+                                }
+                            }
+                        }.start()
                     }
 
                     else -> result.notImplemented()

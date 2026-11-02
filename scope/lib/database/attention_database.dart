@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+import 'package:scope/core/bridge/keystore_bridge.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/database/tables.dart';
 import 'package:scope/database/daos.dart';
@@ -31,6 +32,10 @@ class AttentionDatabase extends _$AttentionDatabase {
     return AttentionDatabase(NativeDatabase.memory());
   }
 
+  factory AttentionDatabase.withPassphrase(String passphrase) {
+    return AttentionDatabase(_openConnection(passphrase));
+  }
+
   @override
   int get schemaVersion => 1;
 
@@ -52,10 +57,20 @@ class AttentionDatabase extends _$AttentionDatabase {
   }
 }
 
-QueryExecutor _openConnection() {
+QueryExecutor _openConnection([String? passphrase]) {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'attention_os.db'));
-    return NativeDatabase(file);
+    final key = passphrase ?? await KeyStoreBridge.getOrCreateDatabasePassphrase();
+
+    return NativeDatabase(
+      file,
+      setup: (db) {
+        if (key != null && key.isNotEmpty) {
+          final escaped = key.replaceAll("'", "''");
+          db.execute("PRAGMA key = '$escaped';");
+        }
+      },
+    );
   });
 }
