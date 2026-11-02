@@ -3,7 +3,6 @@ package com.scope.attentions
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
-import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
  * Android service that captures all incoming notifications.
@@ -11,12 +10,14 @@ import java.util.concurrent.ConcurrentLinkedQueue
  * Extends [NotificationListenerService] which requires the user to manually
  * grant "Notification access" in system Settings.
  *
- * Captured notifications are placed in a static [queue] which is drained
- * by [MainActivity] when Flutter requests them via MethodChannel.
+ * Captured notifications are placed in a staging buffer which is peeked and acknowledged
+ * by [MainActivity] when Flutter requests them via MethodChannel (two-phase handshake).
  *
  * Design decisions:
- *   - Uses a static ConcurrentLinkedQueue (thread-safe, lock-free) because
- *     the service runs in a separate context from MainActivity.
+ *   - Uses a thread-safe synchronized LinkedHashMap preserving insertion order.
+ *   - Caps maximum queue size at [MAX_QUEUE_SIZE] (100) and evicts oldest entries (FIFO).
+ *   - Enforces 15-minute time-to-live ([MAX_AGE_MS]) to prune stale notifications.
+ *   - Supports two-phase non-destructive peeking ([peekQueue]) and explicit acknowledgment ([acknowledgeNotifications]).
  *   - No heavy processing here — just capture and queue.
  *   - Skips ongoing/persistent notifications by default (configurable).
  */
@@ -25,8 +26,14 @@ class NotificationCollectorService : NotificationListenerService() {
     companion object {
         private const val TAG = "NotifCollector"
 
-        /** Maximum capacity for the unacknowledged staging buffer to bound memory usage. */
-        private const val MAX_BUFFER_CAPACITY = 1000
+        /** Maximum allowed queue size to prevent unbounded memory growth. */
+        const val MAX_QUEUE_SIZE = 100
+
+        /** Alias for [MAX_QUEUE_SIZE] for backward compatibility. */
+        const val MAX_BUFFER_CAPACITY = MAX_QUEUE_SIZE
+
+        /** Maximum time-to-live for queued notifications (15 minutes in milliseconds). */
+        const val MAX_AGE_MS = 15 * 60 * 1000L
 
         private val lock = Any()
 
@@ -37,11 +44,61 @@ class NotificationCollectorService : NotificationListenerService() {
         private var idCounter = 0L
 
         /**
-         * Peeks and returns all pending notifications without removing them from memory.
+         * Removes entries older than [MAX_AGE_MS] relative to [now] from the buffer.
+         */
+        @JvmOverloads
+        fun pruneExpired(now: Long = System.currentTimeMillis()) {
+            synchronized(lock) {
+                val iterator = buffer.values.iterator()
+                while (iterator.hasNext()) {
+                    val item = iterator.next()
+                    if (now - item.timestamp > MAX_AGE_MS) {
+                        iterator.remove()
+                    }
+                }
+            }
+        }
+
+        /**
+         * Adds a [NotificationData] item to the buffer after pruning expired items
+         * and enforcing maximum queue capacity.
+         */
+        @JvmOverloads
+        fun addNotification(data: NotificationData, now: Long = System.currentTimeMillis()) {
+            synchronized(lock) {
+                pruneExpired(now)
+
+                // Do not add item if it is already expired relative to current time
+                if (now - data.timestamp > MAX_AGE_MS) {
+                    return
+                }
+
+                // Ignore if same package, title, and content already exist in queue
+                val isDuplicate = buffer.values.any {
+                    it.packageName == data.packageName && it.title == data.title && it.content == data.content
+                }
+                if (isDuplicate) {
+                    return
+                }
+
+                // Evict oldest notification if queue reaches MAX_QUEUE_SIZE before adding new items
+                while (buffer.size >= MAX_QUEUE_SIZE) {
+                    val oldestKey = buffer.keys.firstOrNull() ?: break
+                    buffer.remove(oldestKey)
+                }
+
+                buffer[data.id] = data
+            }
+        }
+
+        /**
+         * Peeks and returns all non-expired pending notifications without removing them from memory.
          * Called by [MainActivity] when Flutter requests notifications (Phase 1 of two-phase handshake).
          */
-        fun peekQueue(): List<NotificationData> {
+        @JvmOverloads
+        fun peekQueue(now: Long = System.currentTimeMillis()): List<NotificationData> {
             synchronized(lock) {
+                pruneExpired(now)
                 return buffer.values.toList()
             }
         }
@@ -74,35 +131,35 @@ class NotificationCollectorService : NotificationListenerService() {
         }
 
         /**
-         * Clears all notifications from the buffer (for testing or reset).
+         * Clears the queue/buffer and resets internal state (for testing or reset).
          */
-        fun clearBuffer() {
+        fun clearQueue() {
             synchronized(lock) {
                 buffer.clear()
+                idCounter = 0L
             }
         }
+
+        /**
+         * Clears all notifications from the buffer (alias for [clearQueue]).
+         */
+        fun clearBuffer() = clearQueue()
 
         /**
          * Helper for unit tests to insert test notifications into the staging buffer.
          */
         fun addNotificationForTest(data: NotificationData) {
-            synchronized(lock) {
-                if (buffer.size >= MAX_BUFFER_CAPACITY) {
-                    val oldestKey = buffer.keys.firstOrNull()
-                    if (oldestKey != null) {
-                        buffer.remove(oldestKey)
-                    }
-                }
-                buffer[data.id] = data
-            }
+            addNotification(data, data.timestamp)
         }
 
         /**
-         * Legacy method: drains all notifications from the buffer and returns them.
+         * Drains all non-expired notifications from the buffer and returns them.
          * Maintained for backward compatibility.
          */
-        fun drainQueue(): List<NotificationData> {
+        @JvmOverloads
+        fun drainQueue(now: Long = System.currentTimeMillis()): List<NotificationData> {
             synchronized(lock) {
+                pruneExpired(now)
                 val result = buffer.values.toList()
                 buffer.clear()
                 return result
@@ -119,44 +176,27 @@ class NotificationCollectorService : NotificationListenerService() {
         }
     }
 
-    private fun addSbnToQueue(sbn: StatusBarNotification) {
+    private fun addSbnToQueue(sbn: StatusBarNotification, now: Long = System.currentTimeMillis()) {
         try {
             val extras = sbn.notification.extras
             val title = extras?.getCharSequence("android.title")?.toString() ?: ""
             val text = extras?.getCharSequence("android.text")?.toString() ?: ""
             val isOngoing = sbn.isOngoing
             val packageName = sbn.packageName ?: "unknown"
+            val timestamp = if (sbn.postTime > 0) sbn.postTime else now
 
-            synchronized(lock) {
-                // Ignore if same package, title, and content already exist in buffer
-                val isDuplicate = buffer.values.any {
-                    it.packageName == packageName && it.title == title && it.content == text
-                }
-                if (isDuplicate) {
-                    return
-                }
+            val data = NotificationData(
+                id = "notif_${++idCounter}",
+                packageName = packageName,
+                title = title,
+                content = text,
+                timestamp = timestamp,
+                category = sbn.notification.category,
+                isOngoing = isOngoing
+            )
 
-                // Bound memory consumption by enforcing maximum capacity limit
-                if (buffer.size >= MAX_BUFFER_CAPACITY) {
-                    val oldestKey = buffer.keys.firstOrNull()
-                    if (oldestKey != null) {
-                        buffer.remove(oldestKey)
-                    }
-                }
-
-                val data = NotificationData(
-                    id = "notif_${++idCounter}",
-                    packageName = packageName,
-                    title = title,
-                    content = text,
-                    timestamp = sbn.postTime,
-                    category = sbn.notification.category,
-                    isOngoing = isOngoing
-                )
-
-                buffer[data.id] = data
-                Log.d(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
-            }
+            addNotification(data, now)
+            Log.d(TAG, "Captured: ${data.packageName} - ${NotificationRedactor.redactTitle(data.title)}")
         } catch (e: Exception) {
             Log.e(TAG, "Error capturing/adding notification", e)
         }
