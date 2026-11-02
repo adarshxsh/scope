@@ -1,0 +1,9 @@
+{
+  "version": "1.0.0",
+  "files": {
+    "assets/model.tflite": "63b815ce62f895e48347b9f775c7f529ca56a86733bb3d2601e50889b73d87c6",
+    "assets/rules.json": "547e8f356667e6437c101c874cc4a1fd085cf7554174ac5b460a801fbe571937",
+    "assets/vocab.txt": "6229da7b5527533c901e57b32dafc3c6fd701114a407d1fe4f5da60af3b062c5"
+  },
+  "signature": "4c1a2d97c88d4464f8bfe697d7319597ef72e8ab3b6aeddcf6821c2ddde49c2478e37b90a317ab13e10e8f02e3dfee0363625a9b3debd92f16c8797a33236008"
+}
