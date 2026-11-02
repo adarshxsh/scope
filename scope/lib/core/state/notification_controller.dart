@@ -380,14 +380,14 @@ class NotificationController extends ChangeNotifier {
 
   Future<void> fetchNotifications() async {
     try {
-      final newNotifications = await _bridge.getNotifications();
+      final batch = await _bridge.getNotifications();
       final analyzed = <AppNotification>[];
 
       if (!_initialLoadCompleted) {
         await _loadInitialNotifications();
       }
 
-      for (final raw in newNotifications) {
+      for (final raw in batch.notifications) {
         // Ignore ongoing background/system notifications (e.g. charging, media playback)
         if (raw.isOngoing) continue;
 
@@ -415,6 +415,11 @@ class NotificationController extends ChangeNotifier {
         final notifier = _container.read(reviewQueueProvider.notifier);
         notifier.load(loaded);
         await notifier.rescore();
+      }
+
+      // Explicitly acknowledge batch ONLY AFTER database persistence completes
+      if (batch.batchId.isNotEmpty) {
+        await _bridge.acknowledgeNotifications(batch.batchId);
       }
 
       _isLoading = false;
