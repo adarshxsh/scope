@@ -156,5 +156,29 @@ void main() {
         expect(await storage.count, 2); // upsert, not a new entry
       });
     });
+
+    group('runCleanup', () {
+      test('enforces maxRows cap and prunes EXPIRED and ARCHIVED before ACTIVE', () async {
+        final now = 1700000000000;
+        
+        await storage.save(makeNotification(id: 'active1', timestamp: now + 100).copyWith(state: ReviewState.ACTIVE));
+        await storage.save(makeNotification(id: 'active2', timestamp: now + 200).copyWith(state: ReviewState.ACTIVE));
+        await storage.save(makeNotification(id: 'expired1', timestamp: now + 300).copyWith(state: ReviewState.EXPIRED));
+        await storage.save(makeNotification(id: 'expired2', timestamp: now + 400).copyWith(state: ReviewState.EXPIRED));
+        await storage.save(makeNotification(id: 'archived1', timestamp: now + 500).copyWith(state: ReviewState.ARCHIVED));
+
+        expect(await storage.count, 5);
+
+        // Run cleanup with maxRows = 3
+        await storage.runCleanup(cutoffTimestamp: now - 1000, maxRows: 3);
+
+        expect(await storage.count, 3);
+        expect(await storage.getById('expired1'), isNull);
+        expect(await storage.getById('expired2'), isNull);
+        expect(await storage.getById('active1'), isNotNull);
+        expect(await storage.getById('active2'), isNotNull);
+        expect(await storage.getById('archived1'), isNotNull);
+      });
+    });
   });
 }
