@@ -151,6 +151,49 @@ void main() {
       );
       expect(values[FeatureVector.featureNames.indexOf('person_present')], 1.0);
     });
+
+    test('sanitizes NaN and Infinity to 0.0 in FeatureVector', () {
+      final raw = List<double>.filled(63, 1.0);
+      raw[0] = double.nan;
+      raw[1] = double.infinity;
+      raw[2] = double.negativeInfinity;
+
+      final vec = FeatureVector(raw);
+      expect(vec.values[0], equals(0.0));
+      expect(vec.values[1], equals(0.0));
+      expect(vec.values[2], equals(0.0));
+      expect(vec.values[3], equals(1.0));
+    });
+
+    test('padOrTruncate dynamically resizes FeatureVector', () {
+      final vec = FeatureVector(List<double>.filled(63, 2.0));
+      final truncated = vec.padOrTruncate(10);
+      expect(truncated.values, hasLength(10));
+      expect(truncated.values.every((v) => v == 2.0), isTrue);
+
+      final padded = vec.padOrTruncate(70);
+      expect(padded.values, hasLength(70));
+      expect(padded.values.sublist(0, 63).every((v) => v == 2.0), isTrue);
+      expect(padded.values.sublist(63).every((v) => v == 0.0), isTrue);
+    });
+
+    test('enforces upper bounds on text length, amount, and deadline', () {
+      final hugeTitle = 'A' * 2000;
+      final input = NotificationFeatureInput(
+        appName: 'Test',
+        packageName: 'com.test',
+        title: hugeTitle,
+        body: 'Amount: ₹500,000. Due in 100000 minutes.',
+        timestampMillis: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final vector = FeatureExtractor.extractVector(input);
+      final named = vector.toNamedMap();
+
+      expect(named['title_length'], equals(1000.0));
+      expect(named['amount'], equals(100000.0));
+      expect(named['deadline_minutes_remaining'], equals(43200.0));
+    });
   });
 
   group('MetadataAnalyzer', () {

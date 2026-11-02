@@ -65,7 +65,7 @@ _meetingLinkRegex = re.compile(
     re.IGNORECASE,
 )
 _relativeDeadlineRegex = re.compile(
-    r'\bin\s+(\d{1,4})\s*(minute|minutes|min|mins|hour|hours|hr|hrs|day|days)\b',
+    r'\bin\s+(\d+)\s*(minute|minutes|min|mins|hour|hours|hr|hrs|day|days)\b',
     re.IGNORECASE,
 )
 
@@ -381,7 +381,8 @@ def extract_amount(text: str) -> float | None:
     if not raw:
         return None
     try:
-        return float(raw.replace(',', ''))
+        val = float(raw.replace(',', ''))
+        return min(max(val, 0.0), 100000.0)
     except ValueError:
         return None
 
@@ -439,10 +440,12 @@ def deadline_minutes_remaining(lower: str) -> int:
         amount = 0
     unit = match.group(2) or ''
     if unit.startswith('min'):
-        return amount
-    if unit.startswith('hour') or unit.startswith('hr'):
-        return amount * 60
-    return amount * 1440
+        mins = amount
+    elif unit.startswith('hour') or unit.startswith('hr'):
+        mins = amount * 60
+    else:
+        mins = amount * 1440
+    return min(max(mins, 0), 43200)
 
 
 def get_category_id(category: str, lower: str) -> int:
@@ -578,8 +581,10 @@ def extract_features(record: dict[str, Any]) -> list[float]:
     dt_utc = dt.astimezone(timezone.utc)
     
     # Normalize texts
-    title_norm = normalize(title)
-    body_norm = normalize(body)
+    raw_title = normalize(title)
+    raw_body = normalize(body)
+    title_norm = raw_title[:1000]
+    body_norm = raw_body[:1000]
     combined = normalize(f"{title_norm} {body_norm}")
     lower = combined.lower()
 
@@ -589,7 +594,7 @@ def extract_features(record: dict[str, Any]) -> list[float]:
     digits = len(_digitRegex.findall(combined))
     
     otp = extract_otp(combined)
-    amount = extract_amount(combined) or 0.0
+    amount = min(max(float(extract_amount(combined) or 0.0), 0.0), 100000.0)
     currency = extract_currency(combined)
     
     contains_deadline = contains_keyword(lower, _deadlineWords)
