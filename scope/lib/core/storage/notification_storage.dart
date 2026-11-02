@@ -76,7 +76,7 @@ class InMemoryNotificationStorage implements NotificationStorage {
   @override
   Future<int> deleteOlderThan(int cutoffTimestamp) async {
     final before = _store.length;
-    _store.removeWhere((n) => n.timestamp < cutoffTimestamp);
+    _store.removeWhere((n) => n.timestamp < cutoffTimestamp && n.userRating == null && n.targetLabel == null);
     return before - _store.length;
   }
 

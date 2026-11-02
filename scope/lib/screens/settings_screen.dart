@@ -92,6 +92,23 @@ class SettingsScreen extends StatelessWidget {
                   ),
                   const Divider(height: 1, indent: 56),
                   _SettingsTile(
+                    icon: Icons.download_rounded,
+                    title: 'Export Feedback (JSONL)',
+                    subtitle: 'Export ratings & 63-D features dataset',
+                    onTap: () async {
+                      final file = await controller.exportFeedbackJsonl();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Dataset exported to ${file.path}'),
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                  const Divider(height: 1, indent: 56),
+                  _SettingsTile(
                     icon: Icons.analytics_outlined,
                     title: 'Diagnostics',
                     subtitle: 'Pipeline trace and templates',

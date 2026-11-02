@@ -30,6 +30,8 @@ class NotificationsTable extends Table {
   BoolColumn get reviewed => boolean().withDefault(const Constant(false))();
   BoolColumn get dismissed => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  IntColumn get userRating => integer().nullable()();
+  TextColumn get targetLabel => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
