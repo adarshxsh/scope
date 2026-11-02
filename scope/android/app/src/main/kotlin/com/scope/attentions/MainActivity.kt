@@ -5,6 +5,8 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import android.content.ComponentName
 import android.content.Intent
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
 import android.provider.Settings
 
 /**
@@ -15,6 +17,8 @@ import android.provider.Settings
  *   - Pull captured notifications from [NotificationCollectorService]
  *   - Check if the notification listener permission is granted
  *   - Open the system notification listener settings
+ *   - Sync package exclusions & system category filtering rules
+ *   - Fetch installed applications list for App Exclusion settings
  */
 class MainActivity : FlutterActivity() {
 
@@ -44,9 +48,64 @@ class MainActivity : FlutterActivity() {
                         result.success(true)
                     }
 
+                    "getExcludedPackages" -> {
+                        val excluded = NotificationCollectorService.getExcludedPackages(this).toList()
+                        result.success(excluded)
+                    }
+
+                    "setExcludedPackages" -> {
+                        val packagesArg = call.argument<List<String>>("packages")
+                        if (packagesArg != null) {
+                            NotificationCollectorService.setExcludedPackages(this, packagesArg.toSet())
+                            result.success(true)
+                        } else {
+                            result.error("INVALID_ARGUMENT", "packages argument missing", null)
+                        }
+                    }
+
+                    "getExcludeSystemCategories" -> {
+                        val exclude = NotificationCollectorService.getExcludeSystemCategories(this)
+                        result.success(exclude)
+                    }
+
+                    "setExcludeSystemCategories" -> {
+                        val excludeArg = call.argument<Boolean>("exclude")
+                        if (excludeArg != null) {
+                            NotificationCollectorService.setExcludeSystemCategories(this, excludeArg)
+                            result.success(true)
+                        } else {
+                            result.error("INVALID_ARGUMENT", "exclude argument missing", null)
+                        }
+                    }
+
+                    "getInstalledApps" -> {
+                        val apps = getInstalledAppsList()
+                        result.success(apps)
+                    }
+
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    private fun getInstalledAppsList(): List<Map<String, Any>> {
+        val pm = packageManager
+        val packages = pm.getInstalledApplications(PackageManager.GET_META_DATA)
+        val result = mutableListOf<Map<String, Any>>()
+
+        for (appInfo in packages) {
+            val packageName = appInfo.packageName ?: continue
+            val appName = pm.getApplicationLabel(appInfo).toString()
+            val isSystemApp = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+            result.add(
+                mapOf(
+                    "packageName" to packageName,
+                    "appName" to appName,
+                    "isSystemApp" to isSystemApp
+                )
+            )
+        }
+        return result
     }
 
     /**

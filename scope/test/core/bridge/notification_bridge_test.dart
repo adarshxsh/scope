@@ -129,5 +129,73 @@ void main() {
         await bridge.openNotificationSettings();
       });
     });
+
+    group('getExcludedPackages', () {
+      test('returns list of packages from channel', () async {
+        mockHandler((call) async => ['com.chase.sig.android', 'com.paypal.android.p2pmobile']);
+        final pkgs = await bridge.getExcludedPackages();
+        expect(pkgs, ['com.chase.sig.android', 'com.paypal.android.p2pmobile']);
+        expect(log.single.method, 'getExcludedPackages');
+      });
+
+      test('returns empty list on exception', () async {
+        mockHandler((call) async {
+          throw PlatformException(code: 'ERROR');
+        });
+        final pkgs = await bridge.getExcludedPackages();
+        expect(pkgs, isEmpty);
+      });
+    });
+
+    group('setExcludedPackages', () {
+      test('sends packages list over channel', () async {
+        mockHandler((call) async => true);
+        final success = await bridge.setExcludedPackages(['com.chase.sig.android']);
+        expect(success, true);
+        expect(log.single.method, 'setExcludedPackages');
+        expect(log.single.arguments, {'packages': ['com.chase.sig.android']});
+      });
+    });
+
+    group('getExcludeSystemCategories / setExcludeSystemCategories', () {
+      test('gets system categories exclusion setting', () async {
+        mockHandler((call) async => true);
+        final val = await bridge.getExcludeSystemCategories();
+        expect(val, true);
+        expect(log.single.method, 'getExcludeSystemCategories');
+      });
+
+      test('sets system categories exclusion setting', () async {
+        mockHandler((call) async => true);
+        final success = await bridge.setExcludeSystemCategories(true);
+        expect(success, true);
+        expect(log.single.method, 'setExcludeSystemCategories');
+        expect(log.single.arguments, {'exclude': true});
+      });
+    });
+
+    group('getInstalledApps', () {
+      test('parses installed apps from channel', () async {
+        mockHandler((call) async => [
+              {
+                'packageName': 'com.test.app',
+                'appName': 'Test App',
+                'isSystemApp': false,
+              }
+            ]);
+        final apps = await bridge.getInstalledApps();
+        expect(apps.length, 1);
+        expect(apps[0].packageName, 'com.test.app');
+        expect(apps[0].appName, 'Test App');
+      });
+
+      test('returns mock apps fallback on exception', () async {
+        mockHandler((call) async {
+          throw PlatformException(code: 'ERROR');
+        });
+        final apps = await bridge.getInstalledApps();
+        expect(apps, isNotEmpty);
+      });
+    });
   });
 }
