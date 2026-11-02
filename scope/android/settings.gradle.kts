@@ -12,6 +12,7 @@ pluginManagement {
 
     repositories {
         google()
+        maven { url = java.net.URI("https://maven-central.storage-download.googleapis.com/maven2/") }
         mavenCentral()
         gradlePluginPortal()
     }
