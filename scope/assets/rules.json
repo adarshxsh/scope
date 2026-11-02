@@ -1,75 +1,157 @@
 {
-  "version": "1.0.0",
-  "rules": [
-    {
-      "id": "otp_security",
-      "category": "sys",
-      "priority": "critical",
-      "conditions": {
-        "keywords": ["otp", "verification code", "one-time password", "security code"]
+  "signer_id": "scope-root-key-1",
+  "algorithm": "RSA-SHA256",
+  "signature": "DQHr30hQ6JvVayeezeFTHPbCxdstWWkgS58uNrZuowDWDHGP8HOnsw54wU81TgLKlRdSvIEFWnx6znlD/5aJf0pZ7+QV5aEZEaqnx+/VZCNPx/FbNPTw3zQlefjMR1vrJt37/mNsqELaHEbHU+1+fh1Tif5e3T3mOz3fPfT6THDZ3RkJ9t2nAU8bo/AqW1pD1i7XqD62YTdOibj84t1RbpftLbbiDn01bc/Po0oQq3ZSsrigAHNo0Ms6RQCcU8OuS5laYZ5AqCeiVFdOGTKjYoCUNnZHAKFNV48mdLTSO/HLr3qZK7+UppBaMYdi7zfZumuB88D39+rxhGLTlmq11A==",
+  "payload": {
+    "version": "1.0.0",
+    "rules": [
+      {
+        "id": "otp_security",
+        "category": "sys",
+        "priority": "critical",
+        "conditions": {
+          "keywords": [
+            "otp",
+            "verification code",
+            "one-time password",
+            "security code"
+          ]
+        }
+      },
+      {
+        "id": "finance_debit",
+        "category": "finance",
+        "priority": "critical",
+        "conditions": {
+          "keywords": [
+            "debited",
+            "withdrawn",
+            "spent",
+            "deducted",
+            "sent rs",
+            "sent inr",
+            "charge"
+          ],
+          "title_keywords": [
+            "alert",
+            "bank",
+            "charge",
+            "card"
+          ]
+        }
+      },
+      {
+        "id": "scholarship_portal",
+        "category": "scholarship",
+        "priority": "critical",
+        "conditions": {
+          "packages": [
+            "in.gov.scholarships"
+          ],
+          "keywords": [
+            "deadline alert",
+            "apply before",
+            "closes in"
+          ]
+        }
+      },
+      {
+        "id": "family_urgent",
+        "category": "msg",
+        "priority": "high",
+        "conditions": {
+          "title_keywords": [
+            "mom",
+            "dad",
+            "wife",
+            "hubby",
+            "boss",
+            "manager",
+            "lead"
+          ],
+          "keywords": [
+            "urgent",
+            "where are you",
+            "call me",
+            "emergency"
+          ]
+        }
+      },
+      {
+        "id": "work_collaboration",
+        "category": "msg",
+        "priority": "high",
+        "conditions": {
+          "packages": [
+            "com.slack",
+            "com.microsoft.teams"
+          ],
+          "keywords": [
+            "pr",
+            "pull request",
+            "review",
+            "merge",
+            "standup",
+            "@adarsh"
+          ]
+        }
+      },
+      {
+        "id": "medical_reminder",
+        "category": "health",
+        "priority": "high",
+        "conditions": {
+          "packages": [
+            "com.apollo.patientapp"
+          ],
+          "keywords": [
+            "appointment",
+            "doctor",
+            "report",
+            "prescription",
+            "medicine"
+          ]
+        }
+      },
+      {
+        "id": "promo_deals",
+        "category": "promo",
+        "priority": "low",
+        "conditions": {
+          "keywords": [
+            "sale",
+            "50% off",
+            "discount",
+            "deal",
+            "coupon",
+            "promo",
+            "free delivery",
+            "shop now",
+            "cashback",
+            "limited time"
+          ]
+        }
+      },
+      {
+        "id": "social_engagement",
+        "category": "social",
+        "priority": "low",
+        "conditions": {
+          "packages": [
+            "com.instagram.android",
+            "com.facebook.katana",
+            "com.twitter.android"
+          ],
+          "keywords": [
+            "liked",
+            "followed",
+            "commented",
+            "tagged",
+            "story",
+            "react"
+          ]
+        }
       }
-    },
-    {
-      "id": "finance_debit",
-      "category": "finance",
-      "priority": "critical",
-      "conditions": {
-        "keywords": ["debited", "withdrawn", "spent", "deducted", "sent rs", "sent inr", "charge"],
-        "title_keywords": ["alert", "bank", "charge", "card"]
-      }
-    },
-    {
-      "id": "scholarship_portal",
-      "category": "scholarship",
-      "priority": "critical",
-      "conditions": {
-        "packages": ["in.gov.scholarships"],
-        "keywords": ["deadline alert", "apply before", "closes in"]
-      }
-    },
-    {
-      "id": "family_urgent",
-      "category": "msg",
-      "priority": "high",
-      "conditions": {
-        "title_keywords": ["mom", "dad", "wife", "hubby", "boss", "manager", "lead"],
-        "keywords": ["urgent", "where are you", "call me", "emergency"]
-      }
-    },
-    {
-      "id": "work_collaboration",
-      "category": "msg",
-      "priority": "high",
-      "conditions": {
-        "packages": ["com.slack", "com.microsoft.teams"],
-        "keywords": ["pr", "pull request", "review", "merge", "standup", "@adarsh"]
-      }
-    },
-    {
-      "id": "medical_reminder",
-      "category": "health",
-      "priority": "high",
-      "conditions": {
-        "packages": ["com.apollo.patientapp"],
-        "keywords": ["appointment", "doctor", "report", "prescription", "medicine"]
-      }
-    },
-    {
-      "id": "promo_deals",
-      "category": "promo",
-      "priority": "low",
-      "conditions": {
-        "keywords": ["sale", "50% off", "discount", "deal", "coupon", "promo", "free delivery", "shop now", "cashback", "limited time"]
-      }
-    },
-    {
-      "id": "social_engagement",
-      "category": "social",
-      "priority": "low",
-      "conditions": {
-        "packages": ["com.instagram.android", "com.facebook.katana", "com.twitter.android"],
-        "keywords": ["liked", "followed", "commented", "tagged", "story", "react"]
-      }
-    }
-  ]
+    ]
+  }
 }

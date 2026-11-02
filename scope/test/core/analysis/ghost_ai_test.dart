@@ -11,10 +11,10 @@ void main() {
       GhostAI.instance.clearCache();
     });
 
-    test('initialization handles missing assets and falls back gracefully', () async {
-      // Should not throw, should log and proceed with isModelLoaded = false
+    test('initialization handles missing assets and compiles signed rules database', () async {
       await GhostAI.instance.initialize();
       expect(GhostAI.instance.isModelLoaded, isFalse);
+      expect(GhostAI.instance.ruleVersion, equals('1.0.0'));
     });
 
     test('predict outputs basic inference results and falls back to heuristics', () async {
