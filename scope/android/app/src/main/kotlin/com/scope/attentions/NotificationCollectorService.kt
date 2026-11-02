@@ -17,7 +17,8 @@ import java.util.concurrent.atomic.AtomicLong
  * by [MainActivity] when Flutter requests them via MethodChannel.
  *
  * Architectural & Security Guardrails:
- *   - Bounded static queue (MAX_QUEUE_SIZE = 250) with drop-oldest eviction policy.
+ *   - Bounded static queue (MAX_QUEUE_SIZE = 100) with drop-oldest eviction policy.
+ *   - TTL eviction (MAX_AGE_MS = 15 minutes) for stale queued notifications.
  *   - O(1) deduplication tracking using a HashSet signature map to avoid O(N^2) overhead.
  *   - AtomicLong for thread-safe session ID generation.
  *   - Ingestion filtering excluding ongoing alerts and noise categories (progress, navigation, service, sys, system, transport, status).
@@ -28,8 +29,11 @@ class NotificationCollectorService : NotificationListenerService() {
     companion object {
         private const val TAG = "NotifCollector"
 
-        /** Maximum capacity for the native notification queue to prevent memory leaks. */
-        const val MAX_QUEUE_SIZE = 250
+        /** Maximum allowed queue size to prevent unbounded memory growth. */
+        const val MAX_QUEUE_SIZE = 100
+
+        /** Maximum time-to-live for queued notifications (15 minutes in milliseconds). */
+        const val MAX_AGE_MS = 15 * 60 * 1000L
 
         /** Excluded background/system noise categories at ingestion. */
         private val EXCLUDED_CATEGORIES = setOf(
@@ -53,11 +57,66 @@ class NotificationCollectorService : NotificationListenerService() {
         /** Atomic counter for generating simple unique IDs within a session. */
         private val idCounter = AtomicLong(0L)
 
+        private fun getDedupKey(data: NotificationData): String =
+            "${data.packageName}:${data.title}:${data.content}"
+
+        private fun getDedupKey(packageName: String, title: String, content: String): String =
+            "$packageName:$title:$content"
+
+        /**
+         * Removes entries older than [MAX_AGE_MS] from the queue and updates dedupSet.
+         */
+        fun pruneExpired(now: Long = System.currentTimeMillis()) {
+            synchronized(lock) {
+                val iterator = queue.iterator()
+                while (iterator.hasNext()) {
+                    val item = iterator.next()
+                    if (now - item.timestamp > MAX_AGE_MS) {
+                        iterator.remove()
+                        dedupSet.remove(getDedupKey(item))
+                    }
+                }
+            }
+        }
+
+        /**
+         * Adds a [NotificationData] item to the queue after pruning expired items
+         * and enforcing maximum queue capacity.
+         */
+        fun addNotification(data: NotificationData, now: Long = System.currentTimeMillis()) {
+            synchronized(lock) {
+                pruneExpired(now)
+
+                // Do not add item if it is already expired relative to current time
+                if (now - data.timestamp > MAX_AGE_MS) {
+                    return
+                }
+
+                val dedupKey = getDedupKey(data)
+
+                // Ignore if duplicate already exists in queue
+                if (dedupSet.contains(dedupKey)) {
+                    return
+                }
+
+                // Evict oldest notification if queue reaches MAX_QUEUE_SIZE
+                while (queue.size >= MAX_QUEUE_SIZE) {
+                    val evicted = queue.poll()
+                    if (evicted != null) {
+                        dedupSet.remove(getDedupKey(evicted))
+                    }
+                }
+
+                queue.add(data)
+                dedupSet.add(dedupKey)
+            }
+        }
+
         /**
          * Enqueues a notification with input validation, filtering, O(1) deduplication,
          * and drop-oldest FIFO queue bounding.
          *
-         * @return true if enqueued successfully, false if rejected (duplicate/filtered).
+         * @return true if enqueued successfully, false if rejected (duplicate/filtered/expired).
          */
         fun enqueueNotification(
             packageName: String,
@@ -65,7 +124,8 @@ class NotificationCollectorService : NotificationListenerService() {
             content: String,
             timestamp: Long,
             category: String?,
-            isOngoing: Boolean
+            isOngoing: Boolean,
+            now: Long = System.currentTimeMillis()
         ): Boolean {
             // Filter ongoing system alerts
             if (isOngoing) {
@@ -78,38 +138,40 @@ class NotificationCollectorService : NotificationListenerService() {
                 return false
             }
 
-            val dedupKey = "$packageName:$title:$content"
+            val data = NotificationData(
+                id = "notif_${idCounter.incrementAndGet()}",
+                packageName = packageName,
+                title = title,
+                content = content,
+                timestamp = timestamp,
+                category = category,
+                isOngoing = isOngoing
+            )
 
             synchronized(lock) {
-                // O(1) duplicate check
+                pruneExpired(now)
+
+                if (now - timestamp > MAX_AGE_MS) {
+                    return false
+                }
+
+                val dedupKey = getDedupKey(data)
                 if (dedupSet.contains(dedupKey)) {
                     return false
                 }
 
-                // Drop-oldest eviction if queue reaches max capacity
                 while (queue.size >= MAX_QUEUE_SIZE) {
                     val evicted = queue.poll()
                     if (evicted != null) {
-                        val evictedKey = "${evicted.packageName}:${evicted.title}:${evicted.content}"
-                        dedupSet.remove(evictedKey)
+                        dedupSet.remove(getDedupKey(evicted))
                     }
                 }
-
-                val data = NotificationData(
-                    id = "notif_${idCounter.incrementAndGet()}",
-                    packageName = packageName,
-                    title = title,
-                    content = content,
-                    timestamp = timestamp,
-                    category = category,
-                    isOngoing = isOngoing
-                )
 
                 queue.add(data)
                 dedupSet.add(dedupKey)
 
                 try {
-                    Log.d(TAG, "Captured: $packageName - ${NotificationRedactor.redact(title)}")
+                    Log.d(TAG, "Captured: $packageName - ${NotificationRedactor.redactTitle(title)}")
                 } catch (_: Throwable) {
                     // Safe log fallback for non-Android unit test runtimes
                 }
@@ -119,16 +181,34 @@ class NotificationCollectorService : NotificationListenerService() {
         }
 
         /**
-         * Drains all notifications from the queue and returns them.
+         * Drains all non-expired notifications from the queue and returns them.
          * Called by [MainActivity] when Flutter requests notifications.
          * After this call, the queue is empty.
          */
-        fun drainQueue(): List<NotificationData> {
+        fun drainQueue(now: Long = System.currentTimeMillis()): List<NotificationData> {
             synchronized(lock) {
-                val result = ArrayList<NotificationData>(queue)
+                val result = mutableListOf<NotificationData>()
+                val iterator = queue.iterator()
+                while (iterator.hasNext()) {
+                    val item = iterator.next()
+                    if (now - item.timestamp <= MAX_AGE_MS) {
+                        result.add(item)
+                    }
+                }
                 queue.clear()
                 dedupSet.clear()
                 return result
+            }
+        }
+
+        /**
+         * Clears the queue and resets internal state (for testing/diagnostics).
+         */
+        fun clearQueue() {
+            synchronized(lock) {
+                queue.clear()
+                dedupSet.clear()
+                idCounter.set(0L)
             }
         }
 
@@ -140,34 +220,26 @@ class NotificationCollectorService : NotificationListenerService() {
                 return queue.size
             }
         }
-
-        /**
-         * Clears all items from the queue and deduplication set (diagnostic/test cleanup).
-         */
-        fun clearQueue() {
-            synchronized(lock) {
-                queue.clear()
-                dedupSet.clear()
-            }
-        }
     }
 
-    private fun addSbnToQueue(sbn: StatusBarNotification) {
+    private fun addSbnToQueue(sbn: StatusBarNotification, now: Long = System.currentTimeMillis()) {
         try {
             val extras = sbn.notification?.extras
             val title = extras?.getCharSequence("android.title")?.toString() ?: ""
             val text = extras?.getCharSequence("android.text")?.toString() ?: ""
             val isOngoing = sbn.isOngoing || (sbn.notification != null && (sbn.notification.flags and android.app.Notification.FLAG_ONGOING_EVENT) != 0)
             val packageName = sbn.packageName ?: "unknown"
+            val timestamp = if (sbn.postTime > 0) sbn.postTime else now
             val category = sbn.notification?.category
 
             enqueueNotification(
                 packageName = packageName,
                 title = title,
                 content = text,
-                timestamp = sbn.postTime,
+                timestamp = timestamp,
                 category = category,
-                isOngoing = isOngoing
+                isOngoing = isOngoing,
+                now = now
             )
         } catch (e: Exception) {
             try {
@@ -187,7 +259,7 @@ class NotificationCollectorService : NotificationListenerService() {
             val packageName = sbn.packageName ?: "unknown"
             val title = sbn.notification?.extras?.getCharSequence("android.title")?.toString() ?: ""
             try {
-                Log.d(TAG, "Removed: $packageName - ${NotificationRedactor.redact(title)}")
+                Log.d(TAG, "Removed: $packageName - ${NotificationRedactor.redactTitle(title)}")
             } catch (_: Throwable) {}
         } catch (e: Exception) {
             try {
