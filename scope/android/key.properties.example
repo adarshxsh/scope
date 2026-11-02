@@ -1,8 +1,17 @@
 # Android Release Signing Keystore Configuration
 # Copy this file to 'key.properties' in this directory (scope/android) and fill in your keystore credentials.
 # Note: 'key.properties' and keystore files (*.keystore, *.jks) are ignored by git and must never be committed.
+#
+# Key Generation & Encryption:
+# Android release signing uses standard Java KeyStore (JKS/PKCS12) cryptography (standard RSA 2048/4096-bit asymmetric keys
+# with SHA-256 signatures). There is no proprietary or private key generation mechanism in the codebase.
+#
+# You can generate a standard release keystore using the publicly available JDK 'keytool' command:
+#   keytool -genkey -v -keystore upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+#
+# Or generate one via Android Studio: Build > Generate Signed Bundle / APK > Create new...
 
 storePassword=your_store_password
 keyPassword=your_key_password
-keyAlias=your_key_alias
-storeFile=path/to/upload-keystore.jks
+keyAlias=upload
+storeFile=upload-keystore.jks
