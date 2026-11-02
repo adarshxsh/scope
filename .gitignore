@@ -55,6 +55,8 @@ unlinked_spec.ds
 **/android/local.properties
 **/android/**/GeneratedPluginRegistrant.java
 **/android/key.properties
+*.keystore
+**/*.keystore
 *.jks
 
 # iOS/XCode related

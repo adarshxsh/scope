@@ -67,6 +67,19 @@ To build and run this project, you will need:
 
 > **⚠️ IMPORTANT:** Upon first launch, you will be prompted to grant **Notification Access** permissions. This is required for SCOPE to read and manage incoming notifications.
 
+### 🔑 Android Release Signing & Keystore Setup
+
+SCOPE uses standard Android application signing (RSA 2048/4096-bit via standard Java KeyStore / PKCS12 format). Key generation uses publicly available standard JDK tools without proprietary or non-public key generation mechanisms:
+
+1. **Generate a Release Keystore**:
+   ```bash
+   keytool -genkey -v -keystore scope/android/upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+   ```
+2. **Configure Credentials**:
+   Copy `scope/android/key.properties.example` to `scope/android/key.properties` and provide your keystore credentials, or set system environment variables (`ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`).
+3. **Local Debug Fallback**:
+   If release keystore credentials are not provided, release builds automatically fall back to Android's debug signing key with a build log warning, allowing local commands like `flutter run --release` to run without build failures.
+
 ## 🧠 Machine Learning Pipeline
 
 SCOPE uses a local TensorFlow Lite model. The training pipeline is located in the `ml/` directory.
