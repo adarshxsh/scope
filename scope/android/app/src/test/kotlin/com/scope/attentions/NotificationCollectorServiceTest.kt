@@ -185,4 +185,31 @@ class NotificationCollectorServiceTest {
         assertEquals(1, drained.size)
         assertEquals("3", drained[0].id)
     }
+
+    @Test
+    fun testRedactForLogHandlesNullAndEmpty() {
+        assertEquals("[EMPTY]", NotificationCollectorService.redactForLog(null))
+        assertEquals("[EMPTY]", NotificationCollectorService.redactForLog(""))
+    }
+
+    @Test
+    fun testRedactForLogProducesRedactedFingerprint() {
+        val result = NotificationCollectorService.redactForLog("Secret Bank Alert")
+        assertTrue(result.startsWith("[REDACTED len=17 hash="))
+        assertTrue(result.endsWith("]"))
+        assertFalse(result.contains("Secret Bank Alert"))
+    }
+
+    @Test
+    fun testSanitizePackageNameHandlesNullAndEmpty() {
+        assertEquals("unknown", NotificationCollectorService.sanitizePackageName(null))
+        assertEquals("unknown", NotificationCollectorService.sanitizePackageName(""))
+    }
+
+    @Test
+    fun testSanitizePackageNameObfuscatesPackage() {
+        val result = NotificationCollectorService.sanitizePackageName("com.whatsapp")
+        assertTrue(result.startsWith("com...#"))
+        assertFalse(result.contains("whatsapp"))
+    }
 }
