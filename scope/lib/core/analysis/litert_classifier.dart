@@ -45,9 +45,24 @@ class LiteRtClassifier implements NotificationAnalyzer {
   bool get isModelLoaded => _isModelLoaded;
 
   @override
-  Future<AnalysisResult> analyze(AppNotification notification) async {
+  Future<AnalysisResult> analyze(
+    AppNotification notification, {
+    bool isLowBattery = false,
+  }) async {
     final stopwatch = Stopwatch()..start();
     final combinedText = '${notification.title} ${notification.content}';
+
+    if (isLowBattery) {
+      final category = _runFallbackHeuristic(combinedText);
+      stopwatch.stop();
+      return AnalysisResult(
+        category: category,
+        score: 0.50,
+        engineName: 'litert_model (low battery fallback)',
+        matchedSignals: ['Low battery mode active; ML inference bypassed'],
+        latencyMs: stopwatch.elapsedMilliseconds,
+      );
+    }
 
     // Ensure initialization finished
     if (_tokenizer == null) {

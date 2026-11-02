@@ -24,6 +24,8 @@ class NotificationCollectorService : NotificationListenerService() {
 
     companion object {
         private const val TAG = "NotifCollector"
+        private const val MAX_TITLE_LENGTH = 500
+        private const val MAX_CONTENT_LENGTH = 2048
 
         /** Maximum allowed queue size to prevent unbounded memory growth. */
         const val MAX_QUEUE_SIZE = 100
@@ -105,11 +107,18 @@ class NotificationCollectorService : NotificationListenerService() {
     private fun addSbnToQueue(sbn: StatusBarNotification, now: Long = System.currentTimeMillis()) {
         try {
             val extras = sbn.notification.extras
-            val title = extras?.getCharSequence("android.title")?.toString() ?: ""
-            val text = extras?.getCharSequence("android.text")?.toString() ?: ""
+            var title = extras?.getCharSequence("android.title")?.toString() ?: ""
+            var text = extras?.getCharSequence("android.text")?.toString() ?: ""
             val isOngoing = sbn.isOngoing
             val packageName = sbn.packageName ?: "unknown"
             val timestamp = if (sbn.postTime > 0) sbn.postTime else now
+
+            if (title.length > MAX_TITLE_LENGTH) {
+                title = title.substring(0, MAX_TITLE_LENGTH)
+            }
+            if (text.length > MAX_CONTENT_LENGTH) {
+                text = text.substring(0, MAX_CONTENT_LENGTH)
+            }
 
             val data = NotificationData(
                 id = "notif_${++idCounter}",
@@ -135,9 +144,8 @@ class NotificationCollectorService : NotificationListenerService() {
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         if (sbn == null) return
-        // Log for now; future phases may track dismissed notifications
         val removedTitle = sbn.notification.extras?.getCharSequence("android.title")?.toString()
-        Log.d(TAG, "Removed: ${sbn.packageName} - ${NotificationRedactor.redactTitle(removedTitle)}")
+        Log.d(TAG, "Removed notification from package: ${sbn.packageName} - ${NotificationRedactor.redactTitle(removedTitle)}")
     }
 
     override fun onListenerConnected() {

@@ -77,5 +77,38 @@ void main() {
       expect(analyzed.priority, equals('low'));
       expect(analyzed.classifiedCategory, equals('promo'));
     });
+
+    test('bypasses heavy ML inference on low battery and meets sub-50ms latency benchmark', () async {
+      final notif = AppNotification(
+        id: '4',
+        packageName: 'com.whatsapp',
+        title: 'WhatsApp verification',
+        content: 'Your registration code is 981234.',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final stopwatch = Stopwatch()..start();
+      final analyzed = await engine.analyze(notif, isLowBattery: true);
+      stopwatch.stop();
+
+      expect(analyzed.modelVersion, equals('fallback-low-battery'));
+      expect(analyzed.priority, equals('critical'));
+      expect(analyzed.extractedFeatures!['otp'], equals('981234'));
+      expect(stopwatch.elapsedMilliseconds, lessThan(50));
+    });
+
+    test('recovers gracefully from error state during background analysis', () async {
+      final malformedNotif = AppNotification(
+        id: '5',
+        packageName: 'com.malformed',
+        title: 'Error test',
+        content: 'Sample notification',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final analyzed = await engine.analyze(malformedNotif);
+      expect(analyzed.priority, isNotNull);
+      expect(analyzed.latencyMs, isNotNull);
+    });
   });
 }

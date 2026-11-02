@@ -129,5 +129,33 @@ void main() {
         await bridge.openNotificationSettings();
       });
     });
+
+    group('battery status methods', () {
+      test('isLowBattery returns channel response', () async {
+        mockHandler((call) async => true);
+        final isLow = await bridge.isLowBattery();
+        expect(isLow, true);
+        expect(log.single.method, 'isLowBattery');
+      });
+
+      test('isLowBattery respects setLowBatteryOverride', () async {
+        bridge.setLowBatteryOverride(true);
+        final isLow = await bridge.isLowBattery();
+        expect(isLow, true);
+        expect(log, isEmpty);
+      });
+
+      test('getBatteryState returns channel battery map', () async {
+        mockHandler((call) async => {
+          'batteryLevel': 10,
+          'isPowerSaveMode': true,
+          'isLowBattery': true,
+        });
+        final state = await bridge.getBatteryState();
+        expect(state['batteryLevel'], 10);
+        expect(state['isLowBattery'], true);
+        expect(log.single.method, 'getBatteryState');
+      });
+    });
   });
 }

@@ -4,5 +4,5 @@ import 'package:scope/core/analysis/analysis_result.dart';
 /// Contract interface for a single notification analyzer component.
 abstract class NotificationAnalyzer {
   /// Analyzes a notification and returns classification details.
-  Future<AnalysisResult> analyze(AppNotification notification);
+  Future<AnalysisResult> analyze(AppNotification notification, {bool isLowBattery = false});
 }

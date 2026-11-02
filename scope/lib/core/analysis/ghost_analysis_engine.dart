@@ -39,71 +39,101 @@ class GhostAnalysisEngine {
 
   /// Executes the hybrid intelligence pipeline end-to-end.
   /// Intercepts raw notification data and resolves it into a fully decorated priority model.
-  Future<AppNotification> analyze(AppNotification notification) async {
+  Future<AppNotification> analyze(
+    AppNotification notification, {
+    bool isLowBattery = false,
+  }) async {
     final stopwatch = Stopwatch()..start();
 
-    // 0. Filter out progress/download/sync status notifications to prevent unnecessary analysis
-    if (_isStatusOrProgressNotification(notification)) {
+    try {
+      // 0. Filter out progress/download/sync status notifications to prevent unnecessary analysis
+      if (_isStatusOrProgressNotification(notification)) {
+        stopwatch.stop();
+        return notification.copyWith(
+          priority: 'low',
+          priorityScore: 0.0,
+          classifiedCategory: 'system_status',
+          explanation: 'Status or progress notification ignored by AI.',
+          latencyMs: stopwatch.elapsedMilliseconds,
+          engineVersion: '2.0.0-hybrid',
+        );
+      }
+
+      // 1. Structured Feature Extraction
+      final features = FeatureExtractor.extract(
+        title: notification.title,
+        content: notification.content,
+      );
+
+      // 2. Rule Engine matching
+      final ruleMatch = ruleEngine.match(notification);
+
+      // 3. LiteRT Classification Category Inference (bypassed/heuristic fallback on low battery)
+      final mlResult = await mlClassifier.analyze(
+        notification,
+        isLowBattery: isLowBattery,
+      );
+
+      // 4. Score Fusion (hybrid conflict resolution or critical bypass triggers)
+      final fusedResult = ScoreFusion.fuse(
+        ruleResult: ruleMatch,
+        modelResult: mlResult,
+      );
+
+      // Run unified look-again MLP model prediction (bypassed/heuristic fallback on low battery)
+      final ghostResult = await GhostAI.predict(
+        notification,
+        isLowBattery: isLowBattery,
+      );
+
+      // 5. Policy Engine (category + feature to priority levels resolution)
+      final priority = PolicyEngine.resolvePriority(
+        fusedResult: fusedResult,
+        features: features,
+        notification: notification,
+        lookAgainScore: ghostResult.reviewScore,
+      );
+
+      // 6. Natural language explainability trace
+      final explanation = ExplanationGenerator.generate(
+        fusedResult: fusedResult,
+        features: features,
+        priority: priority,
+      );
+
+      stopwatch.stop();
+
+      final modelVer = isLowBattery
+          ? 'fallback-low-battery'
+          : (GhostAI.instance.isModelLoaded
+              ? '1.0.0-tflite'
+              : 'fallback-heuristics');
+
+      return notification.copyWith(
+        priority: priority,
+        priorityScore: ghostResult.reviewScore,
+        classifiedCategory: fusedResult.category,
+        explanation: explanation,
+        latencyMs: stopwatch.elapsedMilliseconds,
+        ruleVersion: ruleEngine.version,
+        modelVersion: modelVer,
+        engineVersion: fusedResult.isFallback ? '2.0.0-hybrid (fallback)' : '2.0.0-hybrid',
+        extractedFeatures: features.toMap(),
+      );
+    } catch (e) {
+      // Graceful fallback recovery on unexpected pipeline exceptions
       stopwatch.stop();
       return notification.copyWith(
-        priority: 'low',
-        priorityScore: 0.0,
-        classifiedCategory: 'system_status',
-        explanation: 'Status or progress notification ignored by AI.',
+        priority: 'medium',
+        priorityScore: 0.50,
+        classifiedCategory: 'msg',
+        explanation: 'Fallback analysis applied due to unexpected error.',
         latencyMs: stopwatch.elapsedMilliseconds,
+        ruleVersion: ruleEngine.version,
+        modelVersion: 'error-fallback',
         engineVersion: '2.0.0-hybrid',
       );
     }
-
-    // 1. Structured Feature Extraction
-    final features = FeatureExtractor.extract(
-      title: notification.title,
-      content: notification.content,
-    );
-
-    // 2. Rule Engine matching
-    final ruleMatch = ruleEngine.match(notification);
-
-    // 3. LiteRT Classification Category Inference
-    final mlResult = await mlClassifier.analyze(notification);
-
-    // 4. Score Fusion (hybrid conflict resolution or critical bypass triggers)
-    final fusedResult = ScoreFusion.fuse(
-      ruleResult: ruleMatch,
-      modelResult: mlResult,
-    );
-
-    // Run unified look-again MLP model prediction
-    final ghostResult = await GhostAI.predict(notification);
-
-    // 5. Policy Engine (category + feature to priority levels resolution)
-    final priority = PolicyEngine.resolvePriority(
-      fusedResult: fusedResult,
-      features: features,
-      notification: notification,
-      lookAgainScore: ghostResult.reviewScore,
-    );
-
-    // 6. Natural language explainability trace
-    final explanation = ExplanationGenerator.generate(
-      fusedResult: fusedResult,
-      features: features,
-      priority: priority,
-    );
-
-    stopwatch.stop();
-
-    return notification.copyWith(
-      priority: priority,
-      priorityScore: ghostResult.reviewScore,
-      classifiedCategory: fusedResult.category,
-      explanation: explanation,
-      latencyMs: stopwatch.elapsedMilliseconds,
-      ruleVersion: ruleEngine.version,
-      modelVersion: GhostAI.instance.isModelLoaded ? '1.0.0-tflite' : 'fallback-heuristics',
-      engineVersion: fusedResult.isFallback ? '2.0.0-hybrid (fallback)' : '2.0.0-hybrid',
-      extractedFeatures: features.toMap(),
-    );
   }
 
   bool _isStatusOrProgressNotification(AppNotification notification) {

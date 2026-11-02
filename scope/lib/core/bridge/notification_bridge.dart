@@ -18,9 +18,15 @@ import 'package:scope/core/models/notification_model.dart';
 class NotificationBridge {
   /// The MethodChannel name must match the one registered in MainActivity.kt
   final MethodChannel _channel;
+  bool? _lowBatteryOverride;
 
   NotificationBridge({MethodChannel? channel})
     : _channel = channel ?? const MethodChannel('com.scope.notifications');
+
+  /// Set an override for testing or manual low battery toggles.
+  void setLowBatteryOverride(bool? override) {
+    _lowBatteryOverride = override;
+  }
 
   /// Drains the notification queue from the Android side.
   ///
@@ -73,6 +79,36 @@ class NotificationBridge {
       print('NotificationBridge.openNotificationSettings failed: ${e.message}');
     } on MissingPluginException {
       // Not on Android — nothing to do
+    }
+  }
+
+  /// Checks if the device is currently in a low battery state or power saver mode.
+  Future<bool> isLowBattery() async {
+    if (_lowBatteryOverride != null) return _lowBatteryOverride!;
+    try {
+      final result = await _channel.invokeMethod<bool>('isLowBattery');
+      return result ?? false;
+    } on PlatformException {
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
+
+  /// Fetches structured battery diagnostics (battery level, power save mode, low battery flag).
+  Future<Map<String, dynamic>> getBatteryState() async {
+    try {
+      final result = await _channel.invokeMethod<Map>('getBatteryState');
+      if (result == null) return {'isLowBattery': _lowBatteryOverride ?? false};
+      final map = Map<String, dynamic>.from(result);
+      if (_lowBatteryOverride != null) {
+        map['isLowBattery'] = _lowBatteryOverride;
+      }
+      return map;
+    } on PlatformException {
+      return {'isLowBattery': _lowBatteryOverride ?? false};
+    } on MissingPluginException {
+      return {'isLowBattery': _lowBatteryOverride ?? false};
     }
   }
 }
