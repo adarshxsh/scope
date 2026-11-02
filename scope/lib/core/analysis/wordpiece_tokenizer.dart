@@ -8,6 +8,12 @@ class WordPieceTokenizer {
   static const int minSeqLength = 1;
   static const int defaultMaxSeqLength = 64;
   static const int defaultMaxInputCharsPerWord = 100;
+  static const List<String> requiredSpecialTokens = [
+    '[PAD]',
+    '[UNK]',
+    '[CLS]',
+    '[SEP]',
+  ];
 
   final Map<String, int> vocab;
   final int maxSeqLength;
@@ -17,7 +23,23 @@ class WordPieceTokenizer {
     this.vocab, {
     int maxSeqLength = defaultMaxSeqLength,
     this.maxInputCharsPerWord = defaultMaxInputCharsPerWord,
-  }) : maxSeqLength = maxSeqLength < minSeqLength ? minSeqLength : maxSeqLength;
+  }) : maxSeqLength = maxSeqLength < minSeqLength ? minSeqLength : maxSeqLength {
+    _validateVocab(vocab);
+  }
+
+  static void _validateVocab(Map<String, int> vocab) {
+    if (vocab.isEmpty) {
+      throw const FormatException('Vocabulary asset cannot be empty.');
+    }
+    final missingTokens = requiredSpecialTokens
+        .where((token) => !vocab.containsKey(token))
+        .toList();
+    if (missingTokens.isNotEmpty) {
+      throw FormatException(
+        'Vocabulary is missing required special token(s): ${missingTokens.join(', ')}',
+      );
+    }
+  }
 
   /// Loads vocabulary from a list of lines (e.g. from vocab.txt).
   factory WordPieceTokenizer.fromLines(
@@ -46,10 +68,10 @@ class WordPieceTokenizer {
     final tokens = _basicTokenize(text);
     final List<int> ids = [];
 
-    final clsId = vocab['[CLS]'] ?? 101;
-    final sepId = vocab['[SEP]'] ?? 102;
-    final padId = vocab['[PAD]'] ?? 0;
-    final unkId = vocab['[UNK]'] ?? 100;
+    final clsId = vocab['[CLS]']!;
+    final sepId = vocab['[SEP]']!;
+    final padId = vocab['[PAD]']!;
+    final unkId = vocab['[UNK]']!;
 
     ids.add(clsId);
 
@@ -80,7 +102,8 @@ class WordPieceTokenizer {
       ids.length = targetLength;
     }
 
-    return ids;
+    final maxIndex = vocab.length - 1;
+    return ids.map((id) => id.clamp(0, maxIndex)).toList();
   }
 
   /// Asynchronously tokenizes [text] on a background isolate off the main event loop.
