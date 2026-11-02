@@ -110,5 +110,23 @@ void main() {
       expect(result.score, equals(0.0));
       expect(result.isFallback, isTrue);
     });
+
+    test('handles emoji and long payloads without crashing or throwing errors', () async {
+      final classifier = LiteRtClassifier();
+      
+      final notif = AppNotification(
+        id: '3',
+        packageName: 'com.whatsapp',
+        title: 'Promotion 🔥🎉',
+        content: 'Huge discount on products! ' * 20,
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final result = await classifier.analyze(notif);
+      
+      expect(result.category, equals('promo'));
+      expect(result.engineName, contains('fallback'));
+      expect(result.isFallback, isTrue);
+    });
   });
 }
