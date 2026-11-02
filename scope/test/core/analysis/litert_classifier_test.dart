@@ -44,6 +44,13 @@ void main() {
       expect(result.isFallback, isTrue);
     });
 
+    test('initialize() completes without throwing and sets isModelLoaded status', () async {
+      final classifier = LiteRtClassifier();
+      await classifier.initialize();
+      // On desktop/headless test runners without native C library, isModelLoaded is false
+      expect(classifier.isModelLoaded, isFalse);
+    });
+
     test('handles emoji and long payloads without crashing or throwing errors', () async {
       final classifier = LiteRtClassifier();
       
