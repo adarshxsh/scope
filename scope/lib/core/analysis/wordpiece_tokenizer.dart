@@ -1,41 +1,112 @@
 /// WordPiece tokenizer implementation in pure Dart for BERT models.
 library;
 
+import 'dart:convert';
 import 'dart:isolate';
 import 'dart:math' as math;
+import 'package:crypto/crypto.dart';
+
+/// Exception thrown when vocabulary fails SHA-256 digest verification,
+/// size bounds, or special token contract requirements.
+class VocabularyContractException implements Exception {
+  final String message;
+  const VocabularyContractException(this.message);
+
+  @override
+  String toString() => 'VocabularyContractException: $message';
+}
+
+/// Expected SHA-256 checksum for the standard assets/vocab.txt file.
+const String kExpectedVocabSha256 =
+    '6229da7b5527533c901e57b32dafc3c6fd701114a407d1fe4f5da60af3b062c5';
 
 class WordPieceTokenizer {
   static const int minSeqLength = 1;
   static const int defaultMaxSeqLength = 64;
   static const int defaultMaxInputCharsPerWord = 100;
+  static const int defaultMinVocabSize = 4;
+  static const int defaultMaxVocabSize = 30522;
 
   final Map<String, int> vocab;
   final int maxSeqLength;
   final int maxInputCharsPerWord;
 
+  /// Dynamic verified special token IDs
+  final int clsId;
+  final int sepId;
+  final int padId;
+  final int unkId;
+
   WordPieceTokenizer(
     this.vocab, {
     int maxSeqLength = defaultMaxSeqLength,
     this.maxInputCharsPerWord = defaultMaxInputCharsPerWord,
-  }) : maxSeqLength = maxSeqLength < minSeqLength ? minSeqLength : maxSeqLength;
+    int minVocabSize = defaultMinVocabSize,
+    int maxVocabSize = defaultMaxVocabSize,
+  })  : maxSeqLength = maxSeqLength < minSeqLength ? minSeqLength : maxSeqLength,
+        clsId = vocab['[CLS]'] ?? -1,
+        sepId = vocab['[SEP]'] ?? -1,
+        padId = vocab['[PAD]'] ?? -1,
+        unkId = vocab['[UNK]'] ?? -1 {
+    _validateContract(minVocabSize: minVocabSize, maxVocabSize: maxVocabSize);
+  }
+
+  void _validateContract({required int minVocabSize, required int maxVocabSize}) {
+    if (vocab.length < minVocabSize || vocab.length > maxVocabSize) {
+      throw VocabularyContractException(
+        'Vocabulary size (${vocab.length}) out of bounds [$minVocabSize, $maxVocabSize]',
+      );
+    }
+
+    final missingTokens = <String>[];
+    if (clsId == -1) missingTokens.add('[CLS]');
+    if (sepId == -1) missingTokens.add('[SEP]');
+    if (padId == -1) missingTokens.add('[PAD]');
+    if (unkId == -1) missingTokens.add('[UNK]');
+
+    if (missingTokens.isNotEmpty) {
+      throw VocabularyContractException(
+        'Missing mandatory special token(s): ${missingTokens.join(', ')}',
+      );
+    }
+  }
 
   /// Loads vocabulary from a list of lines (e.g. from vocab.txt).
+  ///
+  /// Optionally verifies the SHA-256 digest against [expectedDigest]
+  /// and validates vocabulary size bounds and required special tokens.
   factory WordPieceTokenizer.fromLines(
     List<String> lines, {
     int maxSeqLength = defaultMaxSeqLength,
     int maxInputCharsPerWord = defaultMaxInputCharsPerWord,
+    String? expectedDigest,
+    int minVocabSize = defaultMinVocabSize,
+    int maxVocabSize = defaultMaxVocabSize,
   }) {
+    if (expectedDigest != null) {
+      final content = lines.join('\n');
+      final actualDigest = sha256.convert(utf8.encode(content)).toString();
+      if (actualDigest.toLowerCase() != expectedDigest.toLowerCase()) {
+        throw VocabularyContractException(
+          'Vocabulary SHA-256 digest mismatch. Expected: $expectedDigest, Actual: $actualDigest',
+        );
+      }
+    }
+
     final vocabMap = <String, int>{};
     for (int i = 0; i < lines.length; i++) {
       final line = lines[i].trim();
       if (line.isNotEmpty) {
-        vocabMap[line] = i;
+        vocabMap.putIfAbsent(line, () => i);
       }
     }
+
     return WordPieceTokenizer(
       vocabMap,
       maxSeqLength: maxSeqLength,
       maxInputCharsPerWord: maxInputCharsPerWord,
+      minVocabSize: minVocabSize,
+      maxVocabSize: maxVocabSize,
     );
   }
 
@@ -45,11 +116,6 @@ class WordPieceTokenizer {
     final targetLength = math.max(minSeqLength, maxSeqLength ?? this.maxSeqLength);
     final tokens = _basicTokenize(text);
     final List<int> ids = [];
-
-    final clsId = vocab['[CLS]'] ?? 101;
-    final sepId = vocab['[SEP]'] ?? 102;
-    final padId = vocab['[PAD]'] ?? 0;
-    final unkId = vocab['[UNK]'] ?? 100;
 
     ids.add(clsId);
 
