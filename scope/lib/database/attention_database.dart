@@ -7,6 +7,7 @@ import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/database/tables.dart';
 import 'package:scope/database/daos.dart';
 import 'package:scope/database/converters.dart';
+import 'package:scope/database/database_key_vault.dart';
 
 part 'attention_database.g.dart';
 
@@ -31,6 +32,10 @@ class AttentionDatabase extends _$AttentionDatabase {
     return AttentionDatabase(NativeDatabase.memory());
   }
 
+  factory AttentionDatabase.openOnDisk(File file, {DatabaseKeyVault? keyVault}) {
+    return AttentionDatabase(_openConnection(keyVault: keyVault, customFile: file));
+  }
+
   @override
   int get schemaVersion => 1;
 
@@ -52,10 +57,31 @@ class AttentionDatabase extends _$AttentionDatabase {
   }
 }
 
-QueryExecutor _openConnection() {
+QueryExecutor _openConnection({DatabaseKeyVault? keyVault, File? customFile}) {
   return LazyDatabase(() async {
-    final dbFolder = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dbFolder.path, 'attention_os.db'));
-    return NativeDatabase(file);
+    final vault = keyVault ?? DatabaseKeyVault();
+    final File dbFile;
+    if (customFile != null) {
+      dbFile = customFile;
+    } else {
+      final dbFolder = await getApplicationDocumentsDirectory();
+      dbFile = File(p.join(dbFolder.path, 'attention_os.db'));
+    }
+
+    String passphrase;
+    try {
+      passphrase = await vault.getOrCreatePassphrase();
+    } catch (_) {
+      passphrase = await vault.generateAndSaveNewPassphrase();
+    }
+
+    return NativeDatabase(
+      dbFile,
+      setup: (rawDb) {
+        final escapedPassphrase = passphrase.replaceAll("'", "''");
+        rawDb.execute("PRAGMA key = '$escapedPassphrase';");
+      },
+    );
   });
 }
+

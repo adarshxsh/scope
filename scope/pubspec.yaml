@@ -27,6 +27,11 @@ environment:
 # dependencies can be manually updated by changing the version numbers below to
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
+hooks:
+  user_defines:
+    sqlite3:
+      source: sqlcipher
+
 dependencies:
   flutter:
     sdk: flutter
@@ -42,6 +47,10 @@ dependencies:
   path: ^1.8.3
   fl_chart: ^1.2.0
   google_fonts: ^8.1.0
+  flutter_secure_storage: ^11.2.0
+  sqflite_sqlcipher: ^3.4.1
+  sqlite3: ^3.5.2
+  sqlcipher_flutter_libs: ^0.7.0+eol
 
 dev_dependencies:
   flutter_test:
