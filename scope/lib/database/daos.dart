@@ -154,3 +154,34 @@ class DailyBriefDao extends DatabaseAccessor<AttentionDatabase> with _$DailyBrie
     await delete(dailyBriefTable).go();
   }
 }
+
+@DriftAccessor(tables: [InferenceTelemetryTable])
+class InferenceTelemetryDao extends DatabaseAccessor<AttentionDatabase> with _$InferenceTelemetryDaoMixin {
+  InferenceTelemetryDao(super.db);
+
+  Future<int> insertTelemetry(InferenceTelemetryTableCompanion entry) async {
+    return into(inferenceTelemetryTable).insert(entry);
+  }
+
+  Future<List<InferenceTelemetryEntry>> getAll() {
+    return (select(inferenceTelemetryTable)
+          ..orderBy([(t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc)]))
+        .get();
+  }
+
+  Stream<List<InferenceTelemetryEntry>> watchAll() {
+    return (select(inferenceTelemetryTable)
+          ..orderBy([(t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc)]))
+        .watch();
+  }
+
+  Future<int> deleteOlderThan(DateTime cutoff) {
+    return (delete(inferenceTelemetryTable)
+          ..where((t) => t.createdAt.isSmallerThanValue(cutoff)))
+        .go();
+  }
+
+  Future<void> clearAll() async {
+    await delete(inferenceTelemetryTable).go();
+  }
+}

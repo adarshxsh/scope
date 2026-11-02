@@ -2709,6 +2709,696 @@ class DailyBriefTableCompanion extends UpdateCompanion<DailyBriefEntry> {
   }
 }
 
+class $InferenceTelemetryTableTable extends InferenceTelemetryTable
+    with TableInfo<$InferenceTelemetryTableTable, InferenceTelemetryEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $InferenceTelemetryTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _periodStartMsMeta = const VerificationMeta(
+    'periodStartMs',
+  );
+  @override
+  late final GeneratedColumn<int> periodStartMs = GeneratedColumn<int>(
+    'period_start_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _periodEndMsMeta = const VerificationMeta(
+    'periodEndMs',
+  );
+  @override
+  late final GeneratedColumn<int> periodEndMs = GeneratedColumn<int>(
+    'period_end_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _totalInferencesMeta = const VerificationMeta(
+    'totalInferences',
+  );
+  @override
+  late final GeneratedColumn<int> totalInferences = GeneratedColumn<int>(
+    'total_inferences',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _errorCountMeta = const VerificationMeta(
+    'errorCount',
+  );
+  @override
+  late final GeneratedColumn<int> errorCount = GeneratedColumn<int>(
+    'error_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _fallbackCountMeta = const VerificationMeta(
+    'fallbackCount',
+  );
+  @override
+  late final GeneratedColumn<int> fallbackCount = GeneratedColumn<int>(
+    'fallback_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _p50LatencyUsMeta = const VerificationMeta(
+    'p50LatencyUs',
+  );
+  @override
+  late final GeneratedColumn<int> p50LatencyUs = GeneratedColumn<int>(
+    'p50_latency_us',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _p90LatencyUsMeta = const VerificationMeta(
+    'p90LatencyUs',
+  );
+  @override
+  late final GeneratedColumn<int> p90LatencyUs = GeneratedColumn<int>(
+    'p90_latency_us',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _p95LatencyUsMeta = const VerificationMeta(
+    'p95LatencyUs',
+  );
+  @override
+  late final GeneratedColumn<int> p95LatencyUs = GeneratedColumn<int>(
+    'p95_latency_us',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _modelVersionMeta = const VerificationMeta(
+    'modelVersion',
+  );
+  @override
+  late final GeneratedColumn<String> modelVersion = GeneratedColumn<String>(
+    'model_version',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    periodStartMs,
+    periodEndMs,
+    totalInferences,
+    errorCount,
+    fallbackCount,
+    p50LatencyUs,
+    p90LatencyUs,
+    p95LatencyUs,
+    modelVersion,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'inference_telemetry_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<InferenceTelemetryEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('period_start_ms')) {
+      context.handle(
+        _periodStartMsMeta,
+        periodStartMs.isAcceptableOrUnknown(
+          data['period_start_ms']!,
+          _periodStartMsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_periodStartMsMeta);
+    }
+    if (data.containsKey('period_end_ms')) {
+      context.handle(
+        _periodEndMsMeta,
+        periodEndMs.isAcceptableOrUnknown(
+          data['period_end_ms']!,
+          _periodEndMsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_periodEndMsMeta);
+    }
+    if (data.containsKey('total_inferences')) {
+      context.handle(
+        _totalInferencesMeta,
+        totalInferences.isAcceptableOrUnknown(
+          data['total_inferences']!,
+          _totalInferencesMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_totalInferencesMeta);
+    }
+    if (data.containsKey('error_count')) {
+      context.handle(
+        _errorCountMeta,
+        errorCount.isAcceptableOrUnknown(data['error_count']!, _errorCountMeta),
+      );
+    }
+    if (data.containsKey('fallback_count')) {
+      context.handle(
+        _fallbackCountMeta,
+        fallbackCount.isAcceptableOrUnknown(
+          data['fallback_count']!,
+          _fallbackCountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('p50_latency_us')) {
+      context.handle(
+        _p50LatencyUsMeta,
+        p50LatencyUs.isAcceptableOrUnknown(
+          data['p50_latency_us']!,
+          _p50LatencyUsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_p50LatencyUsMeta);
+    }
+    if (data.containsKey('p90_latency_us')) {
+      context.handle(
+        _p90LatencyUsMeta,
+        p90LatencyUs.isAcceptableOrUnknown(
+          data['p90_latency_us']!,
+          _p90LatencyUsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_p90LatencyUsMeta);
+    }
+    if (data.containsKey('p95_latency_us')) {
+      context.handle(
+        _p95LatencyUsMeta,
+        p95LatencyUs.isAcceptableOrUnknown(
+          data['p95_latency_us']!,
+          _p95LatencyUsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_p95LatencyUsMeta);
+    }
+    if (data.containsKey('model_version')) {
+      context.handle(
+        _modelVersionMeta,
+        modelVersion.isAcceptableOrUnknown(
+          data['model_version']!,
+          _modelVersionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  InferenceTelemetryEntry map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return InferenceTelemetryEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      periodStartMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}period_start_ms'],
+      )!,
+      periodEndMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}period_end_ms'],
+      )!,
+      totalInferences: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}total_inferences'],
+      )!,
+      errorCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}error_count'],
+      )!,
+      fallbackCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}fallback_count'],
+      )!,
+      p50LatencyUs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}p50_latency_us'],
+      )!,
+      p90LatencyUs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}p90_latency_us'],
+      )!,
+      p95LatencyUs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}p95_latency_us'],
+      )!,
+      modelVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}model_version'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $InferenceTelemetryTableTable createAlias(String alias) {
+    return $InferenceTelemetryTableTable(attachedDatabase, alias);
+  }
+}
+
+class InferenceTelemetryEntry extends DataClass
+    implements Insertable<InferenceTelemetryEntry> {
+  final int id;
+  final int periodStartMs;
+  final int periodEndMs;
+  final int totalInferences;
+  final int errorCount;
+  final int fallbackCount;
+  final int p50LatencyUs;
+  final int p90LatencyUs;
+  final int p95LatencyUs;
+  final String? modelVersion;
+  final DateTime createdAt;
+  const InferenceTelemetryEntry({
+    required this.id,
+    required this.periodStartMs,
+    required this.periodEndMs,
+    required this.totalInferences,
+    required this.errorCount,
+    required this.fallbackCount,
+    required this.p50LatencyUs,
+    required this.p90LatencyUs,
+    required this.p95LatencyUs,
+    this.modelVersion,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['period_start_ms'] = Variable<int>(periodStartMs);
+    map['period_end_ms'] = Variable<int>(periodEndMs);
+    map['total_inferences'] = Variable<int>(totalInferences);
+    map['error_count'] = Variable<int>(errorCount);
+    map['fallback_count'] = Variable<int>(fallbackCount);
+    map['p50_latency_us'] = Variable<int>(p50LatencyUs);
+    map['p90_latency_us'] = Variable<int>(p90LatencyUs);
+    map['p95_latency_us'] = Variable<int>(p95LatencyUs);
+    if (!nullToAbsent || modelVersion != null) {
+      map['model_version'] = Variable<String>(modelVersion);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  InferenceTelemetryTableCompanion toCompanion(bool nullToAbsent) {
+    return InferenceTelemetryTableCompanion(
+      id: Value(id),
+      periodStartMs: Value(periodStartMs),
+      periodEndMs: Value(periodEndMs),
+      totalInferences: Value(totalInferences),
+      errorCount: Value(errorCount),
+      fallbackCount: Value(fallbackCount),
+      p50LatencyUs: Value(p50LatencyUs),
+      p90LatencyUs: Value(p90LatencyUs),
+      p95LatencyUs: Value(p95LatencyUs),
+      modelVersion: modelVersion == null && nullToAbsent
+          ? const Value.absent()
+          : Value(modelVersion),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory InferenceTelemetryEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return InferenceTelemetryEntry(
+      id: serializer.fromJson<int>(json['id']),
+      periodStartMs: serializer.fromJson<int>(json['periodStartMs']),
+      periodEndMs: serializer.fromJson<int>(json['periodEndMs']),
+      totalInferences: serializer.fromJson<int>(json['totalInferences']),
+      errorCount: serializer.fromJson<int>(json['errorCount']),
+      fallbackCount: serializer.fromJson<int>(json['fallbackCount']),
+      p50LatencyUs: serializer.fromJson<int>(json['p50LatencyUs']),
+      p90LatencyUs: serializer.fromJson<int>(json['p90LatencyUs']),
+      p95LatencyUs: serializer.fromJson<int>(json['p95LatencyUs']),
+      modelVersion: serializer.fromJson<String?>(json['modelVersion']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'periodStartMs': serializer.toJson<int>(periodStartMs),
+      'periodEndMs': serializer.toJson<int>(periodEndMs),
+      'totalInferences': serializer.toJson<int>(totalInferences),
+      'errorCount': serializer.toJson<int>(errorCount),
+      'fallbackCount': serializer.toJson<int>(fallbackCount),
+      'p50LatencyUs': serializer.toJson<int>(p50LatencyUs),
+      'p90LatencyUs': serializer.toJson<int>(p90LatencyUs),
+      'p95LatencyUs': serializer.toJson<int>(p95LatencyUs),
+      'modelVersion': serializer.toJson<String?>(modelVersion),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  InferenceTelemetryEntry copyWith({
+    int? id,
+    int? periodStartMs,
+    int? periodEndMs,
+    int? totalInferences,
+    int? errorCount,
+    int? fallbackCount,
+    int? p50LatencyUs,
+    int? p90LatencyUs,
+    int? p95LatencyUs,
+    Value<String?> modelVersion = const Value.absent(),
+    DateTime? createdAt,
+  }) => InferenceTelemetryEntry(
+    id: id ?? this.id,
+    periodStartMs: periodStartMs ?? this.periodStartMs,
+    periodEndMs: periodEndMs ?? this.periodEndMs,
+    totalInferences: totalInferences ?? this.totalInferences,
+    errorCount: errorCount ?? this.errorCount,
+    fallbackCount: fallbackCount ?? this.fallbackCount,
+    p50LatencyUs: p50LatencyUs ?? this.p50LatencyUs,
+    p90LatencyUs: p90LatencyUs ?? this.p90LatencyUs,
+    p95LatencyUs: p95LatencyUs ?? this.p95LatencyUs,
+    modelVersion: modelVersion.present ? modelVersion.value : this.modelVersion,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  InferenceTelemetryEntry copyWithCompanion(
+    InferenceTelemetryTableCompanion data,
+  ) {
+    return InferenceTelemetryEntry(
+      id: data.id.present ? data.id.value : this.id,
+      periodStartMs: data.periodStartMs.present
+          ? data.periodStartMs.value
+          : this.periodStartMs,
+      periodEndMs: data.periodEndMs.present
+          ? data.periodEndMs.value
+          : this.periodEndMs,
+      totalInferences: data.totalInferences.present
+          ? data.totalInferences.value
+          : this.totalInferences,
+      errorCount: data.errorCount.present
+          ? data.errorCount.value
+          : this.errorCount,
+      fallbackCount: data.fallbackCount.present
+          ? data.fallbackCount.value
+          : this.fallbackCount,
+      p50LatencyUs: data.p50LatencyUs.present
+          ? data.p50LatencyUs.value
+          : this.p50LatencyUs,
+      p90LatencyUs: data.p90LatencyUs.present
+          ? data.p90LatencyUs.value
+          : this.p90LatencyUs,
+      p95LatencyUs: data.p95LatencyUs.present
+          ? data.p95LatencyUs.value
+          : this.p95LatencyUs,
+      modelVersion: data.modelVersion.present
+          ? data.modelVersion.value
+          : this.modelVersion,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InferenceTelemetryEntry(')
+          ..write('id: $id, ')
+          ..write('periodStartMs: $periodStartMs, ')
+          ..write('periodEndMs: $periodEndMs, ')
+          ..write('totalInferences: $totalInferences, ')
+          ..write('errorCount: $errorCount, ')
+          ..write('fallbackCount: $fallbackCount, ')
+          ..write('p50LatencyUs: $p50LatencyUs, ')
+          ..write('p90LatencyUs: $p90LatencyUs, ')
+          ..write('p95LatencyUs: $p95LatencyUs, ')
+          ..write('modelVersion: $modelVersion, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    periodStartMs,
+    periodEndMs,
+    totalInferences,
+    errorCount,
+    fallbackCount,
+    p50LatencyUs,
+    p90LatencyUs,
+    p95LatencyUs,
+    modelVersion,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is InferenceTelemetryEntry &&
+          other.id == this.id &&
+          other.periodStartMs == this.periodStartMs &&
+          other.periodEndMs == this.periodEndMs &&
+          other.totalInferences == this.totalInferences &&
+          other.errorCount == this.errorCount &&
+          other.fallbackCount == this.fallbackCount &&
+          other.p50LatencyUs == this.p50LatencyUs &&
+          other.p90LatencyUs == this.p90LatencyUs &&
+          other.p95LatencyUs == this.p95LatencyUs &&
+          other.modelVersion == this.modelVersion &&
+          other.createdAt == this.createdAt);
+}
+
+class InferenceTelemetryTableCompanion
+    extends UpdateCompanion<InferenceTelemetryEntry> {
+  final Value<int> id;
+  final Value<int> periodStartMs;
+  final Value<int> periodEndMs;
+  final Value<int> totalInferences;
+  final Value<int> errorCount;
+  final Value<int> fallbackCount;
+  final Value<int> p50LatencyUs;
+  final Value<int> p90LatencyUs;
+  final Value<int> p95LatencyUs;
+  final Value<String?> modelVersion;
+  final Value<DateTime> createdAt;
+  const InferenceTelemetryTableCompanion({
+    this.id = const Value.absent(),
+    this.periodStartMs = const Value.absent(),
+    this.periodEndMs = const Value.absent(),
+    this.totalInferences = const Value.absent(),
+    this.errorCount = const Value.absent(),
+    this.fallbackCount = const Value.absent(),
+    this.p50LatencyUs = const Value.absent(),
+    this.p90LatencyUs = const Value.absent(),
+    this.p95LatencyUs = const Value.absent(),
+    this.modelVersion = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  InferenceTelemetryTableCompanion.insert({
+    this.id = const Value.absent(),
+    required int periodStartMs,
+    required int periodEndMs,
+    required int totalInferences,
+    this.errorCount = const Value.absent(),
+    this.fallbackCount = const Value.absent(),
+    required int p50LatencyUs,
+    required int p90LatencyUs,
+    required int p95LatencyUs,
+    this.modelVersion = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  }) : periodStartMs = Value(periodStartMs),
+       periodEndMs = Value(periodEndMs),
+       totalInferences = Value(totalInferences),
+       p50LatencyUs = Value(p50LatencyUs),
+       p90LatencyUs = Value(p90LatencyUs),
+       p95LatencyUs = Value(p95LatencyUs);
+  static Insertable<InferenceTelemetryEntry> custom({
+    Expression<int>? id,
+    Expression<int>? periodStartMs,
+    Expression<int>? periodEndMs,
+    Expression<int>? totalInferences,
+    Expression<int>? errorCount,
+    Expression<int>? fallbackCount,
+    Expression<int>? p50LatencyUs,
+    Expression<int>? p90LatencyUs,
+    Expression<int>? p95LatencyUs,
+    Expression<String>? modelVersion,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (periodStartMs != null) 'period_start_ms': periodStartMs,
+      if (periodEndMs != null) 'period_end_ms': periodEndMs,
+      if (totalInferences != null) 'total_inferences': totalInferences,
+      if (errorCount != null) 'error_count': errorCount,
+      if (fallbackCount != null) 'fallback_count': fallbackCount,
+      if (p50LatencyUs != null) 'p50_latency_us': p50LatencyUs,
+      if (p90LatencyUs != null) 'p90_latency_us': p90LatencyUs,
+      if (p95LatencyUs != null) 'p95_latency_us': p95LatencyUs,
+      if (modelVersion != null) 'model_version': modelVersion,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  InferenceTelemetryTableCompanion copyWith({
+    Value<int>? id,
+    Value<int>? periodStartMs,
+    Value<int>? periodEndMs,
+    Value<int>? totalInferences,
+    Value<int>? errorCount,
+    Value<int>? fallbackCount,
+    Value<int>? p50LatencyUs,
+    Value<int>? p90LatencyUs,
+    Value<int>? p95LatencyUs,
+    Value<String?>? modelVersion,
+    Value<DateTime>? createdAt,
+  }) {
+    return InferenceTelemetryTableCompanion(
+      id: id ?? this.id,
+      periodStartMs: periodStartMs ?? this.periodStartMs,
+      periodEndMs: periodEndMs ?? this.periodEndMs,
+      totalInferences: totalInferences ?? this.totalInferences,
+      errorCount: errorCount ?? this.errorCount,
+      fallbackCount: fallbackCount ?? this.fallbackCount,
+      p50LatencyUs: p50LatencyUs ?? this.p50LatencyUs,
+      p90LatencyUs: p90LatencyUs ?? this.p90LatencyUs,
+      p95LatencyUs: p95LatencyUs ?? this.p95LatencyUs,
+      modelVersion: modelVersion ?? this.modelVersion,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (periodStartMs.present) {
+      map['period_start_ms'] = Variable<int>(periodStartMs.value);
+    }
+    if (periodEndMs.present) {
+      map['period_end_ms'] = Variable<int>(periodEndMs.value);
+    }
+    if (totalInferences.present) {
+      map['total_inferences'] = Variable<int>(totalInferences.value);
+    }
+    if (errorCount.present) {
+      map['error_count'] = Variable<int>(errorCount.value);
+    }
+    if (fallbackCount.present) {
+      map['fallback_count'] = Variable<int>(fallbackCount.value);
+    }
+    if (p50LatencyUs.present) {
+      map['p50_latency_us'] = Variable<int>(p50LatencyUs.value);
+    }
+    if (p90LatencyUs.present) {
+      map['p90_latency_us'] = Variable<int>(p90LatencyUs.value);
+    }
+    if (p95LatencyUs.present) {
+      map['p95_latency_us'] = Variable<int>(p95LatencyUs.value);
+    }
+    if (modelVersion.present) {
+      map['model_version'] = Variable<String>(modelVersion.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InferenceTelemetryTableCompanion(')
+          ..write('id: $id, ')
+          ..write('periodStartMs: $periodStartMs, ')
+          ..write('periodEndMs: $periodEndMs, ')
+          ..write('totalInferences: $totalInferences, ')
+          ..write('errorCount: $errorCount, ')
+          ..write('fallbackCount: $fallbackCount, ')
+          ..write('p50LatencyUs: $p50LatencyUs, ')
+          ..write('p90LatencyUs: $p90LatencyUs, ')
+          ..write('p95LatencyUs: $p95LatencyUs, ')
+          ..write('modelVersion: $modelVersion, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AttentionDatabase extends GeneratedDatabase {
   _$AttentionDatabase(QueryExecutor e) : super(e);
   $AttentionDatabaseManager get managers => $AttentionDatabaseManager(this);
@@ -2722,6 +3412,8 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final $DailyBriefTableTable dailyBriefTable = $DailyBriefTableTable(
     this,
   );
+  late final $InferenceTelemetryTableTable inferenceTelemetryTable =
+      $InferenceTelemetryTableTable(this);
   late final NotificationDao notificationDao = NotificationDao(
     this as AttentionDatabase,
   );
@@ -2734,6 +3426,8 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
   late final DailyBriefDao dailyBriefDao = DailyBriefDao(
     this as AttentionDatabase,
   );
+  late final InferenceTelemetryDao inferenceTelemetryDao =
+      InferenceTelemetryDao(this as AttentionDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2743,6 +3437,7 @@ abstract class _$AttentionDatabase extends GeneratedDatabase {
     reviewQueueTable,
     focusSessionsTable,
     dailyBriefTable,
+    inferenceTelemetryTable,
   ];
 }
 
@@ -3406,7 +4101,9 @@ class $$NotificationsTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$NotificationsTableTable, NotificationEntry>(
+                    table,
+                  ),
                   $$NotificationsTableTableReferences(db, table, e),
                 ),
               )
@@ -3749,7 +4446,7 @@ class $$ReviewQueueTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$ReviewQueueTableTable, ReviewQueueEntry>(table),
                   $$ReviewQueueTableTableReferences(db, table, e),
                 ),
               )
@@ -4021,7 +4718,18 @@ class $$FocusSessionsTableTableTableManager
                 duration: duration,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$FocusSessionsTableTable, FocusSessionEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $FocusSessionsTableTable,
+                    FocusSessionEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4273,7 +4981,16 @@ class $$DailyBriefTableTableTableManager
                 archivedCount: archivedCount,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$DailyBriefTableTable, DailyBriefEntry>(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $DailyBriefTableTable,
+                    DailyBriefEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -4301,6 +5018,363 @@ typedef $$DailyBriefTableTableProcessedTableManager =
       DailyBriefEntry,
       PrefetchHooks Function()
     >;
+typedef $$InferenceTelemetryTableTableCreateCompanionBuilder =
+    InferenceTelemetryTableCompanion Function({
+      Value<int> id,
+      required int periodStartMs,
+      required int periodEndMs,
+      required int totalInferences,
+      Value<int> errorCount,
+      Value<int> fallbackCount,
+      required int p50LatencyUs,
+      required int p90LatencyUs,
+      required int p95LatencyUs,
+      Value<String?> modelVersion,
+      Value<DateTime> createdAt,
+    });
+typedef $$InferenceTelemetryTableTableUpdateCompanionBuilder =
+    InferenceTelemetryTableCompanion Function({
+      Value<int> id,
+      Value<int> periodStartMs,
+      Value<int> periodEndMs,
+      Value<int> totalInferences,
+      Value<int> errorCount,
+      Value<int> fallbackCount,
+      Value<int> p50LatencyUs,
+      Value<int> p90LatencyUs,
+      Value<int> p95LatencyUs,
+      Value<String?> modelVersion,
+      Value<DateTime> createdAt,
+    });
+
+class $$InferenceTelemetryTableTableFilterComposer
+    extends Composer<_$AttentionDatabase, $InferenceTelemetryTableTable> {
+  $$InferenceTelemetryTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get periodStartMs => $composableBuilder(
+    column: $table.periodStartMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get periodEndMs => $composableBuilder(
+    column: $table.periodEndMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get totalInferences => $composableBuilder(
+    column: $table.totalInferences,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get errorCount => $composableBuilder(
+    column: $table.errorCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get fallbackCount => $composableBuilder(
+    column: $table.fallbackCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get p50LatencyUs => $composableBuilder(
+    column: $table.p50LatencyUs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get p90LatencyUs => $composableBuilder(
+    column: $table.p90LatencyUs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get p95LatencyUs => $composableBuilder(
+    column: $table.p95LatencyUs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get modelVersion => $composableBuilder(
+    column: $table.modelVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$InferenceTelemetryTableTableOrderingComposer
+    extends Composer<_$AttentionDatabase, $InferenceTelemetryTableTable> {
+  $$InferenceTelemetryTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get periodStartMs => $composableBuilder(
+    column: $table.periodStartMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get periodEndMs => $composableBuilder(
+    column: $table.periodEndMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get totalInferences => $composableBuilder(
+    column: $table.totalInferences,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get errorCount => $composableBuilder(
+    column: $table.errorCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get fallbackCount => $composableBuilder(
+    column: $table.fallbackCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get p50LatencyUs => $composableBuilder(
+    column: $table.p50LatencyUs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get p90LatencyUs => $composableBuilder(
+    column: $table.p90LatencyUs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get p95LatencyUs => $composableBuilder(
+    column: $table.p95LatencyUs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get modelVersion => $composableBuilder(
+    column: $table.modelVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$InferenceTelemetryTableTableAnnotationComposer
+    extends Composer<_$AttentionDatabase, $InferenceTelemetryTableTable> {
+  $$InferenceTelemetryTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get periodStartMs => $composableBuilder(
+    column: $table.periodStartMs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get periodEndMs => $composableBuilder(
+    column: $table.periodEndMs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get totalInferences => $composableBuilder(
+    column: $table.totalInferences,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get errorCount => $composableBuilder(
+    column: $table.errorCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get fallbackCount => $composableBuilder(
+    column: $table.fallbackCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get p50LatencyUs => $composableBuilder(
+    column: $table.p50LatencyUs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get p90LatencyUs => $composableBuilder(
+    column: $table.p90LatencyUs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get p95LatencyUs => $composableBuilder(
+    column: $table.p95LatencyUs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get modelVersion => $composableBuilder(
+    column: $table.modelVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$InferenceTelemetryTableTableTableManager
+    extends
+        RootTableManager<
+          _$AttentionDatabase,
+          $InferenceTelemetryTableTable,
+          InferenceTelemetryEntry,
+          $$InferenceTelemetryTableTableFilterComposer,
+          $$InferenceTelemetryTableTableOrderingComposer,
+          $$InferenceTelemetryTableTableAnnotationComposer,
+          $$InferenceTelemetryTableTableCreateCompanionBuilder,
+          $$InferenceTelemetryTableTableUpdateCompanionBuilder,
+          (
+            InferenceTelemetryEntry,
+            BaseReferences<
+              _$AttentionDatabase,
+              $InferenceTelemetryTableTable,
+              InferenceTelemetryEntry
+            >,
+          ),
+          InferenceTelemetryEntry,
+          PrefetchHooks Function()
+        > {
+  $$InferenceTelemetryTableTableTableManager(
+    _$AttentionDatabase db,
+    $InferenceTelemetryTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$InferenceTelemetryTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$InferenceTelemetryTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$InferenceTelemetryTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> periodStartMs = const Value.absent(),
+                Value<int> periodEndMs = const Value.absent(),
+                Value<int> totalInferences = const Value.absent(),
+                Value<int> errorCount = const Value.absent(),
+                Value<int> fallbackCount = const Value.absent(),
+                Value<int> p50LatencyUs = const Value.absent(),
+                Value<int> p90LatencyUs = const Value.absent(),
+                Value<int> p95LatencyUs = const Value.absent(),
+                Value<String?> modelVersion = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => InferenceTelemetryTableCompanion(
+                id: id,
+                periodStartMs: periodStartMs,
+                periodEndMs: periodEndMs,
+                totalInferences: totalInferences,
+                errorCount: errorCount,
+                fallbackCount: fallbackCount,
+                p50LatencyUs: p50LatencyUs,
+                p90LatencyUs: p90LatencyUs,
+                p95LatencyUs: p95LatencyUs,
+                modelVersion: modelVersion,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int periodStartMs,
+                required int periodEndMs,
+                required int totalInferences,
+                Value<int> errorCount = const Value.absent(),
+                Value<int> fallbackCount = const Value.absent(),
+                required int p50LatencyUs,
+                required int p90LatencyUs,
+                required int p95LatencyUs,
+                Value<String?> modelVersion = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => InferenceTelemetryTableCompanion.insert(
+                id: id,
+                periodStartMs: periodStartMs,
+                periodEndMs: periodEndMs,
+                totalInferences: totalInferences,
+                errorCount: errorCount,
+                fallbackCount: fallbackCount,
+                p50LatencyUs: p50LatencyUs,
+                p90LatencyUs: p90LatencyUs,
+                p95LatencyUs: p95LatencyUs,
+                modelVersion: modelVersion,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $InferenceTelemetryTableTable,
+                    InferenceTelemetryEntry
+                  >(table),
+                  BaseReferences<
+                    _$AttentionDatabase,
+                    $InferenceTelemetryTableTable,
+                    InferenceTelemetryEntry
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$InferenceTelemetryTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AttentionDatabase,
+      $InferenceTelemetryTableTable,
+      InferenceTelemetryEntry,
+      $$InferenceTelemetryTableTableFilterComposer,
+      $$InferenceTelemetryTableTableOrderingComposer,
+      $$InferenceTelemetryTableTableAnnotationComposer,
+      $$InferenceTelemetryTableTableCreateCompanionBuilder,
+      $$InferenceTelemetryTableTableUpdateCompanionBuilder,
+      (
+        InferenceTelemetryEntry,
+        BaseReferences<
+          _$AttentionDatabase,
+          $InferenceTelemetryTableTable,
+          InferenceTelemetryEntry
+        >,
+      ),
+      InferenceTelemetryEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AttentionDatabaseManager {
   final _$AttentionDatabase _db;
@@ -4313,4 +5387,9 @@ class $AttentionDatabaseManager {
       $$FocusSessionsTableTableTableManager(_db, _db.focusSessionsTable);
   $$DailyBriefTableTableTableManager get dailyBriefTable =>
       $$DailyBriefTableTableTableManager(_db, _db.dailyBriefTable);
+  $$InferenceTelemetryTableTableTableManager get inferenceTelemetryTable =>
+      $$InferenceTelemetryTableTableTableManager(
+        _db,
+        _db.inferenceTelemetryTable,
+      );
 }

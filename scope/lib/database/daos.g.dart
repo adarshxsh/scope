@@ -72,3 +72,20 @@ class DailyBriefDaoManager {
         _db.dailyBriefTable,
       );
 }
+
+mixin _$InferenceTelemetryDaoMixin on DatabaseAccessor<AttentionDatabase> {
+  $InferenceTelemetryTableTable get inferenceTelemetryTable =>
+      attachedDatabase.inferenceTelemetryTable;
+  InferenceTelemetryDaoManager get managers =>
+      InferenceTelemetryDaoManager(this);
+}
+
+class InferenceTelemetryDaoManager {
+  final _$InferenceTelemetryDaoMixin _db;
+  InferenceTelemetryDaoManager(this._db);
+  $$InferenceTelemetryTableTableTableManager get inferenceTelemetryTable =>
+      $$InferenceTelemetryTableTableTableManager(
+        _db.attachedDatabase,
+        _db.inferenceTelemetryTable,
+      );
+}
