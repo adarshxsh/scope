@@ -1,9 +1,11 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:scope/core/models/notification_model.dart';
 import 'package:scope/core/analysis/feature_extractor.dart';
 import 'package:scope/core/analysis/rule_engine.dart';
+import 'package:scope/core/analysis/model_manager.dart';
 import 'package:scope/core/utils/pii_redactor.dart';
 
 /// The result returned by the unified Ghost AI look-again inference model.
@@ -39,7 +41,7 @@ class GhostAIResult {
 /// Core inference singleton coordinating look-again score predictions and overrides.
 class GhostAI {
   static GhostAI? _instance;
-  Interpreter? _interpreter;
+  final ModelManager _modelManager = ModelManager();
   final RuleEngine _ruleEngine = RuleEngine();
 
   // Slide-cache for duplicate detection
@@ -55,15 +57,28 @@ class GhostAI {
   String get ruleVersion => _ruleEngine.version;
 
   /// Returns whether the model is loaded.
-  bool get isModelLoaded => _interpreter != null;
+  bool get isModelLoaded => _modelManager.isModelLoaded;
+
+  /// Returns the current model source (dynamic, asset, or fallback).
+  ModelSource get modelSource => _modelManager.modelSource;
+
+  /// Returns whether the model was loaded from dynamic local storage.
+  bool get isDynamicModel => _modelManager.isDynamicModel;
+
+  /// Returns model version string.
+  String get modelVersion => _modelManager.modelVersion;
+
+  /// Returns path/asset identifier of loaded model.
+  String? get modelPath => _modelManager.modelPath;
+
+  /// Exposes underlying [ModelManager] instance.
+  ModelManager get modelManager => _modelManager;
 
   /// Initializes the TFLite interpreter and rules database once on startup.
   Future<void> initialize() async {
-    if (_interpreter != null) return;
     try {
-      // 1. Load interpreter from assets
-      _interpreter = await Interpreter.fromAsset('assets/model.tflite');
-      debugPrint('GhostAI: TFLite interpreter loaded successfully.');
+      // 1. Load interpreter via ModelManager (checks dynamic storage first, then assets)
+      await _modelManager.loadInterpreter();
     } catch (e) {
       debugPrint('GhostAI: Failed to load TFLite model: $e');
     }
@@ -76,6 +91,21 @@ class GhostAI {
     } catch (e) {
       debugPrint('GhostAI: Failed to initialize rules database: $e');
     }
+  }
+
+  /// Updates dynamic model from local file.
+  Future<ModelUpdateResult> updateModelFromFile(File file, {String version = '1.0.0-tflite-dynamic'}) async {
+    return _modelManager.updateModelFromFile(file, version: version);
+  }
+
+  /// Updates dynamic model from raw byte array.
+  Future<ModelUpdateResult> updateModelFromBytes(Uint8List bytes, {String version = '1.0.0-tflite-dynamic'}) async {
+    return _modelManager.updateModelFromBytes(bytes, version: version);
+  }
+
+  /// Resets dynamic model override and reverts to static bundle asset.
+  Future<void> resetToAssetModel() async {
+    await _modelManager.resetToAssetModel();
   }
 
   /// Public API: resolves look-again priority score for a notification.
@@ -93,12 +123,13 @@ class GhostAI {
     double predictedScore = 0.0;
     int inferenceTimeUs = 0;
 
-    if (_interpreter != null) {
+    final interpreter = _modelManager.interpreter;
+    if (interpreter != null) {
       final input = [featureVector];
       final output = List<double>.filled(1, 0.0).reshape([1, 1]);
 
       final inferStopwatch = Stopwatch()..start();
-      _interpreter!.run(input, output);
+      interpreter.run(input, output);
       inferStopwatch.stop();
 
       inferenceTimeUs = inferStopwatch.elapsedMicroseconds;
@@ -320,13 +351,14 @@ class GhostAI {
     return false;
   }
 
-  /// Outputs structured AI execution reports in debug mode.
+  /// Outputs structured AI execution reports in debug mode with PII sanitized.
   void _logStructured(AppNotification notification, GhostAIResult result) {
     final redactedTitle = PiiRedactor.redactTitle(notification.title);
     final redactedContent = PiiRedactor.redactContent(notification.content);
     debugPrint('=== GHOST AI INFERENCE REPORT ===');
     debugPrint('Notification: "$redactedTitle" - "$redactedContent"');
     debugPrint('Package: ${notification.packageName}');
+    debugPrint('Model Source: ${modelSource.name} ($modelVersion)');
     debugPrint('Feature Vector (First 15): ${result.featureVector.take(15).toList()}...');
     debugPrint('Inference Time: ${result.inferenceTimeUs} us');
     debugPrint('Raw Predicted Score: ${(result.predictedScore * 100).toStringAsFixed(2)}');
