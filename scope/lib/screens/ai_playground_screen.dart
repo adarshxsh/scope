@@ -120,10 +120,12 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
       if (clean.length > 4 && words.length < 3) words.add(clean);
     }
 
+    final effectivePriority = _selectedPriority.toLowerCase() == 'critical' ? 'high' : _selectedPriority;
+
     final newRule = NotificationRule(
       id: 'rlhf-${DateTime.now().millisecondsSinceEpoch}',
       category: _selectedCategory,
-      priority: _selectedPriority,
+      priority: effectivePriority,
       conditions: RuleCondition(
         packages: [n.packageName],
         titleKeywords: words.take(2).toList(),
@@ -138,7 +140,7 @@ class _AiPlaygroundScreenState extends State<AiPlaygroundScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Reinforcement Rule Learned! Similar messages will now be classified as $_selectedPriority ($_selectedCategory).'),
+        content: Text('Reinforcement Rule Learned! Similar messages will now be classified as $effectivePriority ($_selectedCategory).'),
         backgroundColor: AppColors.seed,
       ),
     );

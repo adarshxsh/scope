@@ -3,6 +3,8 @@ import 'package:scope/core/analysis/rule_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('RuleEngine', () {
     const String sampleJson = '''
     {
@@ -123,6 +125,47 @@ void main() {
       expect(result!.ruleId, equals('swiggy_promo'));
       expect(result.category, equals('promo'));
       expect(result.priority, equals('low'));
+    });
+
+    test('enforces word boundary checks and avoids substring containment collisions', () {
+      // "debited" should not match "indebited" or partial words
+      final partialNotif = AppNotification(
+        id: '4',
+        packageName: 'com.hdfc.mobilebanking',
+        title: 'HDFC Bank Alert',
+        content: 'Your account remains indebited.',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final result = engine.match(partialNotif);
+      expect(result, isNull);
+    });
+
+    test('clamps custom rule critical priority to high when adding reinforcement rule', () {
+      const customRule = NotificationRule(
+        id: 'rlhf-1700000000000',
+        category: 'msg',
+        priority: 'critical',
+        conditions: RuleCondition(
+          keywords: ['workstation', 'server'],
+        ),
+      );
+
+      engine.addReinforcementRule(customRule);
+
+      final notif = AppNotification(
+        id: '5',
+        packageName: 'com.work.app',
+        title: 'Server status',
+        content: 'Check workstation 42',
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+      );
+
+      final result = engine.match(notif);
+      expect(result, isNotNull);
+      expect(result!.ruleId, equals('rlhf-1700000000000'));
+      expect(result.priority, equals('high'));
+      expect(result.isCustom, isTrue);
     });
   });
 }
