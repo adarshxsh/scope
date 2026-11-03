@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:scope/core/analysis/ghost_analysis_engine.dart';
 import 'package:scope/core/models/notification_model.dart';
+import 'package:scope/core/services/pii_redaction_service.dart';
 import 'package:scope/core/testing/test_notification_generator.dart';
 import 'package:scope/widgets/scope_card.dart';
 
@@ -24,10 +25,12 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
   bool _isOngoing = false;
   String _selectedTemplate = 'Custom';
 
-  // Analysis Outputs
+  // Analysis Outputs & Session Security Toggle
   AppNotification? _analyzedNotification;
   bool _isAnalyzing = false;
   bool _isEngineReady = false;
+  bool _unmaskPii = false;
+
 
   @override
   void initState() {
@@ -280,6 +283,15 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
     final phoneNumbers = features['phoneNumbers'] as List?;
     final phoneNumbersStr = phoneNumbers != null && phoneNumbers.isNotEmpty ? phoneNumbers.toString() : null;
 
+    final displayOtp = _unmaskPii ? otp : (otp != null ? PiiRedactionService.maskOtp(otp) : null);
+    final displayAmount = _unmaskPii ? amountStr : (amountStr != null ? PiiRedactionService.maskAmountString(amountStr) : null);
+    final displayUrls = _unmaskPii ? urlsStr : (urls != null && urls.isNotEmpty ? PiiRedactionService.maskUrls(urls) : null);
+    final displayEmails = _unmaskPii ? emailsStr : (emails != null && emails.isNotEmpty ? PiiRedactionService.maskEmails(emails) : null);
+    final displayPhoneNumbers = _unmaskPii ? phoneNumbersStr : (phoneNumbers != null && phoneNumbers.isNotEmpty ? PiiRedactionService.maskPhoneNumbers(phoneNumbers) : null);
+    final displayExplanation = _unmaskPii
+        ? (notif.explanation ?? 'No explanation trace was generated.')
+        : PiiRedactionService.redactText(notif.explanation ?? 'No explanation trace was generated.');
+
     final theme = Theme.of(context);
 
     return Column(
@@ -368,7 +380,7 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
               ),
               const Divider(height: 20),
               Text(
-                notif.explanation ?? 'No explanation trace was generated.',
+                displayExplanation,
                 style: const TextStyle(height: 1.4),
               ),
             ],
@@ -383,24 +395,42 @@ class _DiagnosticScreenState extends State<DiagnosticScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Icon(Icons.filter_list_alt, color: theme.colorScheme.secondary),
-                  const SizedBox(width: 8),
-                  const Text('Extracted Text Features',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  Row(
+                    children: [
+                      Icon(Icons.filter_list_alt, color: theme.colorScheme.secondary),
+                      const SizedBox(width: 8),
+                      const Text('Extracted Text Features',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                    ],
+                  ),
                 ],
               ),
-              const Divider(height: 20),
-              _buildFeatureRow('OTP Code', otp),
-              _buildFeatureRow('Transaction Amount', amountStr),
+              const Divider(height: 16),
+              SwitchListTile(
+                key: const Key('unmask_pii_switch'),
+                title: const Text('Unmask Sensitive PII', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                subtitle: const Text('Temporarily reveal cleartext values in session memory', style: TextStyle(fontSize: 11)),
+                value: _unmaskPii,
+                onChanged: (val) {
+                  setState(() => _unmaskPii = val);
+                },
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+              ),
+              const Divider(height: 16),
+              _buildFeatureRow('OTP Code', displayOtp),
+              _buildFeatureRow('Transaction Amount', displayAmount),
               _buildFeatureRow('Has Deadline Warning', hasDeadline),
-              _buildFeatureRow('Hyperlinks (URLs)', urlsStr),
-              _buildFeatureRow('Emails', emailsStr),
-              _buildFeatureRow('Phone Numbers', phoneNumbersStr),
+              _buildFeatureRow('Hyperlinks (URLs)', displayUrls),
+              _buildFeatureRow('Emails', displayEmails),
+              _buildFeatureRow('Phone Numbers', displayPhoneNumbers),
             ],
           ),
         ),
         const SizedBox(height: 12),
+
 
         // 3. Versions and Metadata
         ScopeCard(
